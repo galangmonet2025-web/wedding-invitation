@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useGuestStore } from '../store/guestStore';
-import { DataTable } from '@/shared/components/DataTable';
+import { DataTable, Column } from '@/shared/components/DataTable';
 import { Pagination } from '@/shared/components/Pagination';
 import { Modal } from '@/shared/components/Modal';
 import type { Guest, CreateGuestRequest, GuestStatus } from '@/types';
@@ -185,7 +185,7 @@ export function GuestPage() {
         );
     };
 
-    const columns = [
+    const columns: Column<Guest>[] = [
         {
             key: 'name',
             header: 'Name',
@@ -400,7 +400,7 @@ export function GuestPage() {
             {/* Data Table */}
             <DataTable
                 columns={columns}
-                data={guests as unknown as Record<string, unknown>[]}
+                data={guests}
                 loading={loading}
                 emptyMessage="No guests found"
                 selectedIds={!isStaff ? selectedIds : undefined}

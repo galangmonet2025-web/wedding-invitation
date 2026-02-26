@@ -41,24 +41,7 @@ export function GlobalDashboardPage() {
                 setDashboard(response.data);
             }
         } catch {
-            setDashboard({
-                total_tenants: 42,
-                total_active_tenants: 38,
-                total_guests_system: 5240,
-                revenue_estimation: 45000000,
-                plan_distribution: [
-                    { name: 'Free', value: 20 },
-                    { name: 'Pro', value: 15 },
-                    { name: 'Premium', value: 7 },
-                ],
-                tenant_growth: [
-                    { date: '2025-10', count: 8 },
-                    { date: '2025-11', count: 15 },
-                    { date: '2025-12', count: 22 },
-                    { date: '2026-01', count: 32 },
-                    { date: '2026-02', count: 42 },
-                ],
-            });
+            toast.error('Failed to load global dashboard');
         } finally {
             setLoading(false);
         }

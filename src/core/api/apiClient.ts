@@ -17,10 +17,15 @@ apiClient.interceptors.request.use(
     (config) => {
         const token = useAuthStore.getState().token;
         if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
-            // For Google Apps Script, we also send token in params/body
+            // Send token via params (GET) or body (POST)
+            // Do NOT set Authorization header — it triggers CORS preflight
+            // which Google Apps Script cannot handle
             if (config.method === 'get') {
                 config.params = { ...config.params, token };
+            } else if (config.data) {
+                // For POST, inject token into the JSON body
+                const data = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                config.data = JSON.stringify({ ...data, token });
             }
         }
         return config;

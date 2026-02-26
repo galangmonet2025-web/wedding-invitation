@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface Column<T> {
+export interface Column<T> {
     key: string;
     header: string;
     render?: (item: T) => React.ReactNode;
@@ -19,7 +19,7 @@ interface DataTableProps<T> {
     idKey?: keyof T;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends Record<string, any>>({
     columns,
     data,
     loading = false,

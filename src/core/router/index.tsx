@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createHashRouter } from 'react-router-dom';
 import { DashboardLayout } from '@/core/layout/DashboardLayout';
 import { ProtectedRoute } from '@/core/guards/ProtectedRoute';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
@@ -10,6 +10,7 @@ import { TenantPage } from '@/features/tenant/pages/TenantPage';
 import { WishesPage } from '@/features/wishes/pages/WishesPage';
 import { GiftsPage } from '@/features/gifts/pages/GiftsPage';
 import { ActivityPage } from '@/features/activity/pages/ActivityPage';
+import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
 import { Navigate } from 'react-router-dom';
 
 function UnauthorizedPage() {
@@ -42,7 +43,7 @@ function NotFoundPage() {
     );
 }
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
     {
         path: '/login',
         element: <LoginPage />,
@@ -50,6 +51,10 @@ export const router = createBrowserRouter([
     {
         path: '/register',
         element: <RegisterPage />,
+    },
+    {
+        path: '/invitation/:slug',
+        element: <InvitationPage />,
     },
     {
         path: '/',

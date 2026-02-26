@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { activityApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
 import type { ActivityLog } from '@/types';
+import toast from 'react-hot-toast';
 import {
     HiOutlineLogin,
     HiOutlineUserAdd,
@@ -42,16 +43,8 @@ export function ActivityPage() {
                 setLogs(response.data);
             }
         } catch {
-            setLogs([
-                { id: 'a1', tenant_id: 't1', user_id: 'u1', action: 'login', created_at: '2026-02-25T15:30:00Z' },
-                { id: 'a2', tenant_id: 't1', user_id: 'u1', action: 'create_guest', created_at: '2026-02-25T15:35:00Z' },
-                { id: 'a3', tenant_id: 't1', user_id: 'u1', action: 'update_guest', created_at: '2026-02-25T15:40:00Z' },
-                { id: 'a4', tenant_id: 't1', user_id: 'u1', action: 'create_guest', created_at: '2026-02-25T15:45:00Z' },
-                { id: 'a5', tenant_id: 't1', user_id: 'u1', action: 'delete_guest', created_at: '2026-02-25T15:50:00Z' },
-                { id: 'a6', tenant_id: 't1', user_id: 'u1', action: 'login', created_at: '2026-02-24T10:00:00Z' },
-                { id: 'a7', tenant_id: 't1', user_id: 'u1', action: 'create_guest', created_at: '2026-02-24T10:30:00Z' },
-                { id: 'a8', tenant_id: 't1', user_id: 'u1', action: 'create_tenant', created_at: '2026-02-23T09:00:00Z' },
-            ]);
+            toast.error('Failed to load activity logs');
+            setLogs([]);
         } finally {
             setLoading(false);
         }

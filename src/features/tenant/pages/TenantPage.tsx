@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { tenantApi } from '@/core/api/endpoints';
-import { DataTable } from '@/shared/components/DataTable';
+import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Tenant, CreateTenantRequest, PlanType, TenantStatus } from '@/types';
@@ -41,12 +41,8 @@ export function TenantPage() {
                 setTenants(response.data);
             }
         } catch {
-            setTenants([
-                { id: 't1', bride_name: 'Sarah', groom_name: 'Ahmad', wedding_date: '2026-06-15', domain_slug: 'sarah-ahmad', plan_type: 'pro', guest_limit: 500, created_at: '2026-01-01', status: 'active' },
-                { id: 't2', bride_name: 'Dewi', groom_name: 'Budi', wedding_date: '2026-07-20', domain_slug: 'dewi-budi', plan_type: 'free', guest_limit: 100, created_at: '2026-01-15', status: 'active' },
-                { id: 't3', bride_name: 'Rina', groom_name: 'Eko', wedding_date: '2026-08-10', domain_slug: 'rina-eko', plan_type: 'premium', guest_limit: -1, created_at: '2026-02-01', status: 'active' },
-                { id: 't4', bride_name: 'Maya', groom_name: 'Fajar', wedding_date: '2026-05-01', domain_slug: 'maya-fajar', plan_type: 'free', guest_limit: 100, created_at: '2025-12-20', status: 'suspended' },
-            ]);
+            toast.error('Failed to load tenants');
+            setTenants([]);
         } finally {
             setLoading(false);
         }
@@ -99,7 +95,7 @@ export function TenantPage() {
         return <span className={`${classes[plan]} uppercase`}>{plan}</span>;
     };
 
-    const columns = [
+    const columns: Column<Tenant>[] = [
         {
             key: 'couple',
             header: 'Couple',
@@ -166,7 +162,7 @@ export function TenantPage() {
 
             <DataTable
                 columns={columns}
-                data={tenants as unknown as Record<string, unknown>[]}
+                data={tenants}
                 loading={loading}
                 emptyMessage="No tenants found"
             />

@@ -43,13 +43,14 @@ function handleRequest(e, method) {
       payload = body;
     }
 
-    // Rate limiting
-    if (!RateLimiter.check(payload.token || 'anonymous')) {
+    // Rate limiting - hash token to keep cache key short
+    var rateLimitId = (payload.token || 'anonymous').substring(0, 32);
+    if (!RateLimiter.check(rateLimitId)) {
       return ResponseHelper.error('Rate limit exceeded. Please try again later.', 429);
     }
 
     // Public endpoints (no auth required)
-    var publicActions = ['login', 'registerTenant'];
+    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish'];
     if (publicActions.indexOf(action) !== -1) {
       return routeAction(action, payload, null);
     }
@@ -146,6 +147,14 @@ function routeAction(action, payload, auth) {
     // Activity Logs
     case 'getActivityLogs':
       return ActivityLogService.getLogs(auth);
+
+    // Public Invitation
+    case 'getPublicInvitation':
+      return PublicService.getInvitation(payload);
+    case 'submitPublicRSVP':
+      return PublicService.submitRSVP(payload);
+    case 'submitPublicWish':
+      return PublicService.submitWish(payload);
 
     default:
       return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -1006,6 +1015,89 @@ var ActivityLogService = {
     // Sort by created_at descending
     logs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
     return ResponseHelper.success(logs, 'Activity logs retrieved');
+  }
+};
+
+
+// =====================================================================
+// PUBLIC SERVICE - No auth required
+// =====================================================================
+
+var PublicService = {
+  getInvitation: function(payload) {
+    Validator.required(payload, ['slug']);
+    var tenant = DB.findOne('Tenants', 'domain_slug', payload.slug);
+    if (!tenant || tenant.status !== 'active') {
+      return ResponseHelper.error('Invitation not found', 404);
+    }
+
+    var wishes = DB.getByTenant('Wishes', tenant.id);
+    wishes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+    return ResponseHelper.success({
+      tenant: {
+        bride_name: tenant.bride_name,
+        groom_name: tenant.groom_name,
+        wedding_date: tenant.wedding_date,
+        domain_slug: tenant.domain_slug
+      },
+      wishes: wishes.slice(0, 50)
+    }, 'Invitation data retrieved');
+  },
+
+  submitRSVP: function(payload) {
+    Validator.required(payload, ['slug', 'invitation_code', 'status']);
+    var sanitized = Validator.sanitizeObject(payload);
+
+    var tenant = DB.findOne('Tenants', 'domain_slug', sanitized.slug);
+    if (!tenant) return ResponseHelper.error('Invitation not found', 404);
+
+    var guests = DB.getByTenant('Guests', tenant.id);
+    var guest = null;
+    for (var i = 0; i < guests.length; i++) {
+      if (guests[i].invitation_code === sanitized.invitation_code) {
+        guest = guests[i];
+        break;
+      }
+    }
+
+    if (!guest) return ResponseHelper.error('Invalid invitation code', 404);
+
+    var validStatus = ['confirmed', 'declined'];
+    if (validStatus.indexOf(sanitized.status) === -1) {
+      return ResponseHelper.error('Invalid status', 400);
+    }
+
+    var updates = { status: sanitized.status };
+    if (sanitized.number_of_guests) {
+      updates.number_of_guests = parseInt(sanitized.number_of_guests) || 1;
+    }
+
+    DB.update('Guests', guest.id, updates);
+
+    return ResponseHelper.success({
+      name: guest.name,
+      status: sanitized.status
+    }, 'RSVP submitted successfully');
+  },
+
+  submitWish: function(payload) {
+    Validator.required(payload, ['slug', 'guest_name', 'message']);
+    var sanitized = Validator.sanitizeObject(payload);
+
+    var tenant = DB.findOne('Tenants', 'domain_slug', sanitized.slug);
+    if (!tenant) return ResponseHelper.error('Invitation not found', 404);
+
+    var wish = {
+      id: DB.generateId(),
+      tenant_id: tenant.id,
+      guest_name: sanitized.guest_name,
+      message: sanitized.message,
+      created_at: new Date().toISOString()
+    };
+
+    DB.insert('Wishes', wish);
+    return ResponseHelper.success(wish, 'Wish submitted successfully');
   }
 };
 

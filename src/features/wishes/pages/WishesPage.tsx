@@ -23,13 +23,8 @@ export function WishesPage() {
                 setWishes(response.data);
             }
         } catch {
-            setWishes([
-                { id: 'w1', tenant_id: 't1', guest_name: 'Ahmad Rizki', message: 'Semoga bahagia selalu! Selamat menempuh hidup baru 🎉', created_at: '2026-02-20T10:00:00Z' },
-                { id: 'w2', tenant_id: 't1', guest_name: 'Siti Nurhaliza', message: 'Barakallahu lakuma wa baraka alaikuma wa jamaâ bainakuma fi khair ❤️', created_at: '2026-02-21T12:30:00Z' },
-                { id: 'w3', tenant_id: 't1', guest_name: 'Budi Santoso', message: 'Happy wedding! Wishing you both a lifetime of love and happiness!', created_at: '2026-02-22T15:45:00Z' },
-                { id: 'w4', tenant_id: 't1', guest_name: 'Dewi Lestari', message: 'Congratulations! Semoga menjadi keluarga sakinah mawaddah warahmah 🌸', created_at: '2026-02-23T09:15:00Z' },
-                { id: 'w5', tenant_id: 't1', guest_name: 'Fajar Nugraha', message: 'Selamat ya! Semoga langgeng dan bahagia selalu bersama 💕', created_at: '2026-02-24T14:00:00Z' },
-            ]);
+            toast.error('Failed to load wishes');
+            setWishes([]);
         } finally {
             setLoading(false);
         }

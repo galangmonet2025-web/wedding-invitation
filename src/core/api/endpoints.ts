@@ -177,3 +177,33 @@ export const activityApi = {
         return res.data;
     },
 };
+
+// =============================================
+// PUBLIC INVITATION API (No auth required)
+// Uses plain axios to avoid auth interceptor triggering CORS preflight
+// =============================================
+
+import axios from 'axios';
+
+const publicClient = axios.create({
+    baseURL: import.meta.env.VITE_API_URL,
+    timeout: 30000,
+    headers: { 'Content-Type': 'text/plain' },
+});
+
+export const publicApi = {
+    getInvitation: async (slug: string) => {
+        const res = await publicClient.get('', { params: { action: 'getPublicInvitation', slug } });
+        return res.data;
+    },
+
+    submitRSVP: async (data: { slug: string; invitation_code: string; status: string; number_of_guests?: number }) => {
+        const res = await publicClient.post('', { action: 'submitPublicRSVP', ...data });
+        return res.data;
+    },
+
+    submitWish: async (data: { slug: string; guest_name: string; message: string }) => {
+        const res = await publicClient.post('', { action: 'submitPublicWish', ...data });
+        return res.data;
+    },
+};

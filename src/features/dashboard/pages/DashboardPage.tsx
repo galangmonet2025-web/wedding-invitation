@@ -47,26 +47,20 @@ export function DashboardPage() {
                 toast.error(response.message);
             }
         } catch {
-            // Use mock data for demo
+            toast.error('Failed to load dashboard');
             setDashboard({
-                total_guests: 248,
-                total_confirmed: 156,
-                total_declined: 32,
-                total_pending: 60,
-                total_wishes: 89,
-                total_gifts: 45,
-                total_nominal: 15750000,
-                guest_growth: [
-                    { date: '2026-01', count: 30 },
-                    { date: '2026-02', count: 85 },
-                    { date: '2026-03', count: 140 },
-                    { date: '2026-04', count: 190 },
-                    { date: '2026-05', count: 248 },
-                ],
+                total_guests: 0,
+                total_confirmed: 0,
+                total_declined: 0,
+                total_pending: 0,
+                total_wishes: 0,
+                total_gifts: 0,
+                total_nominal: 0,
+                guest_growth: [],
                 rsvp_breakdown: [
-                    { name: 'Confirmed', value: 156 },
-                    { name: 'Declined', value: 32 },
-                    { name: 'Pending', value: 60 },
+                    { name: 'Confirmed', value: 0 },
+                    { name: 'Declined', value: 0 },
+                    { name: 'Pending', value: 0 },
                 ],
             });
         } finally {
@@ -84,13 +78,25 @@ export function DashboardPage() {
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Page Header */}
-            <div>
-                <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">
-                    {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : 'Dashboard'}
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {tenant ? `Wedding Date: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : 'Overview of your wedding event'}
-                </p>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">
+                        {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : 'Dashboard'}
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {tenant ? `Wedding Date: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : 'Overview of your wedding event'}
+                    </p>
+                </div>
+                {tenant?.domain_slug && (
+                    <a
+                        href={`${window.location.origin}${window.location.pathname}#/invitation/${tenant.domain_slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary text-sm flex items-center gap-2"
+                    >
+                        💌 Lihat Undangan
+                    </a>
+                )}
             </div>
 
             {/* Stats Grid */}
