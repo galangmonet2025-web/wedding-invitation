@@ -1,9 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Akan tertrigger setiap ada push ke branch main
+  # Akan tertrigger setiap ada push ke branch master
   push:
-    branches: ["main"]
+    branches: ["master"]
   # Memungkinkan trigger deployment secara manual dari tab Actions
   workflow_dispatch:
 
