@@ -9,6 +9,7 @@ import {
     HiOutlineUsers,
     HiOutlineCurrencyDollar,
     HiOutlineStatusOnline,
+    HiOutlineChartBar
 } from 'react-icons/hi';
 import {
     BarChart,
@@ -37,10 +38,13 @@ export function GlobalDashboardPage() {
     const fetchDashboard = async () => {
         try {
             const response = await dashboardApi.getGlobalDashboard();
-            if (response.success) {
+            if (response.success && response.data) {
                 setDashboard(response.data);
+            } else {
+                setDashboard(null);
             }
         } catch {
+            setDashboard(null);
             toast.error('Failed to load global dashboard');
         } finally {
             setLoading(false);
@@ -48,7 +52,23 @@ export function GlobalDashboardPage() {
     };
 
     if (loading) return <PageLoader />;
-    if (!dashboard) return null;
+
+    // Helper for empty state detection
+    const isEmpty = !dashboard || (dashboard.total_tenants === 0 && dashboard.total_guests_system === 0);
+
+    if (isEmpty) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-wedding-dark-card rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm animate-fade-in text-center h-[50vh]">
+                <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-6">
+                    <HiOutlineChartBar className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">No Data Available</h3>
+                <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+                    There is currently no tenant or guest data to display in the global dashboard. Data will appear here once tenants start registering and managing weddings.
+                </p>
+            </div>
+        );
+    }
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);

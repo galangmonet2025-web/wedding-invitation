@@ -11,6 +11,7 @@ import { WishesPage } from '@/features/wishes/pages/WishesPage';
 import { GiftsPage } from '@/features/gifts/pages/GiftsPage';
 import { ActivityPage } from '@/features/activity/pages/ActivityPage';
 import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
+import { InvitationContentPage } from '@/features/invitation/pages/InvitationContentPage';
 import { Navigate } from 'react-router-dom';
 
 function UnauthorizedPage() {
@@ -113,6 +114,14 @@ export const router = createHashRouter([
                 element: (
                     <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
                         <ActivityPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: 'invitation-content',
+                element: (
+                    <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                        <InvitationContentPage />
                     </ProtectedRoute>
                 ),
             },

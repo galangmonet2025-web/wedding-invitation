@@ -221,8 +221,8 @@ export function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                            <span className={`badge ${tenant.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                                {tenant.status}
+                            <span className={`badge ${tenant.status_account === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                                {tenant.status_account}
                             </span>
                         </div>
                     </div>

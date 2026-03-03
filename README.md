@@ -468,24 +468,17 @@ Role: superadmin
 
 ## 🌐 Deployment Guide
 
-### Frontend → Vercel
+### Frontend → GitHub Pages (Auto-Deploy)
 
-```bash
-# 1. Install Vercel CLI
-npm i -g vercel
+This repository is configured with a **GitHub Actions** workflow (`.github/workflows/deploy.yml`) that automatically builds and deploys the application to GitHub Pages whenever changes are pushed to the `main` branch.
 
-# 2. Login
-vercel login
-
-# 3. Deploy
-vercel --prod
-
-# 4. Set environment variable
-vercel env add VITE_API_URL
-# Enter your Google Apps Script Web App URL
-```
-
-Or connect your GitHub repo to Vercel for auto-deployments.
+1. Go to your GitHub Repository **Settings** > **Secrets and variables** > **Actions**.
+2. Click **New repository secret**:
+   - **Name**: `VITE_API_URL`
+   - **Secret**: Your Google Apps Script Web App URL
+3. Ensure GitHub Actions has **Read and write permissions** in **Settings > Actions > General > Workflow permissions**.
+4. Push your changes to the `main` branch.
+5. Once the Actions succeed, enable GitHub Pages in **Settings > Pages** by selecting the `gh-pages` branch.
 
 ### Backend → Google Apps Script
 

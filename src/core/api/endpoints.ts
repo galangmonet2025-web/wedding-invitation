@@ -17,6 +17,7 @@ import type {
     Wish,
     Gift,
     ActivityLog,
+    InvitationContent,
 } from '@/types';
 
 // =============================================
@@ -174,6 +175,22 @@ export const giftApi = {
 export const activityApi = {
     getActivityLogs: async (): Promise<ApiResponse<ActivityLog[]>> => {
         const res = await apiClient.get('', { params: { action: 'getActivityLogs' } });
+        return res.data;
+    },
+};
+
+// =============================================
+// INVITATION CONTENT API
+// =============================================
+
+export const invitationContentApi = {
+    getContent: async (): Promise<ApiResponse<InvitationContent | null>> => {
+        const res = await apiClient.get('', { params: { action: 'getInvitationContent' } });
+        return res.data;
+    },
+
+    updateContent: async (data: Partial<InvitationContent>): Promise<ApiResponse<InvitationContent>> => {
+        const res = await apiClient.post('', { action: 'updateInvitationContent', ...data });
         return res.data;
     },
 };

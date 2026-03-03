@@ -2,10 +2,12 @@ import { RouterProvider } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { router } from '@/core/router';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
+import { ApiLoader } from '@/shared/components';
 
 function App() {
     return (
         <ErrorBoundary>
+            <ApiLoader />
             <RouterProvider router={router} />
             <Toaster
                 position="top-right"

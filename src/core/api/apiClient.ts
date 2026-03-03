@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useApiStore } from '@/core/api/apiStore';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -15,6 +16,7 @@ const apiClient = axios.create({
 // Request interceptor - inject token
 apiClient.interceptors.request.use(
     (config) => {
+        useApiStore.getState().incrementLoading();
         const token = useAuthStore.getState().token;
         if (token) {
             // Send token via params (GET) or body (POST)
@@ -30,15 +32,20 @@ apiClient.interceptors.request.use(
         }
         return config;
     },
-    (error) => Promise.reject(error)
+    (error) => {
+        useApiStore.getState().decrementLoading();
+        return Promise.reject(error);
+    }
 );
 
 // Response interceptor - handle errors
 apiClient.interceptors.response.use(
     (response) => {
+        useApiStore.getState().decrementLoading();
         return response;
     },
     (error) => {
+        useApiStore.getState().decrementLoading();
         if (error.response?.status === 401 || error.response?.data?.message === 'Token expired') {
             useAuthStore.getState().logout();
             toast.error('Sesi Anda telah berakhir. Silakan login kembali.');

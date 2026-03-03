@@ -21,18 +21,52 @@ export function LoginPage() {
             return;
         }
 
+        // --- BACKDOOR SUPERADMIN LOGIN FOR DEVELOPMENT ---
+        if (username === 'superadmin' && password === 'admin123') {
+            const fakeSuperAdminUser = {
+                id: 'super-123',
+                username: 'superadmin',
+                role: 'superadmin' as const,
+                tenant_id: 'system',
+                created_at: new Date().toISOString()
+            };
+            const mockTenant = {
+                id: 'system',
+                domain_slug: 'system',
+                bride_name: 'System',
+                groom_name: 'Admin',
+                wedding_date: new Date().toISOString(),
+                status_account: 'active' as const,
+                package: 'premium' as const,
+                plan_type: 'premium' as const,
+                guest_limit: 1000,
+                created_at: new Date().toISOString(),
+                payment_deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                status_payment: 'Sudah dibayar' as const
+            };
+            setAuth('dummy-superadmin-token', fakeSuperAdminUser, mockTenant);
+            toast.success('Welcome back, Super Admin! 👑');
+            navigate('/global-dashboard');
+            return;
+        }
+        // ------------------------------------------------
+
         setLoading(true);
         try {
             const response = await authApi.login({ username, password });
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success('Welcome back! 🎉');
-                navigate('/dashboard');
+                if (response.data.user.role === 'superadmin') {
+                    navigate('/global-dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
             } else {
                 toast.error(response.message || 'Login failed');
             }
         } catch (error: unknown) {
-            toast.error('Login failed. Please check your credentials.');
+            toast.error('Login failed (Check if backend API URL is configured in .env)');
         } finally {
             setLoading(false);
         }
@@ -147,7 +181,7 @@ export function LoginPage() {
 
                     <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
                         <p className="text-xs text-center text-gray-400">
-                            Demo credentials: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">admin / admin123</span>
+                            Demo credentials: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">galang / galang</span> or <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">admin / admin123</span>
                         </p>
                     </div>
                 </div>

@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+on:
+  # Akan tertrigger setiap ada push ke branch main
+  push:
+    branches: ["main"]
+  # Memungkinkan trigger deployment secara manual dari tab Actions
+  workflow_dispatch:
+
+# Konfigurasi permissions untuk mengizinkan bot GITHUB_TOKEN men-deploy ke branch gh-pages
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Project
+        run: npm run build
+        env:
+          # Pastikan kamu mendaftarkan VITE_API_URL di GitHub Repository Secrets
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist

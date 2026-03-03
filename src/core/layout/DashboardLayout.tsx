@@ -15,6 +15,7 @@ import {
     HiOutlineSun,
     HiOutlineOfficeBuilding,
     HiOutlineChartBar,
+    HiOutlineDocumentText,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 
@@ -31,19 +32,20 @@ export function DashboardLayout() {
 
     const isSuperAdmin = user?.role === 'superadmin';
 
-    const navItems = [
-        { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['superadmin', 'tenant_admin', 'staff'] },
-        ...(isSuperAdmin
-            ? [{ to: '/tenants', icon: HiOutlineOfficeBuilding, label: 'Tenants', roles: ['superadmin'] }]
-            : []),
-        ...(isSuperAdmin
-            ? [{ to: '/global-dashboard', icon: HiOutlineChartBar, label: 'Global Stats', roles: ['superadmin'] }]
-            : []),
-        { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['superadmin', 'tenant_admin', 'staff'] },
-        { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['superadmin', 'tenant_admin'] },
-        { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['superadmin', 'tenant_admin'] },
-        { to: '/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['superadmin', 'tenant_admin'] },
-    ];
+    const navItems = isSuperAdmin
+        ? [
+            { to: '/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
+            { to: '/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
+            { to: '/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
+        ]
+        : [
+            { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff'] },
+            { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff'] },
+            { to: '/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin'] },
+            { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin'] },
+            { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin'] },
+            { to: '/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin'] },
+        ];
 
     const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
 

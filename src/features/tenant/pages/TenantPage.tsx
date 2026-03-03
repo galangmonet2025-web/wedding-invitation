@@ -19,6 +19,7 @@ export function TenantPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+    const [editForm, setEditForm] = useState<Partial<Tenant>>({});
 
     const [form, setForm] = useState<CreateTenantRequest>({
         bride_name: '',
@@ -68,7 +69,7 @@ export function TenantPage() {
         }
     };
 
-    const handleUpdateTenant = async (updates: { plan_type?: PlanType; status?: TenantStatus }) => {
+    const handleUpdateTenant = async (updates: { plan_type?: PlanType; status_account?: TenantStatus; status_payment?: 'Menunggu pembayaran' | 'Sudah dibayar' }) => {
         if (!selectedTenant) return;
         try {
             const response = await tenantApi.updateTenant({ id: selectedTenant.id, ...updates });
@@ -122,10 +123,24 @@ export function TenantPage() {
             render: (t: Tenant) => <span>{t.guest_limit === -1 ? '∞ Unlimited' : t.guest_limit}</span>,
         },
         {
-            key: 'status',
-            header: 'Status',
+            key: 'payment',
+            header: 'Payment Status',
             render: (t: Tenant) => (
-                <span className={t.status === 'active' ? 'badge-success' : 'badge-danger'}>{t.status}</span>
+                <div className="flex flex-col gap-1">
+                    <span className={`text-xs w-max px-2 py-0.5 rounded-full ${t.status_payment === 'Sudah dibayar' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'}`}>
+                        {t.status_payment}
+                    </span>
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                        Due: {new Date(t.payment_deadline).toLocaleDateString('id-ID')}
+                    </span>
+                </div>
+            )
+        },
+        {
+            key: 'status',
+            header: 'Account Status',
+            render: (t: Tenant) => (
+                <span className={t.status_account === 'active' ? 'badge-success' : 'badge-danger'}>{t.status_account}</span>
             ),
         },
         {
@@ -134,7 +149,11 @@ export function TenantPage() {
             render: (t: Tenant) => (
                 <div className="flex items-center gap-1">
                     <button
-                        onClick={() => { setSelectedTenant(t); setShowEditModal(true); }}
+                        onClick={() => {
+                            setSelectedTenant(t);
+                            setEditForm(t);
+                            setShowEditModal(true);
+                        }}
                         className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
                         title="Edit"
                     >
@@ -231,57 +250,58 @@ export function TenantPage() {
                 onClose={() => { setShowEditModal(false); setSelectedTenant(null); }}
                 title={`Manage: ${selectedTenant?.bride_name} & ${selectedTenant?.groom_name}`}
                 size="md"
+                footer={
+                    <>
+                        <button onClick={() => setShowEditModal(false)} className="btn-ghost">Batal</button>
+                        <button onClick={() => handleUpdateTenant(editForm)} className="btn-primary">Simpan</button>
+                    </>
+                }
             >
                 {selectedTenant && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4">
-                                <p className="text-xs text-gray-400 mb-1">Current Plan</p>
-                                {planBadge(selectedTenant.plan_type)}
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-xs text-gray-400">Current Plan</p>
+                                    <select
+                                        value={editForm.plan_type}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, plan_type: e.target.value as PlanType }))}
+                                        className="select-field text-sm"
+                                    >
+                                        <option value="free">FREE</option>
+                                        <option value="pro">PRO</option>
+                                        <option value="premium">PREMIUM</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4">
-                                <p className="text-xs text-gray-400 mb-1">Status</p>
-                                <span className={selectedTenant.status === 'active' ? 'badge-success' : 'badge-danger'}>
-                                    {selectedTenant.status}
-                                </span>
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-xs text-gray-400">Account Status</p>
+                                    <select
+                                        value={editForm.status_account}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, status_account: e.target.value as TenantStatus }))}
+                                        className="select-field text-sm"
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Quick Actions</p>
-                            <div className="grid grid-cols-1 gap-2">
-                                <button
-                                    onClick={() => handleUpdateTenant({ plan_type: 'pro' })}
-                                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gold-50 dark:hover:bg-gold-900/10 transition-colors"
+                        <div className="card bg-gray-50 dark:bg-gray-800 p-4">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Status</p>
+                            <div className="flex items-center justify-between">
+                                <select
+                                    value={editForm.status_payment}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, status_payment: e.target.value as 'Menunggu pembayaran' | 'Sudah dibayar' }))}
+                                    className="select-field text-sm"
                                 >
-                                    <HiOutlineArrowUp className="w-5 h-5 text-gold-600" />
-                                    <span className="text-sm font-medium">Upgrade to Pro</span>
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateTenant({ plan_type: 'premium' })}
-                                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gold-50 dark:hover:bg-gold-900/10 transition-colors"
-                                >
-                                    <HiOutlineArrowUp className="w-5 h-5 text-gold-600" />
-                                    <span className="text-sm font-medium">Upgrade to Premium</span>
-                                </button>
-                                {selectedTenant.status === 'active' ? (
-                                    <button
-                                        onClick={() => handleUpdateTenant({ status: 'suspended' })}
-                                        className="flex items-center gap-3 p-3 rounded-xl border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
-                                    >
-                                        <HiOutlineBan className="w-5 h-5 text-red-500" />
-                                        <span className="text-sm font-medium text-red-600">Suspend Tenant</span>
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => handleUpdateTenant({ status: 'active' })}
-                                        className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors"
-                                    >
-                                        <HiOutlineCheckCircle className="w-5 h-5 text-emerald-500" />
-                                        <span className="text-sm font-medium text-emerald-600">Reactivate Tenant</span>
-                                    </button>
-                                )}
+                                    <option value="Menunggu pembayaran">Menunggu pembayaran</option>
+                                    <option value="Sudah dibayar">Sudah dibayar</option>
+                                </select>
                             </div>
+                            <p className="text-xs text-gray-500 mt-3">Deadline: {new Date(selectedTenant.payment_deadline).toLocaleDateString('id-ID')}</p>
                         </div>
                     </div>
                 )}

@@ -249,61 +249,59 @@ Dan tambahkan script redirect di `index.html`, sebelum tag `</head>`:
 </script>
 ```
 
-### Langkah 3: Install `gh-pages` Package
+### Langkah 3: Setup Auto-Deploy (GitHub Actions)
 
+Aplikasi ini sudah diprogram untuk bisa melakukan **Auto Deploy** setiap kali ada perubahan yang di-push ke branch `main`.
+
+1. Pastikan file workflow sudah di-commit di `.github/workflows/deploy.yml`.
+2. Buka repository GitHub kamu di browser.
+3. Masuk ke tab **Settings** → **Secrets and variables** → **Actions**.
+4. Klik **New repository secret**.
+   - Name: `VITE_API_URL`
+   - Secret: Isikan URL deployment backend Google Apps Script kamu.
+5. Klik **Add secret**.
+
+### Langkah 4: Aktifkan GitHub Actions Read & Write Permissions
+
+1. Di repository GitHub, masuk ke **Settings** → **Actions** → **General**.
+2. Scroll ke bawah pada bagian **Workflow permissions**.
+3. Pilih **Read and write permissions**.
+4. Centang _Allow GitHub Actions to create and approve pull requests_ (opsional, untuk amannya centang saja).
+5. Klik **Save**.
+
+### Langkah 5: Trigger Deploy! 🚀
+
+Kamu hanya perlu menyimpan/commit pekerjaanmu dan mem-pushnya ke branch `main`.
 ```bash
-npm install --save-dev gh-pages
+git add .
+git commit -m "Update konfigurasi dan konten"
+git push origin main
 ```
-
-### Langkah 4: Tambahkan Deploy Script di `package.json`
-
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
-  }
-}
-```
-
-### Langkah 5: Deploy! 🚀
-
-```bash
-npm run deploy
-```
-
-Perintah ini akan:
-1. Menjalankan `npm run build` secara otomatis (via `predeploy`).
-2. Mempush folder `dist/` ke branch `gh-pages`.
+Tunggu beberapa menit, GitHub Actions akan otomatis melakukan kompilasi proyek dan memasukkan hasilnya ke branch `gh-pages`.
+*(Pengecekan proses deploy ini bisa dilihat di menu Actions pada repo Github)*
 
 ### Langkah 6: Aktifkan GitHub Pages di Repository
 
-1. Buka repository GitHub → **Settings** → **Pages**.
-2. Di bagian **Source**, pilih:
-   - **Branch**: `gh-pages`
-   - **Folder**: `/ (root)`
-3. Klik **Save**.
-4. Tunggu beberapa menit, lalu akses: **https://GalangSetiawan.github.io/wedding-invitation/**
+1. Pada Repo GitHubmu pilih **Settings** → **Pages**.
+2. Pada tab **Build and deployment**, perhatikan letak **Source**. Bila sebelumnya terpilih secara spesifik pastikan diganti menjadi `Deploy from a branch`.
+3. Lalu ganti Branch menjadi `gh-pages` serta folder `/(root)`.
+4. Klik **Save**.
+5. Tunggu proses aktif, dan coba akses: **https://<username-github>.github.io/<nama-repo>/**
 
 ---
 
-## 🔄 Workflow Deploy Ulang
+## 🔄 Workflow Deploy Berkelanjutan
 
-Setiap kali ada perubahan yang ingin di-deploy:
+Hanya **cukup koding, commit, dan push**.
+
+Setiap kali ada fitur atau data baru, ketikkan:
 
 ```bash
-# 1. Commit perubahan
 git add .
-git commit -m "deskripsi perubahan"
+git commit -m "Teks deskripsi perubahan"
 git push origin main
-
-# 2. Deploy ke GitHub Pages
-npm run deploy
 ```
+Sistem akan membuild dan mendeploy otomatis! Tidak perlu deploy manual.
 
 ---
 
