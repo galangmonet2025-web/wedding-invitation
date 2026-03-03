@@ -669,7 +669,7 @@ export function InvitationContentPage() {
                             {tenant?.domain_slug ? (
                                 <iframe
                                     key={iframeKey}
-                                    src={`${window.location.origin}${window.location.pathname}#/invitation/${tenant.domain_slug}`}
+                                    src={`${window.location.origin}${import.meta.env.BASE_URL}#/invitation/${tenant.domain_slug}`}
                                     className="w-full h-full border-none pointer-events-auto"
                                     title="Invitation Preview"
                                 />
