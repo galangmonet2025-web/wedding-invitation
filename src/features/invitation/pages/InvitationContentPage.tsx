@@ -340,6 +340,34 @@ export function InvitationContentPage() {
                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Akad and Resepsi are at different locations</span>
                                     </label>
 
+                                    {/* Event Dates & Times */}
+                                    <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
+                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Wedding Schedule</p>
+                                        <div>
+                                            <label className="label-field">Wedding Date (Tanggal Acara Utama)</label>
+                                            <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-3">
+                                                <label className="label-field mb-0">Akad Time</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="time" value={content.jam_awal_akad || ''} onChange={(e) => updateField('jam_awal_akad', e.target.value)} className="input-field shadow-none" title="Start Time" />
+                                                    <span className="text-gray-400">-</span>
+                                                    <input type="time" value={content.jam_akhir_akad || ''} onChange={(e) => updateField('jam_akhir_akad', e.target.value)} className="input-field shadow-none" title="End Time" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <label className="label-field mb-0">Resepsi Time</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="time" value={content.jam_awal_resepsi || ''} onChange={(e) => updateField('jam_awal_resepsi', e.target.value)} className="input-field shadow-none" title="Start Time" />
+                                                    <span className="text-gray-400">-</span>
+                                                    <input type="time" value={content.jam_akhir_resepsi || ''} onChange={(e) => updateField('jam_akhir_resepsi', e.target.value)} className="input-field shadow-none" title="End Time" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-4 pt-2">
                                         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
                                             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Akad Location</p>
