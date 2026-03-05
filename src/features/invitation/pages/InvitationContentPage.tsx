@@ -327,11 +327,58 @@ export function InvitationContentPage() {
                                             <label className="label-field">Nama Perempuan (Bride)</label>
                                             <input type="text" value={content.bride_name || ''} onChange={(e) => updateField('bride_name', e.target.value)} className="input-field" placeholder="e.g. Juliet" />
                                         </div>
-                                        <div className="md:col-span-2">
-                                            <label className="label-field">Tanggal Pernikahan Utama (Wedding Date)</label>
-                                            <input type="date" value={content.wedding_date || ''} onChange={(e) => updateField('wedding_date', e.target.value)} className="input-field" />
-                                        </div>
                                     </div>
+                                </div>
+
+                                {/* ================= SOCIAL MEDIA ================= */}
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-pink-50 dark:bg-pink-900/20 rounded-lg text-pink-600">
+                                            <HiOutlineShare className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Social Media Links</h2>
+                                    </div>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                            checked={getBool(content.flag_tampilkan_sosial_media_mempelai)}
+                                            onChange={(e) => updateField('flag_tampilkan_sosial_media_mempelai', e.target.checked)}
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Show social media accounts</span>
+                                    </label>
+
+                                    {getBool(content.flag_tampilkan_sosial_media_mempelai) && (
+
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="label-field">Groom's Instagram (e.g. @username)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={content.account_media_sosial_laki_laki || ''}
+                                                        onChange={(e) => updateField('account_media_sosial_laki_laki', e.target.value)}
+                                                        className="input-field"
+                                                        prefix="@"
+                                                    />
+                                                </div>
+                                            </div>
+                  
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="label-field">Bride's Instagram (e.g. @username)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={content.account_media_sosial_perempuan || ''}
+                                                        onChange={(e) => updateField('account_media_sosial_perempuan', e.target.value)}
+                                                        className="input-field"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* ================= PARENTS SETTINGS ================= */}
@@ -381,49 +428,7 @@ export function InvitationContentPage() {
                                     )}
                                 </div>
 
-                                {/* ================= SOCIAL MEDIA ================= */}
-                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
-                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
-                                        <div className="p-2 bg-pink-50 dark:bg-pink-900/20 rounded-lg text-pink-600">
-                                            <HiOutlineShare className="w-5 h-5" />
-                                        </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Social Media Links</h2>
-                                    </div>
-
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
-                                        <input
-                                            type="checkbox"
-                                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
-                                            checked={getBool(content.flag_tampilkan_sosial_media_mempelai)}
-                                            onChange={(e) => updateField('flag_tampilkan_sosial_media_mempelai', e.target.checked)}
-                                        />
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Show social media accounts</span>
-                                    </label>
-
-                                    {getBool(content.flag_tampilkan_sosial_media_mempelai) && (
-                                        <div className="space-y-3 pt-2 animate-fade-in">
-                                            <div>
-                                                <label className="label-field">Groom's Instagram (e.g. @username)</label>
-                                                <input
-                                                    type="text"
-                                                    value={content.account_media_sosial_laki_laki || ''}
-                                                    onChange={(e) => updateField('account_media_sosial_laki_laki', e.target.value)}
-                                                    className="input-field"
-                                                    prefix="@"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="label-field">Bride's Instagram (e.g. @username)</label>
-                                                <input
-                                                    type="text"
-                                                    value={content.account_media_sosial_perempuan || ''}
-                                                    onChange={(e) => updateField('account_media_sosial_perempuan', e.target.value)}
-                                                    className="input-field"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                
                             </>
                         )}
 
@@ -452,10 +457,23 @@ export function InvitationContentPage() {
                                     {/* Event Dates & Times */}
                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
                                         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Wedding Schedule</p>
-                                        <div>
-                                            <label className="label-field">Tanggal Akad / Acara Utama</label>
-                                            <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="label-field">Tanggal Akad</label>
+                                                    <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
+                                                </div>
+                                            </div>
+                  
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="label-field">Tanggal Resepsi</label>
+                                                    <input type="date" value={content.wedding_date || ''} onChange={(e) => updateField('wedding_date', e.target.value)} className="input-field" />
+                                                </div>
+                                            </div>
                                         </div>
+
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-3">
