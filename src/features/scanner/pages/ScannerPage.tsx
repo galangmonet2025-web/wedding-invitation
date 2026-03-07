@@ -37,6 +37,7 @@ export function ScannerPage() {
 
     // Prevent spam API calls
     const isProcessingRef = useRef(false);
+    const lastScannedCodeRef = useRef<{ code: string; time: number } | null>(null);
 
     // Manual Input State
     const [manualGuests, setManualGuests] = useState<ManualGuest[]>([]);
@@ -65,7 +66,19 @@ export function ScannerPage() {
 
     const processQRCode = async (decodedText: string) => {
         if (isProcessingRef.current) return;
+
+        // Prevent scanning the EXACT SAME code within 3 seconds
+        const now = Date.now();
+        if (
+            lastScannedCodeRef.current &&
+            lastScannedCodeRef.current.code === decodedText &&
+            now - lastScannedCodeRef.current.time < 3000
+        ) {
+            return;
+        }
+
         isProcessingRef.current = true;
+        lastScannedCodeRef.current = { code: decodedText, time: now };
 
         try {
             // Stop scanning temporarily
