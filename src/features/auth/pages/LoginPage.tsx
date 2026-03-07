@@ -59,6 +59,8 @@ export function LoginPage() {
                 toast.success('Welcome back! 🎉');
                 if (response.data.user.role === 'superadmin') {
                     navigate('/global-dashboard');
+                } else if (response.data.user.role === 'staff') {
+                    navigate('/scanner');
                 } else {
                     navigate('/dashboard');
                 }
