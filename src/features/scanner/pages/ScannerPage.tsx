@@ -35,6 +35,9 @@ export function ScannerPage() {
         isScanningRef.current = isScanning;
     }, [isScanning]);
 
+    // Prevent spam API calls
+    const isProcessingRef = useRef(false);
+
     // Manual Input State
     const [manualGuests, setManualGuests] = useState<ManualGuest[]>([]);
     const [sortBy, setSortBy] = useState<'name' | 'time'>('time');
@@ -61,6 +64,9 @@ export function ScannerPage() {
     }, []);
 
     const processQRCode = async (decodedText: string) => {
+        if (isProcessingRef.current) return;
+        isProcessingRef.current = true;
+
         try {
             // Stop scanning temporarily
             if (isScanning && scannerRef.current) {
@@ -94,6 +100,8 @@ export function ScannerPage() {
                 message: error.response?.data?.message || 'Error processing QR Code'
             });
             toast.error('Terjadi kesalahan saat check-in');
+        } finally {
+            isProcessingRef.current = false;
         }
     };
 
