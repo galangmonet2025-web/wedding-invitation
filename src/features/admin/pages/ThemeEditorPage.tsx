@@ -6,6 +6,7 @@ import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCi
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { parseTemplate } from '@/utils/templateParser';
+import Editor from '@monaco-editor/react';
 
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
@@ -16,6 +17,8 @@ export function ThemeEditorPage() {
     const [saving, setSaving] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [showDataBinding, setShowDataBinding] = useState(true);
+    const [showCover, setShowCover] = useState(true);
+    const [isFocusMode, setIsFocusMode] = useState(false);
 
     // Form and Editor State
     const [name, setName] = useState('');
@@ -139,12 +142,42 @@ export function ThemeEditorPage() {
                 guest_name: 'Bpk/Ibu/Sdr/i (Tamu undangan)',
                 kalimat_pembuka: 'Dengan memohon rahmat dan ridho Allah SWT...',
                 kalimat_penutup: 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
+                quote: 'Dan di antara tanda-tanda kekuasaan-Nya...',
+                bank_1: 'BCA',
+                rek_1: '1234567890',
+                nama_rek_1: t.groom_name || 'Galang',
+                bank_2: 'Mandiri',
+                rek_2: '0987654321',
+                nama_rek_2: t.bride_name || 'Fiona',
+                flag_pakai_timeline_kisah: true,
+                timeline_kisah: [
+                    {
+                        tanggal: 'Januari 2020',
+                        judul: 'Pertama Kali Bertemu',
+                        deskripsi: 'Kami bertemu dalam sebuah acara komunitas dan mulai saling mengenal.'
+                    },
+                    {
+                        tanggal: 'Maret 2022',
+                        judul: 'Memutuskan Bersama',
+                        deskripsi: 'Setelah sekian lama menjalin kedekatan, kami resmi berpacaran dan memiliki komitmen untuk menuju jenjang yang lebih serius.'
+                    },
+                    {
+                        tanggal: 'Desember 2024',
+                        judul: 'Lamaran',
+                        deskripsi: 'Momen berharga ketika dua keluarga besar bertemu untuk pertama kalinya mengikat janji suci kami.'
+                    }
+                ],
+                tampilkan_amplop_online: true,
+                flag_lokasi_akad_dan_resepsi_berbeda: true,
+                flag_tampilkan_nama_orang_tua: true,
+                flag_tampilkan_sosial_media_mempelai: true,
                 galleries: [
                     { url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop', caption: 'Prewedding 1' },
                     { url: 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop', caption: 'Prewedding 2' },
                     { url: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop', caption: 'Prewedding 3' }
                 ],
                 has_gallery: true,
+                is_fitur_cerita: true,
                 live_streaming: { url: 'https://youtube.com', platform: 'YouTube' }
             });
         }
@@ -189,6 +222,14 @@ export function ThemeEditorPage() {
                             alert("Simulasi: Di halaman publik, ini akan menampilkan Modal QR Code Kehadiran Tamu.");
                         }
                     });
+
+                    ${!showCover ? `
+                    // Auto-open invitation to bypass cover
+                    setTimeout(() => {
+                        const btn = document.getElementById('btn-open-invitation');
+                        if (btn) btn.click();
+                    }, 150);
+                    ` : ''}
                 </script>
             </body>
             </html>
@@ -205,7 +246,35 @@ export function ThemeEditorPage() {
             updatePreview();
         }, 800);
         return () => clearTimeout(timer);
-    }, [htmlCode, cssCode, jsCode, previewTenant, showDataBinding]);
+    }, [htmlCode, cssCode, jsCode, previewTenant, showDataBinding, showCover]);
+
+    const toggleFocusMode = async (enable: boolean) => {
+        setIsFocusMode(enable);
+        try {
+            if (enable) {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } else {
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                }
+            }
+        } catch (err) {
+            console.error("Error attempting to toggle fullscreen:", err);
+        }
+    };
+
+    // Listen for native Fullscreen exits (e.g. Esc key)
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                setIsFocusMode(false);
+            }
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     if (loading) return <div className="p-8 text-center text-gray-500">Memuat Editor Tema...</div>;
 
@@ -229,6 +298,12 @@ export function ThemeEditorPage() {
                             >
                                 <HiOutlineInformationCircle className="w-5 h-5" />
                             </button>
+                            <button
+                                onClick={() => toggleFocusMode(true)}
+                                className="ml-2 px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors"
+                            >
+                                Focus Mode 🔲
+                            </button>
                         </div>
                         <p className="text-xs text-gray-500">{name || 'Belum ada nama'}</p>
                     </div>
@@ -244,11 +319,12 @@ export function ThemeEditorPage() {
             </div>
 
             {/* Main Editor Split Area */}
-            <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+            <div className={`flex flex-col lg:flex-row min-h-0 ${isFocusMode ? 'fixed inset-0 z-[100] bg-white dark:bg-gray-900 flex-1' : 'flex-1'}`}>
                 {/* Left Panel (Editor / Settings) */}
                 <div className="w-full lg:w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <button
+                    <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 justify-between items-center">
+                        <div className="flex flex-1">
+                            <button
                             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTabPanel === 'editor' ? 'border-gold-500 text-gold-600 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                             onClick={() => setActiveTabPanel('editor')}
                         >
@@ -260,6 +336,15 @@ export function ThemeEditorPage() {
                         >
                             <span className="flex justify-center items-center gap-2">⚙️ Pengaturan</span>
                         </button>
+                    </div>
+                        {isFocusMode && (
+                            <button
+                                onClick={() => toggleFocusMode(false)}
+                                className="px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                            >
+                                ✖ Exit Focus Mode
+                            </button>
+                        )}
                     </div>
 
                     {activeTabPanel === 'settings' && (
@@ -315,17 +400,31 @@ export function ThemeEditorPage() {
                                 ))}
                             </div>
                             {/* Editor Textarea */}
-                            <textarea
-                                value={activeTab === 'html' ? htmlCode : activeTab === 'css' ? cssCode : jsCode}
-                                onChange={e => {
-                                    if (activeTab === 'html') setHtmlCode(e.target.value);
-                                    else if (activeTab === 'css') setCssCode(e.target.value);
-                                    else setJsCode(e.target.value);
-                                }}
-                                className="flex-1 w-full bg-[#1e1e1e] text-[#d4d4d4] p-4 font-mono text-sm leading-relaxed outline-none resize-none border-none focus:ring-0 custom-scrollbar whitespace-pre"
-                                spellCheck={false}
-                                placeholder={`<!-- Tulis ${activeTab.toUpperCase()} disini -->`}
-                            />
+                            <div className="flex-1 w-full min-h-0">
+                                <Editor
+                                    height="100%"
+                                    theme="vs-dark"
+                                    path={`index.${activeTab === 'js' ? 'javascript' : activeTab}`}
+                                    defaultLanguage={activeTab === 'js' ? 'javascript' : activeTab}
+                                    value={activeTab === 'html' ? htmlCode : activeTab === 'css' ? cssCode : jsCode}
+                                    onChange={(value: string | undefined) => {
+                                        if (activeTab === 'html') setHtmlCode(value || '');
+                                        else if (activeTab === 'css') setCssCode(value || '');
+                                        else setJsCode(value || '');
+                                    }}
+                                    options={{
+                                        minimap: { enabled: false },
+                                        fontSize: 14,
+                                        wordWrap: 'on',
+                                        padding: { top: 16 },
+                                        scrollBeyondLastLine: false,
+                                        smoothScrolling: true,
+                                        cursorBlinking: 'smooth',
+                                        cursorSmoothCaretAnimation: 'on',
+                                        formatOnPaste: true,
+                                    }}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
@@ -337,6 +436,13 @@ export function ThemeEditorPage() {
                             <HiOutlineEye className="w-4 h-4" /> Live Preview
                         </div>
                         <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan Halaman Cover Depan">
+                                <span className={`text-xs font-medium ${!showCover ? 'text-gray-500' : 'text-gold-600'}`}>Halaman Cover</span>
+                                <div className="relative inline-flex items-center">
+                                    <input type="checkbox" className="sr-only peer" checked={showCover} onChange={() => setShowCover(!showCover)} />
+                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                </div>
+                            </label>
                             <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan injeksi data asli vs tag {{variabel}}">
                                 <span className={`text-xs font-medium ${!showDataBinding ? 'text-gray-500' : 'text-gold-600'}`}>Data Binding</span>
                                 <div className="relative inline-flex items-center">

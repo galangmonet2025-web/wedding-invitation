@@ -447,6 +447,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             bank_2: activeContent.nama_bank_2 || '',
             rek_2: activeContent.nomor_rekening_bank_2 || '',
             nama_rek_2: activeContent.nama_rekening_bank_2 || '',
+            flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
+            timeline_kisah: timeline,
+            tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
+            flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
+            flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
+            flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
 
             // Advanced features 
             has_gallery: getBool(activeContent.is_fitur_gallery),

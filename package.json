@@ -12,6 +12,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "axios": "^1.7.7",
     "html5-qrcode": "^2.3.8",
     "papaparse": "^5.4.1",

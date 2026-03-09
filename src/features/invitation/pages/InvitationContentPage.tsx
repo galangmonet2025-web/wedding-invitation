@@ -208,7 +208,7 @@ export function InvitationContentPage() {
             if (jsonString) {
                 const parsed = JSON.parse(jsonString);
                 if (Array.isArray(parsed)) {
-                    setTimelineItems(parsed);
+                    setTimelineItems(parsed as { tanggal: string; judul: string; deskripsi: string }[]);
                 }
             }
         } catch (e) {

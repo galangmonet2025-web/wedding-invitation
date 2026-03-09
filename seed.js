@@ -66,6 +66,7 @@ const theme1Html = `
                             <a href="{{akad_map}}" target="_blank" class="uk-button uk-button-default uk-button-small uk-margin-top uk-border-pill">Google Maps</a>
                         </div>
                     </div>
+                    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
                     <div>
                         <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
                             <i class="ri-goblet-line uk-text-primary uk-text-large"></i>
@@ -77,9 +78,28 @@ const theme1Html = `
                             <a href="{{resepsi_map}}" target="_blank" class="uk-button uk-button-default uk-button-small uk-margin-top uk-border-pill">Google Maps</a>
                         </div>
                     </div>
+                    {{/if}}
                 </div>
             </div>
         </section>
+
+        <!-- TIMELINE KISAH -->
+        {{#if flag_pakai_timeline_kisah}}
+        <section class="uk-section uk-section-default">
+            <div class="uk-container uk-container-small">
+                <h2 class="uk-heading-line uk-text-center uk-margin-large-bottom"><span>Perjalanan Cinta Kami</span></h2>
+                <div class="uk-container uk-container-xsmall">
+                    {{#each timeline_kisah}}
+                    <div class="uk-margin-medium-bottom uk-card uk-card-default uk-card-body uk-border-rounded uk-box-shadow-small" uk-scrollspy="cls: uk-animation-slide-bottom; delay: 200;">
+                        <span class="uk-text-meta uk-text-uppercase" style="color: #d4af37;">{{this.tanggal}}</span>
+                        <h4 class="uk-margin-remove-top">{{this.judul}}</h4>
+                        <p class="uk-text-small">{{this.deskripsi}}</p>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+        </section>
+        {{/if}}
 
         <!-- SECTION GALLERY (Advanced Condition & Loop) -->
         {{#if has_gallery}}
@@ -235,6 +255,7 @@ const theme2Html = `
                             </ul>
                         </div>
                     </div>
+                    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
                     <div uk-scrollspy-class>
                         <div class="uk-card uk-card-secondary uk-card-body dark-glass">
                             <i class="ri-mic-line uk-text-large accent-color"></i>
@@ -247,9 +268,29 @@ const theme2Html = `
                             </ul>
                         </div>
                     </div>
+                    {{/if}}
                 </div>
             </div>
         </div>
+
+        <!-- TIMELINE KISAH -->
+        {{#if flag_pakai_timeline_kisah}}
+        <div class="uk-section uk-section-secondary">
+            <div class="uk-container uk-container-small">
+                <h2 uk-scrollspy-class class="accent-font uk-text-center uk-margin-large-bottom">Our Journey</h2>
+                <div class="uk-container uk-container-xsmall">
+                    {{#each timeline_kisah}}
+                    <div class="uk-margin-large-bottom uk-text-center" uk-scrollspy="cls: uk-animation-slide-bottom; delay: 200;">
+                        <span class="uk-text-meta accent-color">{{this.tanggal}}</span>
+                        <h4 class="uk-margin-small-top">{{this.judul}}</h4>
+                        <p class="uk-text-small uk-text-muted">{{this.deskripsi}}</p>
+                        <hr class="uk-divider-small uk-margin-auto">
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+        {{/if}}
 
         <!-- SECTION GALLERY (Advanced Condition & Loop) -->
         {{#if has_gallery}}

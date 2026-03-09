@@ -28,34 +28,43 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
     };
 
     const variables = [
-        { tag: '{{bride_name}}', desc: 'Nama Wanita', value: t.bride_name },
-        { tag: '{{groom_name}}', desc: 'Nama Pria', value: t.groom_name },
-        { tag: '{{wedding_date}}', desc: 'Tgl Resepsi (Format Lokal)', value: formatDate(t.wedding_date) },
-        { tag: '{{tanggal_akad}}', desc: 'Tgl Akad', value: formatDate(t.wedding_date) },
-        { tag: '{{jam_akad}}', desc: 'Jam Akad', value: '08:00 - Selesai' },
-        { tag: '{{jam_resepsi}}', desc: 'Jam Resepsi', value: '11:00 - Selesai' },
-        { tag: '{{nama_lokasi_akad}}', desc: 'Nama Lokasi Akad', value: 'Masjid Agung' },
-        { tag: '{{keterangan_lokasi_akad}}', desc: 'Keterangan Lokasi Akad', value: 'Jl. Merdeka No. 1' },
-        { tag: '{{akad_map}}', desc: 'URL Google Maps Akad', value: 'https://maps.google.com/...' },
-        { tag: '{{nama_lokasi_resepsi}}', desc: 'Nama Lokasi Resepsi', value: 'Gedung Serbaguna' },
-        { tag: '{{keterangan_lokasi_resepsi}}', desc: 'Keterangan Lokasi Resepsi', value: 'Jl. Sudirman No. 2' },
-        { tag: '{{resepsi_map}}', desc: 'URL Google Maps Resepsi', value: 'https://maps.google.com/...' },
-        { tag: '{{nama_bapak_laki_laki}}', desc: 'Nama Ayah Mempelai Pria', value: 'Bpk. Ahmad' },
-        { tag: '{{nama_ibu_laki_laki}}', desc: 'Nama Ibu Mempelai Pria', value: 'Ibu Siti' },
-        { tag: '{{nama_bapak_perempuan}}', desc: 'Nama Ayah Mempelai Wanita', value: 'Bpk. Budi' },
-        { tag: '{{nama_ibu_perempuan}}', desc: 'Nama Ibu Mempelai Wanita', value: 'Ibu Ani' },
-        { tag: '{{ig_laki_laki}}', desc: 'Akun IG Mempelai Pria', value: '@ahmad_groom' },
-        { tag: '{{ig_perempuan}}', desc: 'Akun IG Mempelai Wanita', value: '@ani_bride' },
-        { tag: '{{guest_name}}', desc: 'Nama Tamu Undangan', value: 'Bpk. Ridwan (Contoh)' },
-        { tag: '{{kalimat_pembuka}}', desc: 'Kalimat Pembuka', value: 'Dengan memohon rahmat...' },
-        { tag: '{{kalimat_penutup}}', desc: 'Kalimat Penutup', value: 'Merupakan suatu kehormatan...' },
-        { tag: '{{quote}}', desc: 'Quote (Custom 1)', value: 'Dan di antara tanda-tanda...' },
-        { tag: '{{bank_1}}', desc: 'Nama Bank 1', value: 'BCA' },
-        { tag: '{{rek_1}}', desc: 'No Rekening 1', value: '1234567890' },
-        { tag: '{{nama_rek_1}}', desc: 'Nama Pemilik Rekening 1', value: t.groom_name },
-        { tag: '{{bank_2}}', desc: 'Nama Bank 2', value: 'Mandiri' },
-        { tag: '{{rek_2}}', desc: 'No Rekening 2', value: '0987654321' },
-        { tag: '{{nama_rek_2}}', desc: 'Nama Pemilik Rekening 2', value: t.bride_name },
+        { tag: '{{bride_name}}', desc: 'Nama Wanita', value: t.bride_name, type: 'String', code: '<h1>{{bride_name}}</h1>' },
+        { tag: '{{groom_name}}', desc: 'Nama Pria', value: t.groom_name, type: 'String', code: '<h1>{{groom_name}}</h1>' },
+        { tag: '{{wedding_date}}', desc: 'Tgl Resepsi (Format Lokal)', value: formatDate(t.wedding_date), type: 'String', code: '<span>{{wedding_date}}</span>' },
+        { tag: '{{tanggal_akad}}', desc: 'Tgl Akad', value: formatDate(t.wedding_date), type: 'String', code: '<span>{{tanggal_akad}}</span>' },
+        { tag: '{{jam_akad}}', desc: 'Jam Akad', value: '08:00 - Selesai', type: 'String', code: '<span>{{jam_akad}}</span>' },
+        { tag: '{{jam_resepsi}}', desc: 'Jam Resepsi', value: '11:00 - Selesai', type: 'String', code: '<span>{{jam_resepsi}}</span>' },
+        { tag: '{{nama_lokasi_akad}}', desc: 'Nama Lokasi Akad', value: 'Masjid Agung', type: 'String', code: '<span>{{nama_lokasi_akad}}</span>' },
+        { tag: '{{keterangan_lokasi_akad}}', desc: 'Keterangan Lokasi Akad', value: 'Jl. Merdeka No. 1', type: 'String', code: '<p>{{keterangan_lokasi_akad}}</p>' },
+        { tag: '{{akad_map}}', desc: 'URL Google Maps Akad', value: 'https://maps.google.com/...', type: 'URL String', code: '<a href="{{akad_map}}">Buka Peta</a>' },
+        { tag: '{{nama_lokasi_resepsi}}', desc: 'Nama Lokasi Resepsi', value: 'Gedung Serbaguna', type: 'String', code: '<span>{{nama_lokasi_resepsi}}</span>' },
+        { tag: '{{keterangan_lokasi_resepsi}}', desc: 'Keterangan Lokasi Resepsi', value: 'Jl. Sudirman No. 2', type: 'String', code: '<p>{{keterangan_lokasi_resepsi}}</p>' },
+        { tag: '{{resepsi_map}}', desc: 'URL Google Maps Resepsi', value: 'https://maps.google.com/...', type: 'URL String', code: '<a href="{{resepsi_map}}">Buka Peta</a>' },
+        { tag: '{{nama_bapak_laki_laki}}', desc: 'Nama Ayah Mempelai Pria', value: 'Bpk. Ahmad', type: 'String', code: '<span>{{nama_bapak_laki_laki}}</span>' },
+        { tag: '{{nama_ibu_laki_laki}}', desc: 'Nama Ibu Mempelai Pria', value: 'Ibu Siti', type: 'String', code: '<span>{{nama_ibu_laki_laki}}</span>' },
+        { tag: '{{nama_bapak_perempuan}}', desc: 'Nama Ayah Mempelai Wanita', value: 'Bpk. Budi', type: 'String', code: '<span>{{nama_bapak_perempuan}}</span>' },
+        { tag: '{{nama_ibu_perempuan}}', desc: 'Nama Ibu Mempelai Wanita', value: 'Ibu Ani', type: 'String', code: '<span>{{nama_ibu_perempuan}}</span>' },
+        { tag: '{{ig_laki_laki}}', desc: 'Akun IG Mempelai Pria', value: '@ahmad_groom', type: 'String', code: '<span>{{ig_laki_laki}}</span>' },
+        { tag: '{{ig_perempuan}}', desc: 'Akun IG Mempelai Wanita', value: '@ani_bride', type: 'String', code: '<span>{{ig_perempuan}}</span>' },
+        { tag: '{{guest_name}}', desc: 'Nama Tamu Undangan', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{guest_name}}</span>' },
+        { tag: '{{kalimat_pembuka}}', desc: 'Kalimat Pembuka', value: 'Dengan memohon rahmat...', type: 'String', code: '<p>{{kalimat_pembuka}}</p>' },
+        { tag: '{{kalimat_penutup}}', desc: 'Kalimat Penutup', value: 'Merupakan suatu kehormatan...', type: 'String', code: '<p>{{kalimat_penutup}}</p>' },
+        { tag: '{{quote}}', desc: 'Quote (Custom 1)', value: 'Dan di antara tanda-tanda...', type: 'String', code: '<blockquote>{{quote}}</blockquote>' },
+        { tag: '{{bank_1}}', desc: 'Nama Bank 1', value: 'BCA', type: 'String', code: '<span>{{bank_1}}</span>' },
+        { tag: '{{rek_1}}', desc: 'No Rekening 1', value: '1234567890', type: 'String', code: '<span>{{rek_1}}</span>' },
+        { tag: '{{nama_rek_1}}', desc: 'Nama Pemilik Rekening 1', value: t.groom_name, type: 'String', code: '<span>{{nama_rek_1}}</span>' },
+        { tag: '{{bank_2}}', desc: 'Nama Bank 2', value: 'Mandiri', type: 'String', code: '<span>{{bank_2}}</span>' },
+        { tag: '{{rek_2}}', desc: 'No Rekening 2', value: '0987654321', type: 'String', code: '<span>{{rek_2}}</span>' },
+        { tag: '{{nama_rek_2}}', desc: 'Nama Pemilik Rekening 2', value: t.bride_name, type: 'String', code: '<span>{{nama_rek_2}}</span>' },
+        { tag: '{{#if flag_pakai_timeline_kisah}}', desc: 'Block Kondisi Timeline Kisah', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_pakai_timeline_kisah}}\n  <!-- Konten jika true -->\n{{/if}}' },
+        { tag: '{{#each timeline_kisah}}', desc: 'Block Looping Timeline Kisah', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each timeline_kisah}}\n  <p>{{this.judul}}</p>\n{{/each}}' },
+        { tag: '{{this.tanggal}}', desc: 'Tgl Timeline (Dalam Loop timeline_kisah)', value: 'Januari 2020', type: 'String', code: '<span>{{this.tanggal}}</span>' },
+        { tag: '{{this.judul}}', desc: 'Judul Timeline (Dalam Loop timeline_kisah)', value: 'Pertama Kali Bertemu', type: 'String', code: '<h4>{{this.judul}}</h4>' },
+        { tag: '{{this.deskripsi}}', desc: 'Desc Timeline (Dalam Loop timeline_kisah)', value: 'Kisah awal pertemuan...', type: 'String', code: '<p>{{this.deskripsi}}</p>' },
+        { tag: '{{#if tampilkan_amplop_online}}', desc: 'Block Kondisi Amplop Online', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if tampilkan_amplop_online}}\n  <!-- Render info bank -->\n{{/if}}' },
+        { tag: '{{#if flag_lokasi_akad_dan_resepsi_berbeda}}', desc: 'Block Kondisi Lokasi Beda', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_lokasi_akad_dan_resepsi_berbeda}}\n  <!-- Render info beda -->\n{{/if}}' },
+        { tag: '{{#if flag_tampilkan_nama_orang_tua}}', desc: 'Block Kondisi Nama Ortu', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_nama_orang_tua}}\n  <!-- Render info ortu -->\n{{/if}}' },
+        { tag: '{{#if flag_tampilkan_sosial_media_mempelai}}', desc: 'Block Kondisi Sosmed', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_sosial_media_mempelai}}\n  <!-- Render sosmed -->\n{{/if}}' },
     ];
 
     return (
@@ -156,21 +165,37 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                         <p className="mb-4 text-gray-600 dark:text-gray-400">
                             Berikut adalah daftar variabel (*Tag*) yang dapat Anda gunakan di dalam HTML Code. Tabel di bawah ini juga menampilkan contoh nilai yang di-*inject* secara langsung dari data riil penyewa (*tenant*) saat ini.
                         </p>
-                        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                            <table className="w-full text-left text-sm whitespace-nowrap">
+                        <div className="overflow-x-visible rounded-lg border border-gray-200 dark:border-gray-700">
+                            <table className="w-full table-fixed text-left text-sm whitespace-normal break-words">
                                 <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                                     <tr>
-                                        <th className="px-4 py-3 font-semibold border-b dark:border-gray-700">Tag Variabel</th>
-                                        <th className="px-4 py-3 font-semibold border-b dark:border-gray-700">Deskripsi</th>
-                                        <th className="px-4 py-3 font-semibold border-b dark:border-gray-700">Contoh Render (Live)</th>
+                                        <th className="px-4 py-3 font-semibold border-b dark:border-gray-700 w-[30%]">Tag Variabel</th>
+                                        <th className="px-4 py-3 font-semibold border-b dark:border-gray-700 w-[40%]">Deskripsi</th>
+                                        <th className="px-4 py-3 font-semibold border-b dark:border-gray-700 w-[30%]">Contoh Render (Live)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                     {variables.map((v, i) => (
                                         <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                            <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 text-xs font-semibold">{v.tag}</td>
+                                            <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 text-xs font-semibold relative group cursor-help">
+                                                {v.tag}
+                                                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs rounded shadow-lg p-2 z-50">
+                                                    <div className="font-bold text-gold-400 mb-1">Tipe: {v.type}</div>
+                                                    <div className="text-gray-200">Value Riil: <br/> {v.value}</div>
+                                                </div>
+                                            </td>
                                             <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{v.desc}</td>
-                                            <td className="px-4 py-3 text-green-600 dark:text-green-400 font-medium truncate max-w-[200px]" title={v.value}>{v.value || <span className="text-gray-300 italic">Kosong</span>}</td>
+                                            <td className="px-4 py-3 text-green-600 dark:text-green-400 font-medium relative group cursor-help">
+                                                <span className="line-clamp-2">{v.value || <span className="text-gray-300 italic">Kosong</span>}</span>
+                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded shadow-lg p-3 z-50">
+                                                    <div className="font-bold text-gold-400 mb-1 flex items-center gap-1">
+                                                        <span>💡</span> Contoh Implementasi
+                                                    </div>
+                                                    <pre className="text-[10px] text-green-300 mt-2 bg-black/50 p-2 rounded whitespace-pre-wrap font-mono">
+                                                        {v.code}
+                                                    </pre>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
