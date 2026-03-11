@@ -17,11 +17,19 @@ import {
     HiOutlineColorSwatch,
     HiOutlineExternalLink,
     HiOutlineLink,
-    HiOutlineVideoCamera
+    HiOutlineVideoCamera,
+    HiOutlinePhotograph,
+    HiOutlineChevronLeft,
+    HiOutlineChevronRight,
+    HiOutlineX
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { MapPickerModal } from '../components/MapPickerModal';
+import { ImageUpload } from '@/shared/components/ImageUpload';
+import { imageApi } from '@/core/api/imageApi';
+import { ProxyImage } from '@/shared/components/ProxyImage';
+import type { ImageRecord } from '@/types';
 
 export function InvitationContentPage() {
     const [content, setContent] = useState<Partial<InvitationContent> | null>(null);
@@ -31,8 +39,29 @@ export function InvitationContentPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { tenant } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'tema' | 'mempelai' | 'acara' | 'cerita' | 'tambahan' | 'hadiah'>('tema');
+    const [activeTab, setActiveTab] = useState<'tema' | 'mempelai' | 'acara' | 'cerita' | 'tambahan' | 'hadiah' | 'galeri'>('tema');
     const [iframeKey, setIframeKey] = useState(0);
+
+    // Images State
+    const [images, setImages] = useState<ImageRecord[]>([]);
+    const [lightboxImageIndex, setLightboxImageIndex] = useState<number | null>(null);
+
+    const openLightbox = (image: ImageRecord) => {
+        const idx = images.findIndex(img => img.id === image.id);
+        if (idx !== -1) setLightboxImageIndex(idx);
+    };
+
+    const handleNextImage = () => {
+        if (lightboxImageIndex !== null) {
+            setLightboxImageIndex((lightboxImageIndex + 1) % images.length);
+        }
+    };
+
+    const handlePrevImage = () => {
+        if (lightboxImageIndex !== null) {
+            setLightboxImageIndex((lightboxImageIndex - 1 + images.length) % images.length);
+        }
+    };
 
     // Map Picker State
     const [showMapModal, setShowMapModal] = useState(false);
@@ -151,14 +180,19 @@ export function InvitationContentPage() {
         };
 
         try {
-            const [contentRes, themesRes] = await Promise.all([
+            const [contentRes, themesRes, imagesRes] = await Promise.all([
                 invitationContentApi.getContent(),
-                themeApi.getThemes()
+                themeApi.getThemes(),
+                imageApi.getTenantImages()
             ]);
 
             if (themesRes.success) {
                 setThemes(themesRes.data);
                 if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
+            }
+
+            if (imagesRes.success && imagesRes.data) {
+                setImages(imagesRes.data);
             }
 
             if (contentRes.success && contentRes.data) {
@@ -271,6 +305,7 @@ export function InvitationContentPage() {
     const tabs = [
         { id: 'tema', label: 'Pilih Tema', icon: HiOutlineColorSwatch },
         { id: 'mempelai', label: 'Mempelai & Keluarga', icon: HiOutlineUserGroup },
+        { id: 'galeri', label: 'Galeri & Foto', icon: HiOutlinePhotograph },
         { id: 'acara', label: 'Teks & Acara', icon: HiOutlineMap },
         { id: 'cerita', label: 'Cerita Cinta', icon: HiOutlineHeart },
         { id: 'tambahan', label: 'Fitur Tambahan', icon: HiOutlineVideoCamera },
@@ -322,7 +357,7 @@ export function InvitationContentPage() {
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as 'tema' | 'mempelai' | 'acara' | 'cerita' | 'hadiah')}
+                                    onClick={() => setActiveTab(tab.id as any)}
                                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-t-xl transition-all duration-200 mb-[-1px] ${activeTab === tab.id
                                         ? 'text-gold-600 bg-white dark:bg-gray-900 border-t border-l border-r border-gray-200 dark:border-gray-800 shadow-[0_-2px_6px_rgba(0,0,0,0.02)]'
                                         : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-t border-l border-r border-transparent'
@@ -382,7 +417,7 @@ export function InvitationContentPage() {
                                                             theme.plan_type === 'pro' ? 'bg-blue-100 text-blue-600' :
                                                                 'bg-gold-100 text-gold-600'}`}>
                                                         {theme.plan_type}
-                                                </span>
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))
@@ -515,6 +550,102 @@ export function InvitationContentPage() {
 
 
                             </>
+                        )}
+
+                        {/* TAB 1.5: GALERI & FOTO */}
+                        {activeTab === 'galeri' && (
+                            <div className="space-y-6">
+                                {/* Cover Image */}
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
+                                            <HiOutlinePhotograph className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Foto Sampul (Hero Cover)</h2>
+                                    </div>
+                                    <div className="pt-2 animate-fade-in">
+                                        <ImageUpload
+                                            imageType="hero_cover"
+                                            title="Hero Cover"
+                                            description="Gambar utama undangan depan (Rekomendasi orientasi portrait / mobile)."
+                                            aspectRatio="portrait"
+                                            currentImage={images.find(img => img.image_type === 'hero_cover')}
+                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== 'hero_cover'), img])}
+                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                            onClick={openLightbox}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Couple Photos */}
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-rose-600">
+                                            <HiOutlineUserGroup className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Foto Pasangan</h2>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 animate-fade-in">
+                                        <ImageUpload
+                                            imageType="groom_photo"
+                                            title="Foto Pengantin Pria"
+                                            description="Rekomendasi resolusi kotak (1:1)."
+                                            aspectRatio="square"
+                                            currentImage={images.find(img => img.image_type === 'groom_photo')}
+                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== 'groom_photo'), img])}
+                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                            onClick={openLightbox}
+                                        />
+                                        <ImageUpload
+                                            imageType="bride_photo"
+                                            title="Foto Pengantin Wanita"
+                                            description="Rekomendasi resolusi kotak (1:1)."
+                                            aspectRatio="square"
+                                            currentImage={images.find(img => img.image_type === 'bride_photo')}
+                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== 'bride_photo'), img])}
+                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                            onClick={openLightbox}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Additional Gallery */}
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
+                                            <HiOutlinePhotograph className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Galeri Foto</h2>
+                                    </div>
+                                    <p className="text-sm text-gray-500 mb-4">Upload foto-foto momen Anda untuk ditampilkan di bagian galeri (Maksimal 10 foto direkomendasikan).</p>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 animate-fade-in">
+                                        {images.filter(img => img.image_type === 'gallery').map((img) => (
+                                            <div key={img.id} className="relative group">
+                                                <ImageUpload
+                                                    imageType="gallery"
+                                                    title={`Gallery ${img.id.substring(0, 4)}`}
+                                                    currentImage={img}
+                                                    onUploadSuccess={() => { }} // Not used on existing
+                                                    onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                                    onClick={openLightbox}
+                                                    aspectRatio="square"
+                                                />
+                                            </div>
+                                        ))}
+
+                                        {/* Dropzone for new gallery image */}
+                                        <ImageUpload
+                                            imageType="gallery"
+                                            title="Tambah Foto"
+                                            onUploadSuccess={(img) => setImages(prev => [...prev, img])}
+                                            onDeleteSuccess={() => { }}
+                                            aspectRatio="square"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
                         {/* TAB 2: TEKS & ACARA (Loca & Text) */}
@@ -824,7 +955,7 @@ export function InvitationContentPage() {
                                 </div>
                             </>
                         )}
-                        
+
                         {/* TAB 4: FITUR TAMBAHAN (Live Streaming & Special Features) */}
                         {activeTab === 'tambahan' && (
                             <>
@@ -984,6 +1115,53 @@ export function InvitationContentPage() {
                 onConfirm={handleMapConfirm}
             />
 
+            {/* LIGHTBOX MODAL */}
+            {lightboxImageIndex !== null && images[lightboxImageIndex] && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in p-4 lg:p-12">
+                    {/* Close Button */}
+                    <button
+                        onClick={() => setLightboxImageIndex(null)}
+                        className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-white/20 rounded-full transition-colors z-10"
+                    >
+                        <HiOutlineX className="w-6 h-6" />
+                    </button>
+
+                    {/* Navigation - Prev */}
+                    {images.length > 1 && (
+                        <button
+                            onClick={handlePrevImage}
+                            className="absolute left-2 lg:left-8 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-white/20 rounded-full transition-colors z-10"
+                        >
+                            <HiOutlineChevronLeft className="w-6 h-6 lg:w-8 lg:h-8" />
+                        </button>
+                    )}
+
+                    {/* Navigation - Next */}
+                    {images.length > 1 && (
+                        <button
+                            onClick={handleNextImage}
+                            className="absolute right-2 lg:right-8 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-white/20 rounded-full transition-colors z-10"
+                        >
+                            <HiOutlineChevronRight className="w-6 h-6 lg:w-8 lg:h-8" />
+                        </button>
+                    )}
+
+                    {/* Main Image */}
+                    <div className="w-full max-w-5xl max-h-full flex flex-col items-center justify-center pointer-events-none">
+                        <ProxyImage
+                            src={images[lightboxImageIndex].cdn_url || images[lightboxImageIndex].drive_url}
+                            alt={images[lightboxImageIndex].file_name}
+                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl pointer-events-auto"
+                        />
+                        <p className="text-white/60 text-xs lg:text-sm mt-4 font-medium px-4 text-center">
+                            {images[lightboxImageIndex].file_name}
+                            <span className="opacity-50 ml-2">({images[lightboxImageIndex].width}x{images[lightboxImageIndex].height} - {images[lightboxImageIndex].size_kb} KB)</span>
+                        </p>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
+

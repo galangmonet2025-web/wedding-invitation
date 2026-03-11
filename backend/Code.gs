@@ -43,6 +43,27 @@ function handleRequest(e, method) {
       payload = body;
     }
 
+    // --- Special Image Proxy Handler ---
+    // Since Google Drive blocks direct <img> embeds due to security rules,
+    // we return the image data as base64 JSON which the frontend can parse.
+    if (action === 'imageProxy') {
+      var fileId = e.parameter.id;
+      if (!fileId) return ResponseHelper.error("Missing ID", 400);
+      try {
+        var file = DriveApp.getFileById(fileId);
+        var blob = file.getBlob();
+        var base64 = Utilities.base64Encode(blob.getBytes());
+        var mimeType = blob.getContentType();
+        // Return JSON with base64
+        return ResponseHelper.success({
+            mimeType: mimeType,
+            base64: base64
+        }, "Image fetched successfully");
+      } catch (err) {
+        return ResponseHelper.error("Image not found", 404);
+      }
+    }
+
     // Rate limiting - hash token to keep cache key short
     var rateLimitId = (payload.token || 'anonymous').substring(0, 32);
     if (!RateLimiter.check(rateLimitId)) {
@@ -179,6 +200,14 @@ function routeAction(action, payload, auth) {
     case 'updateInvitationContent':
       PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
       return InvitationContentService.updateContent(auth, payload);
+
+    // Images
+    case 'getTenantImages':
+      return ImageService.getTenantImages(auth);
+    case 'uploadImage':
+      return ImageService.uploadImage(auth, payload);
+    case 'deleteImage':
+      return ImageService.deleteImage(auth, payload);
 
     // Public Invitation
     case 'getPublicInvitation':
@@ -1457,6 +1486,127 @@ var PublicService = {
 
 
 // =====================================================================
+// IMAGE SERVICE
+// =====================================================================
+
+var ImageService = {
+  getTenantImages: function(auth) {
+    var tenantId = PermissionService.getTenantId(auth);
+    var images = DB.getByTenant('Images', tenantId);
+    return ResponseHelper.success(images, 'Images retrieved');
+  },
+
+  uploadImage: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    Validator.required(payload, ['image_type', 'file_name', 'base64_data', 'mime_type']);
+
+    var rootFolderName = 'wedding-saas-storage';
+    
+    // Find or create root folder
+    var folders = DriveApp.getFoldersByName(rootFolderName);
+    var rootFolder;
+    if (folders.hasNext()) {
+      rootFolder = folders.next();
+    } else {
+      rootFolder = DriveApp.createFolder(rootFolderName);
+    }
+
+    // Find or create tenants folder
+    var tenantsFolders = rootFolder.getFoldersByName('tenants');
+    var tenantsFolder;
+    if (tenantsFolders.hasNext()) {
+      tenantsFolder = tenantsFolders.next();
+    } else {
+      tenantsFolder = rootFolder.createFolder('tenants');
+    }
+
+    // Find or create specific tenant folder
+    var tenantFolders = tenantsFolder.getFoldersByName(tenantId);
+    var tenantFolder;
+    if (tenantFolders.hasNext()) {
+      tenantFolder = tenantFolders.next();
+    } else {
+      tenantFolder = tenantsFolder.createFolder(tenantId);
+    }
+
+    // Find or create image type folder
+    var typeFolders = tenantFolder.getFoldersByName(payload.image_type);
+    var typeFolder;
+    if (typeFolders.hasNext()) {
+      typeFolder = typeFolders.next();
+    } else {
+      typeFolder = tenantFolder.createFolder(payload.image_type);
+    }
+
+    // Save file
+    try {
+      var blob = Utilities.newBlob(Utilities.base64Decode(payload.base64_data), payload.mime_type, payload.file_name);
+      var file = typeFolder.createFile(blob);
+      
+      // Allow link sharing
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      
+      var imageId = DB.generateId();
+      var now = new Date().toISOString();
+      
+      // Use our Apps Script JSON base64 Proxy for rendering in frontend seamlessly
+      var cdnUrl = ScriptApp.getService().getUrl() + '?action=imageProxy&id=' + file.getId();
+
+      var record = {
+        id: imageId,
+        tenant_id: tenantId,
+        image_type: payload.image_type,
+        file_name: payload.file_name,
+        drive_file_id: file.getId(),
+        drive_url: file.getUrl(),
+        cdn_url: cdnUrl,
+        width: payload.width || 0,
+        height: payload.height || 0,
+        size_kb: payload.size_kb || 0,
+        created_at: now
+      };
+
+      DB.insert('Images', record);
+
+      return ResponseHelper.success({
+        id: imageId,
+        file_name: payload.file_name,
+        drive_file_id: file.getId(),
+        drive_url: file.getUrl(),
+        cdn_url: cdnUrl
+      }, 'Image uploaded successfully');
+      
+    } catch (e) {
+      return ResponseHelper.error('Failed to save file: ' + e.toString(), 500);
+    }
+  },
+
+  deleteImage: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    Validator.required(payload, ['id']);
+    
+    var existingImage = DB.findOne('Images', 'id', payload.id);
+    if (!existingImage || existingImage.tenant_id !== tenantId) {
+      return ResponseHelper.error('Image not found or unauthorized', 404);
+    }
+
+    try {
+      // Trash file in Drive
+      var file = DriveApp.getFileById(existingImage.drive_file_id);
+      file.setTrashed(true);
+    } catch (e) {
+      Logger.log('Could not trash file: ' + existingImage.drive_file_id + '. It may be deleted already. Error: ' + e.toString());
+    }
+
+    // Delete record from DB
+    DB.deleteRow('Images', existingImage.id);
+
+    return ResponseHelper.success(null, 'Image deleted successfully');
+  }
+};
+
+
+// =====================================================================
 // THEME SERVICE
 // =====================================================================
 
@@ -1565,7 +1715,10 @@ function setupSpreadsheet() {
       'flag_pakai_kalimat_penutup_custom', 'kalimat_penutup_undangan',
       'link_backsound_music',
       'flag_pakai_live_streaming', 'link_live_streaming', 'platform_live_streaming'
-    ]
+    ],
+    'Images': ['id', 'tenant_id', 'image_type', 'file_name', 'drive_file_id', 'drive_url', 'cdn_url', 'width', 'height', 'size_kb', 'created_at'],
+    'ImageGallery': ['id', 'tenant_id', 'image_id', 'sort_order', 'created_at'],
+    'ThemeImageRequirements': ['id', 'theme_id', 'image_type', 'required', 'max_images', 'aspect_ratio']
   };
 
   for (var name in sheets) {

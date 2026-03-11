@@ -94,6 +94,20 @@ export interface Theme {
     created_at: string;
 }
 
+export interface ImageRecord {
+    id: string;
+    tenant_id: string;
+    image_type: string;
+    file_name: string;
+    drive_file_id: string;
+    drive_url: string;
+    cdn_url: string;
+    width: number;
+    height: number;
+    size_kb: number;
+    created_at: string;
+}
+
 // =============================================
 // Auth
 // =============================================
@@ -246,6 +260,28 @@ export interface UpdateThemeRequest {
 }
 
 // =============================================
+// Image Management
+// =============================================
+
+export interface UploadImageRequest {
+    image_type: string;
+    file_name: string;
+    base64_data: string;
+    mime_type: string;
+    width?: number;
+    height?: number;
+    size_kb?: number;
+}
+
+export interface UploadImageResponse {
+    id: string;
+    file_name: string;
+    drive_file_id: string;
+    drive_url: string;
+    cdn_url: string;
+}
+
+// =============================================
 // Invitation Content
 // =============================================
 
@@ -286,7 +322,7 @@ export interface InvitationContent {
     account_media_sosial_laki_laki: string;
     account_media_sosial_perempuan: string;
     is_fitur_tamu_spesial: string; // boolean string
-    
+
     // Live Streaming
     flag_pakai_live_streaming: string; // boolean string
     link_live_streaming: string;
