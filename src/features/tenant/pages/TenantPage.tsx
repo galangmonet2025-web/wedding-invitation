@@ -5,13 +5,7 @@ import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Tenant, CreateTenantRequest, PlanType, TenantStatus, Theme } from '@/types';
 import toast from 'react-hot-toast';
-import {
-    HiOutlinePlus,
-    HiOutlinePencil,
-    HiOutlineBan,
-    HiOutlineCheckCircle,
-    HiOutlineArrowUp,
-} from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineExternalLink } from 'react-icons/hi';
 
 export function TenantPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -143,6 +137,21 @@ export function TenantPage() {
         setForm({ bride_name: '', groom_name: '', wedding_date: '', domain_slug: '', plan_type: 'basic', admin_username: '', admin_password: '' });
     };
 
+    const handleImpersonate = async (tenant: Tenant) => {
+        try {
+            const res = await tenantApi.impersonateTenant(tenant.id);
+            if (!res.success) {
+                toast.error(res.message || 'Gagal membuka sesi tenant');
+                return;
+            }
+            // Encode auth data as base64 and open impersonate page in a new tab
+            const encoded = btoa(JSON.stringify(res.data));
+            window.open(`${window.location.origin}${window.location.pathname}#/impersonate?data=${encoded}`, '_blank');
+        } catch {
+            toast.error('Gagal membuka sesi tenant');
+        }
+    };
+
     const planBadge = (plan: PlanType) => {
         const classes: Record<string, string> = {
             basic: 'badge-info',
@@ -212,6 +221,13 @@ export function TenantPage() {
             header: 'Actions',
             render: (t: Tenant) => (
                 <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => handleImpersonate(t)}
+                        className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 transition-colors"
+                        title="Buka sebagai Tenant Admin"
+                    >
+                        <HiOutlineExternalLink className="w-4 h-4" />
+                    </button>
                     <button
                         onClick={() => {
                             setSelectedTenant(t);
@@ -294,9 +310,9 @@ export function TenantPage() {
                     </div>
                     <div>
                         <label className="label-field">Subscribed Theme</label>
-                        <select 
-                            value={form.theme_id || ''} 
-                            onChange={(e) => setForm((f) => ({ ...f, theme_id: e.target.value }))} 
+                        <select
+                            value={form.theme_id || ''}
+                            onChange={(e) => setForm((f) => ({ ...f, theme_id: e.target.value }))}
                             className="select-field"
                         >
                             <option value="">-- No Theme Selected --</option>
@@ -362,7 +378,7 @@ export function TenantPage() {
                             </div>
                         </div>
 
-                        
+
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4">
@@ -396,9 +412,9 @@ export function TenantPage() {
 
                         <div>
                             <label className="label-field text-xs text-gray-500 mb-1 block">Assigned Theme</label>
-                            <select 
-                                value={editForm.theme_id || ''} 
-                                onChange={(e) => setEditForm(prev => ({ ...prev, theme_id: e.target.value }))} 
+                            <select
+                                value={editForm.theme_id || ''}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, theme_id: e.target.value }))}
                                 className="select-field text-sm"
                             >
                                 <option value="">-- No Theme Selected --</option>
@@ -413,7 +429,7 @@ export function TenantPage() {
 
                         <div className="card bg-gray-50 dark:bg-gray-800 p-4">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Status</p>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <p className="label-field text-xs text-gray-500 mb-1 block">Status</p>

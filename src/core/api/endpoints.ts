@@ -125,6 +125,11 @@ export const tenantApi = {
         const res = await apiClient.post('', { action: 'updateTenant', ...data });
         return res.data;
     },
+
+    impersonateTenant: async (tenantId: string): Promise<ApiResponse<{ token: string; user: any; tenant: Tenant }>> => {
+        const res = await apiClient.post('', { action: 'impersonateTenant', tenant_id: tenantId });
+        return res.data;
+    },
 };
 
 // =============================================

@@ -6,9 +6,10 @@ interface ThemeGuideModalProps {
     isOpen: boolean;
     onClose: () => void;
     previewTenant?: Tenant | null;
+    imageTypes?: string[];
 }
 
-export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideModalProps) {
+export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [] }: ThemeGuideModalProps) {
     const [activeTab, setActiveTab] = useState<'guide' | 'variables' | 'logic'>('guide');
 
     const t = previewTenant || {
@@ -27,7 +28,25 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
         });
     };
 
+    const imageVariables = imageTypes.map(imgType => ({
+        tag: `{{${imgType}}}`,
+        desc: `(Dinamis) URL Gambar: ${imgType}`,
+        value: 'https://images.unsplash... (dummy)',
+        type: 'URL String',
+        code: `<img src="{{${imgType}}}" alt="${imgType}" />`
+    }));
+
     const variables = [
+        ...imageVariables,
+        // === Variabel Foto Standar ===
+        { tag: '{{photo_hero_cover}}', desc: 'URL Foto Sampul Utama', value: 'https://cdn...(auto)', type: 'URL String', code: '<img src="{{photo_hero_cover}}" alt="Hero Cover" />' },
+        { tag: '{{photo_groom_photo}}', desc: 'URL Foto Pengantin Pria', value: 'https://cdn...(auto)', type: 'URL String', code: '<img src="{{photo_groom_photo}}" alt="Groom" />' },
+        { tag: '{{photo_bride_photo}}', desc: 'URL Foto Pengantin Wanita', value: 'https://cdn...(auto)', type: 'URL String', code: '<img src="{{photo_bride_photo}}" alt="Bride" />' },
+        { tag: '{{photo_background}}', desc: 'URL Foto Background Undangan', value: 'https://cdn...(auto)', type: 'URL String', code: '<div style="background-image: url({{photo_background}})"></div>' },
+        { tag: '{{photo_closing}}', desc: 'URL Foto Closing / Penutup', value: 'https://cdn...(auto)', type: 'URL String', code: '<img src="{{photo_closing}}" alt="Closing" />' },
+        { tag: '{{photo_story_photo}}', desc: 'URL Foto Kisah Cinta', value: 'https://cdn...(auto)', type: 'URL String', code: '<img src="{{photo_story_photo}}" alt="Story" />' },
+        { tag: '{{#each photo_gallery}}', desc: 'Loop Foto Album Galeri', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each photo_gallery}}\n  <img src="{{this.url}}" alt="Gallery">\n{{/each}}' },
+        // === Variabel Data Umum ===
         { tag: '{{bride_name}}', desc: 'Nama Wanita', value: t.bride_name, type: 'String', code: '<h1>{{bride_name}}</h1>' },
         { tag: '{{groom_name}}', desc: 'Nama Pria', value: t.groom_name, type: 'String', code: '<h1>{{groom_name}}</h1>' },
         { tag: '{{wedding_date}}', desc: 'Tgl Resepsi (Format Lokal)', value: formatDate(t.wedding_date), type: 'String', code: '<span>{{wedding_date}}</span>' },
@@ -183,7 +202,7 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                                 <span className="text-blue-500">⚙️</span> Handlebars / Templating Logic
                             </h3>
                             <p className="leading-relaxed">
-                                Sistem tema ini menggunakan sintaks ala <strong>Handlebars/Mustache</strong> untuk me-*render* logika kondisional dan *looping* array data. 
+                                Sistem tema ini menggunakan sintaks ala <strong>Handlebars/Mustache</strong> untuk me-*render* logika kondisional dan *looping* array data.
                                 Logika ini dieksekusi di *backend* sebelum HTML dikirim ke browser tamu.
                             </p>
                         </section>
@@ -195,7 +214,7 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                                 <span className="text-green-500">1.</span> Kondisional (If / Else)
                             </h4>
                             <p className="text-sm">Gunakan blok <code>{`{{#if variabel}} ... {{/if}}`}</code> untuk merender suatu elemen HTML <strong>hanya jika</strong> variabel tersebut bernilai <code>true</code> (diaktifkan di panel Invitation Content).</p>
-                            
+
                             <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
                                 <span className="text-gray-500">{"<!-- Contoh: Menampilkan tombol Live Streaming jika dicentang -->"}</span><br />
                                 <span className="text-green-400">{"{{#if flag_pakai_live_streaming}}"}</span><br />
@@ -204,7 +223,7 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                                 &nbsp;&nbsp;{"</a>"}<br />
                                 <span className="text-green-400">{"{{/if}}"}</span>
                             </div>
-                            
+
                             <p className="text-sm mt-2"><strong>Mekanisme Else:</strong> Anda juga bisa menggunakan <code>{`{{^if variabel}}`}</code> (If Not) atau `{"{{else}}"}` untuk logika kebalikan.</p>
                         </section>
 
@@ -215,7 +234,7 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                                 <span className="text-orange-500">2.</span> Looping Data Array (Each)
                             </h4>
                             <p className="text-sm">Gunakan blok <code>{`{{#each variabel_array}} ... {{/each}}`}</code> untuk mengulang elemen HTML sebanyak jumlah data riil (contoh: Galeri Foto, Cerita Cinta). Di dalam blok iterasi, gunakan <code>{`{{this.field}}`}</code> untuk mengakses isi datanya.</p>
-                            
+
                             <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
                                 <span className="text-gray-500">{"<!-- Contoh: Menampilkan Timeline Cerita Cinta -->"}</span><br />
                                 <span className="text-orange-400">{"{{#each timeline_kisah}}"}</span><br />
@@ -256,7 +275,7 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                                                 {v.tag}
                                                 <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs rounded shadow-lg p-2 z-50">
                                                     <div className="font-bold text-gold-400 mb-1">Tipe: {v.type}</div>
-                                                    <div className="text-gray-200">Value Riil: <br/> {v.value}</div>
+                                                    <div className="text-gray-200">Value Riil: <br /> {v.value}</div>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{v.desc}</td>

@@ -555,94 +555,73 @@ export function InvitationContentPage() {
                         {/* TAB 1.5: GALERI & FOTO */}
                         {activeTab === 'galeri' && (
                             <div className="space-y-6">
-                                {/* Cover Image */}
                                 <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
                                             <HiOutlinePhotograph className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Foto Sampul (Hero Cover)</h2>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Galeri & Foto</h2>
                                     </div>
-                                    <div className="pt-2 animate-fade-in">
-                                        <ImageUpload
-                                            imageType="hero_cover"
-                                            title="Hero Cover"
-                                            description="Gambar utama undangan depan (Rekomendasi orientasi portrait / mobile)."
-                                            aspectRatio="portrait"
-                                            currentImage={images.find(img => img.image_type === 'hero_cover')}
-                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== 'hero_cover'), img])}
-                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
-                                            onClick={openLightbox}
-                                        />
-                                    </div>
-                                </div>
+                                    <p className="text-sm text-gray-500 mb-4">Upload gambar sesuai kebutuhan variabel tema yang Anda pilih.</p>
 
-                                {/* Couple Photos */}
-                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
-                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
-                                        <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-rose-600">
-                                            <HiOutlineUserGroup className="w-5 h-5" />
-                                        </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Foto Pasangan</h2>
-                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
+                                        {(() => {
+                                            const activeTheme = themes.find(t => t.id === selectedThemeId);
+                                            const typesList = (activeTheme?.image_types && activeTheme.image_types.length > 0)
+                                                ? activeTheme.image_types
+                                                : ['hero_cover', 'groom_photo', 'bride_photo', 'gallery', 'story_photo', 'background', 'closing'];
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 animate-fade-in">
-                                        <ImageUpload
-                                            imageType="groom_photo"
-                                            title="Foto Pengantin Pria"
-                                            description="Rekomendasi resolusi kotak (1:1)."
-                                            aspectRatio="square"
-                                            currentImage={images.find(img => img.image_type === 'groom_photo')}
-                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== 'groom_photo'), img])}
-                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
-                                            onClick={openLightbox}
-                                        />
-                                        <ImageUpload
-                                            imageType="bride_photo"
-                                            title="Foto Pengantin Wanita"
-                                            description="Rekomendasi resolusi kotak (1:1)."
-                                            aspectRatio="square"
-                                            currentImage={images.find(img => img.image_type === 'bride_photo')}
-                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== 'bride_photo'), img])}
-                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
-                                            onClick={openLightbox}
-                                        />
-                                    </div>
-                                </div>
+                                            return typesList.map(type => {
+                                                if (type === 'gallery') {
+                                                    // Gallery mode (multiple allowed)
+                                                    const galleryImages = images.filter(img => img.image_type === 'gallery');
+                                                    return (
+                                                        <div key="gallery-section" className="col-span-full mt-4 border-t border-gray-100 dark:border-gray-800 pt-6">
+                                                            <h3 className="text-md font-semibold text-gray-800 dark:text-white mb-3">Foto Album (Multi Image)</h3>
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                                {galleryImages.map(img => (
+                                                                    <div key={img.id} className="relative group">
+                                                                        <ImageUpload
+                                                                            imageType="gallery"
+                                                                            title={`Gallery`}
+                                                                            currentImage={img}
+                                                                            onUploadSuccess={() => { }}
+                                                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                                                            onClick={openLightbox}
+                                                                            aspectRatio="square"
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                                <ImageUpload
+                                                                    imageType="gallery"
+                                                                    title="Tambah Foto Album"
+                                                                    onUploadSuccess={(img) => setImages(prev => [...prev, img])}
+                                                                    onDeleteSuccess={() => { }}
+                                                                    aspectRatio="square"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
 
-                                {/* Additional Gallery */}
-                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
-                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
-                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
-                                            <HiOutlinePhotograph className="w-5 h-5" />
-                                        </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Galeri Foto</h2>
-                                    </div>
-                                    <p className="text-sm text-gray-500 mb-4">Upload foto-foto momen Anda untuk ditampilkan di bagian galeri (Maksimal 10 foto direkomendasikan).</p>
-
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 animate-fade-in">
-                                        {images.filter(img => img.image_type === 'gallery').map((img) => (
-                                            <div key={img.id} className="relative group">
-                                                <ImageUpload
-                                                    imageType="gallery"
-                                                    title={`Gallery ${img.id.substring(0, 4)}`}
-                                                    currentImage={img}
-                                                    onUploadSuccess={() => { }} // Not used on existing
-                                                    onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
-                                                    onClick={openLightbox}
-                                                    aspectRatio="square"
-                                                />
-                                            </div>
-                                        ))}
-
-                                        {/* Dropzone for new gallery image */}
-                                        <ImageUpload
-                                            imageType="gallery"
-                                            title="Tambah Foto"
-                                            onUploadSuccess={(img) => setImages(prev => [...prev, img])}
-                                            onDeleteSuccess={() => { }}
-                                            aspectRatio="square"
-                                        />
+                                                // Single image variable
+                                                const currentImg = images.find(img => img.image_type === type);
+                                                return (
+                                                    <div key={type} className="relative">
+                                                        <ImageUpload
+                                                            imageType={type}
+                                                            title={type}
+                                                            description=""
+                                                            aspectRatio="square"
+                                                            currentImage={currentImg}
+                                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== type), img])}
+                                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                                            onClick={openLightbox}
+                                                        />
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             </div>

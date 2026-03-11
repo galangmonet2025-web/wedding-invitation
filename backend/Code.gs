@@ -156,6 +156,9 @@ function routeAction(action, payload, auth) {
     case 'updateTenant':
       PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
       return TenantService.updateTenant(auth, payload);
+    case 'impersonateTenant':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return AuthService.impersonateTenant(auth, payload);
 
     // Wishes
     case 'getWishes':
@@ -585,6 +588,53 @@ var AuthService = {
     } catch (e) {
       return null;
     }
+  },
+
+  impersonateTenant: function(auth, payload) {
+    if (!payload.tenant_id) return ResponseHelper.error('tenant_id required', 400);
+    var tenant = DB.findOne('Tenants', 'id', payload.tenant_id);
+    if (!tenant) return ResponseHelper.error('Tenant not found', 404);
+
+    // Get the superadmin user record (stays authenticated as superadmin)
+    var superadminUser = DB.findOne('Users', 'id', auth.user_id);
+
+    // Build a scoped token: role=superadmin, user_id=superadmin's ID,
+    // but tenant_id=target tenant so API calls are scoped to that tenant's data
+    var scopedPayload = {
+      user_id: auth.user_id,
+      role: auth.role,           // remains 'superadmin'
+      tenant_id: payload.tenant_id,
+      is_impersonating: true,    // flag for transparency
+      expired_at: new Date(Date.now() + CONFIG.TOKEN_EXPIRY_HOURS * 3600000).toISOString()
+    };
+    var json = JSON.stringify(scopedPayload);
+    var encoded = Utilities.base64Encode(json);
+    var signature = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, encoded + CONFIG.TOKEN_SECRET);
+    var sig = signature.map(function(byte) { return ('0' + (byte & 0xFF).toString(16)).slice(-2); }).join('');
+    var scopedToken = encoded + '.' + sig;
+
+    // Activity log: record the superadmin opened this tenant (not the tenant admin)
+    ActivityLogService.log(payload.tenant_id, auth.user_id, 'superadmin_view_tenant');
+
+    return ResponseHelper.success({
+      token: scopedToken,
+      user: superadminUser ? {
+        id: superadminUser.id,
+        username: superadminUser.username,
+        role: auth.role,
+        tenant_id: payload.tenant_id,
+        is_impersonating: true,
+        created_at: superadminUser.created_at
+      } : {
+        id: auth.user_id,
+        username: 'superadmin',
+        role: auth.role,
+        tenant_id: payload.tenant_id,
+        is_impersonating: true,
+        created_at: new Date().toISOString()
+      },
+      tenant: tenant
+    }, 'Scoped session created');
   },
 
   getStaffs: function(auth) {
@@ -1377,6 +1427,9 @@ var PublicService = {
     var theme = null;
     if (tenant.theme_id) {
       theme = DB.findOne('Themes', 'id', tenant.theme_id);
+      if (theme) {
+        try { theme.image_types = JSON.parse(theme.image_types); } catch(e) { theme.image_types = []; }
+      }
     }
 
     var guest = null;
@@ -1390,6 +1443,9 @@ var PublicService = {
       }
     }
 
+    // Fetch all images for this tenant
+    var tenantImages = DB.getByTenant('Images', tenant.id) || [];
+
     return ResponseHelper.success({
       tenant: {
         bride_name: tenant.bride_name,
@@ -1401,7 +1457,8 @@ var PublicService = {
       wishes: wishes.slice(0, 50),
       content: content || {},
       guest: guest,
-      theme: theme
+      theme: theme,
+      images: tenantImages
     }, 'Invitation data retrieved');
   },
 
@@ -1613,6 +1670,9 @@ var ImageService = {
 var ThemeService = {
   getThemes: function(auth) {
     var themes = DB.getAll('Themes');
+    themes.forEach(function(t) {
+      try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
+    });
     // Tenant only sees themes for their plan or lower
     if (auth.role !== 'superadmin') {
       var tenantId = PermissionService.getTenantId(auth);
@@ -1648,6 +1708,7 @@ var ThemeService = {
       plan_type: sanitized.plan_type,
       preview_image: sanitized.preview_image || '',
       flag_draft: payload.hasOwnProperty('flag_draft') ? payload.flag_draft : true,
+      image_types: payload.image_types ? JSON.stringify(payload.image_types) : '[]',
       created_at: new Date().toISOString()
     };
 
@@ -1666,6 +1727,7 @@ var ThemeService = {
     if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
     if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
     if (payload.flag_draft !== undefined) updates.flag_draft = payload.flag_draft;
+    if (payload.image_types !== undefined) updates.image_types = JSON.stringify(payload.image_types);
 
     var success = DB.update('Themes', payload.id, updates);
     if (!success) {
@@ -1693,7 +1755,7 @@ function setupSpreadsheet() {
   var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
   var sheets = {
-    'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'flag_draft', 'created_at'],
+    'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'flag_draft', 'image_types', 'created_at'],
     'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
     'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
     'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at'],

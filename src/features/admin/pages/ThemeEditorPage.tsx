@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
-import { themeApi, tenantApi } from '@/core/api/endpoints';
-import { Theme, PlanType, Tenant } from '@/types';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
+import { Theme, PlanType, Tenant, InvitationContent, ImageRecord } from '@/types';
 import { useParams, useNavigate } from 'react-router-dom';
-import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { parseTemplate } from '@/utils/templateParser';
 import Editor from '@monaco-editor/react';
+import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
 
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
@@ -28,6 +29,8 @@ export function ThemeEditorPage() {
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
     const [jsCode, setJsCode] = useState('console.log("Theme Loaded!");');
     const [flagDraft, setFlagDraft] = useState(true);
+    const [imageTypes, setImageTypes] = useState<string[]>([]);
+    const [newImageType, setNewImageType] = useState('');
 
     const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
     const [activeTabPanel, setActiveTabPanel] = useState<'editor' | 'settings'>('editor');
@@ -35,14 +38,24 @@ export function ThemeEditorPage() {
     // Preview iframe
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    // One real tenant for preview context
+    // Tenants for preview selector
+    const [allTenants, setAllTenants] = useState<Tenant[]>([]);
+    const [selectedPreviewTenantId, setSelectedPreviewTenantId] = useState<string>('');
+    const [previewContent, setPreviewContent] = useState<Partial<InvitationContent>>({});
+    const [previewImages, setPreviewImages] = useState<ImageRecord[]>([]);
+    const [previewImagesB64, setPreviewImagesB64] = useState<Record<string, string>>({});
+    const [loadingPreview, setLoadingPreview] = useState(false);
+
+    // One real tenant for preview context (derived from selection)
     const [previewTenant, setPreviewTenant] = useState<Tenant | null>(null);
 
     const loadData = async () => {
         try {
-            // Load real tenant data for preview (if available)
+            // Load all tenants for the preview selector
             const tenantRes = await tenantApi.getTenants();
             if (tenantRes.success && tenantRes.data.length > 0) {
+                setAllTenants(tenantRes.data);
+                setSelectedPreviewTenantId(tenantRes.data[0].id);
                 setPreviewTenant(tenantRes.data[0]);
             }
 
@@ -58,6 +71,7 @@ export function ThemeEditorPage() {
                         setCssCode(theme.css_template || '');
                         setJsCode(theme.js_template || '');
                         setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
+                        setImageTypes(theme.image_types || []);
                     } else {
                         toast.error('Theme not found');
                         navigate('/themes');
@@ -75,6 +89,43 @@ export function ThemeEditorPage() {
         loadData();
     }, [id]);
 
+    // When the selected preview tenant changes, fetch their real content + images
+    const loadTenantPreviewData = useCallback(async (tenantId: string) => {
+        const tenant = allTenants.find(t => t.id === tenantId);
+        if (!tenant) return;
+        setPreviewTenant(tenant);
+        setLoadingPreview(true);
+        try {
+            const res = await publicApi.getInvitation(tenant.domain_slug);
+            if (res.success) {
+                setPreviewContent(res.data.content || {});
+                const imgs: ImageRecord[] = res.data.images || [];
+                setPreviewImages(imgs);
+
+                // Pre-convert all proxy images to base64 for faster preview
+                const b64map: Record<string, string> = {};
+                await Promise.all(imgs.map(async (img) => {
+                    if (img.cdn_url) {
+                        try {
+                            b64map[img.image_type] = await fetchProxyImageBase64(img.cdn_url);
+                        } catch { }
+                    }
+                }));
+                setPreviewImagesB64(b64map);
+            }
+        } catch (e) {
+            console.error('Failed to load tenant preview data:', e);
+        } finally {
+            setLoadingPreview(false);
+        }
+    }, [allTenants]);
+
+    useEffect(() => {
+        if (selectedPreviewTenantId && allTenants.length > 0) {
+            loadTenantPreviewData(selectedPreviewTenantId);
+        }
+    }, [selectedPreviewTenantId, allTenants]);
+
     const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
 
@@ -87,7 +138,8 @@ export function ThemeEditorPage() {
                 html_template: htmlCode,
                 css_template: cssCode,
                 js_template: jsCode,
-                flag_draft: isDraft
+                flag_draft: isDraft,
+                image_types: imageTypes
             };
 
             if (isNew) {
@@ -126,67 +178,101 @@ export function ThemeEditorPage() {
         let finalHtml = htmlCode;
 
         if (showDataBinding) {
-            finalHtml = parseTemplate(htmlCode, {
+            const c = previewContent;
+            const imgs = previewImagesB64;
+
+            // Helper to get real image URL or fallback to a dummy
+            const dummies = [
+                'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=800&auto=format&fit=crop'
+            ];
+            const realImg = (type: string, fallbackIdx = 0) =>
+                imgs[type] || dummies[fallbackIdx % dummies.length];
+
+            let timeline: any[] = [];
+            try { timeline = c.timeline_kisah ? JSON.parse(c.timeline_kisah) : []; } catch { }
+
+            const galleryImgs = previewImages
+                .filter(img => img.image_type === 'gallery')
+                .map(img => ({ url: imgs[img.image_type] || img.cdn_url || '', caption: img.file_name || '' }));
+
+            const mockData: Record<string, any> = {
                 bride_name: t.bride_name || 'Fiona',
                 groom_name: t.groom_name || 'Galang',
-                wedding_date: t.wedding_date ? new Date(t.wedding_date).toDateString() : 'Senin, 10 Agustus 2026',
-                tanggal_akad: 'Minggu, 9 Agustus 2026',
-                jam_akad: '08:00 - Selesai',
-                jam_resepsi: '11:00 - 14:00',
-                nama_lokasi_akad: 'Masjid Istiqlal',
-                keterangan_lokasi_akad: 'Jl. Taman Wijaya Kusuma',
-                akad_map: '#',
-                tanggal_resepsi: 'Senin, 10 Agustus 2026',
-                nama_lokasi_resepsi: 'Gedung Serbaguna',
-                keterangan_lokasi_resepsi: 'Jl. Sudirman No 10',
-                resepsi_map: '#',
-                nama_bapak_laki_laki: 'Bpk. Ahmad',
-                nama_ibu_laki_laki: 'Ibu Siti',
-                nama_bapak_perempuan: 'Bpk. Budi',
-                nama_ibu_perempuan: 'Ibu Ani',
-                ig_laki_laki: 'galang',
-                ig_perempuan: 'fiona',
+                wedding_date: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
+                tanggal_akad: c.tanggal_akad ? new Date(c.tanggal_akad).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Minggu, 9 Agustus 2026',
+                jam_akad: `${c.jam_awal_akad || '08:00'} - ${c.jam_akhir_akad || 'Selesai'}`,
+                jam_resepsi: `${c.jam_awal_resepsi || '11:00'} - ${c.jam_akhir_resepsi || '14:00'}`,
+                nama_lokasi_akad: c.nama_lokasi_akad || 'Masjid Istiqlal',
+                keterangan_lokasi_akad: c.keterangan_lokasi_akad || 'Jl. Taman Wijaya Kusuma',
+                akad_map: c.akad_map || '#',
+                tanggal_resepsi: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
+                nama_lokasi_resepsi: c.nama_lokasi_resepsi || 'Gedung Serbaguna',
+                keterangan_lokasi_resepsi: c.keterangan_lokasi_resepsi || 'Jl. Sudirman No 10',
+                resepsi_map: c.resepsi_map || '#',
+                nama_bapak_laki_laki: c.nama_bapak_laki_laki || 'Bpk. Ahmad',
+                nama_ibu_laki_laki: c.nama_ibu_laki_laki || 'Ibu Siti',
+                nama_bapak_perempuan: c.nama_bapak_perempuan || 'Bpk. Budi',
+                nama_ibu_perempuan: c.nama_ibu_perempuan || 'Ibu Ani',
+                ig_laki_laki: c.account_media_sosial_laki_laki || 'galang',
+                ig_perempuan: c.account_media_sosial_perempuan || 'fiona',
                 guest_name: 'Bpk/Ibu/Sdr/i (Tamu undangan)',
-                kalimat_pembuka: 'Dengan memohon rahmat dan ridho Allah SWT...',
-                kalimat_penutup: 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
-                quote: 'Dan di antara tanda-tanda kekuasaan-Nya...',
-                bank_1: 'BCA',
-                rek_1: '1234567890',
-                nama_rek_1: t.groom_name || 'Galang',
-                bank_2: 'Mandiri',
-                rek_2: '0987654321',
-                nama_rek_2: t.bride_name || 'Fiona',
-                flag_pakai_timeline_kisah: true,
-                timeline_kisah: [
-                    {
-                        tanggal: 'Januari 2020',
-                        judul: 'Pertama Kali Bertemu',
-                        deskripsi: 'Kami bertemu dalam sebuah acara komunitas dan mulai saling mengenal.'
-                    },
-                    {
-                        tanggal: 'Maret 2022',
-                        judul: 'Memutuskan Bersama',
-                        deskripsi: 'Setelah sekian lama menjalin kedekatan, kami resmi berpacaran dan memiliki komitmen untuk menuju jenjang yang lebih serius.'
-                    },
-                    {
-                        tanggal: 'Desember 2024',
-                        judul: 'Lamaran',
-                        deskripsi: 'Momen berharga ketika dua keluarga besar bertemu untuk pertama kalinya mengikat janji suci kami.'
-                    }
+                kalimat_pembuka: c.kalimat_pembuka_undangan || 'Dengan memohon rahmat dan ridho Allah SWT...',
+                kalimat_penutup: c.kalimat_penutup_undangan || 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
+                quote: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
+                custom_kalimat_1: c.custom_kalimat_1 || '',
+                custom_kalimat_2: c.custom_kalimat_2 || '',
+                custom_kalimat_3: c.custom_kalimat_3 || '',
+                custom_kalimat_4: c.custom_kalimat_4 || '',
+                bank_1: c.nama_bank_1 || 'BCA',
+                rek_1: c.nomor_rekening_bank_1 || '1234567890',
+                nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
+                bank_2: c.nama_bank_2 || 'Mandiri',
+                rek_2: c.nomor_rekening_bank_2 || '0987654321',
+                nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
+                link_backsound_music: c.link_backsound_music || '',
+                link_live_streaming: c.link_live_streaming || '',
+                platform_live_streaming: c.platform_live_streaming || 'YouTube',
+                flag_pakai_timeline_kisah: timeline.length > 0,
+                timeline_kisah: timeline.length > 0 ? timeline : [
+                    { tanggal: 'Januari 2020', judul: 'Pertama Kali Bertemu', deskripsi: 'Kami bertemu dalam sebuah acara komunitas.' },
+                    { tanggal: 'Maret 2022', judul: 'Memutuskan Bersama', deskripsi: 'Kami resmi berpacaran dan memiliki komitmen.' },
+                    { tanggal: 'Desember 2024', judul: 'Lamaran', deskripsi: 'Momen berharga ketika dua keluarga bertemu.' }
                 ],
                 tampilkan_amplop_online: true,
                 flag_lokasi_akad_dan_resepsi_berbeda: true,
                 flag_tampilkan_nama_orang_tua: true,
                 flag_tampilkan_sosial_media_mempelai: true,
-                galleries: [
-                    { url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop', caption: 'Prewedding 1' },
-                    { url: 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop', caption: 'Prewedding 2' },
-                    { url: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop', caption: 'Prewedding 3' }
+                is_fitur_gallery: galleryImgs.length > 0,
+                galleries: galleryImgs.length > 0 ? galleryImgs : [
+                    { url: dummies[0], caption: 'Prewedding 1' },
+                    { url: dummies[1], caption: 'Prewedding 2' },
+                    { url: dummies[2], caption: 'Prewedding 3' }
                 ],
-                has_gallery: true,
                 is_fitur_cerita: true,
-                live_streaming: { url: 'https://youtube.com', platform: 'YouTube' }
+                is_fitur_live_streaming: !!(c.flag_pakai_live_streaming),
+                live_streaming: { url: c.link_live_streaming || 'https://youtube.com', platform: c.platform_live_streaming || 'YouTube' },
+
+                // Standard photo variables (real base64 or dummy fallback)
+                photo_hero_cover: realImg('hero_cover', 0),
+                photo_groom_photo: realImg('groom_photo', 1),
+                photo_bride_photo: realImg('bride_photo', 2),
+                photo_background: realImg('background', 3),
+                photo_closing: realImg('closing', 0),
+                photo_story_photo: realImg('story_photo', 1),
+                photo_gallery: galleryImgs.length > 0 ? galleryImgs : [
+                    { url: dummies[0] }, { url: dummies[1] }, { url: dummies[2] }
+                ],
+            };
+
+            // Inject dynamic image type variables (real base64 or dummy fallback)
+            imageTypes.forEach((key, index) => {
+                mockData[key] = imgs[key] || dummies[index % dummies.length];
             });
+
+            finalHtml = parseTemplate(htmlCode, mockData);
         }
 
         // Construct HTML content to render inside iframe
@@ -327,11 +413,10 @@ export function ThemeEditorPage() {
                                 {isNew ? 'Membuat Tema Baru' : 'Edit Tema'}
                             </h1>
                             {!isNew && (
-                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
-                                    flagDraft 
-                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
-                                        : 'bg-green-100 text-green-800 border border-green-200'
-                                }`}>
+                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${flagDraft
+                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                    : 'bg-green-100 text-green-800 border border-green-200'
+                                    }`}>
                                     {flagDraft ? 'Draft' : 'Published'}
                                 </span>
                             )}
@@ -444,6 +529,48 @@ export function ThemeEditorPage() {
                                 />
                                 {previewImage && <img src={previewImage} alt="Preview" className="mt-2 h-32 w-auto rounded-lg object-cover border border-gray-200" />}
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>
+                                <p className="text-xs text-gray-500 mb-2">Tambahkan nama variabel gambar untuk diupload tenant (contoh: <code>hero_cover</code>)</p>
+                                <div className="flex gap-2 mb-3">
+                                    <input
+                                        type="text"
+                                        value={newImageType}
+                                        onChange={e => setNewImageType(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
+                                                if (val && !imageTypes.includes(val)) {
+                                                    setImageTypes([...imageTypes, val]);
+                                                    setNewImageType('');
+                                                }
+                                            }
+                                        }}
+                                        placeholder="hero_cover"
+                                        className="input-field"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
+                                            if (val && !imageTypes.includes(val)) {
+                                                setImageTypes([...imageTypes, val]);
+                                                setNewImageType('');
+                                            }
+                                        }}
+                                        className="btn-primary"
+                                    >Tambah</button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {imageTypes.map(it => (
+                                        <span key={it} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-100 text-gold-800 border border-gold-200">
+                                            {it}
+                                            <button onClick={() => setImageTypes(imageTypes.filter(i => i !== it))} className="text-gold-600 hover:text-gold-900">&times;</button>
+                                        </span>
+                                    ))}
+                                    {imageTypes.length === 0 && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -513,8 +640,29 @@ export function ThemeEditorPage() {
                                     <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
                                 </div>
                             </label>
-                            <div className="text-xs text-gray-500 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
-                                Tenant: <span className="font-semibold text-gray-700 dark:text-gray-300">{previewTenant ? previewTenant.domain_slug : 'Demo'}</span>
+                            <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
+                                <span className="text-xs text-gray-500 whitespace-nowrap">Data Tenant:</span>
+                                <select
+                                    value={selectedPreviewTenantId}
+                                    onChange={e => setSelectedPreviewTenantId(e.target.value)}
+                                    className="text-xs border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-gold-400 max-w-[140px]"
+                                    disabled={loadingPreview}
+                                >
+                                    {allTenants.length === 0 && <option value="">Demo</option>}
+                                    {allTenants.map(t => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.bride_name} & {t.groom_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={() => selectedPreviewTenantId && loadTenantPreviewData(selectedPreviewTenantId)}
+                                    className="text-gray-400 hover:text-gold-500 transition-colors"
+                                    title="Reload data tenant"
+                                    disabled={loadingPreview}
+                                >
+                                    <HiOutlineRefresh className={`w-4 h-4 ${loadingPreview ? 'animate-spin' : ''}`} />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -531,7 +679,13 @@ export function ThemeEditorPage() {
                     </div>
                 </div>
             </div>
-            <ThemeGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} previewTenant={previewTenant} />
+            {/* Guide Modal */}
+            <ThemeGuideModal
+                isOpen={isGuideOpen}
+                onClose={() => setIsGuideOpen(false)}
+                previewTenant={previewTenant}
+                imageTypes={imageTypes}
+            />
         </div>
     );
 }

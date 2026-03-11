@@ -2,13 +2,14 @@ import { useEffect, useState, useRef } from 'react';
 import '../invitation.css';
 import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
-import type { Wish, InvitationContent, TimelineItem } from '@/types';
+import type { Wish, InvitationContent, TimelineItem, ImageRecord } from '@/types';
 import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode } from 'react-icons/hi';
 import { Modal } from '@/shared/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { ThemeWrapper } from '../components/ThemeWrapper';
 import { parseTemplate } from '@/utils/templateParser';
+import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
 
 interface TenantPublic {
     bride_name: string;
@@ -23,6 +24,7 @@ interface InvitationData {
     content: Partial<InvitationContent>;
     guest?: import('@/types').Guest;
     theme?: import('@/types').Theme;
+    images?: ImageRecord[];
 }
 
 interface InvitationPageProps {
@@ -38,6 +40,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [isOpened, setIsOpened] = useState(false);
     const [wishes, setWishes] = useState<Wish[]>([]);
     const [showQRModal, setShowQRModal] = useState(false);
+    const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
 
     const [showGuestForm, setShowGuestForm] = useState(false);
     const [tempGuestData, setTempGuestData] = useState({ name: '', category: 'Tamu' });
@@ -122,6 +125,29 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
     }, [slug, previewData]);
+
+    // When data loads, resolve all proxy images to base64 for template rendering
+    useEffect(() => {
+        if (!data?.images || !data.theme?.image_types?.length) return;
+
+        const doResolve = async () => {
+            const resolved: Record<string, string> = {};
+            const typesList = data.theme?.image_types || [];
+
+            await Promise.all(typesList.map(async (imgType) => {
+                const img = data.images?.find(i => i.image_type === imgType);
+                if (!img?.cdn_url) return;
+                try {
+                    const b64 = await fetchProxyImageBase64(img.cdn_url);
+                    resolved[imgType] = b64;
+                } catch { }
+            }));
+
+            setResolvedImages(resolved);
+        };
+
+        doResolve();
+    }, [data]);
 
     useEffect(() => {
         // Safe check for tenant data
@@ -249,6 +275,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const getBool = (val: any) => {
         if (typeof val === 'boolean') return val;
         return val === 'true' || val === '1';
+    };
+
+    // Helper to get the cdn_url of a specific image type from tenant images
+    const getImageUrl = (imageType: string): string => {
+        const img = data?.images?.find(i => i.image_type === imageType);
+        return img?.cdn_url || '';
     };
 
     // LOADING
@@ -463,6 +495,20 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             } : null,
             galleries: activeContent.galleries || [],
             love_stories: activeContent.love_stories || [],
+
+            // === Variabel Foto Standar ===
+            photo_hero_cover: getImageUrl('hero_cover'),
+            photo_groom_photo: getImageUrl('groom_photo'),
+            photo_bride_photo: getImageUrl('bride_photo'),
+            photo_background: getImageUrl('background'),
+            photo_closing: getImageUrl('closing'),
+            photo_story_photo: getImageUrl('story_photo'),
+            photo_gallery: (data?.images || [])
+                .filter(img => img.image_type === 'gallery')
+                .map(img => ({ url: img.cdn_url || '' })),
+
+            // Dynamic theme image variables - inject resolved base64 or CDN URLs
+            ...resolvedImages
         };
 
         renderedHtml = parseTemplate(renderedHtml, dataContext);

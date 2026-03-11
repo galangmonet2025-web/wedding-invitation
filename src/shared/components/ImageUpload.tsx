@@ -7,7 +7,7 @@ import { ProxyImage } from './ProxyImage';
 import type { ImageRecord } from '@/types';
 
 interface ImageUploadProps {
-    imageType: 'hero_cover' | 'bride_photo' | 'groom_photo' | 'gallery' | 'story_photo' | 'background';
+    imageType: string;
     title: string;
     description?: string;
     currentImage?: ImageRecord | null;
@@ -51,6 +51,10 @@ export function ImageUpload({
             case 'groom_photo':
                 maxWidthOrHeight = 800;
                 maxSizeMB = 0.15;
+                break;
+            default:
+                maxWidthOrHeight = 1200;
+                maxSizeMB = 0.2;
                 break;
         }
 

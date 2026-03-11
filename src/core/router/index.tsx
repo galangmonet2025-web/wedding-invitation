@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/core/layout/DashboardLayout';
 import { ProtectedRoute } from '@/core/guards/ProtectedRoute';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
+import { ImpersonatePage } from '@/features/auth/pages/ImpersonatePage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { GlobalDashboardPage } from '@/features/dashboard/pages/GlobalDashboardPage';
 import { GuestPage } from '@/features/guest/pages/GuestPage';
@@ -56,6 +57,10 @@ export const router = createHashRouter([
     {
         path: '/register',
         element: <RegisterPage />,
+    },
+    {
+        path: '/impersonate',
+        element: <ImpersonatePage />,
     },
     {
         path: '/invitation/:slug',

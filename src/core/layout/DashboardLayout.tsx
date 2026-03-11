@@ -34,8 +34,11 @@ export function DashboardLayout() {
     };
 
     const isSuperAdmin = user?.role === 'superadmin';
+    const isImpersonating = !!(user as any)?.is_impersonating;
+    // When impersonating, show tenant menus even though role is superadmin
+    const showTenantMenu = !isSuperAdmin || isImpersonating;
 
-    const navItems = isSuperAdmin
+    const navItems = !showTenantMenu
         ? [
             { to: '/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
             { to: '/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
@@ -43,14 +46,14 @@ export function DashboardLayout() {
             { to: '/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
         ]
         : [
-            { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff'] },
-            { to: '/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff'] },
-            { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff'] },
-            { to: '/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin'] },
-            { to: '/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin'] },
-            { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin'] },
-            { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin'] },
-            { to: '/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin'] },
+            { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin', 'superadmin'] },
         ];
 
     const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
@@ -87,8 +90,13 @@ export function DashboardLayout() {
                 </div>
 
                 {/* Tenant Info */}
-                {tenant && !isSuperAdmin && (
+                {tenant && showTenantMenu && (
                     <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                        {isImpersonating && (
+                            <div className="mb-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-xs text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1">
+                                <span>👤</span> Viewing as Tenant
+                            </div>
+                        )}
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-gold-100 dark:bg-gold-900/30 flex items-center justify-center">
                                 <HiOutlineHeart className="w-4 h-4 text-gold-600" />
@@ -159,6 +167,13 @@ export function DashboardLayout() {
                                     <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                                         Resepsionis Pernikahan {tenant?.groom_name} & {tenant?.bride_name}
                                     </h2>
+                                ) : isImpersonating ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full">SUPERADMIN</span>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                                            Viewing: {tenant?.bride_name} & {tenant?.groom_name}
+                                        </h2>
+                                    </div>
                                 ) : (
                                     <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                                         {isSuperAdmin ? 'Super Admin Panel' : 'Wedding Dashboard'}
