@@ -90,6 +90,7 @@ export interface Theme {
     js_template?: string;
     plan_type: 'basic' | 'pro' | 'premium';
     preview_image?: string;
+    flag_draft?: boolean | string;
     created_at: string;
 }
 
@@ -230,6 +231,7 @@ export interface CreateThemeRequest {
     js_template?: string;
     plan_type: 'basic' | 'pro' | 'premium';
     preview_image?: string;
+    flag_draft?: boolean | string;
 }
 
 export interface UpdateThemeRequest {
@@ -240,6 +242,7 @@ export interface UpdateThemeRequest {
     js_template?: string;
     plan_type: 'basic' | 'pro' | 'premium';
     preview_image?: string;
+    flag_draft?: boolean | string;
 }
 
 // =============================================

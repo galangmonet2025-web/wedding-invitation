@@ -46,7 +46,20 @@ export function ManageThemesPage() {
     };
 
     const columns = [
-        { key: 'name', header: 'Theme Name', render: (item: Theme) => item.name },
+        { 
+            key: 'name', 
+            header: 'Theme Name', 
+            render: (item: Theme) => (
+                <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">{item.name}</span>
+                    {(item.flag_draft === true || item.flag_draft === 'true' || item.flag_draft === 'TRUE') && (
+                        <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                            Draft
+                        </span>
+                    )}
+                </div>
+            )
+        },
         {
             key: 'plan_type',
             header: 'Plan',

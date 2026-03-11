@@ -27,6 +27,7 @@ export function ThemeEditorPage() {
     const [htmlCode, setHtmlCode] = useState('<!-- Tambahkan tombol dengan id="btn-open-invitation" di cover -->\n<div class="wedding-theme">\n  <h1>{{bride_name}} & {{groom_name}}</h1>\n  <button id="btn-open-invitation">Buka Undangan</button>\n</div>');
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
     const [jsCode, setJsCode] = useState('console.log("Theme Loaded!");');
+    const [flagDraft, setFlagDraft] = useState(true);
 
     const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
     const [activeTabPanel, setActiveTabPanel] = useState<'editor' | 'settings'>('editor');
@@ -56,6 +57,7 @@ export function ThemeEditorPage() {
                         setHtmlCode(theme.html_template || '');
                         setCssCode(theme.css_template || '');
                         setJsCode(theme.js_template || '');
+                        setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
                     } else {
                         toast.error('Theme not found');
                         navigate('/themes');
@@ -73,7 +75,7 @@ export function ThemeEditorPage() {
         loadData();
     }, [id]);
 
-    const handleSave = async () => {
+    const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
 
         setSaving(true);
@@ -84,20 +86,25 @@ export function ThemeEditorPage() {
                 preview_image: previewImage,
                 html_template: htmlCode,
                 css_template: cssCode,
-                js_template: jsCode
+                js_template: jsCode,
+                flag_draft: isDraft
             };
 
             if (isNew) {
                 const res = await themeApi.createTheme(payload);
                 if (res.success) {
                     toast.success('Theme created successfully');
+                    setFlagDraft(isDraft);
                     navigate(`/themes/editor/${res.data.id}`, { replace: true });
                 } else {
                     toast.error(res.message);
                 }
             } else {
                 const res = await themeApi.updateTheme({ id: id!, ...payload });
-                if (res.success) toast.success('Theme saved successfully');
+                if (res.success) {
+                    toast.success('Theme saved successfully');
+                    setFlagDraft(isDraft);
+                }
                 else toast.error(res.message);
             }
         } catch (err) {
@@ -319,6 +326,15 @@ export function ThemeEditorPage() {
                             <h1 className="text-lg font-bold text-gray-800 dark:text-white">
                                 {isNew ? 'Membuat Tema Baru' : 'Edit Tema'}
                             </h1>
+                            {!isNew && (
+                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+                                    flagDraft 
+                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
+                                        : 'bg-green-100 text-green-800 border border-green-200'
+                                }`}>
+                                    {flagDraft ? 'Draft' : 'Published'}
+                                </span>
+                            )}
                             <button
                                 onClick={() => toggleFocusMode(true)}
                                 className="ml-2 px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors"
@@ -329,14 +345,32 @@ export function ThemeEditorPage() {
                         <p className="text-xs text-gray-500">{name || 'Belum ada nama'}</p>
                     </div>
                 </div>
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="btn-primary flex items-center gap-2 py-2 px-4 shadow-md disabled:opacity-50"
-                >
-                    <HiOutlineSave className="w-4 h-4" />
-                    {saving ? 'Menyimpan...' : 'Simpan Tema'}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => handleSave(true)}
+                        disabled={saving}
+                        className="flex items-center gap-2 py-2 px-4 shadow-sm disabled:opacity-50 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
+                    >
+                        {saving ? '...' : (
+                            <>
+                                <HiOutlineSave className="w-4 h-4 text-gray-500" />
+                                Simpan Draf
+                            </>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => handleSave(false)}
+                        disabled={saving}
+                        className="btn-primary flex items-center gap-2 py-2 px-4 shadow-md disabled:opacity-50"
+                    >
+                        {saving ? 'Menyimpan...' : (
+                            <>
+                                <HiOutlineSave className="w-4 h-4 text-white" />
+                                Simpan & Publish
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Main Editor Split Area */}

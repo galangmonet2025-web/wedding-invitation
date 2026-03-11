@@ -1472,7 +1472,8 @@ var ThemeService = {
         var tenantPriority = priorities[tenant.plan_type] || 1;
         themes = themes.filter(function(t) {
           var themePriority = priorities[t.plan_type] || 1;
-          return themePriority <= tenantPriority;
+          var isDraft = (t.flag_draft === true || t.flag_draft === 'true' || t.flag_draft === 'TRUE');
+          return themePriority <= tenantPriority && !isDraft;
         });
       }
     }
@@ -1496,6 +1497,7 @@ var ThemeService = {
       js_template: js_template,
       plan_type: sanitized.plan_type,
       preview_image: sanitized.preview_image || '',
+      flag_draft: payload.hasOwnProperty('flag_draft') ? payload.flag_draft : true,
       created_at: new Date().toISOString()
     };
 
@@ -1509,8 +1511,11 @@ var ThemeService = {
     var updates = {};
     if (payload.name !== undefined) updates.name = Validator.sanitizeObject({n: payload.name}).n;
     if (payload.html_template !== undefined) updates.html_template = payload.html_template;
+    if (payload.css_template !== undefined) updates.css_template = payload.css_template;
+    if (payload.js_template !== undefined) updates.js_template = payload.js_template;
     if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
     if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
+    if (payload.flag_draft !== undefined) updates.flag_draft = payload.flag_draft;
 
     var success = DB.update('Themes', payload.id, updates);
     if (!success) {
@@ -1538,7 +1543,7 @@ function setupSpreadsheet() {
   var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
   var sheets = {
-    'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'created_at'],
+    'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'flag_draft', 'created_at'],
     'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
     'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
     'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at'],
