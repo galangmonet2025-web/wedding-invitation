@@ -3,21 +3,23 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineHeart } from 'react-icons/hi';
+import { HiOutlineMail, HiOutlineLockClosed, HiOutlineHeart, HiOutlineExclamationCircle } from 'react-icons/hi';
 import { LoadingOverlay } from '@/shared/components/Loading';
 
 export function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMsg(null);
 
         if (!username.trim() || !password.trim()) {
-            toast.error('Please fill in all fields');
+            setErrorMsg('Harap isi semua kolom terlebih dahulu.');
             return;
         }
 
@@ -65,10 +67,11 @@ export function LoginPage() {
                     navigate('/dashboard');
                 }
             } else {
-                toast.error(response.message || 'Login failed');
+                setErrorMsg(response.message || 'Username atau password salah.');
             }
         } catch (error: unknown) {
-            toast.error('Login failed (Check if backend API URL is configured in .env)');
+            const msg = (error instanceof Error) ? error.message : null;
+            setErrorMsg(msg || 'Login gagal. Periksa koneksi internet Anda dan coba lagi.');
         } finally {
             setLoading(false);
         }
@@ -147,6 +150,7 @@ export function LoginPage() {
                             </div>
                         </div>
 
+
                         <div>
                             <label htmlFor="password" className="label-field">Password</label>
                             <div className="relative">
@@ -155,13 +159,21 @@ export function LoginPage() {
                                     id="password"
                                     type="password"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="input-field pl-12"
+                                    onChange={(e) => { setPassword(e.target.value); setErrorMsg(null); }}
+                                    className={`input-field pl-12 ${errorMsg ? 'border-red-400 dark:border-red-500 focus:ring-red-400' : ''}`}
                                     placeholder="Enter your password"
                                     autoComplete="current-password"
                                 />
                             </div>
                         </div>
+
+                        {/* Inline error alert */}
+                        {errorMsg && (
+                            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm animate-shake">
+                                <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <span>{errorMsg}</span>
+                            </div>
+                        )}
 
                         <button
                             type="submit"
@@ -171,6 +183,7 @@ export function LoginPage() {
                             {loading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>
+
 
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -50,9 +50,14 @@ apiClient.interceptors.response.use(
 
         // Detect 401 from GAS (returned as HTTP 200 with code:401 in body)
         if (response.data && typeof response.data === 'object' && response.data.code === 401) {
-            useAuthStore.getState().logout();
-            toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
-            window.location.href = '/login';
+            // Don't redirect if we are already on the login page (e.g. wrong password)
+            const isLoginRequest = typeof response.config?.data === 'string' &&
+                response.config.data.includes('"action":"login"');
+            if (!isLoginRequest) {
+                useAuthStore.getState().logout();
+                toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
+                window.location.href = '/#/login';
+            }
             return Promise.reject(new Error(response.data.message || 'Token expired'));
         }
 
@@ -66,9 +71,13 @@ apiClient.interceptors.response.use(
     (error) => {
         useApiStore.getState().decrementLoading();
         if (error.response?.status === 401 || error.response?.data?.message === 'Token expired') {
-            useAuthStore.getState().logout();
-            toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
-            window.location.href = '/login';
+            const isLoginRequest = typeof error.config?.data === 'string' &&
+                error.config.data.includes('"action":"login"');
+            if (!isLoginRequest) {
+                useAuthStore.getState().logout();
+                toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
+                window.location.href = '/#/login';
+            }
         }
         return Promise.reject(error);
     }

@@ -131,3 +131,16 @@
     @apply bg-gradient-to-r from-gold-500 to-gold-700 bg-clip-text text-transparent;
   }
 }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-6px); }
+  30%       { transform: translateX(6px); }
+  45%       { transform: translateX(-4px); }
+  60%       { transform: translateX(4px); }
+  75%       { transform: translateX(-2px); }
+}
+
+.animate-shake {
+  animation: shake 0.45s ease-in-out;
+}
