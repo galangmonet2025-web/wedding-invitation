@@ -128,18 +128,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     // When data loads, resolve all proxy images to base64 for template rendering
     useEffect(() => {
-        if (!data?.images || !data.theme?.image_types?.length) return;
+        if (!data?.images || data.images.length === 0) return;
 
         const doResolve = async () => {
             const resolved: Record<string, string> = {};
-            const typesList = data.theme?.image_types || [];
 
-            await Promise.all(typesList.map(async (imgType) => {
-                const img = data.images?.find(i => i.image_type === imgType);
+            await Promise.all(data.images!.map(async (img) => {
                 if (!img?.cdn_url) return;
                 try {
                     const b64 = await fetchProxyImageBase64(img.cdn_url);
-                    resolved[imgType] = b64;
+                    resolved[img.image_type] = b64;
                 } catch { }
             }));
 
@@ -496,16 +494,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             galleries: activeContent.galleries || [],
             love_stories: activeContent.love_stories || [],
 
-            // === Variabel Foto Standar ===
-            photo_hero_cover: getImageUrl('hero_cover'),
-            photo_groom_photo: getImageUrl('groom_photo'),
-            photo_bride_photo: getImageUrl('bride_photo'),
-            photo_background: getImageUrl('background'),
-            photo_closing: getImageUrl('closing'),
-            photo_story_photo: getImageUrl('story_photo'),
+            // === Variabel Foto Standar (resolved to base64 to avoid CORS/proxy issues) ===
+            photo_hero_cover: resolvedImages['hero_cover'] || getImageUrl('hero_cover'),
+            photo_groom_photo: resolvedImages['groom_photo'] || getImageUrl('groom_photo'),
+            photo_bride_photo: resolvedImages['bride_photo'] || getImageUrl('bride_photo'),
+            photo_background: resolvedImages['background'] || getImageUrl('background'),
+            photo_closing: resolvedImages['closing'] || getImageUrl('closing'),
+            photo_story_photo: resolvedImages['story_photo'] || getImageUrl('story_photo'),
             photo_gallery: (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: img.cdn_url || '' })),
+                .map(img => ({ url: resolvedImages['gallery'] || img.cdn_url || '' })),
 
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
             ...resolvedImages

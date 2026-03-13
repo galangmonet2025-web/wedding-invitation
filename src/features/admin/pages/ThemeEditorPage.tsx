@@ -339,7 +339,7 @@ export function ThemeEditorPage() {
             updatePreview();
         }, 800);
         return () => clearTimeout(timer);
-    }, [htmlCode, cssCode, jsCode, previewTenant, showDataBinding, showCover]);
+    }, [htmlCode, cssCode, jsCode, previewTenant, previewImages, previewImagesB64, showDataBinding, showCover]);
 
     const handleEditorWillMount = (monaco: any) => {
         monaco.editor.defineTheme('monokai', {

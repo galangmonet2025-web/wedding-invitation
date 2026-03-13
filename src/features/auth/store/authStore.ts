@@ -41,12 +41,20 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'wedding-saas-auth',
-            partialize: (state) => ({
+            storage: {
+                getItem: (name) => {
+                    const str = sessionStorage.getItem(name);
+                    return str ? JSON.parse(str) : null;
+                },
+                setItem: (name, value) => sessionStorage.setItem(name, JSON.stringify(value)),
+                removeItem: (name) => sessionStorage.removeItem(name),
+            },
+            partialize: (state: AuthState) => ({
                 token: state.token,
                 user: state.user,
                 tenant: state.tenant,
                 isAuthenticated: state.isAuthenticated,
-            }),
+            } as AuthState),
         }
     )
 );
