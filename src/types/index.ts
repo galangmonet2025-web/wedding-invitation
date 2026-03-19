@@ -351,6 +351,12 @@ export interface InvitationContent {
     kalimat_penutup_undangan: string;
     link_backsound_music: string;
 
+    // Gift Delivery Offline
+    flag_kirim_hadiah_offline?: boolean | string;
+    map_kirim_hadiah_offline?: string;
+    nama_lokasi_kirim_hadiah_offline?: string;
+    alamat_lokasi_kirim_hadiah_offline?: string;
+
     // Advanced Features
     is_fitur_gallery?: boolean | string;
     galleries?: { url: string; caption?: string }[];

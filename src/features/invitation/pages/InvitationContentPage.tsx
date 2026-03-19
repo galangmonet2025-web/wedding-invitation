@@ -32,6 +32,42 @@ import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import type { ImageRecord } from '@/types';
 
+export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, isOpen, onToggle }: {
+    id: string;
+    icon: React.ReactNode;
+    iconBg: string;
+    iconColor: string;
+    title: string;
+    children: React.ReactNode;
+    isOpen: boolean;
+    onToggle: (id: string) => void;
+}) => {
+    return (
+        <div className="card shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <button
+                type="button"
+                className="w-full flex items-center justify-between gap-3 text-left"
+                onClick={() => onToggle(id)}
+            >
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 ${iconBg} rounded-lg ${iconColor} flex-shrink-0`}>
+                        {icon}
+                    </div>
+                    <h2 className="text-base font-semibold text-gray-800 dark:text-white">{title}</h2>
+                </div>
+                <HiOutlineChevronDown
+                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {isOpen && (
+                <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800 space-y-4 animate-fade-in">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export function InvitationContentPage() {
     const [content, setContent] = useState<Partial<InvitationContent> | null>(null);
     const [themes, setThemes] = useState<Theme[]>([]);
@@ -50,41 +86,6 @@ export function InvitationContentPage() {
             else next.add(id);
             return next;
         });
-    };
-
-    const AccordionItem = ({ id, icon, iconBg, iconColor, title, children }: {
-        id: string;
-        icon: React.ReactNode;
-        iconBg: string;
-        iconColor: string;
-        title: string;
-        children: React.ReactNode;
-    }) => {
-        const isOpen = openAccordions.has(id);
-        return (
-            <div className="card shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <button
-                    type="button"
-                    className="w-full flex items-center justify-between gap-3 text-left"
-                    onClick={() => toggleAccordion(id)}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 ${iconBg} rounded-lg ${iconColor} flex-shrink-0`}>
-                            {icon}
-                        </div>
-                        <h2 className="text-base font-semibold text-gray-800 dark:text-white">{title}</h2>
-                    </div>
-                    <HiOutlineChevronDown
-                        className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                    />
-                </button>
-                {isOpen && (
-                    <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800 space-y-4 animate-fade-in">
-                        {children}
-                    </div>
-                )}
-            </div>
-        );
     };
 
     // Images State
@@ -110,7 +111,7 @@ export function InvitationContentPage() {
 
     // Map Picker State
     const [showMapModal, setShowMapModal] = useState(false);
-    const [mapTarget, setMapTarget] = useState<'akad' | 'resepsi' | null>(null);
+    const [mapTarget, setMapTarget] = useState<'akad' | 'resepsi' | 'hadiah' | null>(null);
 
     useEffect(() => {
         fetchContent();
@@ -128,12 +129,19 @@ export function InvitationContentPage() {
                     keterangan_lokasi_akad: data.address,
                     akad_map: data.mapsUrl
                 };
-            } else {
+            } else if (mapTarget === 'resepsi') {
                 return {
                     ...prev,
                     nama_lokasi_resepsi: data.placeName,
                     keterangan_lokasi_resepsi: data.address,
                     resepsi_map: data.mapsUrl
+                };
+            } else {
+                return {
+                    ...prev,
+                    nama_lokasi_kirim_hadiah_offline: data.placeName,
+                    alamat_lokasi_kirim_hadiah_offline: data.address,
+                    map_kirim_hadiah_offline: data.mapsUrl
                 };
             }
         });
@@ -214,6 +222,10 @@ export function InvitationContentPage() {
             custom_kalimat_2: '',
             custom_kalimat_3: '',
             custom_kalimat_4: '',
+            flag_kirim_hadiah_offline: false,
+            map_kirim_hadiah_offline: '',
+            nama_lokasi_kirim_hadiah_offline: '',
+            alamat_lokasi_kirim_hadiah_offline: '',
             flag_pakai_kalimat_pembuka_custom: false,
             kalimat_pembuka_undangan: defaultOpeningText,
             flag_pakai_kalimat_penutup_custom: false,
@@ -388,9 +400,9 @@ export function InvitationContentPage() {
 
                     {/* Main Content Sections as Accordions */}
                     <div className="flex flex-col gap-6 animate-fade-in w-full">
-                        
+
                         {/* SECTION: TEMA */}
-                        <AccordionItem id="tema" icon={<HiOutlineColorSwatch className="w-5 h-5" />} iconBg="bg-indigo-50 dark:bg-indigo-900/20" iconColor="text-indigo-600" title="Pilih Tema Undangan">
+                        <AccordionItem id="tema" isOpen={openAccordions.has('tema')} onToggle={toggleAccordion} icon={<HiOutlineColorSwatch className="w-5 h-5" />} iconBg="bg-indigo-50 dark:bg-indigo-900/20" iconColor="text-indigo-600" title="Pilih Tema Undangan">
                             <div className="pt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 {themes.length === 0 ? (
                                     <p className="text-gray-500 text-sm">Belum ada tema yang tersedia.</p>
@@ -436,7 +448,7 @@ export function InvitationContentPage() {
                         </AccordionItem>
 
                         {/* SECTION: MEMPELAI & PHOTO */}
-                        <AccordionItem id="mempelai" icon={<HiOutlineUserGroup className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title="Informasi Mempelai & Gallery">
+                        <AccordionItem id="mempelai" isOpen={openAccordions.has('mempelai')} onToggle={toggleAccordion} icon={<HiOutlineUserGroup className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title="Informasi Mempelai & Gallery">
                             <div className="space-y-6">
                                 {/* ================= MEMPELAI UTAMA ================= */}
                                 <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
@@ -511,73 +523,12 @@ export function InvitationContentPage() {
                                     )}
                                 </div>
 
-                                {/* ================= GALLERY ================= */}
-                                <div className="pt-2">
-                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Galeri & Foto Tema</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                        {(() => {
-                                            const activeTheme = themes.find(t => t.id === selectedThemeId);
-                                            const typesList = (activeTheme?.image_types && activeTheme.image_types.length > 0)
-                                                ? activeTheme.image_types
-                                                : ['hero_cover', 'groom_photo', 'bride_photo', 'gallery', 'story_photo', 'background', 'closing'];
 
-                                            return typesList.map(type => {
-                                                if (type === 'gallery') {
-                                                    const galleryImgs = images.filter(img => img.image_type === 'gallery');
-                                                    return (
-                                                        <div key="gallery-group" className="col-span-full border-t border-gray-100 dark:border-gray-800 pt-6 mt-2">
-                                                            <label className="label-field mb-3 flex items-center justify-between">
-                                                                <span>Foto Album Gallery (Multiple)</span>
-                                                                <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-500 uppercase">{galleryImgs.length} Foto</span>
-                                                            </label>
-                                                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                                                                {galleryImgs.map((img, idx) => (
-                                                                    <div key={img.id} className="relative group">
-                                                                        <ImageUpload
-                                                                            imageType="gallery"
-                                                                            title={`Gallery`}
-                                                                            currentImage={img}
-                                                                            onUploadSuccess={() => { }}
-                                                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
-                                                                            onClick={openLightbox}
-                                                                            aspectRatio="square"
-                                                                        />
-                                                                    </div>
-                                                                ))}
-                                                                <ImageUpload
-                                                                    imageType="gallery"
-                                                                    title="Tambah Foto"
-                                                                    onUploadSuccess={(img) => setImages(prev => [...prev, img])}
-                                                                    onDeleteSuccess={() => { }}
-                                                                    aspectRatio="square"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-                                                const currentImg = images.find(img => img.image_type === type);
-                                                return (
-                                                    <div key={type}>
-                                                        <ImageUpload
-                                                            imageType={type}
-                                                            title={type.replace(/_/g, ' ')}
-                                                            aspectRatio="square"
-                                                            currentImage={currentImg}
-                                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== type), img])}
-                                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
-                                                            onClick={openLightbox}
-                                                        />
-                                                    </div>
-                                                );
-                                            });
-                                        })()}
-                                    </div>
-                                </div>
                             </div>
                         </AccordionItem>
 
                         {/* SECTION: GALERI & FOTO */}
-                        <AccordionItem id="galeri" icon={<HiOutlinePhotograph className="w-5 h-5" />} iconBg="bg-indigo-50 dark:bg-indigo-900/20" iconColor="text-indigo-600" title="Galeri & Foto">
+                        <AccordionItem id="galeri" isOpen={openAccordions.has('galeri')} onToggle={toggleAccordion} icon={<HiOutlinePhotograph className="w-5 h-5" />} iconBg="bg-indigo-50 dark:bg-indigo-900/20" iconColor="text-indigo-600" title="Galeri & Foto">
                             <p className="text-sm text-gray-500 mb-4">Upload gambar sesuai kebutuhan variabel tema yang Anda pilih.</p>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {(() => {
@@ -638,7 +589,7 @@ export function InvitationContentPage() {
                         </AccordionItem>
 
                         {/* SECTION: TEKS & ACARA */}
-                        <AccordionItem id="acara" icon={<HiOutlineMap className="w-5 h-5" />} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-600" title="Detail Acara & Lokasi">
+                        <AccordionItem id="acara" isOpen={openAccordions.has('acara')} onToggle={toggleAccordion} icon={<HiOutlineMap className="w-5 h-5" />} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-600" title="Detail Acara & Lokasi">
                             <div className="space-y-6">
                                 {/* ================= LOCATION SETTINGS ================= */}
                                 <div className="space-y-4">
@@ -746,49 +697,7 @@ export function InvitationContentPage() {
                                     </div>
                                 </div>
 
-                                {/* ================= CUSTOM TEXTS ================= */}
-                                <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-gray-800">
-                                    <div className="flex items-center gap-3">
-                                        <HiOutlineChatAlt2 className="w-5 h-5 text-indigo-600" />
-                                        <h3 className="text-md font-semibold text-gray-800 dark:text-white">Custom Texts & Opening</h3>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                                        <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700" checked={getBool(content.flag_pakai_kalimat_pembuka_custom)} onChange={(e) => updateField('flag_pakai_kalimat_pembuka_custom', e.target.checked)} />
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Use Custom Opening Text</span>
-                                            </label>
-                                            {getBool(content.flag_pakai_kalimat_pembuka_custom) && (
-                                                <textarea value={content.kalimat_pembuka_undangan || ''} onChange={(e) => updateField('kalimat_pembuka_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder="Bismillah... Dengan memohon rahmat Allah..." />
-                                            )}
-                                        </div>
-                                        <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700" checked={getBool(content.flag_pakai_kalimat_penutup_custom)} onChange={(e) => updateField('flag_pakai_kalimat_penutup_custom', e.target.checked)} />
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Use Custom Closing Text</span>
-                                            </label>
-                                            {getBool(content.flag_pakai_kalimat_penutup_custom) && (
-                                                <textarea value={content.kalimat_penutup_undangan || ''} onChange={(e) => updateField('kalimat_penutup_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder="Merupakan suatu kehormatan..." />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="label-field">Quote (Custom Text 1)</label>
-                                            <textarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. And of His signs is that He created for you..." />
-                                        </div>
-                                        <div>
-                                            <label className="label-field">Welcome Text (Custom Text 2)</label>
-                                            <textarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. It is a joy and privilege to invite you..." />
-                                        </div>
-                                        <div>
-                                            <label className="label-field">Protocol / Health Text (Custom Text 3)</label>
-                                            <textarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Please follow health protocols..." />
-                                        </div>
-                                        <div>
-                                            <label className="label-field">Additional Footer Text (Custom Text 4)</label>
-                                            <textarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Your presence is the best gift for us." />
-                                        </div>
-                                    </div>
-                                </div>
+
 
                                 {/* ================= MEDIA & AUDIO ================= */}
                                 <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-gray-800">
@@ -803,8 +712,50 @@ export function InvitationContentPage() {
                                 </div>
                             </div>
                         </AccordionItem>
+                        {/* SECTION: CUSTOM TEXTS */}
+                        <AccordionItem id="teks" isOpen={openAccordions.has('teks')} onToggle={toggleAccordion} icon={<HiOutlineChatAlt2 className="w-5 h-5" />} iconBg="bg-pink-50 dark:bg-pink-900/20" iconColor="text-pink-600" title="Custom Texts & Opening">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                    <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input type="checkbox" className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700" checked={getBool(content.flag_pakai_kalimat_pembuka_custom)} onChange={(e) => updateField('flag_pakai_kalimat_pembuka_custom', e.target.checked)} />
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Use Custom Opening Text</span>
+                                        </label>
+                                        {getBool(content.flag_pakai_kalimat_pembuka_custom) && (
+                                            <textarea value={content.kalimat_pembuka_undangan || ''} onChange={(e) => updateField('kalimat_pembuka_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder="Bismillah... Dengan memohon rahmat Allah..." />
+                                        )}
+                                    </div>
+                                    <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input type="checkbox" className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700" checked={getBool(content.flag_pakai_kalimat_penutup_custom)} onChange={(e) => updateField('flag_pakai_kalimat_penutup_custom', e.target.checked)} />
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Use Custom Closing Text</span>
+                                        </label>
+                                        {getBool(content.flag_pakai_kalimat_penutup_custom) && (
+                                            <textarea value={content.kalimat_penutup_undangan || ''} onChange={(e) => updateField('kalimat_penutup_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder="Merupakan suatu kehormatan..." />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Quote (Custom Text 1)</label>
+                                        <textarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. And of His signs is that He created for you..." />
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Welcome Text (Custom Text 2)</label>
+                                        <textarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. It is a joy and privilege to invite you..." />
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Protocol / Health Text (Custom Text 3)</label>
+                                        <textarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Please follow health protocols..." />
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Additional Footer Text (Custom Text 4)</label>
+                                        <textarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Your presence is the best gift for us." />
+                                    </div>
+                                </div>
+                            </div>
+                        </AccordionItem>
+
                         {/* SECTION: CERITA CINTA */}
-                        <AccordionItem id="cerita" icon={<HiOutlineHeart className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title="Cerita Cinta">
+                        <AccordionItem id="cerita" isOpen={openAccordions.has('cerita')} onToggle={toggleAccordion} icon={<HiOutlineHeart className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title="Cerita Cinta">
                             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
                                 <input
                                     type="checkbox"
@@ -866,7 +817,7 @@ export function InvitationContentPage() {
                         </AccordionItem>
 
                         {/* SECTION: FITUR TAMBAHAN */}
-                        <AccordionItem id="tambahan" icon={<HiOutlineVideoCamera className="w-5 h-5" />} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-500" title="Live Streaming & Fitur Tambahan">
+                        <AccordionItem id="tambahan" isOpen={openAccordions.has('tambahan')} onToggle={toggleAccordion} icon={<HiOutlineVideoCamera className="w-5 h-5" />} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-500" title="Live Streaming & Fitur Tambahan">
                             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
                                 <input
                                     type="checkbox"
@@ -894,7 +845,7 @@ export function InvitationContentPage() {
                         </AccordionItem>
 
                         {/* SECTION: AMPLOP DIGITAL */}
-                        <AccordionItem id="hadiah" icon={<HiOutlineCreditCard className="w-5 h-5" />} iconBg="bg-gold-50 dark:bg-gold-900/20" iconColor="text-gold-600" title="Amplop Digital & Hadiah">
+                        <AccordionItem id="hadiah" isOpen={openAccordions.has('hadiah')} onToggle={toggleAccordion} icon={<HiOutlineCreditCard className="w-5 h-5" />} iconBg="bg-gold-50 dark:bg-gold-900/20" iconColor="text-gold-600" title="Amplop Digital & Hadiah">
                             <div className="space-y-6">
                                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800 w-fit">
                                     <input
@@ -940,6 +891,51 @@ export function InvitationContentPage() {
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800 w-fit">
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                            checked={getBool(content.flag_kirim_hadiah_offline)}
+                                            onChange={(e) => updateField('flag_kirim_hadiah_offline', e.target.checked)}
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Terima Hadiah Fisik (Offline Gift Delivery)</span>
+                                    </label>
+
+                                    {getBool(content.flag_kirim_hadiah_offline) && (
+                                        <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4 animate-fade-in">
+                                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Alamat Pengiriman Hadiah</p>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="label-field">Nama Tempat / Penerima</label>
+                                                    <input type="text" value={content.nama_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('nama_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field" placeholder="Rumah Mempelai Wanita / Bpk. Sigit" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="label-field mb-0">Link Google Maps (Pilihan)</label>
+                                                        <button
+                                                            title="buka map"
+                                                            onClick={() => {
+                                                                setMapTarget('hadiah' as any);
+                                                                setShowMapModal(true);
+                                                            }}
+                                                            className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
+                                                        >
+                                                            <HiOutlineMap className="w-3.5 h-3.5" /> Pilih dari Peta
+                                                        </button>
+                                                    </div>
+                                                    <input type="url" value={content.map_kirim_hadiah_offline || ''} onChange={(e) => updateField('map_kirim_hadiah_offline', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="label-field">Alamat Lengkap (Beserta Kodepos & Detail Patokan)</label>
+                                                <textarea value={content.alamat_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('alamat_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field min-h-[80px]" placeholder="Jl. Sudirman No. 10 (Samping Warung Pak RT), Kodepos 12345..." />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </AccordionItem>
 

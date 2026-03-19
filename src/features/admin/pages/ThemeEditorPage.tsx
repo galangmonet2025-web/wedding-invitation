@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord } from '@/types';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
@@ -12,7 +12,9 @@ import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const isNew = !id || id === 'new';
+    const copiedTheme: Theme | null = location.state?.copiedTheme || null;
 
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
@@ -77,6 +79,16 @@ export function ThemeEditorPage() {
                         navigate('/themes');
                     }
                 }
+            } else if (copiedTheme) {
+                // Pre-fill from copied theme
+                setName(`${copiedTheme.name} (Copy)`);
+                setPlanType(copiedTheme.plan_type);
+                setPreviewImage(copiedTheme.preview_image || '');
+                setHtmlCode(copiedTheme.html_template || '');
+                setCssCode(copiedTheme.css_template || '');
+                setJsCode(copiedTheme.js_template || '');
+                setFlagDraft(true); // Default copies to draft
+                setImageTypes(copiedTheme.image_types || []);
             }
         } catch (err) {
             toast.error('Gagal memuat data');
@@ -254,6 +266,12 @@ export function ThemeEditorPage() {
                 is_fitur_cerita: true,
                 is_fitur_live_streaming: !!(c.flag_pakai_live_streaming),
                 live_streaming: { url: c.link_live_streaming || 'https://youtube.com', platform: c.platform_live_streaming || 'YouTube' },
+                
+                // Gift Delivery Offline
+                flag_kirim_hadiah_offline: !!(c.flag_kirim_hadiah_offline),
+                nama_lokasi_kirim_hadiah_offline: c.nama_lokasi_kirim_hadiah_offline || 'Rumah Mempelai Wanita / Bpk. Sigit',
+                alamat_lokasi_kirim_hadiah_offline: c.alamat_lokasi_kirim_hadiah_offline || 'Jl. Sudirman No. 10, Jakarta',
+                map_kirim_hadiah_offline: c.map_kirim_hadiah_offline || 'https://maps.app.goo.gl/dummy',
 
                 // Standard photo variables (real base64 or dummy fallback)
                 photo_hero_cover: realImg('hero_cover', 0),

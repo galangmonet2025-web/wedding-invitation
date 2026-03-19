@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { themeApi } from '@/core/api/endpoints';
 import { Theme } from '@/types';
 import { DataTable } from '@/shared/components';
-import { HiOutlinePlus, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineInformationCircle } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineInformationCircle, HiOutlineDuplicate } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
@@ -86,10 +86,13 @@ export function ManageThemesPage() {
             header: 'Actions',
             render: (item: Theme) => (
                 <div className="flex items-center gap-2">
-                    <button onClick={() => navigate(`/themes/editor/${item.id}`)} className="p-1 text-gold-600 hover:bg-gold-50 rounded">
+                    <button onClick={() => navigate(`/themes/editor/${item.id}`)} className="p-1 text-gold-600 hover:bg-gold-50 rounded" title="Edit Theme">
                         <HiOutlinePencilAlt className="w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDelete(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                    <button onClick={() => navigate('/themes/editor/new', { state: { copiedTheme: item } })} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Copy Theme">
+                        <HiOutlineDuplicate className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Theme">
                         <HiOutlineTrash className="w-5 h-5" />
                     </button>
                 </div>

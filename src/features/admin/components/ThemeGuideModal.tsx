@@ -112,6 +112,10 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         { tag: '{{#if flag_tampilkan_nama_orang_tua}}', desc: 'Block Kondisi Nama Ortu', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_nama_orang_tua}}\n  <!-- Render info ortu -->\n{{/if}}' },
         { tag: '{{#if flag_tampilkan_sosial_media_mempelai}}', desc: 'Block Kondisi Sosmed', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_sosial_media_mempelai}}\n  <!-- Render sosmed -->\n{{/if}}' },
         { tag: '{{#if is_fitur_live_streaming}}', desc: 'Block Kondisi Live Streaming', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_fitur_live_streaming}}\n  <!-- Render Tombol Live -->\n{{/if}}' },
+        { tag: '{{#if flag_kirim_hadiah_offline}}', desc: 'Block Kondisi Hadiah Fisik', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_kirim_hadiah_offline}}\n  <!-- Render Alamat -->\n{{/if}}' },
+        { tag: '{{nama_lokasi_kirim_hadiah_offline}}', desc: 'Nama Penerima/Lokasi Hadiah', value: 'Rumah Mempelai', type: 'String', code: '<span>{{nama_lokasi_kirim_hadiah_offline}}</span>' },
+        { tag: '{{alamat_lokasi_kirim_hadiah_offline}}', desc: 'Alamat Lengkap Hadiah', value: 'Jl. Merdeka No 1', type: 'String', code: '<p>{{alamat_lokasi_kirim_hadiah_offline}}</p>' },
+        { tag: '{{map_kirim_hadiah_offline}}', desc: 'URL Google Maps Kirim Hadiah', value: 'https://maps.app.goo.gl/...', type: 'URL String', code: '<a href="{{map_kirim_hadiah_offline}}">Buka Peta</a>' },
     ];
 
     return (
