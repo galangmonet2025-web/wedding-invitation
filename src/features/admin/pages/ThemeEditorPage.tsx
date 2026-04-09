@@ -234,6 +234,10 @@ export function ThemeEditorPage() {
                 ig_laki_laki: c.account_media_sosial_laki_laki || 'galang',
                 ig_perempuan: c.account_media_sosial_perempuan || 'fiona',
                 guest_name: 'Bpk/Ibu/Sdr/i (Tamu undangan)',
+                nama_tamu: 'Bpk/Ibu/Sdr/i (Tamu undangan)',
+                kode_undangan: 'GUEST-001',
+                is_sudah_isi_konfirmasi_kehadiran: false,
+                flag_konfirmasi_kehadiran_dari_tamu: true,
                 kalimat_pembuka: c.kalimat_pembuka_undangan || 'Dengan memohon rahmat dan ridho Allah SWT...',
                 kalimat_penutup: c.kalimat_penutup_undangan || 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
                 quote: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
@@ -260,6 +264,7 @@ export function ThemeEditorPage() {
                 flag_lokasi_akad_dan_resepsi_berbeda: true,
                 flag_tampilkan_nama_orang_tua: true,
                 flag_tampilkan_sosial_media_mempelai: true,
+                is_link_umum_and_not_for_spesific_guest: true,
                 is_fitur_gallery: galleryImgs.length > 0,
                 galleries: galleryImgs.length > 0 ? galleryImgs : [
                     { url: dummies[0], caption: 'Prewedding 1' },

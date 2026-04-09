@@ -494,6 +494,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
             ig_perempuan: activeContent.account_media_sosial_perempuan || '',
             guest_name: data?.guest?.name || 'Tamu Undangan',
+            nama_tamu: data?.guest?.name || 'Tamu Undangan',
+            kode_undangan: data?.guest?.invitation_code || '',
+            is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
+            flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
             kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
             kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
             quote: activeContent.custom_kalimat_1 || '',
@@ -509,6 +513,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
             flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
             flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
+            is_link_umum_and_not_for_spesific_guest: !data?.guest,
 
             // Advanced features 
             has_gallery: getBool(activeContent.is_fitur_gallery),
@@ -517,7 +522,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 url: activeContent.link_live_streaming || '',
                 platform: activeContent.platform_live_streaming || 'YouTube'
             } : null,
-            galleries: (activeContent.galleries?.length > 0) ? activeContent.galleries : (data?.images || [])
+            galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
             love_stories: activeContent.love_stories || [],
@@ -537,7 +542,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             photo_background: resolvedImages['background'] || getImageUrl('background'),
             photo_closing: resolvedImages['closing'] || getImageUrl('closing'),
             photo_story_photo: resolvedImages['story_photo'] || getImageUrl('story_photo'),
-            photo_gallery: (activeContent.galleries?.length > 0) ? activeContent.galleries : (data?.images || [])
+            photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
 

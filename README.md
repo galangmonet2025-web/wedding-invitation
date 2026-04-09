@@ -398,7 +398,7 @@ All authenticated endpoints require a `token` parameter.
 ## 🚀 Setup Guide
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 18+ -> development use nvm 24.7.0
 - npm or yarn
 - Google Account
 - Git

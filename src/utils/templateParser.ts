@@ -8,14 +8,47 @@
 export const parseTemplate = (html: string, data: Record<string, any>): string => {
     let parsedHtml = html;
 
-    // 1. Process Conditionals: {{#if condition}}...{{/if}}
+    // 1. Process Conditionals: {{#if condition}}...{{/if}} or {{#unless condition}}...{{/unless}}
+    // Also supports {{^if condition}}...{{/if}} as shorthand for unless
+    // Supports {{else}} within these blocks
+    
+    // Handler for truthiness evaluation
+    const evaluate = (condition: string): boolean => {
+        const value = data[condition];
+        return value !== undefined && value !== null && value !== '' && value !== false && (Array.isArray(value) ? value.length > 0 : true);
+    };
+
+    // 1.1 Process {{#if ...}}...{{/if}}
     const ifRegex = /\{\{\s*#if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/if\s*\}\}/g;
     parsedHtml = parsedHtml.replace(ifRegex, (match, condition, content) => {
-        // Evaluate condition: strictly check truthiness in the data object
-        const value = data[condition];
-        const isTruthy = value !== undefined && value !== null && value !== '' && value !== false && (Array.isArray(value) ? value.length > 0 : true);
-
+        const isTruthy = evaluate(condition);
+        const parts = content.split(/\{\{\s*else\s*\}\}/);
+        if (parts.length > 1) {
+            return isTruthy ? parts[0] : parts[1];
+        }
         return isTruthy ? content : '';
+    });
+
+    // 1.2 Process {{#unless ...}}...{{/unless}} or {{#unless ...}}...{{/if}}
+    const unlessRegex = /\{\{\s*#unless\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/(?:unless|if)\s*\}\}/g;
+    parsedHtml = parsedHtml.replace(unlessRegex, (match, condition, content) => {
+        const isTruthy = evaluate(condition);
+        const parts = content.split(/\{\{\s*else\s*\}\}/);
+        if (parts.length > 1) {
+            return !isTruthy ? parts[0] : parts[1];
+        }
+        return !isTruthy ? content : '';
+    });
+
+    // 1.3 Process {{^if ...}}...{{/if}}
+    const notIfRegex = /\{\{\s*\^if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/if\s*\}\}/g;
+    parsedHtml = parsedHtml.replace(notIfRegex, (match, condition, content) => {
+        const isTruthy = evaluate(condition);
+        const parts = content.split(/\{\{\s*else\s*\}\}/);
+        if (parts.length > 1) {
+            return !isTruthy ? parts[0] : parts[1];
+        }
+        return !isTruthy ? content : '';
     });
 
     // 2. Process Loops: {{#each array_name}}...{{/each}}

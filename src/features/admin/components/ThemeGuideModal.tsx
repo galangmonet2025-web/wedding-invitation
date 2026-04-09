@@ -84,6 +84,11 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         { tag: '{{ig_laki_laki}}', desc: 'Akun Sosmed Pria', value: '@ahmad_groom', type: 'String', code: '<span>{{ig_laki_laki}}</span>' },
         { tag: '{{ig_perempuan}}', desc: 'Akun Sosmed Wanita', value: '@ani_bride', type: 'String', code: '<span>{{ig_perempuan}}</span>' },
         { tag: '{{guest_name}}', desc: 'Nama Tamu Undangan', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{guest_name}}</span>' },
+        { tag: '{{nama_tamu}}', desc: 'Alias Nama Tamu Undangan', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{nama_tamu}}</span>' },
+        { tag: '{{kode_undangan}}', desc: 'Kode Unik Undangan Tamu', value: 'GUEST-001', type: 'String', code: '<p>Kode: {{kode_undangan}}</p>' },
+        { tag: '{{is_sudah_isi_konfirmasi_kehadiran}}', desc: 'Boolean: True jika tamu sudah konfirmasi RSVP', value: 'false', type: 'Boolean Logic', code: '{{#if is_sudah_isi_konfirmasi_kehadiran}}\n  <p>Terima kasih sudah konfirmasi!</p>\n{{/if}}' },
+        { tag: '{{flag_konfirmasi_kehadiran_dari_tamu}}', desc: 'Boolean: True jika tamu konfirmasi HADIR', value: 'true', type: 'Boolean Logic', code: '{{#if flag_konfirmasi_kehadiran_dari_tamu}}\n  <p>Kami tunggu kehadiran Anda!</p>\n{{/if}}' },
+        { tag: '{{#if is_link_umum_and_not_for_spesific_guest}}', desc: 'Block Kondisi Link Umum (Bukan tamu spesifik)', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_link_umum_and_not_for_spesific_guest}}\n  <!-- Tampilkan input nama tamu / RSVP umum -->\n{{/if}}' },
         { tag: '{{kalimat_pembuka}}', desc: 'Kalimat Pembuka', value: 'Dengan memohon rahmat...', type: 'String', code: '<p>{{kalimat_pembuka}}</p>' },
         { tag: '{{kalimat_penutup}}', desc: 'Kalimat Penutup', value: 'Merupakan suatu kehormatan...', type: 'String', code: '<p>{{kalimat_penutup}}</p>' },
         { tag: '{{custom_kalimat_1}}', desc: 'Teks Kustom 1', value: 'Teks Tambahan 1', type: 'String', code: '<p>{{custom_kalimat_1}}</p>' },
@@ -237,20 +242,30 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
 
                         <section className="space-y-4">
                             <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                                <span className="text-green-500">1.</span> Kondisional (If / Else)
+                                <span className="text-green-500">1.</span> Kondisional (If / Else / Not)
                             </h4>
-                            <p className="text-sm">Gunakan blok <code>{`{{#if variabel}} ... {{/if}}`}</code> untuk merender suatu elemen HTML <strong>hanya jika</strong> variabel tersebut bernilai <code>true</code> (diaktifkan di panel Invitation Content).</p>
-
-                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
-                                <span className="text-gray-500">{"<!-- Contoh: Menampilkan tombol Live Streaming jika dicentang -->"}</span><br />
-                                <span className="text-green-400">{"{{#if flag_pakai_live_streaming}}"}</span><br />
-                                &nbsp;&nbsp;{"<a href=\""}<span className="text-blue-400">{"{{link_live_streaming}}"}</span>{"\" class=\"btn btn-danger\">"}<br />
-                                &nbsp;&nbsp;&nbsp;&nbsp;{"Nonton Live di "}<span className="text-blue-400">{"{{platform_live_streaming}}"}</span><br />
-                                &nbsp;&nbsp;{"</a>"}<br />
-                                <span className="text-green-400">{"{{/if}}"}</span>
+                            <div className="space-y-3">
+                                <p className="text-sm">
+                                    <strong>{`{{#if variabel}}`}:</strong> Menampilkan konten jika variabel bernilai <strong>TRUE</strong> (ada isinya).<br/>
+                                    <strong>{`{{^if variabel}}`}:</strong> Menampilkan konten jika variabel bernilai <strong>FALSE</strong> (kosong/tidak ada). Ini adalah kebalikan dari <code>#if</code>.
+                                </p>
                             </div>
 
-                            <p className="text-sm mt-2"><strong>Mekanisme Else:</strong> Anda juga bisa menggunakan <code>{`{{^if variabel}}`}</code> (If Not) atau `{"{{else}}"}` untuk logika kebalikan.</p>
+                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
+                                <span className="text-gray-500">{"<!-- Contoh 1: Jika Link Umum -->"}</span><br />
+                                <span className="text-green-400">{"{{#if is_link_umum_and_not_for_spesific_guest}}"}</span><br />
+                                &nbsp;&nbsp;{"<p>Silakan isi data kehadiran Anda.</p>"}<br />
+                                <span className="text-green-400">{"{{else}}"}</span><br />
+                                &nbsp;&nbsp;{"<p>Halo {{nama_tamu}}, kami menunggu kehadiran Anda.</p>"}<br />
+                                <span className="text-green-400">{"{{/if}}"}</span>
+                                <br/><br/>
+                                <span className="text-gray-500">{"<!-- Contoh 2: Jika BUKAN Link Umum (Gunakan ^if) -->"}</span><br />
+                                <span className="text-orange-400">{"{{^if is_link_umum_and_not_for_spesific_guest}}"}</span><br />
+                                &nbsp;&nbsp;{"<p>Kode Undangan Anda: {{kode_undangan}}</p>"}<br />
+                                <span className="text-orange-400">{"{{/if}}"}</span>
+                            </div>
+
+                            <p className="text-sm mt-2 font-medium italic text-gold-600">Tip: Anda juga bisa menggunakan <code>{`{{#unless variabel}}`}</code> sebagai alternatif dari <code>{`{{^if variabel}}`}</code>.</p>
                         </section>
 
                         <hr className="border-gray-200 dark:border-gray-700" />
