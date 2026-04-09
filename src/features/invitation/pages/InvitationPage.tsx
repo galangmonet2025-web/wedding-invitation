@@ -3,7 +3,7 @@ import '../invitation.css';
 import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
 import type { Wish, InvitationContent, TimelineItem, ImageRecord } from '@/types';
-import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode } from 'react-icons/hi';
+import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
 import { Modal } from '@/shared/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
@@ -72,6 +72,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [isPlaying, setIsPlaying] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [youtubeId, setYoutubeId] = useState<string | null>(null);
+    const ytIframeRef = useRef<HTMLIFrameElement>(null);
 
     useEffect(() => {
         const musicLink = activeContent.link_backsound_music;
@@ -81,7 +82,15 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const ytMatch = musicLink.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|.*embed\/))([^&?\n]+)/);
         if (ytMatch && ytMatch[1]) {
             setYoutubeId(ytMatch[1]);
-            // YouTube iframe logic handled in JSX
+            
+            // Send command to the existing iframe
+            if (ytIframeRef.current && ytIframeRef.current.contentWindow) {
+                if (isPlaying) {
+                    ytIframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                } else {
+                    ytIframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                }
+            }
             return;
         }
 
@@ -122,6 +131,22 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // Sections ref for scroll animation
     const sectionsRef = useRef<(HTMLElement | null)[]>([]);
 
+    // Navigation Menu State
+    const [sections, setSections] = useState<{id: string, label: string}[]>([]);
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    useEffect(() => {
+        if (isOpened) {
+            // Find all sections that have a data-menu-label attribute for dynamic navigation
+            const secEls = document.querySelectorAll('section[data-menu-label]');
+            const newSections = Array.from(secEls).map(el => ({
+                id: el.id,
+                label: el.getAttribute('data-menu-label') || 'Section'
+            }));
+            setSections(newSections);
+        }
+    }, [isOpened]);
+
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
     }, [slug, previewData]);
@@ -138,6 +163,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 try {
                     const b64 = await fetchProxyImageBase64(img.cdn_url);
                     resolved[img.image_type] = b64;
+                    resolved[img.cdn_url] = b64; // Also index by URL to support multiple images of the same type (like gallery)
                 } catch { }
             }));
 
@@ -491,8 +517,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 url: activeContent.link_live_streaming || '',
                 platform: activeContent.platform_live_streaming || 'YouTube'
             } : null,
-            galleries: activeContent.galleries || [],
+            galleries: (activeContent.galleries?.length > 0) ? activeContent.galleries : (data?.images || [])
+                .filter(img => img.image_type === 'gallery')
+                .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
             love_stories: activeContent.love_stories || [],
+
+            // Wishes variables
+            wishes: (wishes || []).map(w => ({
+                ...w,
+                guest_initial: w.guest_name ? w.guest_name.charAt(0).toUpperCase() : '?'
+            })),
+            has_wishes: wishes && wishes.length > 0,
+            empty_wishes: !wishes || wishes.length === 0,
 
             // === Variabel Foto Standar (resolved to base64 to avoid CORS/proxy issues) ===
             photo_hero_cover: resolvedImages['hero_cover'] || getImageUrl('hero_cover'),
@@ -501,13 +537,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             photo_background: resolvedImages['background'] || getImageUrl('background'),
             photo_closing: resolvedImages['closing'] || getImageUrl('closing'),
             photo_story_photo: resolvedImages['story_photo'] || getImageUrl('story_photo'),
-            photo_gallery: (data?.images || [])
+            photo_gallery: (activeContent.galleries?.length > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: resolvedImages['gallery'] || img.cdn_url || '' })),
+                .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
 
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
             ...resolvedImages
         };
+
+        console.log("DEBUG photo_gallery:", dataContext.photo_gallery);
+        console.log("DEBUG activeContent:", activeContent);
 
         renderedHtml = parseTemplate(renderedHtml, dataContext);
 
@@ -527,8 +566,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             >
                 {guestQrModal}
                 {uninvitedGuestFormModal}
-                {youtubeId && isPlaying && (
+                {youtubeId && (
                     <iframe
+                        ref={ytIframeRef}
                         width="0"
                         height="0"
                         src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
@@ -538,26 +578,61 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         className="hidden"
                     />
                 )}
-                {activeContent.link_backsound_music && isOpened && (
-                    <button
-                        onClick={() => setIsPlaying(!isPlaying)}
-                        className="fixed bottom-6 right-6 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-fade-in"
-                        aria-label="Toggle Music"
-                    >
-                        {isPlaying ? <HiPause className="w-6 h-6 animate-pulse" /> : <HiPlay className="w-6 h-6" />}
-                    </button>
-                )}
                 {isOpened && (
-                    <button
-                        onClick={() => {
-                            if (data?.guest) setShowQRModal(true);
-                            else setShowGuestForm(true);
-                        }}
-                        className="fixed bottom-6 left-6 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-fade-in"
-                        aria-label="Tampilkan QR Code Kehadiran"
-                    >
-                        <HiOutlineQrcode className="w-6 h-6" />
-                    </button>
+                    <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 items-end animate-fade-in">
+                        {/* Dynamic Navigation Menu Button */}
+                        {sections.length > 0 && (
+                            <div className="relative">
+                                <button
+                                    onClick={() => setMenuOpen(!menuOpen)}
+                                    className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+                                    aria-label="Menu Undangan"
+                                >
+                                    {menuOpen ? <HiOutlineX className="w-6 h-6" /> : <HiOutlineMenu className="w-6 h-6" />}
+                                </button>
+                                
+                                {menuOpen && (
+                                    <div className="absolute right-[120%] top-0 bg-white/95 backdrop-blur-md border border-gold-100 shadow-2xl rounded-xl py-2 min-w-[160px] animate-fade-in origin-top-right">
+                                        {sections.map(s => (
+                                            <button 
+                                                key={s.id}
+                                                onClick={() => {
+                                                    document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' });
+                                                    setMenuOpen(false);
+                                                }}
+                                                className="w-full text-right px-4 py-3 text-sm text-gray-700 hover:text-gold-600 hover:bg-gold-50 transition-colors border-b border-gray-100 last:border-0"
+                                            >
+                                                {s.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* QR Code Button */}
+                        <button
+                            onClick={() => {
+                                if (data?.guest) setShowQRModal(true);
+                                else setShowGuestForm(true);
+                            }}
+                            className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+                            aria-label="Tampilkan QR Code Kehadiran"
+                        >
+                            <HiOutlineQrcode className="w-6 h-6" />
+                        </button>
+
+                        {/* Music Play/Pause Button */}
+                        {activeContent.link_backsound_music && (
+                            <button
+                                onClick={() => setIsPlaying(!isPlaying)}
+                                className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+                                aria-label="Toggle Music"
+                            >
+                                {isPlaying ? <HiPause className="w-6 h-6 animate-pulse" /> : <HiPlay className="w-6 h-6" />}
+                            </button>
+                        )}
+                    </div>
                 )}
             </ThemeWrapper>
         );

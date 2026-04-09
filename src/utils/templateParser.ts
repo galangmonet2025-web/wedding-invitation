@@ -9,7 +9,7 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
     let parsedHtml = html;
 
     // 1. Process Conditionals: {{#if condition}}...{{/if}}
-    const ifRegex = /\{\{#if\s+([a-zA-Z0-9_]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+    const ifRegex = /\{\{\s*#if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/if\s*\}\}/g;
     parsedHtml = parsedHtml.replace(ifRegex, (match, condition, content) => {
         // Evaluate condition: strictly check truthiness in the data object
         const value = data[condition];
@@ -19,7 +19,7 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
     });
 
     // 2. Process Loops: {{#each array_name}}...{{/each}}
-    const eachRegex = /\{\{#each\s+([a-zA-Z0-9_]+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
+    const eachRegex = /\{\{\s*#each\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/each\s*\}\}/g;
     parsedHtml = parsedHtml.replace(eachRegex, (match, arrayName, content) => {
         const arr = data[arrayName];
         if (!Array.isArray(arr) || arr.length === 0) return '';

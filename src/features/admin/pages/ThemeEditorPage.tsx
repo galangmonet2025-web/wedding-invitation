@@ -119,7 +119,9 @@ export function ThemeEditorPage() {
                 await Promise.all(imgs.map(async (img) => {
                     if (img.cdn_url) {
                         try {
-                            b64map[img.image_type] = await fetchProxyImageBase64(img.cdn_url);
+                            const b64 = await fetchProxyImageBase64(img.cdn_url);
+                            b64map[img.image_type] = b64;
+                            b64map[img.cdn_url] = b64;
                         } catch { }
                     }
                 }));
@@ -188,6 +190,7 @@ export function ThemeEditorPage() {
         const t = previewTenant || { bride_name: 'Fiona', groom_name: 'Galang', wedding_date: '2026-10-20' };
 
         let finalHtml = htmlCode;
+        let activeBacksound = '';
 
         if (showDataBinding) {
             const c = previewContent;
@@ -208,7 +211,7 @@ export function ThemeEditorPage() {
 
             const galleryImgs = previewImages
                 .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: imgs[img.image_type] || img.cdn_url || '', caption: img.file_name || '' }));
+                .map(img => ({ url: imgs[img.cdn_url] || img.cdn_url || '', caption: img.file_name || '' }));
 
             const mockData: Record<string, any> = {
                 bride_name: t.bride_name || 'Fiona',
@@ -290,6 +293,7 @@ export function ThemeEditorPage() {
                 mockData[key] = imgs[key] || dummies[index % dummies.length];
             });
 
+            activeBacksound = mockData.link_backsound_music || '';
             finalHtml = parseTemplate(htmlCode, mockData);
         }
 
@@ -341,6 +345,103 @@ export function ThemeEditorPage() {
                         if (btn) btn.click();
                     }, 150);
                     ` : ''}
+                    // Global Floating Action Buttons Simulation
+                    (function(){
+                        const container = document.createElement('div');
+                        container.style.cssText = 'position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:12px;align-items:flex-end;font-family:sans-serif;';
+                        
+                        // Menu Button & Dropdown
+                        const menuWrapper = document.createElement('div');
+                        menuWrapper.style.cssText = 'position:relative;';
+                        
+                        const btnMenu = document.createElement('button');
+                        btnMenu.innerHTML = '☰';
+                        btnMenu.style.cssText = 'width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#fff;color:#D4AF37;border:1px solid #D4AF37;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);font-size:20px;transition:0.3s;';
+                        
+                        const menuList = document.createElement('div');
+                        menuList.style.cssText = 'position:absolute;right:120%;top:0;background:#fff;border:1px solid #D4AF37;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.1);display:none;flex-direction:column;min-width:160px;overflow:hidden;';
+                        
+                        btnMenu.onclick = function() {
+                            if(menuList.style.display === 'none') {
+                                menuList.innerHTML = '';
+                                const secs = document.querySelectorAll('section[data-menu-label]');
+                                if(secs.length > 0) {
+                                  Array.from(secs).forEach(s => {
+                                      const btn = document.createElement('button');
+                                      btn.innerText = s.getAttribute('data-menu-label');
+                                      btn.style.cssText = 'width:100%;text-align:right;padding:12px;background:none;border:none;border-bottom:1px solid #eee;cursor:pointer;color:#333;font-size:14px;';
+                                      btn.onmouseover = () => btn.style.background = '#f9f9f9';
+                                      btn.onmouseout = () => btn.style.background = 'none';
+                                      btn.onclick = () => { s.scrollIntoView({behavior:'smooth'}); menuList.style.display = 'none'; btnMenu.innerHTML = '☰'; };
+                                      menuList.appendChild(btn);
+                                  });
+                                  menuList.style.display = 'flex';
+                                  btnMenu.innerHTML = '✖';
+                                } else {
+                                  alert('Tidak ada section dengan data-menu-label ditemukan. Pastikan Anda sudah Inject Template terbaru.');
+                                }
+                            } else {
+                                menuList.style.display = 'none';
+                                btnMenu.innerHTML = '☰';
+                            }
+                        };
+                        menuWrapper.appendChild(btnMenu);
+                        menuWrapper.appendChild(menuList);
+                        container.appendChild(menuWrapper);
+                        
+                        // QR Button
+                        const btnQr = document.createElement('button');
+                        btnQr.innerHTML = '📱';
+                        btnQr.title = 'QR Code';
+                        btnQr.style.cssText = 'width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#fff;color:#D4AF37;border:1px solid #D4AF37;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);font-size:20px;';
+                        btnQr.onclick = () => alert("Simulasi: Membuka Modal QR Code Kehadiran Tamu");
+                        container.appendChild(btnQr);
+                        
+                        ${activeBacksound ? `
+                        const btnMusic = document.createElement('button');
+                        btnMusic.innerHTML = '🎵';
+                        btnMusic.title = 'Play/Pause Music';
+                        btnMusic.style.cssText = 'width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#fff;color:#D4AF37;border:1px solid #D4AF37;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);font-size:20px;';
+                        
+                        let playing = false;
+                        let audioObj = null; let ytIframe = null;
+                        const musicLink = '${activeBacksound}';
+                        const ytMatch = musicLink.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:.*v=|.*\\/|.*embed\\/))([^&?\\n]+)/);
+                        
+                        if (ytMatch && ytMatch[1]) {
+                            ytIframe = document.createElement('iframe');
+                            ytIframe.width = "0"; ytIframe.height = "0";
+                            ytIframe.style.display = "none";
+                            ytIframe.allow = "autoplay";
+                            ytIframe.src = "https://www.youtube.com/embed/" + ytMatch[1] + "?autoplay=0&loop=1&playlist=" + ytMatch[1] + "&enablejsapi=1";
+                            document.body.appendChild(ytIframe);
+                            
+                            btnMusic.onclick = function() {
+                                if(playing) {
+                                    ytIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                                    btnMusic.innerHTML = '🎵';
+                                    btnMusic.style.opacity = '1';
+                                } else {
+                                    ytIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                                    btnMusic.innerHTML = '⏸';
+                                    btnMusic.style.opacity = '0.7';
+                                }
+                                playing = !playing;
+                            };
+                        } else {
+                            audioObj = new Audio(musicLink);
+                            audioObj.loop = true;
+                            btnMusic.onclick = function() {
+                                if(playing) { audioObj.pause(); btnMusic.innerHTML = '🎵'; btnMusic.style.opacity = '1'; }
+                                else { audioObj.play(); btnMusic.innerHTML = '⏸'; btnMusic.style.opacity = '0.7'; }
+                                playing = !playing;
+                            };
+                        }
+                        container.appendChild(btnMusic);
+                        ` : ''}
+                        
+                        document.body.appendChild(container);
+                    })();
                 </script>
             </body>
             </html>

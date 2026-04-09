@@ -116,6 +116,10 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         { tag: '{{nama_lokasi_kirim_hadiah_offline}}', desc: 'Nama Penerima/Lokasi Hadiah', value: 'Rumah Mempelai', type: 'String', code: '<span>{{nama_lokasi_kirim_hadiah_offline}}</span>' },
         { tag: '{{alamat_lokasi_kirim_hadiah_offline}}', desc: 'Alamat Lengkap Hadiah', value: 'Jl. Merdeka No 1', type: 'String', code: '<p>{{alamat_lokasi_kirim_hadiah_offline}}</p>' },
         { tag: '{{map_kirim_hadiah_offline}}', desc: 'URL Google Maps Kirim Hadiah', value: 'https://maps.app.goo.gl/...', type: 'URL String', code: '<a href="{{map_kirim_hadiah_offline}}">Buka Peta</a>' },
+        { tag: '{{#each wishes}}', desc: 'Block Looping Data Ucapan & Doa', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each wishes}}\n  <p>{{this.guest_name}}: {{this.message}}</p>\n{{/each}}' },
+        { tag: '{{this.guest_name}}', desc: 'Nama Pengucap (Dalam Loop wishes)', value: 'Bpk. Ridwan', type: 'String', code: '<span>{{this.guest_name}}</span>' },
+        { tag: '{{this.message}}', desc: 'Pesan/Ucapan (Dalam Loop wishes)', value: 'Semoga langgeng...', type: 'String', code: '<p>{{this.message}}</p>' },
+        { tag: '{{this.guest_initial}}', desc: 'Abjad Awal Nama (Dalam Loop wishes)', value: 'B', type: 'String', code: '<div>{{this.guest_initial}}</div>' },
     ];
 
     return (

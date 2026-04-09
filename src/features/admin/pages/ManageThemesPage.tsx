@@ -6,6 +6,7 @@ import { HiOutlinePlus, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineInformation
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
+import { PREMIUM_THEME_PAYLOAD } from '../utils/premiumThemePayload';
 
 export function ManageThemesPage() {
     const navigate = useNavigate();
@@ -42,6 +43,22 @@ export function ManageThemesPage() {
             }
         } catch {
             toast.error('Failed to delete theme');
+        }
+    };
+
+    const handleInjectPremiumTheme = async () => {
+        if (!confirm('Ingin melakukan auto-inject tema Premium Emas ke Backend GAS?')) return;
+        try {
+            toast.loading('Menginjeksi tema...', { id: 'inject-theme' });
+            const res = await themeApi.createTheme(PREMIUM_THEME_PAYLOAD as any);
+            if(res.success) {
+                toast.success('Tema Premium Emas berhasil dimasukkan ke Spreadsheet/GAS!', { id: 'inject-theme' });
+                fetchThemes();
+            } else {
+                toast.error(res.message || 'Failed to inject theme', { id: 'inject-theme' });
+            }
+        } catch {
+            toast.error('Gagal memasukkan data.', { id: 'inject-theme' });
         }
     };
 
@@ -116,10 +133,16 @@ export function ManageThemesPage() {
                     </div>
                     <p className="text-sm text-gray-500">Create and modify themes via Advanced Builder</p>
                 </div>
-                <button onClick={() => navigate('/themes/editor/new')} className="btn-primary flex items-center gap-2">
-                    <HiOutlinePlus className="w-5 h-5" />
-                    <span>Add Theme</span>
-                </button>
+                <div className="flex gap-2">
+                    <button onClick={handleInjectPremiumTheme} className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl shadow-lg transition-all font-medium flex items-center gap-2">
+                        <i className="ri-flashlight-fill"></i>
+                        <span>Inject Premium Theme</span>
+                    </button>
+                    <button onClick={() => navigate('/themes/editor/new')} className="btn-primary flex items-center gap-2">
+                        <HiOutlinePlus className="w-5 h-5" />
+                        <span>Add Theme</span>
+                    </button>
+                </div>
             </div>
 
             <div className="card p-0 overflow-hidden">
