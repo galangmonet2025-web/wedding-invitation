@@ -16,6 +16,7 @@ import {
     HiOutlineQrcode,
     HiOutlineDownload,
     HiOutlineUpload,
+    HiOutlineRefresh,
 } from 'react-icons/hi';
 
 export function GuestPage() {
@@ -324,23 +325,32 @@ export function GuestPage() {
                         {total} guests total
                     </p>
                 </div>
-                {!isStaff && (
-                    <div className="flex items-center gap-2">
-                        <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2">
-                            <HiOutlineUpload className="w-4 h-4" />
-                            Import
-                            <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-                        </label>
-                        <button onClick={handleExportCSV} className="btn-ghost text-sm flex items-center gap-2">
-                            <HiOutlineDownload className="w-4 h-4" />
-                            Export
-                        </button>
-                        <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
-                            <HiOutlinePlus className="w-4 h-4" />
-                            Add Guest
-                        </button>
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => fetchGuests()} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    {!isStaff && (
+                        <>
+                            <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2">
+                                <HiOutlineUpload className="w-4 h-4" />
+                                Import
+                                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+                            </label>
+                            <button onClick={handleExportCSV} className="btn-ghost text-sm flex items-center gap-2">
+                                <HiOutlineDownload className="w-4 h-4" />
+                                Export
+                            </button>
+                            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
+                                <HiOutlinePlus className="w-4 h-4" />
+                                Add Guest
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Filters */}

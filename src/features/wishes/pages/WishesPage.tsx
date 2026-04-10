@@ -4,7 +4,7 @@ import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Wish } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineHeart } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineHeart, HiOutlineRefresh } from 'react-icons/hi';
 
 export function WishesPage() {
     const [wishes, setWishes] = useState<Wish[]>([]);
@@ -67,10 +67,19 @@ export function WishesPage() {
                     <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Wedding Wishes</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{wishes.length} wishes received</p>
                 </div>
-                <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
-                    <HiOutlinePlus className="w-4 h-4" />
-                    Add Wish
-                </button>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => fetchWishes()} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
+                        <HiOutlinePlus className="w-4 h-4" />
+                        Add Wish
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

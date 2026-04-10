@@ -109,7 +109,8 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         { tag: '{{this.tanggal}}', desc: 'Tgl Timeline (Dalam Loop timeline_kisah)', value: 'Januari 2020', type: 'String', code: '<span>{{this.tanggal}}</span>' },
         { tag: '{{this.judul}}', desc: 'Judul Timeline (Dalam Loop timeline_kisah)', value: 'Pertama Kali Bertemu', type: 'String', code: '<h4>{{this.judul}}</h4>' },
         { tag: '{{this.deskripsi}}', desc: 'Desc Timeline (Dalam Loop timeline_kisah)', value: 'Kisah awal pertemuan...', type: 'String', code: '<p>{{this.deskripsi}}</p>' },
-        { tag: '{{#if is_fitur_gallery}}', desc: 'Block Kondisi Galeri Foto', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_fitur_gallery}}\n  <!-- Konten jika true -->\n{{/if}}' },
+        { tag: '{{#if has_gallery}}', desc: 'Boolean: True jika tenan memiliki minimal 1 foto galeri', value: 'true', type: 'Boolean Logic', code: '{{#if has_gallery}}\n  <!-- Tampilkan section galeri -->\n{{/if}}' },
+        { tag: '{{#if is_fitur_gallery}}', desc: 'Block Kondisi Fitur Galeri Foto (Flag Admin)', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_fitur_gallery}}\n  <!-- Konten jika true -->\n{{/if}}' },
         { tag: '{{#each galleries}}', desc: 'Block Looping Image Galeri', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each galleries}}\n  <img src="{{this.url}}" alt="Gallery">\n{{/each}}' },
         { tag: '{{this.url}}', desc: 'URL Gambar Galeri (Dalam Loop galleries)', value: 'https://example/img.jpg', type: 'URL String', code: '<img src="{{this.url}}">' },
         { tag: '{{#if tampilkan_amplop_online}}', desc: 'Block Kondisi Amplop Online', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if tampilkan_amplop_online}}\n  <!-- Render info bank -->\n{{/if}}' },
@@ -189,25 +190,56 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
 
                         <hr className="border-gray-200 dark:border-gray-700" />
 
+                        <hr className="border-gray-200 dark:border-gray-700" />
+                        
                         <section>
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                                <span className="text-purple-600">⚡</span> Sistem Interaksi Event Khusus
+                                <span className="text-red-500">🏗️</span> Aturan Struktur & ID Wajib
                             </h3>
                             <p className="mb-4">
-                                Karena UI undangan ini harus berinteraksi dengan Sistem React (untuk membuka Modal Kehadiran, RSVP, menyetel Musik Background), Anda WAJIB memberikan <strong>ID Elemen</strong> tertentu pada tombol desain HTML Anda agar dikenali sistem:
+                                Agar fitur undangan berjalan normal, Anda <strong>WAJIB</strong> mengikuti struktur ID berikut:
                             </p>
-                            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg space-y-4">
-                                <div>
-                                    <strong className="text-red-600 dark:text-red-400">1. Membuka Undangan & Memutar Musik</strong><br />
-                                    Berikan <code>id="btn-open-invitation"</code> pada tombol utama di halaman Cover.<br />
-                                    Contoh: <code>&lt;button id="btn-open-invitation" class="uk-button"&gt;Buka Undangan&lt;/button&gt;</code><br />
-                                    <span className="text-xs text-gray-500">Saat diklik oleh tamu, sistem akan otomatis menghilangkan layer cover dan memutar musik background.</span>
+                            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg space-y-3">
+                                <div className="flex gap-2">
+                                    <code className="text-blue-600 dark:text-blue-400 font-bold shrink-0">id="theme-cover"</code>
+                                    <span>Gunakan ID ini pada pembungkus (wrapper) halaman Sampul/Cover paling atas.</span>
                                 </div>
-                                <div>
-                                    <strong className="text-red-600 dark:text-red-400">2. Membuka Tiket QR Code Tamu</strong><br />
-                                    Berikan <code>id="btn-show-qr"</code> pada tombol untuk menampilkan QR Check-in.<br />
-                                    Contoh: <code>&lt;button id="btn-show-qr" class="btn btn-outline-light"&gt;Tampilkan QR&lt;/button&gt;</code><br />
-                                    <span className="text-xs text-gray-500">Sistem akan otomatis membuka popup Modal QR yang telah di-generate secara live.</span>
+                                <div className="flex gap-2">
+                                    <code className="text-blue-600 dark:text-blue-400 font-bold shrink-0">id="main-content"</code>
+                                    <span>Gunakan ID ini pada pembungkus konten utama undangan (setelah cover dibuka). Set <code>display: none</code> secara default.</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <code className="text-blue-600 dark:text-blue-400 font-bold shrink-0">data-menu-label="..."</code>
+                                    <span>Tambahkan atribut ini pada tag <code>&lt;section&gt;</code> agar otomatis terbaca di Menu Navigasi.</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                        <section>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                <span className="text-purple-600">⚡</span> Tombol Kontrol (Action Buttons)
+                            </h3>
+                            <p className="mb-4">
+                                Berikan ID di bawah ini pada elemen tombol desain Anda agar sistem React dapat menjalankan fungsinya:
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="border border-gray-200 dark:border-gray-700 p-3 rounded-lg">
+                                    <div className="font-bold text-xs text-gold-600 mb-1">id="btn-open-invitation"</div>
+                                    <div className="text-xs">Membuka undangan & memutar musik background.</div>
+                                </div>
+                                <div className="border border-gray-200 dark:border-gray-700 p-3 rounded-lg">
+                                    <div className="font-bold text-xs text-gold-600 mb-1">id="btn-toggle-music"</div>
+                                    <div className="text-xs">Play / Pause musik background secara manual.</div>
+                                </div>
+                                <div className="border border-gray-200 dark:border-gray-700 p-3 rounded-lg">
+                                    <div className="font-bold text-xs text-gold-600 mb-1">id="btn-show-qr"</div>
+                                    <div className="text-xs">Membuka jendela popup Kode QR untuk tamu.</div>
+                                </div>
+                                <div className="border border-gray-200 dark:border-gray-700 p-3 rounded-lg">
+                                    <div className="font-bold text-xs text-gold-600 mb-1">id="btn-show-menu"</div>
+                                    <div className="text-xs">Membuka menu navigasi seksi (overlay menu).</div>
                                 </div>
                             </div>
                         </section>
@@ -242,30 +274,45 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
 
                         <section className="space-y-4">
                             <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                                <span className="text-green-500">1.</span> Kondisional (If / Else / Not)
+                                <span className="text-green-500">1.</span> Kondisional (If / Else / Comparison)
                             </h4>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <p className="text-sm">
-                                    <strong>{`{{#if variabel}}`}:</strong> Menampilkan konten jika variabel bernilai <strong>TRUE</strong> (ada isinya).<br/>
-                                    <strong>{`{{^if variabel}}`}:</strong> Menampilkan konten jika variabel bernilai <strong>FALSE</strong> (kosong/tidak ada). Ini adalah kebalikan dari <code>#if</code>.
+                                    <strong>{`{{#if variabel}}`}:</strong> Menampilkan konten jika variabel bernilai <strong>TRUE</strong>.<br/>
+                                    <strong>{`{{#if variabel == "teks"}}`}:</strong> Menampilkan jika nilai variabel sama dengan teks.<br/>
+                                    <strong>{`{{#if variabel != "teks"}}`}:</strong> Menampilkan jika nilai variabel TIDAK sama.<br/>
+                                    <strong>{`{{#if @index % 2 == 0}}`}:</strong> Operasi Modulo (Sisa Bagi). Contoh ini untuk baris genap.
                                 </p>
                             </div>
 
-                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
-                                <span className="text-gray-500">{"<!-- Contoh 1: Jika Link Umum -->"}</span><br />
-                                <span className="text-green-400">{"{{#if is_link_umum_and_not_for_spesific_guest}}"}</span><br />
-                                &nbsp;&nbsp;{"<p>Silakan isi data kehadiran Anda.</p>"}<br />
+                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-[11px] overflow-x-auto text-gray-300">
+                                <span className="text-gray-500">{"<!-- Contoh Logic Kompleks -->"}</span><br />
+                                <span className="text-green-400">{"{{#if @index % 2 == 1}}"}</span><br />
+                                &nbsp;&nbsp;{"<div class=\"bg-gray-100\">Baris Ganjil</div>"}<br />
                                 <span className="text-green-400">{"{{else}}"}</span><br />
-                                &nbsp;&nbsp;{"<p>Halo {{nama_tamu}}, kami menunggu kehadiran Anda.</p>"}<br />
+                                &nbsp;&nbsp;{"<div class=\"bg-white\">Baris Genap</div>"}<br />
                                 <span className="text-green-400">{"{{/if}}"}</span>
                                 <br/><br/>
-                                <span className="text-gray-500">{"<!-- Contoh 2: Jika BUKAN Link Umum (Gunakan ^if) -->"}</span><br />
-                                <span className="text-orange-400">{"{{^if is_link_umum_and_not_for_spesific_guest}}"}</span><br />
-                                &nbsp;&nbsp;{"<p>Kode Undangan Anda: {{kode_undangan}}</p>"}<br />
-                                <span className="text-orange-400">{"{{/if}}"}</span>
+                                <span className="text-green-400">{"{{#if status == \"confirmed\"}}"}</span><br />
+                                &nbsp;&nbsp;{"<span>Tamu Hadir</span>"}<br />
+                                <span className="text-green-400">{"{{/if}}"}</span>
                             </div>
+                        </section>
 
-                            <p className="text-sm mt-2 font-medium italic text-gold-600">Tip: Anda juga bisa menggunakan <code>{`{{#unless variabel}}`}</code> sebagai alternatif dari <code>{`{{^if variabel}}`}</code>.</p>
+                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                        <section className="space-y-4">
+                            <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span className="text-blue-500">2.</span> Variabel Khusus Loop (@index, @first, @last)
+                            </h4>
+                            <p className="text-sm">Dalam blok <code>{`{{#each}}`}</code>, Anda dapat mengakses metadata perulangan:</p>
+                            <ul className="list-disc pl-5 text-sm space-y-1">
+                                <li><code>{`{{@index}}`}</code>: Urutan data mulai dari 0.</li>
+                                <li><code>{`{{@index_plus_1}}`}</code>: Urutan data mulai dari 1.</li>
+                                <li><code>{`{{@first}}`}</code>: Bernilai true jika data pertama.</li>
+                                <li><code>{`{{@last}}`}</code>: Bernilai true jika data terakhir.</li>
+                                <li><code>{`{{@even}}`} / {`{{@odd}}`}</code>: Membantu pewarnaan belang.</li>
+                            </ul>
                         </section>
 
                         <hr className="border-gray-200 dark:border-gray-700" />

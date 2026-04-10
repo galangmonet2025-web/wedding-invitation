@@ -9,6 +9,7 @@ interface ThemeWrapperProps {
     setIsOpened: (val: boolean) => void;
     setIsPlaying: (val: boolean) => void;
     onShowQR: () => void;
+    onShowMenu: () => void;
     children?: React.ReactNode;
 }
 
@@ -21,6 +22,7 @@ export function ThemeWrapper({
     setIsOpened,
     setIsPlaying,
     onShowQR,
+    onShowMenu,
     children
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -97,6 +99,14 @@ export function ThemeWrapper({
         if (target.closest('#btn-show-qr')) {
             e.preventDefault();
             onShowQR();
+        }
+        if (target.closest('#btn-show-menu')) {
+            e.preventDefault();
+            onShowMenu();
+        }
+        if (target.closest('#btn-toggle-music')) {
+            e.preventDefault();
+            setIsPlaying(!isPlaying);
         }
     };
 

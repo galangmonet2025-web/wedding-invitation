@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { themeApi } from '@/core/api/endpoints';
 import { Theme } from '@/types';
 import { DataTable } from '@/shared/components';
-import { HiOutlinePlus, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineInformationCircle, HiOutlineDuplicate } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineInformationCircle, HiOutlineDuplicate, HiOutlineRefresh } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
@@ -134,6 +134,13 @@ export function ManageThemesPage() {
                     <p className="text-sm text-gray-500">Create and modify themes via Advanced Builder</p>
                 </div>
                 <div className="flex gap-2">
+                    <button 
+                        onClick={() => fetchThemes()} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                     <button onClick={handleInjectPremiumTheme} className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl shadow-lg transition-all font-medium flex items-center gap-2">
                         <i className="ri-flashlight-fill"></i>
                         <span>Inject Premium Theme</span>

@@ -1,89 +1,148 @@
 /**
  * Utility to parse HTML templates with dynamic data binding.
  * Supports:
- * - Simple variable replacement: {{variable}}
- * - Conditional blocks: {{#if variable}}...{{/if}}
+ * - Simple variable replacement: {{variable}}, {{this.prop}}, {{@index}}
+ * - Conditional blocks: {{#if condition}}...{{else}}...{{/if}}
  * - Array looping: {{#each array_name}}...{{/each}}
+ * - Conditional operators: ==, !=
+ * - Loop metadata: @index, @index_plus_1, @first, @last
  */
 export const parseTemplate = (html: string, data: Record<string, any>): string => {
-    let parsedHtml = html;
-
-    // 1. Process Conditionals: {{#if condition}}...{{/if}} or {{#unless condition}}...{{/unless}}
-    // Also supports {{^if condition}}...{{/if}} as shorthand for unless
-    // Supports {{else}} within these blocks
     
-    // Handler for truthiness evaluation
     const evaluate = (condition: string): boolean => {
-        const value = data[condition];
+        const trimmed = condition.trim();
+        
+        // Handle modulo expressions: key % divisor == result or key % divisor != result
+        const moduloRegex = /(@?[a-zA-Z0-9_]+)\s*%\s*(\d+)\s*(==|!=)\s*(\d+)/;
+        const modMatch = trimmed.match(moduloRegex);
+        if (modMatch) {
+            const [_, key, divisor, op, result] = modMatch;
+            const actualValue = Number(data[key]);
+            const modResult = actualValue % Number(divisor);
+            const expectedResult = Number(result);
+            return op === '== text text' || op === '==' ? modResult === expectedResult : modResult !== expectedResult;
+        }
+
+        // Handle comparisons: key == value or key != value
+        if (trimmed.includes(' == ')) {
+            const [key, val] = trimmed.split(' == ').map(s => s.trim());
+            const actualValue = data[key];
+            const compareValue = val.replace(/['"]/g, '');
+            return String(actualValue ?? '') === compareValue;
+        }
+        if (trimmed.includes(' != ')) {
+            const [key, val] = trimmed.split(' != ').map(s => s.trim());
+            const actualValue = data[key];
+            const compareValue = val.replace(/['"]/g, '');
+            return String(actualValue ?? '') !== compareValue;
+        }
+
+        const value = data[trimmed];
         return value !== undefined && value !== null && value !== '' && value !== false && (Array.isArray(value) ? value.length > 0 : true);
     };
 
-    // 1.1 Process {{#if ...}}...{{/if}}
-    const ifRegex = /\{\{\s*#if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/if\s*\}\}/g;
-    parsedHtml = parsedHtml.replace(ifRegex, (match, condition, content) => {
-        const isTruthy = evaluate(condition);
-        const parts = content.split(/\{\{\s*else\s*\}\}/);
-        if (parts.length > 1) {
-            return isTruthy ? parts[0] : parts[1];
-        }
-        return isTruthy ? content : '';
-    });
+    let output = html;
 
-    // 1.2 Process {{#unless ...}}...{{/unless}} or {{#unless ...}}...{{/if}}
-    const unlessRegex = /\{\{\s*#unless\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/(?:unless|if)\s*\}\}/g;
-    parsedHtml = parsedHtml.replace(unlessRegex, (match, condition, content) => {
-        const isTruthy = evaluate(condition);
-        const parts = content.split(/\{\{\s*else\s*\}\}/);
-        if (parts.length > 1) {
-            return !isTruthy ? parts[0] : parts[1];
-        }
-        return !isTruthy ? content : '';
-    });
-
-    // 1.3 Process {{^if ...}}...{{/if}}
-    const notIfRegex = /\{\{\s*\^if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/if\s*\}\}/g;
-    parsedHtml = parsedHtml.replace(notIfRegex, (match, condition, content) => {
-        const isTruthy = evaluate(condition);
-        const parts = content.split(/\{\{\s*else\s*\}\}/);
-        if (parts.length > 1) {
-            return !isTruthy ? parts[0] : parts[1];
-        }
-        return !isTruthy ? content : '';
-    });
-
-    // 2. Process Loops: {{#each array_name}}...{{/each}}
-    const eachRegex = /\{\{\s*#each\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\s*\/each\s*\}\}/g;
-    parsedHtml = parsedHtml.replace(eachRegex, (match, arrayName, content) => {
-        const arr = data[arrayName];
-        if (!Array.isArray(arr) || arr.length === 0) return '';
-
-        // Iterate over the array and replace variables within the loop block
-        return arr.map((item: any) => {
-            let itemHtml = content;
-            if (typeof item === 'object' && item !== null) {
-                // If it's an object, replace {{this.property}}
-                Object.keys(item).forEach(key => {
-                    const itemVarRegex = new RegExp(`\\{\\{\\s*this\\.${key}\\s*\\}\\}`, 'g');
-                    itemHtml = itemHtml.replace(itemVarRegex, item[key] || '');
-                });
+    // Process blocks (if, each, unless)
+    const blockRegex = /\{\{\s*([#\^])(if|each|unless)\s+([^}]+)\}\}/g;
+    let match;
+    
+    while ((match = blockRegex.exec(output)) !== null) {
+        const type = match[1]; // # or ^
+        const command = match[2]; // if, each, unless
+        const expression = match[3].trim();
+        const openTag = match[0];
+        const startIndex = match.index;
+        
+        const closeTagStr = `{{/${command}}}`;
+        
+        // Find matching closing tag with depth tracking for nesting
+        let depth = 1;
+        let searchIndex = startIndex + openTag.length;
+        let closingIndex = -1;
+        
+        while (depth > 0) {
+            const nextOpen = output.indexOf(`{{#${command}`, searchIndex);
+            const nextClose = output.indexOf(`{{/${command}}}`, searchIndex);
+            
+            if (nextClose === -1) break;
+            
+            if (nextOpen !== -1 && nextOpen < nextClose) {
+                depth++;
+                searchIndex = nextOpen + 5;
             } else {
-                // If it's a primitive, replace {{this}}
-                const thisRegex = /\{\{\s*this\s*\}\}/g;
-                itemHtml = itemHtml.replace(thisRegex, item || '');
+                depth--;
+                searchIndex = nextClose + closeTagStr.length;
+                if (depth === 0) closingIndex = nextClose;
             }
-            return itemHtml;
-        }).join('');
-    });
-
-    // 3. Process Simple Variables: {{variable}}
-    Object.keys(data).forEach(key => {
-        const varValue = data[key];
-        // Only replace simple variables if they are not objects/arrays
-        if (typeof varValue !== 'object') {
-            const varRegex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
-            parsedHtml = parsedHtml.replace(varRegex, varValue !== undefined && varValue !== null ? String(varValue) : '');
         }
+        
+        if (closingIndex !== -1) {
+            const content = output.substring(startIndex + openTag.length, closingIndex);
+            let replacement = '';
+            
+            if (command === 'if' || command === 'unless') {
+                const isTruthy = evaluate(expression);
+                const finalCondition = type === '^' ? !isTruthy : (command === 'unless' ? !isTruthy : isTruthy);
+                
+                // Find top-level {{else}} within this block
+                let elseIndex = -1;
+                let innerDepth = 0;
+                for (let i = 0; i < content.length; i++) {
+                    if (content.substring(i).startsWith('{{#if')) innerDepth++;
+                    if (content.substring(i).startsWith('{{/if}}')) innerDepth--;
+                    if (innerDepth === 0 && content.substring(i).startsWith('{{else}}')) {
+                        elseIndex = i;
+                        break;
+                    }
+                }
+
+                if (elseIndex !== -1) {
+                    const ifPart = content.substring(0, elseIndex);
+                    const elsePart = content.substring(elseIndex + 8);
+                    replacement = finalCondition ? parseTemplate(ifPart, data) : parseTemplate(elsePart, data);
+                } else {
+                    replacement = finalCondition ? parseTemplate(content, data) : '';
+                }
+            } else if (command === 'each') {
+                const arr = data[expression];
+                if (Array.isArray(arr)) {
+                    replacement = arr.map((item, index) => {
+                        const itemData = { 
+                            ...data, 
+                            this: item, 
+                            '@index': index, 
+                            '@index_plus_1': index + 1,
+                            '@first': index === 0,
+                            '@last': index === arr.length - 1,
+                            '@even': index % 2 === 0,
+                            '@odd': index % 2 !== 0
+                        };
+                        if (typeof item === 'object' && item !== null) {
+                            Object.keys(item).forEach(key => {
+                                itemData[`this.${key}`] = item[key];
+                            });
+                        }
+                        return parseTemplate(content, itemData);
+                    }).join('');
+                }
+            }
+            
+            output = output.substring(0, startIndex) + replacement + output.substring(closingIndex + closeTagStr.length);
+            blockRegex.lastIndex = 0; // Restart regex search since string modified
+        } else {
+            blockRegex.lastIndex = startIndex + openTag.length;
+        }
+    }
+
+    // Process Simple Variables: {{variable}}
+    output = output.replace(/\{\{\s*(@?[a-zA-Z0-9_\.]+)\s*\}\}/g, (match, key) => {
+        const val = data[key.trim()];
+        if (val !== undefined && val !== null) {
+            return typeof val === 'object' ? (val.url || val.id || JSON.stringify(val)) : String(val);
+        }
+        return ''; // Default to empty if not found
     });
 
-    return parsedHtml;
+    return output;
 };

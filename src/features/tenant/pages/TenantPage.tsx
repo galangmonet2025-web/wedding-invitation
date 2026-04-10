@@ -5,7 +5,7 @@ import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Tenant, CreateTenantRequest, PlanType, TenantStatus, Theme } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineExternalLink } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineExternalLink, HiOutlineRefresh } from 'react-icons/hi';
 
 export function TenantPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -253,10 +253,19 @@ export function TenantPage() {
                     <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Tenant Management</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{tenants.length} tenants registered</p>
                 </div>
-                <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
-                    <HiOutlinePlus className="w-4 h-4" />
-                    New Tenant
-                </button>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => fetchTenants()} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
+                        <HiOutlinePlus className="w-4 h-4" />
+                        New Tenant
+                    </button>
+                </div>
             </div>
 
             <DataTable

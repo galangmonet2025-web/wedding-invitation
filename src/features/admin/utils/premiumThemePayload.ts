@@ -48,6 +48,86 @@ export const PREMIUM_THEME_PAYLOAD = {
     justify-content: center;
     font-size: 1.2rem;
 }
+
+/* Floating Navigation & FAB Styles */
+#theme-fab-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1001; /* Higher than system buttons */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+/* Hide system buttons if they exist to prevent duplication */
+.fixed.top-6.right-6.z-50.flex.flex-col {
+    display: none !important;
+}
+
+.fab-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 2px solid #D4AF37;
+    color: #D4AF37;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fab-btn:hover {
+    transform: scale(1.1) translateY(-2px);
+    background: #D4AF37;
+    color: white;
+}
+.fab-btn i {
+    pointer-events: none; /* Ensure click goes to div */
+}
+
+#theme-nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    padding: 20px;
+}
+.nav-menu-list {
+    list-style: none;
+    padding: 0;
+    text-align: center;
+}
+.nav-menu-item {
+    margin: 15px 0;
+    font-size: 1.5rem;
+    font-family: 'Playfair Display', serif;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+.nav-menu-item:hover {
+    color: #D4AF37;
+}
+.close-nav {
+    position: absolute;
+    top: 25px;
+    right: 25px;
+    font-size: 2rem;
+    cursor: pointer;
+}
 `,
     js_template: `
 // --- THEME LOGIC EXECUTION ---
@@ -183,6 +263,7 @@ export const PREMIUM_THEME_PAYLOAD = {
 
     // Initial wishes fetch is removed; data is now injected natively into HTML via {{wishes}}
 
+    // --- NAVIGATION MODAL LOGIC REMOVED: Now handled by React backend ---
 })();
 `,
     html_template: `<div class="premium-theme text-gray-800 bg-gray-50">
@@ -212,7 +293,7 @@ export const PREMIUM_THEME_PAYLOAD = {
     <div id="main-content" style="display: none; height: 100vh; overflow-y: auto;">
 
         <!-- SECTION 1: HERO LANDING -->
-        <section
+        <section id="sec-hero"
             class="uk-section uk-section-large uk-background-cover uk-light uk-flex uk-flex-middle uk-position-relative"
             style="min-height: 100vh; background-image: url('{{photo_background}}');">
             <div class="uk-position-cover" style="background-color: rgba(0,0,0,0.5);"></div>
@@ -232,7 +313,7 @@ export const PREMIUM_THEME_PAYLOAD = {
         </section>
 
         <!-- SECTION 2: PERKENALAN PASANGAN -->
-        <section id="sec-mempelai" data-menu-label="Mempelai" class="uk-section uk-section-muted">
+        <section id="sec-mempelai" data-menu-label="Pengantin" class="uk-section uk-section-muted">
             <div class="uk-container uk-container-xsmall uk-text-center">
                 <div uk-scrollspy="cls: uk-animation-fade; delay: 100">
                     <h2 class="uk-h2" style="font-family: 'Playfair Display', serif; color: #D4AF37;">Mempelai</h2>
@@ -341,7 +422,7 @@ export const PREMIUM_THEME_PAYLOAD = {
         </section>
 
         <!-- SECTION 3: WAKTU & TEMPAT -->
-        <section id="sec-acara" data-menu-label="Acara" class="uk-section uk-section-muted">
+        <section id="sec-acara" data-menu-label="Akad & Resepsi" class="uk-section uk-section-muted">
             <div class="uk-container uk-container-small uk-text-center">
                 <h2 style="font-family: 'Playfair Display', serif; color: #D4AF37;">Akad & Resepsi</h2>
                 <div class="uk-grid-match uk-child-width-1-2@m uk-margin-large-top" uk-grid>
@@ -392,7 +473,7 @@ export const PREMIUM_THEME_PAYLOAD = {
 
         <!-- SECTION 4: LINK LIVE & SECTION 5: TIMELINE KISAH -->
         {{#if live_streaming}}
-        <section id="sec-live" data-menu-label="Live Stream" class="uk-section uk-section-primary"
+        <section id="sec-live" data-menu-label="Streaming" class="uk-section uk-section-primary"
             style="background-color: #1a1a1a;">
             <div class="uk-container uk-container-small uk-text-center">
                 <i class="ri-live-fill" style="font-size: 3rem; color: red;"></i>
@@ -404,7 +485,8 @@ export const PREMIUM_THEME_PAYLOAD = {
         </section>
         {{/if}}
 
-        <section id="sec-cerita" data-menu-label="Love Story" class="uk-section uk-section-default">
+        {{#if flag_pakai_timeline_kisah}}
+        <section id="sec-cerita" data-menu-label="Perjalanan" class="uk-section uk-section-default">
             <div class="uk-container uk-container-small">
                 <h2 class="uk-text-center" style="font-family: 'Playfair Display', serif; color: #D4AF37;">Love Story
                 </h2>
@@ -421,9 +503,11 @@ export const PREMIUM_THEME_PAYLOAD = {
                 </div>
             </div>
         </section>
+        {{/if}}
 
         <!-- SECTION 6: GALLERY FOTO -->
-        <section id="sec-galeri" data-menu-label="Galeri Foto" class="uk-section uk-section-muted">
+        {{#if has_gallery}}
+        <section id="sec-galeri" data-menu-label="Galeri" class="uk-section uk-section-muted">
             <div class="uk-container uk-container-xlarge">
                 <h2 class="uk-text-center uk-margin-large-bottom"
                     style="font-family: 'Playfair Display', serif; color: #D4AF37;">Galeri Foto</h2>
@@ -436,9 +520,10 @@ export const PREMIUM_THEME_PAYLOAD = {
                 </div>
             </div>
         </section>
+        {{/if}}
 
         <!-- SECTION 7: DOA & UCAPAN -->
-        <section id="sec-ucapan" data-menu-label="Ucapan" class="uk-section uk-section-default uk-text-center">
+        <section id="sec-ucapan" data-menu-label="Doa & Ucapan" class="uk-section uk-section-default uk-text-center">
             <div class="uk-container uk-container-small">
                 <h2 style="font-family: 'Playfair Display', serif; color: #D4AF37;">Ucapan & Doa</h2>
                 <p>Berikan ucapan manis dan doa restu untuk pernikahan kami.</p>
@@ -478,7 +563,7 @@ export const PREMIUM_THEME_PAYLOAD = {
 
         <!-- SECTION 8: AMPLOP ONLINE -->
         {{#if tampilkan_amplop_online}}
-        <section id="sec-hadiah" data-menu-label="Hadiah" class="uk-section uk-section-muted uk-text-center">
+        <section id="sec-hadiah" data-menu-label="Gifts" class="uk-section uk-section-muted uk-text-center">
             <div class="uk-container uk-container-small">
                 <i class="ri-gift-line" style="font-size: 3rem; color: #D4AF37;"></i>
                 <h2 style="font-family: 'Playfair Display', serif; color: #D4AF37;">Wedding Gift</h2>
@@ -518,6 +603,23 @@ export const PREMIUM_THEME_PAYLOAD = {
                 <p class="uk-text-small uk-margin-large-top">Made with ❤️ by Wedding SaaS Platform</p>
             </div>
         </section>
+
+        <!-- FLOATING ACTION BUTTONS -->
+        <div id="theme-fab-container">
+            <!-- Menu Button -->
+            <div id="btn-show-menu" class="fab-btn" title="Menu Navigasi">
+                <i class="ri-menu-line"></i>
+            </div>
+            <!-- Music Button -->
+            <div id="btn-toggle-music" class="fab-btn" title="Musik">
+                <i class="ri-music-2-line"></i>
+            </div>
+            <!-- QR Button -->
+            <div id="btn-show-qr" class="fab-btn" title="QR Code Kehadiran">
+                <i class="ri-qr-code-line"></i>
+            </div>
+        </div>
+
 
     </div>
 </div>

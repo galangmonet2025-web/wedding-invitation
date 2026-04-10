@@ -132,20 +132,27 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const sectionsRef = useRef<(HTMLElement | null)[]>([]);
 
     // Navigation Menu State
-    const [sections, setSections] = useState<{id: string, label: string}[]>([]);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [sections, setSections] = useState<{ id: string; label: string }[]>([]);
+    const [showMenuModal, setShowMenuModal] = useState(false);
 
     useEffect(() => {
         if (isOpened) {
-            // Find all sections that have a data-menu-label attribute for dynamic navigation
-            const secEls = document.querySelectorAll('section[data-menu-label]');
-            const newSections = Array.from(secEls).map(el => ({
-                id: el.id,
-                label: el.getAttribute('data-menu-label') || 'Section'
-            }));
-            setSections(newSections);
+            // Finding sections needs to happen after the ThemeWrapper has had a chance 
+            // to render the dangerouslySetInnerHTML content.
+            const timeout = setTimeout(() => {
+                const secEls = document.querySelectorAll('section[data-menu-label]');
+                const newSections = Array.from(secEls).map(el => ({
+                    id: el.id,
+                    label: el.getAttribute('data-menu-label') || 'Section'
+                }));
+                setSections(newSections);
+            }, 500); // 500ms should be enough for DOM injection and layout
+
+            return () => clearTimeout(timeout);
+        } else {
+            setSections([]);
         }
-    }, [isOpened]);
+    }, [isOpened, data, activeContent]); // Run when opened or when content changes
 
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
@@ -516,7 +523,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             is_link_umum_and_not_for_spesific_guest: !data?.guest,
 
             // Advanced features 
-            has_gallery: getBool(activeContent.is_fitur_gallery),
+            has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
             has_story: getBool(activeContent.is_fitur_cerita),
             live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
                 url: activeContent.link_live_streaming || '',
@@ -550,8 +557,6 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             ...resolvedImages
         };
 
-        console.log("DEBUG photo_gallery:", dataContext.photo_gallery);
-        console.log("DEBUG activeContent:", activeContent);
 
         renderedHtml = parseTemplate(renderedHtml, dataContext);
 
@@ -568,6 +573,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     if (data?.guest) setShowQRModal(true);
                     else setShowGuestForm(true);
                 }}
+                onShowMenu={() => setShowMenuModal(true)}
             >
                 {guestQrModal}
                 {uninvitedGuestFormModal}
@@ -583,63 +589,72 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         className="hidden"
                     />
                 )}
-                {isOpened && (
-                    <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 items-end animate-fade-in">
-                        {/* Dynamic Navigation Menu Button */}
-                        {sections.length > 0 && (
-                            <div className="relative">
-                                <button
-                                    onClick={() => setMenuOpen(!menuOpen)}
-                                    className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
-                                    aria-label="Menu Undangan"
-                                >
-                                    {menuOpen ? <HiOutlineX className="w-6 h-6" /> : <HiOutlineMenu className="w-6 h-6" />}
-                                </button>
+                        {/* Full Screen Navigation Menu Modal */}
+                        {showMenuModal && (
+                            <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
+                                {/* Backdrop */}
+                                <div 
+                                    className="absolute inset-0 bg-black/85 backdrop-blur-xl animate-fade-in"
+                                    onClick={() => setShowMenuModal(false)}
+                                />
                                 
-                                {menuOpen && (
-                                    <div className="absolute right-[120%] top-0 bg-white/95 backdrop-blur-md border border-gold-100 shadow-2xl rounded-xl py-2 min-w-[160px] animate-fade-in origin-top-right">
+                                {/* Content */}
+                                <div className="relative w-full max-w-lg bg-transparent text-center animate-scale-in">
+                                    <button 
+                                        onClick={() => setShowMenuModal(false)}
+                                        className="absolute -top-16 right-0 text-white/70 hover:text-white transition-colors"
+                                    >
+                                        <HiOutlineX className="w-8 h-8" />
+                                    </button>
+
+                                    <h2 className="text-gold-400 font-serif text-3xl mb-12 tracking-widest uppercase">Menu Navigasi</h2>
+                                    
+                                    <div className="flex flex-col gap-6">
+                                        {/* Link to Top/Sampul */}
+                                        <button
+                                            onClick={() => {
+                                                const container = document.getElementById('main-content');
+                                                if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+                                                setShowMenuModal(false);
+                                            }}
+                                            className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
+                                        >
+                                            Sampul
+                                        </button>
+
                                         {sections.map(s => (
-                                            <button 
+                                            <button
                                                 key={s.id}
                                                 onClick={() => {
-                                                    document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' });
-                                                    setMenuOpen(false);
+                                                    const el = document.getElementById(s.id);
+                                                    const container = document.getElementById('main-content');
+                                                    if (el && container) {
+                                                        const containerRect = container.getBoundingClientRect();
+                                                        const targetRect = el.getBoundingClientRect();
+                                                        const relativeTop = targetRect.top - containerRect.top;
+                                                        const scrollTarget = container.scrollTop + relativeTop;
+                                                        
+                                                        container.scrollTo({
+                                                            top: scrollTarget,
+                                                            behavior: 'smooth'
+                                                        });
+                                                    }
+                                                    setShowMenuModal(false);
                                                 }}
-                                                className="w-full text-right px-4 py-3 text-sm text-gray-700 hover:text-gold-600 hover:bg-gold-50 transition-colors border-b border-gray-100 last:border-0"
+                                                className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
                                             >
                                                 {s.label}
                                             </button>
                                         ))}
                                     </div>
-                                )}
+
+                                    <div className="mt-16 text-gold-500/50 font-serif italic">
+                                        {tenant.groom_name} & {tenant.bride_name}
+                                    </div>
+                                </div>
                             </div>
                         )}
-
-                        {/* QR Code Button */}
-                        <button
-                            onClick={() => {
-                                if (data?.guest) setShowQRModal(true);
-                                else setShowGuestForm(true);
-                            }}
-                            className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
-                            aria-label="Tampilkan QR Code Kehadiran"
-                        >
-                            <HiOutlineQrcode className="w-6 h-6" />
-                        </button>
-
-                        {/* Music Play/Pause Button */}
-                        {activeContent.link_backsound_music && (
-                            <button
-                                onClick={() => setIsPlaying(!isPlaying)}
-                                className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
-                                aria-label="Toggle Music"
-                            >
-                                {isPlaying ? <HiPause className="w-6 h-6 animate-pulse" /> : <HiPlay className="w-6 h-6" />}
-                            </button>
-                        )}
-                    </div>
-                )}
-            </ThemeWrapper>
+                    </ThemeWrapper>
         );
     }
 

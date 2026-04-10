@@ -10,6 +10,7 @@ import {
     HiOutlinePencil,
     HiOutlineOfficeBuilding,
     HiOutlineClock,
+    HiOutlineRefresh,
 } from 'react-icons/hi';
 
 const actionIcons: Record<string, typeof HiOutlineLogin> = {
@@ -81,9 +82,18 @@ export function ActivityPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div>
-                <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Activity Log</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track all actions performed in the system</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Activity Log</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track all actions performed in the system</p>
+                </div>
+                <button 
+                    onClick={() => fetchLogs()} 
+                    className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                    title="Refresh Data"
+                >
+                    <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
             <div className="space-y-8">
