@@ -134,25 +134,27 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // Navigation Menu State
     const [sections, setSections] = useState<{ id: string; label: string }[]>([]);
     const [showMenuModal, setShowMenuModal] = useState(false);
+    const hasFetchedSections = useRef(false);
 
     useEffect(() => {
-        if (isOpened) {
+        if (isOpened && !hasFetchedSections.current) {
             // Finding sections needs to happen after the ThemeWrapper has had a chance 
             // to render the dangerouslySetInnerHTML content.
             const timeout = setTimeout(() => {
                 const secEls = document.querySelectorAll('section[data-menu-label]');
-                const newSections = Array.from(secEls).map(el => ({
-                    id: el.id,
-                    label: el.getAttribute('data-menu-label') || 'Section'
-                }));
-                setSections(newSections);
+                if (secEls.length > 0) {
+                    const newSections = Array.from(secEls).map(el => ({
+                        id: el.id,
+                        label: el.getAttribute('data-menu-label') || 'Section'
+                    }));
+                    setSections(newSections);
+                    hasFetchedSections.current = true; // Mark as fetched permanently
+                }
             }, 500); // 500ms should be enough for DOM injection and layout
 
             return () => clearTimeout(timeout);
-        } else {
-            setSections([]);
         }
-    }, [isOpened, data, activeContent]); // Run when opened or when content changes
+    }, [isOpened]); // run exactly once after opened
 
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
@@ -573,7 +575,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             has_wishes: wishes && wishes.length > 0,
             empty_wishes: !wishes || wishes.length === 0,
 
-            // === Variabel Foto Standar (resolved to base64 to avoid CORS/proxy issues) ===
+            // === Variabel Foto Standar ===
             photo_hero_cover: resolvedImages['hero_cover'] || getImageUrl('hero_cover'),
             photo_groom_photo: resolvedImages['groom_photo'] || getImageUrl('groom_photo'),
             photo_bride_photo: resolvedImages['bride_photo'] || getImageUrl('bride_photo'),
@@ -584,20 +586,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
 
-            // Theme State
-            is_opened: isOpened,
-            isPlaying: isPlaying,
-
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
             ...resolvedImages
         };
 
-
+        // Cache the renderedHtml in UseMemo to prevent re-parsing? No, just rely on standard parse, it's fast enough. But now at least `dataContext` is purely data-driven, so when `isOpened` changes, we don't change `renderedHtml`.
+        // Wait, parseTemplate is still fast. 
         renderedHtml = parseTemplate(renderedHtml, dataContext);
-
-        if (isOpened) {
-            renderedHtml = `<style>#theme-cover{display:none!important}#main-content{display:block!important}</style>${renderedHtml}`;
-        }
 
         return (
             <ThemeWrapper

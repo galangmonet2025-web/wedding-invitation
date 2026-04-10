@@ -77,11 +77,17 @@ export function ThemeWrapper({
     // Execute Custom JS Theme Template
     useEffect(() => {
         if (!jsBase) return;
+        const scriptId = 'theme-custom-js';
+        const existing = document.getElementById(scriptId);
+        if (existing) existing.remove();
+
         const script = document.createElement('script');
-        script.id = 'theme-custom-js';
+        script.id = scriptId;
         script.innerHTML = `
             try {
-                ${jsBase}
+                (function() {
+                    ${jsBase}
+                })();
             } catch(e) {
                 console.error("Theme JS error:", e);
             }
@@ -89,10 +95,10 @@ export function ThemeWrapper({
         document.body.appendChild(script);
 
         return () => {
-            const el = document.getElementById('theme-custom-js');
+            const el = document.getElementById(scriptId);
             if (el) el.remove();
         };
-    }, [jsBase, isOpened]); // Re-run js execution if isOpened changes? Only run once ideally, but the user HTML might manipulate DOM on open.
+    }, [jsBase, isOpened, htmlBase]); // Re-run js execution if isOpened or htmlBase changes
  
     // Audio logic removed for brevity in this chunk, keeping it in the file
 
@@ -189,24 +195,24 @@ export function ThemeWrapper({
     };
 
     return (
-        <div className="w-full min-h-screen theme-wrapper relative bg-white">
+        <div className={`w-full min-h-screen theme-wrapper relative bg-white ${isOpened ? 'is-opened' : 'is-closed'}`}>
             {cssBase && (
                 <style dangerouslySetInnerHTML={{ __html: cssBase }} />
             )}
 
-            {/* Persistent Visibility State Overrides */}
-            {isOpened && (
-                <style dangerouslySetInnerHTML={{ __html: `
-                    #theme-cover { display: none !important; }
-                    #main-content { display: block !important; }
-                ` }} />
-            )}
+            {/* Persistent Visibility State Overrides using Static CSS */}
+            <style dangerouslySetInnerHTML={{ __html: `
+                .is-closed #theme-fab-container { display: none !important; }
+                .is-opened #theme-cover { display: none !important; }
+                .is-opened #main-content { display: block !important; }
+            ` }} />
 
             <div
                 ref={containerRef}
                 className="w-full min-h-screen"
                 dangerouslySetInnerHTML={{ __html: htmlBase }}
                 onClick={handleClick}
+                onSubmit={(e) => e.preventDefault()}
             />
 
             {/* Render any React floating elements / Modals on top */}
