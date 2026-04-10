@@ -12,6 +12,7 @@ interface ThemeWrapperProps {
     onShowMenu: () => void;
     onSubmitRSVP: (data: { status: string; guests: number; code: string }) => Promise<{ success: boolean; message: string }>;
     onSubmitWish: (data: { name: string; message: string }) => Promise<{ success: boolean; message: string }>;
+    onOpenLightbox: (index: number, images: string[]) => void;
     children?: React.ReactNode;
 }
 
@@ -27,6 +28,7 @@ export function ThemeWrapper({
     onShowMenu,
     onSubmitRSVP,
     onSubmitWish,
+    onOpenLightbox,
     children
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -192,6 +194,18 @@ export function ThemeWrapper({
             e.preventDefault();
             setIsPlaying(!isPlaying);
         }
+
+        // --- UNIVERSAL LIGHTBOX (Restricted to #sec-gallery) ---
+        const lbImg = target.closest('#sec-gallery img.lightbox-injection') as HTMLImageElement;
+        if (lbImg) {
+            const galleryContainer = target.closest('#sec-gallery');
+            if (galleryContainer) {
+                const allLbImages = Array.from(galleryContainer.querySelectorAll('img.lightbox-injection')) as HTMLImageElement[];
+                const imageUrls = allLbImages.map(img => img.src);
+                const currentIndex = allLbImages.indexOf(lbImg);
+                onOpenLightbox(currentIndex, imageUrls);
+            }
+        }
     };
 
     return (
@@ -203,6 +217,7 @@ export function ThemeWrapper({
             {/* Persistent Visibility State Overrides using Static CSS */}
             <style dangerouslySetInnerHTML={{ __html: `
                 .is-closed #theme-fab-container { display: none !important; }
+                .is-closed #main-content { display: none !important; }
                 .is-opened #theme-cover { display: none !important; }
                 .is-opened #main-content { display: block !important; }
             ` }} />

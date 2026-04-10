@@ -2206,8 +2206,6 @@ const menuOverlay = document.getElementById('menu-overlay');
 const closeMenu = document.getElementById('close-menu');
 const qrOverlay = document.getElementById('qr-overlay');
 const closeQr = document.getElementById('close-qr');
-const lightbox = document.getElementById('lightbox');
-const closeLightbox = document.getElementById('close-lightbox');
 
 if (btnOpen) btnOpen.addEventListener('click', openInvitation);
 
@@ -2360,7 +2358,7 @@ positionFloatingButtons();
   <div id="content-body">
   
     <!-- SECTION 1: HERO -->
-    <section id="sec-hero" class="section hero-section">
+    <section id="sec-hero" data-menu-label="Sampul" class="section hero-section">
       <div class="hero-bg">
         <div class="hero-overlay"></div>
         <div class="petals-container">
@@ -2398,7 +2396,7 @@ positionFloatingButtons();
     </section>
   
     <!-- SECTION 2: COUPLE INTRO -->
-    <section id="sec-couple" class="section couple-section">
+    <section id="sec-couple" data-menu-label="Mempelai" class="section couple-section">
       <div class="section-header">
         <p class="section-label">Mempelai</p>
         <h2 class="section-title">Perkenalan Pasangan</h2>
@@ -2481,7 +2479,7 @@ positionFloatingButtons();
     </section>
   
     <!-- SECTION TAMBAHAN: COUNTDOWN + KONFIRMASI -->
-    <section id="sec-countdown-rsvp" class="section countdown-rsvp-section">
+    <section id="sec-countdown-rsvp" data-menu-label="Konfirmasi" class="section countdown-rsvp-section">
       <div class="cr-bg"></div>
       <div class="cr-content">
         <p class="section-label light">Hitung Mundur</p>
@@ -2612,7 +2610,7 @@ positionFloatingButtons();
     </section>
   
     <!-- SECTION 5: TIMELINE -->
-    <section id="sec-story" class="section story-section">
+    <section id="sec-story" data-menu-label="Kisah kita" class="section story-section">
       <div class="section-header">
         <p class="section-label">Perjalanan Cinta</p>
         <h2 class="section-title">Kisah Kita</h2>
@@ -2651,13 +2649,22 @@ positionFloatingButtons();
     </section>
   
     <!-- SECTION 6: GALLERY -->
-    <section id="sec-gallery" class="section gallery-section">
+    <section id="sec-gallery" data-menu-label="Galeri" class="section gallery-section">
       <div class="section-header">
         <p class="section-label">Kenangan Indah</p>
         <h2 class="section-title">Galeri Foto</h2>
         <div class="title-ornament">✦</div>
       </div>
       <div class="gallery-grid" id="gallery-grid">
+        {{#each photo_gallery}}
+        <div class="gallery-item {{#if @index == 4}}span2{{/if}}">
+          <div class="gallery-img-container">
+            <img src="{{this.url}}" class="lightbox-injection" alt="Gallery {{ @index }}">
+          </div>
+        </div>
+        {{/each}}
+
+        {{#unless photo_gallery}}
         <div class="gallery-item" data-index="0">
           <div class="gallery-placeholder"><span>Foto 1</span>
             <div class="gallery-overlay-hint"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white"
@@ -2799,7 +2806,7 @@ positionFloatingButtons();
     </section>
   
     <!-- SECTION 9: PENUTUP -->
-    <section id="sec-closing" class="section closing-section">
+    <section id="sec-closing" data-menu-label="Penutup" class="section closing-section">
       <div class="closing-bg">
         <div class="closing-petals">
           <div class="cp cp1"></div>
@@ -2929,22 +2936,7 @@ positionFloatingButtons();
     </div>
   </div>
   
-  <!-- Gallery Lightbox -->
-  <div id="lightbox" class="overlay hidden">
-    <div class="lightbox-panel">
-      <button class="overlay-close lightbox-close" id="close-lightbox">✕</button>
-      <div class="lightbox-img-wrap">
-        <div class="lightbox-placeholder" id="lightbox-img">
-          <span id="lightbox-label">Foto</span>
-        </div>
-      </div>
-      <div class="lightbox-nav">
-        <button id="lb-prev">‹</button>
-        <span id="lb-counter">1 / 6</span>
-        <button id="lb-next">›</button>
-      </div>
-    </div>
-  </div>
+  <!-- Menu Overlay -->
 
 
   <!-- FLOATING ACTION BUTTONS -->

@@ -3,7 +3,7 @@ import '../invitation.css';
 import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
 import type { Wish, InvitationContent, TimelineItem, ImageRecord } from '@/types';
-import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi';
 import { Modal } from '@/shared/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
@@ -46,6 +46,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [tempGuestData, setTempGuestData] = useState({ name: '', category: 'Tamu' });
     const [generatedUninvitedQR, setGeneratedUninvitedQR] = useState<string | null>(null);
     const [isCheckingGuest, setIsCheckingGuest] = useState(false);
+    
+    // Lightbox State
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+    const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0);
 
     // We merge the fetched content with the injected previewData (which takes precedence)
     const activeContent = previewData || data?.content || {};
@@ -134,6 +139,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // Navigation Menu State
     const [sections, setSections] = useState<{ id: string; label: string }[]>([]);
     const [showMenuModal, setShowMenuModal] = useState(false);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(-1);
     const hasFetchedSections = useRef(false);
 
     useEffect(() => {
@@ -155,6 +161,30 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             return () => clearTimeout(timeout);
         }
     }, [isOpened]); // run exactly once after opened
+
+    // Track active section for auto-scroll
+    useEffect(() => {
+        if (!isOpened || sections.length === 0) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const idx = sections.findIndex(s => s.id === entry.target.id);
+                        if (idx !== -1) setActiveSectionIndex(idx);
+                    }
+                });
+            },
+            { threshold: 0.1 }
+        );
+
+        sections.forEach(s => {
+            const el = document.getElementById(s.id);
+            if (el) observer.observe(el);
+        });
+
+        return () => observer.disconnect();
+    }, [isOpened, sections]);
 
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
@@ -297,6 +327,20 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         } finally {
             setWishLoading(false);
         }
+    };
+
+    const openLightbox = (index: number, images: string[]) => {
+        setLightboxImages(images);
+        setCurrentLightboxIndex(index);
+        setIsLightboxOpen(true);
+    };
+
+    const nextLightbox = () => {
+        setCurrentLightboxIndex((prev) => (prev + 1) % lightboxImages.length);
+    };
+
+    const prevLightbox = () => {
+        setCurrentLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
     };
 
     const formatDate = (dateStr: string) => {
@@ -610,6 +654,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 onShowMenu={() => setShowMenuModal(true)}
                 onSubmitRSVP={(data) => handleRSVP(undefined, data)}
                 onSubmitWish={(data) => handleWish(undefined, data)}
+                onOpenLightbox={openLightbox}
             >
                 {guestQrModal}
                 {uninvitedGuestFormModal}
@@ -649,8 +694,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                         {/* Link to Top/Sampul */}
                                         <button
                                             onClick={() => {
-                                                const container = document.getElementById('main-content');
-                                                if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                // Fallbacks for themes that use fixed containers
+                                                const cw1 = document.getElementById('main-content');
+                                                if (cw1) cw1.scrollTo({ top: 0, behavior: 'smooth' });
+                                                const cw2 = document.getElementById('content-body');
+                                                if (cw2) cw2.scrollTo({ top: 0, behavior: 'smooth' });
+                                                
                                                 setShowMenuModal(false);
                                             }}
                                             className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
@@ -658,22 +708,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                             Sampul
                                         </button>
 
-                                        {sections.map(s => (
+                                        {sections.slice(1).map(s => (
                                             <button
                                                 key={s.id}
                                                 onClick={() => {
                                                     const el = document.getElementById(s.id);
-                                                    const container = document.getElementById('main-content');
-                                                    if (el && container) {
-                                                        const containerRect = container.getBoundingClientRect();
-                                                        const targetRect = el.getBoundingClientRect();
-                                                        const relativeTop = targetRect.top - containerRect.top;
-                                                        const scrollTarget = container.scrollTop + relativeTop;
-                                                        
-                                                        container.scrollTo({
-                                                            top: scrollTarget,
-                                                            behavior: 'smooth'
-                                                        });
+                                                    if (el) {
+                                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                                     }
                                                     setShowMenuModal(false);
                                                 }}
@@ -689,6 +730,73 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                     </div>
                                 </div>
                             </div>
+                        )}
+
+                        {/* Universal Lightbox Component */}
+                        {isLightboxOpen && (
+                            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in select-none">
+                                {/* Close Button */}
+                                <button 
+                                    onClick={() => setIsLightboxOpen(false)}
+                                    className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[2002]"
+                                >
+                                    <HiX className="w-8 h-8 md:w-10 md:h-10" />
+                                </button>
+
+                                {/* Images Counter */}
+                                <div className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-light tracking-widest z-[2002]">
+                                    {currentLightboxIndex + 1} / {lightboxImages.length}
+                                </div>
+
+                                {/* Navigation - Left */}
+                                <button 
+                                    onClick={prevLightbox}
+                                    className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
+                                >
+                                    <HiChevronLeft className="w-8 h-8 md:w-12 md:h-12" />
+                                </button>
+
+                                {/* Navigation - Right */}
+                                <button 
+                                    onClick={nextLightbox}
+                                    className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
+                                >
+                                    <HiChevronRight className="w-8 h-8 md:w-12 md:h-12" />
+                                </button>
+
+                                {/* Main Image Container */}
+                                <div className="w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setIsLightboxOpen(false)}>
+                                    <img 
+                                        src={lightboxImages[currentLightboxIndex]} 
+                                        alt="Lightbox" 
+                                        className="max-w-full max-h-full object-contain animate-scale-in"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Universal Scroll Up Button */}
+                        {isOpened && activeSectionIndex >= 1 && (
+                            <button
+                                id="btn-scroll-to-top"
+                                onClick={() => {
+                                    const targetIndex = Math.max(0, activeSectionIndex - 1);
+                                    const targetId = sections[targetIndex]?.id;
+                                    if (targetId) {
+                                        const el = document.getElementById(targetId);
+                                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    } else {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
+                                }}
+                                className="fixed right-6 bottom-24 z-[900] w-12 h-12 flex items-center justify-center bg-[#b89564]/90 hover:bg-[#a68453] text-white rounded-full shadow-lg shadow-[#b89564]/20 backdrop-blur-sm transition-all animate-fade-in hover:scale-105 border border-white/20"
+                                title="Scroll ke Atas"
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
                         )}
                     </ThemeWrapper>
         );
