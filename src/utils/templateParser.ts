@@ -121,6 +121,10 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
                         if (typeof item === 'object' && item !== null) {
                             Object.keys(item).forEach(key => {
                                 itemData[`this.${key}`] = item[key];
+                                // Also allow direct property access for convenience
+                                if (itemData[key] === undefined) {
+                                    itemData[key] = item[key];
+                                }
                             });
                         }
                         return parseTemplate(content, itemData);

@@ -236,44 +236,62 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         }
     };
 
-    const handleRSVP = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!rsvpCode.trim()) return;
+    const handleRSVP = async (e?: React.FormEvent, manualData?: { status: string; guests: number; code: string }) => {
+        if (e) e.preventDefault();
+        
+        const status = manualData?.status || rsvpStatus;
+        const guests = manualData?.guests || rsvpGuests;
+        const code = manualData?.code || rsvpCode;
+
+        if (!code.trim()) return { success: false, message: 'Kode undangan wajib diisi' };
+        
         setRsvpLoading(true);
         setRsvpResult(null);
         try {
             const res = await publicApi.submitRSVP({
                 slug: slug!,
-                invitation_code: rsvpCode.trim(),
-                status: rsvpStatus,
-                number_of_guests: rsvpGuests,
+                invitation_code: code.trim(),
+                status: status,
+                number_of_guests: guests,
             });
-            setRsvpResult({ success: res.success, message: res.message });
+            const result = { success: res.success, message: res.message };
+            setRsvpResult(result);
             if (res.success) setRsvpCode('');
+            return result;
         } catch {
-            setRsvpResult({ success: false, message: 'Failed to submit RSVP' });
+            const errorResult = { success: false, message: 'Gagal mengirim konfirmasi' };
+            setRsvpResult(errorResult);
+            return errorResult;
         } finally {
             setRsvpLoading(false);
         }
     };
 
-    const handleWish = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!wishName.trim() || !wishMessage.trim()) return;
+    const handleWish = async (e?: React.FormEvent, manualData?: { name: string; message: string }) => {
+        if (e) e.preventDefault();
+        
+        const name = manualData?.name || wishName;
+        const message = manualData?.message || wishMessage;
+
+        if (!name.trim() || !message.trim()) return { success: false, message: 'Nama dan pesan wajib diisi' };
+        
         setWishLoading(true);
         try {
             const res = await publicApi.submitWish({
                 slug: slug!,
-                guest_name: wishName.trim(),
-                message: wishMessage.trim(),
+                guest_name: name.trim(),
+                message: message.trim(),
             });
             if (res.success && res.data) {
-                setWishes((prev) => [res.data, ...prev]);
+                const newWish = res.data;
+                setWishes((prev) => [newWish, ...prev]);
                 setWishName('');
                 setWishMessage('');
+                return { success: true, message: 'Ucapan berhasil terkirim!', data: newWish };
             }
+            return { success: false, message: res.message || 'Gagal mengirim ucapan' };
         } catch {
-            // silent fail
+            return { success: false, message: 'Terjadi kesalahan sistem' };
         } finally {
             setWishLoading(false);
         }
@@ -293,14 +311,25 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     };
 
     const timeAgo = (dateStr: string) => {
-        const diff = Date.now() - new Date(dateStr).getTime();
-        const mins = Math.floor(diff / 60000);
-        if (mins < 1) return 'Baru saja';
-        if (mins < 60) return `${mins} menit lalu`;
-        const hours = Math.floor(mins / 60);
-        if (hours < 24) return `${hours} jam lalu`;
-        const days = Math.floor(hours / 24);
-        return `${days} hari lalu`;
+        try {
+            const date = new Date(dateStr);
+            const diff = Date.now() - date.getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'Baru saja';
+            if (mins < 60) return `${mins} menit lalu`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours} jam lalu`;
+            const days = Math.floor(hours / 24);
+            if (days <= 3) return `${days} hari lalu`;
+            
+            return date.toLocaleDateString('id-ID', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            });
+        } catch {
+            return '';
+        }
     };
 
     const getBool = (val: any) => {
@@ -537,6 +566,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             // Wishes variables
             wishes: (wishes || []).map(w => ({
                 ...w,
+                guest_message: w.message, // Support both names
+                guest_comment_time: timeAgo(w.created_at || new Date().toISOString()),
                 guest_initial: w.guest_name ? w.guest_name.charAt(0).toUpperCase() : '?'
             })),
             has_wishes: wishes && wishes.length > 0,
@@ -553,12 +584,20 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
 
+            // Theme State
+            is_opened: isOpened,
+            isPlaying: isPlaying,
+
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
             ...resolvedImages
         };
 
 
         renderedHtml = parseTemplate(renderedHtml, dataContext);
+
+        if (isOpened) {
+            renderedHtml = `<style>#theme-cover{display:none!important}#main-content{display:block!important}</style>${renderedHtml}`;
+        }
 
         return (
             <ThemeWrapper
@@ -574,6 +613,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     else setShowGuestForm(true);
                 }}
                 onShowMenu={() => setShowMenuModal(true)}
+                onSubmitRSVP={(data) => handleRSVP(undefined, data)}
+                onSubmitWish={(data) => handleWish(undefined, data)}
             >
                 {guestQrModal}
                 {uninvitedGuestFormModal}

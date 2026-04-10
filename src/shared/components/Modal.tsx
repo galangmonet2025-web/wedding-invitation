@@ -47,7 +47,10 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
             }}
         >
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
+            <div 
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in cursor-pointer" 
+                onClick={onClose}
+            />
 
             {/* Modal */}
             <div

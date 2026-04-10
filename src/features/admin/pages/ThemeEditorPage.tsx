@@ -22,6 +22,12 @@ export function ThemeEditorPage() {
     const [showDataBinding, setShowDataBinding] = useState(true);
     const [showCover, setShowCover] = useState(true);
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [showPreview, setShowPreview] = useState(() => {
+        const saved = localStorage.getItem('theme-editor-show-preview');
+        return saved !== 'false';
+    });
+    const [isDelayPreview, setIsDelayPreview] = useState(false);
+    const [delaySeconds, setDelaySeconds] = useState(5);
 
     // Form and Editor State
     const [name, setName] = useState('');
@@ -100,6 +106,10 @@ export function ThemeEditorPage() {
     useEffect(() => {
         loadData();
     }, [id]);
+
+    useEffect(() => {
+        localStorage.setItem('theme-editor-show-preview', String(showPreview));
+    }, [showPreview]);
 
     // When the selected preview tenant changes, fetch their real content + images
     const loadTenantPreviewData = useCallback(async (tenantId: string) => {
@@ -291,6 +301,38 @@ export function ThemeEditorPage() {
                 photo_gallery: galleryImgs.length > 0 ? galleryImgs : [
                     { url: dummies[0] }, { url: dummies[1] }, { url: dummies[2] }
                 ],
+                
+                // Wishes / Comments
+                wishes: [
+                    { 
+                        guest_name: 'Bpk. Ridwan', 
+                        name: 'Bpk. Ridwan', 
+                        guest_message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.', 
+                        message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
+                        guest_comment_time: '2 jam lalu', 
+                        created_at: new Date().toISOString(),
+                        guest_initial: 'R' 
+                    },
+                    { 
+                        guest_name: 'Sdr. Andi', 
+                        name: 'Sdr. Andi', 
+                        guest_message: 'Selamat menempuh hidup baru ya!', 
+                        message: 'Selamat menempuh hidup baru ya!',
+                        guest_comment_time: '1 hari lalu', 
+                        created_at: new Date(Date.now() - 86400000).toISOString(),
+                        guest_initial: 'A' 
+                    },
+                    { 
+                        guest_name: 'Ibu Siti', 
+                        name: 'Ibu Siti', 
+                        guest_message: 'Barakallahu lakuma wa baraka alaikuma.', 
+                        message: 'Barakallahu lakuma wa baraka alaikuma.',
+                        guest_comment_time: '13 Maret 2021', 
+                        created_at: '2021-03-13T10:00:00Z',
+                        guest_initial: 'S' 
+                    }
+                ],
+                empty_wishes: false,
             };
 
             // Inject dynamic image type variables (real base64 or dummy fallback)
@@ -322,6 +364,10 @@ export function ThemeEditorPage() {
                     /* Reset body margin for iframe */
                     body { margin: 0; padding: 0; box-sizing: border-box; }
                     ${cssCode}
+                    ${!showCover ? `
+                    #theme-cover { display: none !important; }
+                    #main-content { display: block !important; }
+                    ` : ''}
                 </style>
             </head>
             <body>
@@ -341,6 +387,28 @@ export function ThemeEditorPage() {
                             e.preventDefault();
                             alert("Simulasi: Di halaman publik, ini akan menampilkan Modal QR Code Kehadiran Tamu.");
                         }
+
+                        // Mock Submission Handlers for Preview
+                        if (e.target.closest('#btn-submit-kehadiran')) {
+                            e.preventDefault();
+                            const btn = e.target.closest('#btn-submit-kehadiran');
+                            btn.disabled = true;
+                            const alertBox = document.getElementById('alert-submit-kehadiran');
+                            if (alertBox) alertBox.innerHTML = '<div class="uk-alert uk-alert-success">Simulasi: RSVP Berhasil Terkirim!</div>';
+                        }
+
+                        if (e.target.closest('#btn-submit-ucapan')) {
+                            e.preventDefault();
+                            const btn = e.target.closest('#btn-submit-ucapan');
+                            btn.disabled = true;
+                            const alertBox = document.getElementById('alert-submit-ucapan');
+                            if (alertBox) alertBox.innerHTML = '<div class="uk-alert uk-alert-success">Simulasi: Ucapan Berhasil Terkirim!</div>';
+                        }
+                    });
+
+                    // Prevent any form submission reloads in the preview
+                    document.addEventListener('submit', function(e) {
+                        e.preventDefault();
                     });
 
                     ${!showCover ? `
@@ -350,103 +418,6 @@ export function ThemeEditorPage() {
                         if (btn) btn.click();
                     }, 150);
                     ` : ''}
-                    // Global Floating Action Buttons Simulation
-                    (function(){
-                        const container = document.createElement('div');
-                        container.style.cssText = 'position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:12px;align-items:flex-end;font-family:sans-serif;';
-                        
-                        // Menu Button & Dropdown
-                        const menuWrapper = document.createElement('div');
-                        menuWrapper.style.cssText = 'position:relative;';
-                        
-                        const btnMenu = document.createElement('button');
-                        btnMenu.innerHTML = '☰';
-                        btnMenu.style.cssText = 'width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#fff;color:#D4AF37;border:1px solid #D4AF37;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);font-size:20px;transition:0.3s;';
-                        
-                        const menuList = document.createElement('div');
-                        menuList.style.cssText = 'position:absolute;right:120%;top:0;background:#fff;border:1px solid #D4AF37;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.1);display:none;flex-direction:column;min-width:160px;overflow:hidden;';
-                        
-                        btnMenu.onclick = function() {
-                            if(menuList.style.display === 'none') {
-                                menuList.innerHTML = '';
-                                const secs = document.querySelectorAll('section[data-menu-label]');
-                                if(secs.length > 0) {
-                                  Array.from(secs).forEach(s => {
-                                      const btn = document.createElement('button');
-                                      btn.innerText = s.getAttribute('data-menu-label');
-                                      btn.style.cssText = 'width:100%;text-align:right;padding:12px;background:none;border:none;border-bottom:1px solid #eee;cursor:pointer;color:#333;font-size:14px;';
-                                      btn.onmouseover = () => btn.style.background = '#f9f9f9';
-                                      btn.onmouseout = () => btn.style.background = 'none';
-                                      btn.onclick = () => { s.scrollIntoView({behavior:'smooth'}); menuList.style.display = 'none'; btnMenu.innerHTML = '☰'; };
-                                      menuList.appendChild(btn);
-                                  });
-                                  menuList.style.display = 'flex';
-                                  btnMenu.innerHTML = '✖';
-                                } else {
-                                  alert('Tidak ada section dengan data-menu-label ditemukan. Pastikan Anda sudah Inject Template terbaru.');
-                                }
-                            } else {
-                                menuList.style.display = 'none';
-                                btnMenu.innerHTML = '☰';
-                            }
-                        };
-                        menuWrapper.appendChild(btnMenu);
-                        menuWrapper.appendChild(menuList);
-                        container.appendChild(menuWrapper);
-                        
-                        // QR Button
-                        const btnQr = document.createElement('button');
-                        btnQr.innerHTML = '📱';
-                        btnQr.title = 'QR Code';
-                        btnQr.style.cssText = 'width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#fff;color:#D4AF37;border:1px solid #D4AF37;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);font-size:20px;';
-                        btnQr.onclick = () => alert("Simulasi: Membuka Modal QR Code Kehadiran Tamu");
-                        container.appendChild(btnQr);
-                        
-                        ${activeBacksound ? `
-                        const btnMusic = document.createElement('button');
-                        btnMusic.innerHTML = '🎵';
-                        btnMusic.title = 'Play/Pause Music';
-                        btnMusic.style.cssText = 'width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#fff;color:#D4AF37;border:1px solid #D4AF37;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);font-size:20px;';
-                        
-                        let playing = false;
-                        let audioObj = null; let ytIframe = null;
-                        const musicLink = '${activeBacksound}';
-                        const ytMatch = musicLink.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:.*v=|.*\\/|.*embed\\/))([^&?\\n]+)/);
-                        
-                        if (ytMatch && ytMatch[1]) {
-                            ytIframe = document.createElement('iframe');
-                            ytIframe.width = "0"; ytIframe.height = "0";
-                            ytIframe.style.display = "none";
-                            ytIframe.allow = "autoplay";
-                            ytIframe.src = "https://www.youtube.com/embed/" + ytMatch[1] + "?autoplay=0&loop=1&playlist=" + ytMatch[1] + "&enablejsapi=1";
-                            document.body.appendChild(ytIframe);
-                            
-                            btnMusic.onclick = function() {
-                                if(playing) {
-                                    ytIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-                                    btnMusic.innerHTML = '🎵';
-                                    btnMusic.style.opacity = '1';
-                                } else {
-                                    ytIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-                                    btnMusic.innerHTML = '⏸';
-                                    btnMusic.style.opacity = '0.7';
-                                }
-                                playing = !playing;
-                            };
-                        } else {
-                            audioObj = new Audio(musicLink);
-                            audioObj.loop = true;
-                            btnMusic.onclick = function() {
-                                if(playing) { audioObj.pause(); btnMusic.innerHTML = '🎵'; btnMusic.style.opacity = '1'; }
-                                else { audioObj.play(); btnMusic.innerHTML = '⏸'; btnMusic.style.opacity = '0.7'; }
-                                playing = !playing;
-                            };
-                        }
-                        container.appendChild(btnMusic);
-                        ` : ''}
-                        
-                        document.body.appendChild(container);
-                    })();
                 </script>
             </body>
             </html>
@@ -461,9 +432,9 @@ export function ThemeEditorPage() {
     useEffect(() => {
         const timer = setTimeout(() => {
             updatePreview();
-        }, 800);
+        }, isDelayPreview ? delaySeconds * 1000 : 800);
         return () => clearTimeout(timer);
-    }, [htmlCode, cssCode, jsCode, previewTenant, previewImages, previewImagesB64, showDataBinding, showCover]);
+    }, [htmlCode, cssCode, jsCode, previewTenant, previewImages, previewImagesB64, showDataBinding, showCover, isDelayPreview, delaySeconds]);
 
     const handleEditorWillMount = (monaco: any) => {
         monaco.editor.defineTheme('monokai', {
@@ -550,6 +521,12 @@ export function ThemeEditorPage() {
                             >
                                 Focus Mode 🔲
                             </button>
+                            <button
+                                onClick={() => setShowPreview(!showPreview)}
+                                className="ml-2 px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors"
+                            >
+                                {showPreview ? 'Hide Preview 👁️' : 'Show Preview 👁️'}
+                            </button>
                         </div>
                         <p className="text-xs text-gray-500">{name || 'Belum ada nama'}</p>
                     </div>
@@ -585,7 +562,7 @@ export function ThemeEditorPage() {
             {/* Main Editor Split Area */}
             <div className={`flex flex-col lg:flex-row min-h-0 ${isFocusMode ? 'fixed inset-0 z-[100] bg-white dark:bg-gray-900 flex-1' : 'flex-1'}`}>
                 {/* Left Panel (Editor / Settings) */}
-                <div className="w-full lg:w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div className={`w-full ${showPreview ? 'lg:w-1/2' : 'lg:w-full'} flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-300`}>
                     <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 justify-between items-center">
                         <div className="flex flex-1">
                             <button
@@ -695,6 +672,48 @@ export function ThemeEditorPage() {
                                     {imageTypes.length === 0 && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
                                 </div>
                             </div>
+
+                            {/* Editor Configurations */}
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+                                    <HiOutlineRefresh className="w-4 h-4" /> Editor Configuration
+                                </h3>
+                                <div className="space-y-4">
+                                    <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Delay Update Preview</span>
+                                            <span className="text-xs text-gray-500">Wait before refreshing the live preview</span>
+                                        </div>
+                                        <div className="relative inline-flex items-center">
+                                            <input type="checkbox" className="sr-only peer" checked={isDelayPreview} onChange={() => setIsDelayPreview(!isDelayPreview)} />
+                                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                        </div>
+                                    </label>
+                                    
+                                    {isDelayPreview && (
+                                        <div className="pl-4 border-l-2 border-gold-200 dark:border-gold-800 animate-in slide-in-from-top-1 duration-200">
+                                            <label className="block text-xs font-medium text-gray-500 mb-1">Delay (Detik) - Min 5s</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    min="5"
+                                                    value={delaySeconds}
+                                                    onChange={e => {
+                                                        const val = parseInt(e.target.value);
+                                                        setDelaySeconds(isNaN(val) ? 5 : val);
+                                                    }}
+                                                    onBlur={e => {
+                                                        const val = parseInt(e.target.value);
+                                                        if (isNaN(val) || val < 5) setDelaySeconds(5);
+                                                    }}
+                                                    className="input-field w-24"
+                                                />
+                                                <span className="text-xs text-gray-400">detik</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -744,7 +763,8 @@ export function ThemeEditorPage() {
                 </div>
 
                 {/* Right Panel (Live Preview) */}
-                <div className="w-full lg:w-1/2 flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
+                {showPreview && (
+                    <div className="w-full lg:w-1/2 flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
                     <div className="flex-none px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                             <HiOutlineEye className="w-4 h-4" /> Live Preview
@@ -802,6 +822,7 @@ export function ThemeEditorPage() {
                         </div>
                     </div>
                 </div>
+                )}
             </div>
             {/* Guide Modal */}
             <ThemeGuideModal

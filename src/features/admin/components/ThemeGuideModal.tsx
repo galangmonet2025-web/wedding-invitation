@@ -122,9 +122,10 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         { tag: '{{nama_lokasi_kirim_hadiah_offline}}', desc: 'Nama Penerima/Lokasi Hadiah', value: 'Rumah Mempelai', type: 'String', code: '<span>{{nama_lokasi_kirim_hadiah_offline}}</span>' },
         { tag: '{{alamat_lokasi_kirim_hadiah_offline}}', desc: 'Alamat Lengkap Hadiah', value: 'Jl. Merdeka No 1', type: 'String', code: '<p>{{alamat_lokasi_kirim_hadiah_offline}}</p>' },
         { tag: '{{map_kirim_hadiah_offline}}', desc: 'URL Google Maps Kirim Hadiah', value: 'https://maps.app.goo.gl/...', type: 'URL String', code: '<a href="{{map_kirim_hadiah_offline}}">Buka Peta</a>' },
-        { tag: '{{#each wishes}}', desc: 'Block Looping Data Ucapan & Doa', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each wishes}}\n  <p>{{this.guest_name}}: {{this.message}}</p>\n{{/each}}' },
+        { tag: '{{#each wishes}}', desc: 'Block Looping Data Ucapan & Doa', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each wishes}}\n  <p>{{this.guest_name}}: {{this.guest_message}}</p>\n{{/each}}' },
         { tag: '{{this.guest_name}}', desc: 'Nama Pengucap (Dalam Loop wishes)', value: 'Bpk. Ridwan', type: 'String', code: '<span>{{this.guest_name}}</span>' },
-        { tag: '{{this.message}}', desc: 'Pesan/Ucapan (Dalam Loop wishes)', value: 'Semoga langgeng...', type: 'String', code: '<p>{{this.message}}</p>' },
+        { tag: '{{this.guest_message}}', desc: 'Pesan/Ucapan (Dalam Loop wishes)', value: 'Semoga langgeng...', type: 'String', code: '<p>{{this.guest_message}}</p>' },
+        { tag: '{{this.guest_comment_time}}', desc: 'Waktu Ucapan (Contoh: 1 jam lalu / 13 Maret 2021)', value: '2 jam lalu', type: 'String', code: '<span>{{this.guest_comment_time}}</span>' },
         { tag: '{{this.guest_initial}}', desc: 'Abjad Awal Nama (Dalam Loop wishes)', value: 'B', type: 'String', code: '<div>{{this.guest_initial}}</div>' },
     ];
 
@@ -251,10 +252,40 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                             <p className="mb-3">
                                 Tulis <em>vanilla</em> Javascript pada tab "JS Code". Script ini akan di-<i>wrap</i> dan di-eksekusi setelah DOM selesai meload HTML dan CSS template Anda. Code JS dijamin berjalan secara asinkron tanpa merusak backend situs ini.
                             </p>
-                            <p className="bg-gray-900 text-green-400 font-mono text-xs p-3 rounded-lg">
-                                // Contoh Animasi scroll <br />
-                                UIkit.scroll('.wedding-navbar'); <br />
-                                console.log("Tema siap!");
+                        </section>
+
+                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                        <section>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                <span className="text-green-600">📝</span> Fitur Form Otomatis (RSVP & Ucapan)
+                            </h3>
+                            <p className="mb-4">
+                                Anda tidak perlu menulis logic <code>fetch</code> sendiri. Cukup gunakan ID pada elemen input dan <strong>ID khusus pada tombol action</strong> Anda, maka sistem akan menjalankan fungsi pengiriman dan validasi secara otomatis.
+                            </p>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="font-bold text-sm text-blue-600 dark:text-blue-400 mb-2">1. Konfirmasi Kehadiran (RSVP)</div>
+                                    <div className="text-xs space-y-1">
+                                        <li>Tombol Trigger: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="btn-submit-kehadiran"</code></li>
+                                        <li>Container Alert: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="alert-submit-kehadiran"</code></li>
+                                        <li>Input Field: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="rsvp-code"</code>, <code className="bg-gray-200 dark:bg-gray-900 px-1">id="rsvp-status"</code>, <code className="bg-gray-200 dark:bg-gray-900 px-1">id="rsvp-guests"</code></li>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="font-bold text-sm text-blue-600 dark:text-blue-400 mb-2">2. Kirim Ucapan & Doa</div>
+                                    <div className="text-xs space-y-1">
+                                        <li>Tombol Trigger: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="btn-submit-ucapan"</code></li>
+                                        <li>Container Alert: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="alert-submit-ucapan"</code></li>
+                                        <li>Input Field: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="wish-name"</code>, <code className="bg-gray-200 dark:bg-gray-900 px-1">id="wish-message"</code></li>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="mt-4 text-xs italic text-gray-500">
+                                Info: Saat submit berhasil, tombol trigger akan otomatis menjadi <code>disabled</code>. Pesan status akan muncul di dalam Container Alert menggunakan class <code>uk-text-success</code> atau <code>uk-text-danger</code>.
                             </p>
                         </section>
                     </>

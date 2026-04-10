@@ -10,6 +10,8 @@ interface ThemeWrapperProps {
     setIsPlaying: (val: boolean) => void;
     onShowQR: () => void;
     onShowMenu: () => void;
+    onSubmitRSVP: (data: { status: string; guests: number; code: string }) => Promise<{ success: boolean; message: string }>;
+    onSubmitWish: (data: { name: string; message: string }) => Promise<{ success: boolean; message: string }>;
     children?: React.ReactNode;
 }
 
@@ -23,6 +25,8 @@ export function ThemeWrapper({
     setIsPlaying,
     onShowQR,
     onShowMenu,
+    onSubmitRSVP,
+    onSubmitWish,
     children
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -89,9 +93,83 @@ export function ThemeWrapper({
             if (el) el.remove();
         };
     }, [jsBase, isOpened]); // Re-run js execution if isOpened changes? Only run once ideally, but the user HTML might manipulate DOM on open.
+ 
+    // Audio logic removed for brevity in this chunk, keeping it in the file
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
+
+        // --- SUBMIT RSVP (Kehadiran) ---
+        if (target.closest('#btn-submit-kehadiran')) {
+            e.preventDefault();
+            const btn = target.closest('#btn-submit-kehadiran') as HTMLButtonElement;
+            if (btn.disabled) return;
+
+            const container = containerRef.current;
+            const alertEl = container?.querySelector('#alert-submit-kehadiran');
+            const status = (container?.querySelector('#rsvp-status') as HTMLSelectElement | HTMLInputElement)?.value || 'confirmed';
+            const guests = parseInt((container?.querySelector('#rsvp-guests') as HTMLInputElement)?.value || '1');
+            const code = (container?.querySelector('#rsvp-code') as HTMLInputElement)?.value || '';
+
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
+            
+            if (alertEl) alertEl.innerHTML = '';
+
+            const res = await onSubmitRSVP({ status, guests, code });
+
+            btn.innerHTML = originalText;
+            
+            if (alertEl) {
+                alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
+                alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
+            }
+
+            if (res.success) {
+                btn.disabled = true; // Stay disabled on success as requested
+            } else {
+                btn.disabled = false;
+            }
+        }
+
+        // --- SUBMIT WISH (Ucapan) ---
+        if (target.closest('#btn-submit-ucapan')) {
+            e.preventDefault();
+            const btn = target.closest('#btn-submit-ucapan') as HTMLButtonElement;
+            if (btn.disabled) return;
+
+            const container = containerRef.current;
+            const alertEl = container?.querySelector('#alert-submit-ucapan');
+            const name = (container?.querySelector('#wish-name') as HTMLInputElement)?.value || '';
+            const message = (container?.querySelector('#wish-message') as HTMLTextAreaElement)?.value || '';
+
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
+
+            if (alertEl) alertEl.innerHTML = '';
+
+            const res = await onSubmitWish({ name, message });
+
+            btn.innerHTML = originalText;
+            
+            if (alertEl) {
+                alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
+                alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
+            }
+
+            if (res.success) {
+                btn.disabled = true; // Stay disabled on success as requested
+                // Clear inputs
+                const activeName = container?.querySelector('#wish-name') as HTMLInputElement;
+                const activeMsg = container?.querySelector('#wish-message') as HTMLTextAreaElement;
+                if (activeName) activeName.value = '';
+                if (activeMsg) activeMsg.value = '';
+            } else {
+                btn.disabled = false;
+            }
+        }
         if (target.closest('#btn-open-invitation')) {
             setIsOpened(true);
             setIsPlaying(true);
@@ -114,6 +192,14 @@ export function ThemeWrapper({
         <div className="w-full min-h-screen theme-wrapper relative bg-white">
             {cssBase && (
                 <style dangerouslySetInnerHTML={{ __html: cssBase }} />
+            )}
+
+            {/* Persistent Visibility State Overrides */}
+            {isOpened && (
+                <style dangerouslySetInnerHTML={{ __html: `
+                    #theme-cover { display: none !important; }
+                    #main-content { display: block !important; }
+                ` }} />
             )}
 
             <div

@@ -153,7 +153,7 @@ export const PREMIUM_THEME_PAYLOAD = {
         }
     }, 100);
 
-    // 2. RSVP Logic - Toggle guest count and submit
+    // 2. RSVP UI Logic - Toggle guest count display
     const rsvpStatus = document.getElementById('rsvp-status');
     const guestWrapper = document.getElementById('rsvp-guest-count-wrapper');
     if(rsvpStatus && guestWrapper) {
@@ -166,109 +166,15 @@ export const PREMIUM_THEME_PAYLOAD = {
         });
     }
 
-    // Ambil URL hash (karena aplikasi ini menggunakan HashRouter)
-    // Contoh hash: #/tenant-slug?guestid=xxx
-    const hashPath = window.location.hash.split('?')[0]; 
-    const urlParts = hashPath.split('/');
-    const slug = urlParts[urlParts.length - 1];
-    
-    // Karena VITE_API_URL hanya ada di .env (tidak exposed global), backend form harus ditembak ke API_URL.
-    // Untungnya, tema GAS VITE_API_URL statis.
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwwACKPA1WtsEvRFU60oVDm8Edk6j3LQJIPbnV-gIZ0gBQHCqzMRcXm-L_XlmQA7y25/exec";
-
-    const rsvpForm = document.getElementById('custom-rsvp-form');
-    if(rsvpForm) {
-        rsvpForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-rsvp');
-            const alertBox = document.getElementById('rsvp-alert');
-            btn.innerHTML = 'Mengirim...';
-            btn.disabled = true;
-
-            const payload = {
-                action: 'submitPublicRSVP',
-                slug: slug,
-                invitation_code: document.getElementById('rsvp-code').value.trim().toUpperCase(),
-                status: document.getElementById('rsvp-status').value,
-                number_of_guests: parseInt(document.getElementById('rsvp-guests').value) || 1
-            };
-
-            fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'text/plain' }
-            }).then(r => r.json()).then(res => {
-                if(res.success) {
-                    alertBox.innerHTML = '<span class="uk-text-success">RSVP berhasil dikirim. Terima kasih!</span>';
-                    rsvpForm.reset();
-                } else {
-                    alertBox.innerHTML = '<span class="uk-text-danger">'+ (res.message || 'Gagal mengirim RSVP.') +'</span>';
-                }
-            }).catch(e => {
-                alertBox.innerHTML = '<span class="uk-text-danger">Terjadi kesalahan koneksi.</span>';
-            }).finally(() => {
-                btn.innerHTML = 'Kirim RSVP';
-                btn.disabled = false;
-            });
-        });
-    }
-
-    // 3. WISHES form logic
-    const wishForm = document.getElementById('custom-wish-form');
-    if(wishForm) {
-        wishForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-wish');
-            const alertBox = document.getElementById('wish-alert');
-            btn.innerHTML = 'Kirim...';
-            btn.disabled = true;
-
-            const name = document.getElementById('wish-name').value;
-            const message = document.getElementById('wish-message').value;
-
-            const payload = {
-                action: 'submitPublicWish',
-                slug: slug,
-                guest_name: name,
-                message: message
-            };
-
-            fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'text/plain' }
-            }).then(r => r.json()).then(res => {
-                if(res.success) {
-                    alertBox.innerHTML = '<span class="uk-text-success">Ucapan berhasil dikirim!</span>';
-                    wishForm.reset();
-                    // Append new wish to top
-                    const list = document.getElementById('wishes-list');
-                    if(list) {
-                        const noWishes = document.getElementById('wishes-loading');
-                        if (noWishes && noWishes.innerText !== 'Memuat ucapan...') noWishes.style.display = 'none';
-                        const wHtml = '<div class="wish-card uk-animation-slide-top"><div class="wish-card-header"><div class="avatar-circle">'+name.charAt(0).toUpperCase()+'</div><span>'+name+'</span></div><p class="uk-margin-small-top uk-text-small">'+message+'</p></div>';
-                        list.insertAdjacentHTML('afterbegin', wHtml);
-                    }
-                } else {
-                    alertBox.innerHTML = '<span class="uk-text-danger">'+ (res.message || 'Gagal mengirim ucapan.') +'</span>';
-                }
-            }).catch(e => {
-                alertBox.innerHTML = '<span class="uk-text-danger">Terjadi kesalahan koneksi.</span>';
-            }).finally(() => {
-                btn.innerHTML = 'Kirim Ucapan / Doa';
-                btn.disabled = false;
-            });
-        });
-    }
-
-    // Initial wishes fetch is removed; data is now injected natively into HTML via {{wishes}}
+    // 3. COPY TO CLIPBOARD Helper
+    // wishes fetch is removed; data is now injected natively into HTML via {{wishes}}
 
     // --- NAVIGATION MODAL LOGIC REMOVED: Now handled by React backend ---
 })();
 `,
     html_template: `<div class="premium-theme text-gray-800 bg-gray-50">
     <div id="theme-cover" class="uk-position-cover uk-flex uk-flex-center uk-flex-middle uk-background-cover uk-light"
-        style="z-index: 100; position: fixed; background-image: url('{{photo_hero_cover}}');">
+        style="z-index: 100; position: fixed; background-image: url('{{photo_hero_cover}}'); {{#if is_opened}}display: none;{{/if}}">
         <div class="uk-position-cover" style="background-color: rgba(0,0,0,0.6);"></div>
         <div class="uk-position-relative uk-text-center uk-animation-fade uk-padding">
             <h4 class="uk-margin-remove-bottom" style="font-family: 'Playfair Display', serif; color: #D4AF37;">The
@@ -290,7 +196,7 @@ export const PREMIUM_THEME_PAYLOAD = {
     </div>
 
     <!-- MAIN CONTENT -->
-    <div id="main-content" style="display: none; height: 100vh; overflow-y: auto;">
+    <div id="main-content" style="{{#if is_opened}}display: block;{{else}}display: none;{{/if}} height: 100vh; overflow-y: auto;">
 
         <!-- SECTION 1: HERO LANDING -->
         <section id="sec-hero"
@@ -388,7 +294,7 @@ export const PREMIUM_THEME_PAYLOAD = {
                         <h3 style="font-family: 'Playfair Display', serif;">Konfirmasi Kehadiran</h3>
                         <p class="uk-text-small">Mohon konfirmasi kehadiran Anda untuk memudahkan pengaturan acara.</p>
 
-                        <form id="custom-rsvp-form" class="uk-form-stacked uk-text-left uk-margin-top">
+                        <form id="form-rsvp" class="uk-form-stacked uk-text-left uk-margin-top">
                             <div class="uk-margin">
                                 <label class="uk-form-label">Kode Undangan</label>
                                 <div class="uk-form-controls">
@@ -411,9 +317,9 @@ export const PREMIUM_THEME_PAYLOAD = {
                                 </div>
                             </div>
                             <div class="uk-margin-top">
-                                <button type="submit" class="uk-button uk-button-primary uk-width-1-1" style="background-color: #D4AF37; border:none;" id="btn-submit-rsvp">Kirim RSVP</button>
+                                <button class="uk-button uk-button-primary uk-width-1-1" style="background-color: #D4AF37; border:none;" id="btn-submit-kehadiran">Kirim RSVP</button>
                             </div>
-                            <div id="rsvp-alert" class="uk-margin-small-top uk-text-small uk-text-center"></div>
+                            <div id="alert-submit-kehadiran" class="uk-margin-small-top uk-text-small uk-text-center"></div>
                         </form>
                     </div>
 
@@ -528,7 +434,7 @@ export const PREMIUM_THEME_PAYLOAD = {
                 <h2 style="font-family: 'Playfair Display', serif; color: #D4AF37;">Ucapan & Doa</h2>
                 <p>Berikan ucapan manis dan doa restu untuk pernikahan kami.</p>
 
-                <form id="custom-wish-form"
+                <form id="form-wish"
                     class="uk-margin-medium-top uk-text-left uk-card uk-card-default uk-card-body"
                     style="border-radius: 12px; border-top: 4px solid #D4AF37;">
                     <div class="uk-margin">
@@ -537,8 +443,8 @@ export const PREMIUM_THEME_PAYLOAD = {
                     <div class="uk-margin">
                         <textarea class="uk-textarea" id="wish-message" rows="4" placeholder="Tulis ucapan dan doa terbaik Anda..." required></textarea>
                     </div>
-                    <button type="submit" class="uk-button uk-button-primary uk-width-1-1" style="background-color: #D4AF37; border:none;" id="btn-submit-wish">Kirim Ucapan / Doa</button>
-                    <div id="wish-alert" class="uk-margin-small-top uk-text-small uk-text-center"></div>
+                    <button class="uk-button uk-button-primary uk-width-1-1" style="background-color: #D4AF37; border:none;" id="btn-submit-ucapan">Kirim Ucapan / Doa</button>
+                    <div id="alert-submit-ucapan" class="uk-margin-small-top uk-text-small uk-text-center"></div>
                 </form>
 
                 <!-- List of Wishes (Loaded dynamically via Template Variables) -->
@@ -554,7 +460,7 @@ export const PREMIUM_THEME_PAYLOAD = {
                             <div class="avatar-circle">{{this.guest_initial}}</div>
                             <span>{{this.guest_name}}</span>
                         </div>
-                        <p class="uk-margin-small-top uk-text-small">{{this.message}}</p>
+                        <p class="uk-margin-small-top uk-text-small">{{this.guest_message}}</p>
                     </div>
                     {{/each}}
                 </div>
