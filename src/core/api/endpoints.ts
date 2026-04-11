@@ -21,6 +21,7 @@ import type {
     Theme,
     CreateThemeRequest,
     UpdateThemeRequest,
+    WebsiteConfig,
 } from '@/types';
 
 // =============================================
@@ -249,6 +250,22 @@ export const invitationContentApi = {
 };
 
 // =============================================
+// WEBSITE CONFIG API
+// =============================================
+
+export const websiteConfigApi = {
+    getConfig: async (): Promise<ApiResponse<WebsiteConfig>> => {
+        const res = await apiClient.post('', { action: 'getWebsiteConfig' });
+        return res.data;
+    },
+
+    updateConfig: async (data: Partial<WebsiteConfig>): Promise<ApiResponse<WebsiteConfig>> => {
+        const res = await apiClient.post('', { action: 'updateWebsiteConfig', ...data });
+        return res.data;
+    },
+};
+
+// =============================================
 // PUBLIC INVITATION API (No auth required)
 // Uses plain axios to avoid auth interceptor triggering CORS preflight
 // =============================================
@@ -281,6 +298,11 @@ export const publicApi = {
 
     checkGuest: async (data: { slug: string; name: string }) => {
         const res = await publicClient.post('', JSON.stringify({ action: 'checkPublicGuest', ...data }));
+        return res.data;
+    },
+
+    getWebsiteConfig: async () => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'getWebsiteConfig' }));
         return res.data;
     },
 };

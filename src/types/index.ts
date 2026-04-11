@@ -364,3 +364,25 @@ export interface InvitationContent {
     love_stories?: { title: string; date: string; content: string }[];
 }
 
+// =============================================
+// Website Configuration
+// =============================================
+
+export interface WebsiteConfig {
+    id?: string;
+    site_name: string;
+    site_url: string;
+    site_logo: string;
+    site_instagram: string;
+    site_tiktok: string;
+    site_youtube: string;
+    contact_email: string;
+    contact_whatsapp: string;
+    tagline: string;
+    site_description: string;
+    site_code_html: string;
+    site_code_css: string;
+    site_code_js: string;
+    primary_color: string;
+    accent_color: string;
+}

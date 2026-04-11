@@ -43,6 +43,7 @@ export function DashboardLayout() {
             { to: '/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
             { to: '/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
             { to: '/themes', icon: HiOutlineColorSwatch, label: 'Manage Themes', roles: ['superadmin'] },
+            { to: '/website-config', icon: HiOutlineCog, label: 'Website Config', roles: ['superadmin'] },
             { to: '/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
         ]
         : [

@@ -18,6 +18,9 @@ import { InvitationContentPage } from '@/features/invitation/pages/InvitationCon
 import { ManageThemesPage } from '@/features/admin/pages/ManageThemesPage';
 import { ThemeEditorPage } from '@/features/admin/pages/ThemeEditorPage';
 import { Navigate } from 'react-router-dom';
+import { WebsiteConfigPage } from '@/features/admin/pages/WebsiteConfigPage';
+import { LandingPage } from '@/features/landing/pages/LandingPage';
+
 
 function UnauthorizedPage() {
     return (
@@ -51,124 +54,138 @@ function NotFoundPage() {
 
 export const router = createHashRouter([
     {
-        path: '/login',
-        element: <LoginPage />,
-    },
-    {
-        path: '/register',
-        element: <RegisterPage />,
-    },
-    {
-        path: '/impersonate',
-        element: <ImpersonatePage />,
-    },
-    {
-        path: '/invitation/:slug',
-        element: <InvitationPage />,
-    },
-    {
         path: '/',
-        element: (
-            <ProtectedRoute>
-                <DashboardLayout />
-            </ProtectedRoute>
-        ),
         children: [
+
             {
-                index: true,
-                element: <Navigate to="/dashboard" replace />,
+                path: 'login',
+                element: <LoginPage />,
             },
             {
-                path: 'dashboard',
-                element: <DashboardPage />,
+                path: 'register',
+                element: <RegisterPage />,
             },
             {
-                path: 'global-dashboard',
+                path: 'impersonate',
+                element: <ImpersonatePage />,
+            },
+            {
+                path: 'invitation/:slug',
+                element: <InvitationPage />,
+            },
+            {
+                path: 'home',
+                element: <LandingPage />,
+            },
+            {
+                path: '',
                 element: (
-                    <ProtectedRoute allowedRoles={['superadmin']}>
-                        <GlobalDashboardPage />
+                    <ProtectedRoute>
+                        <DashboardLayout />
                     </ProtectedRoute>
                 ),
-            },
-            {
-                path: 'guests',
-                element: <GuestPage />,
-            },
-            {
-                path: 'staff',
-                element: (
-                    <ProtectedRoute allowedRoles={['tenant_admin']}>
-                        <StaffPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'scanner',
-                element: (
-                    <ProtectedRoute allowedRoles={['tenant_admin', 'staff']}>
-                        <ScannerPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'tenants',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin']}>
-                        <TenantPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'themes',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin']}>
-                        <ManageThemesPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'themes/editor/:id',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin']}>
-                        <ThemeEditorPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'wishes',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
-                        <WishesPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'gifts',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
-                        <GiftsPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'activity',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
-                        <ActivityPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'invitation-content',
-                element: (
-                    <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
-                        <InvitationContentPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: 'unauthorized',
-                element: <UnauthorizedPage />,
+                children: [
+                    {
+                        path: 'dashboard',
+                        element: <DashboardPage />,
+                    },
+                    {
+                        path: 'global-dashboard',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <GlobalDashboardPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'guests',
+                        element: <GuestPage />,
+                    },
+                    {
+                        path: 'staff',
+                        element: (
+                            <ProtectedRoute allowedRoles={['tenant_admin']}>
+                                <StaffPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'scanner',
+                        element: (
+                            <ProtectedRoute allowedRoles={['tenant_admin', 'staff']}>
+                                <ScannerPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'tenants',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <TenantPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'themes',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <ManageThemesPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'themes/editor/:id',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <ThemeEditorPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'website-config',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <WebsiteConfigPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'wishes',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <WishesPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'gifts',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <GiftsPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'activity',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <ActivityPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'invitation-content',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <InvitationContentPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'unauthorized',
+                        element: <UnauthorizedPage />,
+                    },
+                ],
             },
         ],
     },

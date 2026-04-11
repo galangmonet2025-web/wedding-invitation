@@ -54,11 +54,11 @@ function handleRequest(e, method) {
         var blob = file.getBlob();
         var base64 = Utilities.base64Encode(blob.getBytes());
         var mimeType = blob.getContentType();
-        // Return JSON with base64
-        return ResponseHelper.success({
-            mimeType: mimeType,
-            base64: base64
-        }, "Image fetched successfully");
+        
+        // Return raw data URI string so it can be used directly in some contexts
+        // or just the base64 for the ProxyImage component to handle.
+        return ContentService.createTextOutput("data:" + mimeType + ";base64," + base64)
+          .setMimeType(ContentService.MimeType.TEXT);
       } catch (err) {
         return ResponseHelper.error("Image not found", 404);
       }
@@ -71,7 +71,7 @@ function handleRequest(e, method) {
     }
 
     // Public endpoints (no auth required)
-    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'checkPublicGuest'];
+    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'checkPublicGuest', 'getWebsiteConfig'];
     if (publicActions.indexOf(action) !== -1) {
       return routeAction(action, payload, null);
     }
@@ -221,6 +221,13 @@ function routeAction(action, payload, auth) {
       return PublicService.submitWish(payload);
     case 'checkPublicGuest':
       return PublicService.checkGuest(payload);
+
+    // Website Config
+    case 'getWebsiteConfig':
+      return WebsiteConfigService.getConfig();
+    case 'updateWebsiteConfig':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return WebsiteConfigService.updateConfig(auth, payload);
 
     default:
       return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -1751,6 +1758,74 @@ var ThemeService = {
 // SETUP FUNCTION - Run this once to initialize spreadsheet
 // =====================================================================
 
+// =====================================================================
+// WEBSITE CONFIG SERVICE
+// =====================================================================
+
+var WebsiteConfigService = {
+  getConfig: function() {
+    var all = DB.getAll('WebsiteConfig');
+    var config = all.length > 0 ? all[0] : this.getDefaultConfig();
+    return ResponseHelper.success(config, 'Website config retrieved');
+  },
+
+  updateConfig: function(auth, payload) {
+    PermissionService.requireRole(auth, ['superadmin']);
+    
+    // Create a sanitized version of the payload for general fields
+    var sanitized = {};
+    var codeFields = ['site_code_html', 'site_code_css', 'site_code_js', 'site_logo'];
+    
+    for (var key in payload) {
+      if (codeFields.indexOf(key) !== -1) {
+        // Don't sanitize code or URLs to prevent breaking them
+        sanitized[key] = payload[key];
+      } else {
+        sanitized[key] = Validator.sanitize(payload[key]);
+      }
+    }
+    
+    var all = DB.getAll('WebsiteConfig');
+    var existing = all.length > 0 ? all[0] : null;
+
+    if (existing) {
+      if (!existing.id) {
+        DB.getSheet('WebsiteConfig').getRange(2, 1).setValue(DB.generateId());
+        existing = DB.getAll('WebsiteConfig')[0];
+      }
+      DB.update('WebsiteConfig', existing.id, sanitized);
+      ActivityLogService.log(auth.tenant_id, auth.user_id, 'update_website_config');
+      return ResponseHelper.success(DB.getAll('WebsiteConfig')[0], 'Website config updated');
+    } else {
+      sanitized.id = DB.generateId();
+      DB.insert('WebsiteConfig', sanitized);
+      ActivityLogService.log(auth.tenant_id, auth.user_id, 'create_website_config');
+      return ResponseHelper.success(sanitized, 'Website config created');
+    }
+  },
+
+  getDefaultConfig: function() {
+    return {
+      site_name: 'Wedding SaaS',
+      site_url: '',
+      site_logo: '',
+      site_instagram: '',
+      site_tiktok: '',
+      site_youtube: '',
+      contact_email: '',
+      contact_whatsapp: '',
+      tagline: 'Momen Spesial, Undangan Berkelas',
+      site_description: 'Platform pembuatan undangan pernikahan digital terbaik.',
+      site_code_html: '',
+      site_code_css: '',
+      site_code_js: '',
+      primary_color: '#C6A769',
+      accent_color: '#1A1A2E'
+    };
+  }
+};
+
+
 function setupSpreadsheet() {
   var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
@@ -1780,7 +1855,12 @@ function setupSpreadsheet() {
     ],
     'Images': ['id', 'tenant_id', 'image_type', 'file_name', 'drive_file_id', 'drive_url', 'cdn_url', 'width', 'height', 'size_kb', 'created_at'],
     'ImageGallery': ['id', 'tenant_id', 'image_id', 'sort_order', 'created_at'],
-    'ThemeImageRequirements': ['id', 'theme_id', 'image_type', 'required', 'max_images', 'aspect_ratio']
+    'ThemeImageRequirements': ['id', 'theme_id', 'image_type', 'required', 'max_images', 'aspect_ratio'],
+    'WebsiteConfig': [
+      'id', 'site_name', 'site_url', 'site_logo', 'site_instagram', 'site_tiktok', 'site_youtube', 
+      'contact_email', 'contact_whatsapp', 'tagline', 'site_description', 
+      'site_code_html', 'site_code_css', 'site_code_js', 'primary_color', 'accent_color'
+    ]
   };
 
   for (var name in sheets) {

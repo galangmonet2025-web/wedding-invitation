@@ -62,14 +62,13 @@ export function ProxyImage({ src, ...props }: ProxyImageProps) {
             }
 
             setLoading(true);
-            // Fetch proxy JSON
+            // Fetch proxy raw data URI
             fetch(src)
-                .then(res => res.json())
+                .then(res => res.text())
                 .then(data => {
-                    if (data.success && data.data?.base64 && isMounted) {
-                        const base64Src = `data:${data.data.mimeType};base64,${data.data.base64}`;
-                        setCachedImage(src, base64Src);
-                        setImgSrc(base64Src);
+                    if (data.startsWith('data:image') && isMounted) {
+                        setCachedImage(src, data);
+                        setImgSrc(data);
                     }
                 })
                 .catch(err => console.error("Failed to load proxied image:", err))
@@ -105,11 +104,10 @@ export async function fetchProxyImageBase64(src: string): Promise<string> {
 
     try {
         const res = await fetch(src);
-        const data = await res.json();
-        if (data.success && data.data?.base64) {
-            const base64Src = `data:${data.data.mimeType};base64,${data.data.base64}`;
-            setCachedImage(src, base64Src);
-            return base64Src;
+        const data = await res.text();
+        if (data.startsWith('data:image')) {
+            setCachedImage(src, data);
+            return data;
         }
     } catch (err) {
         console.error("Failed to fetch proxy image:", err);
