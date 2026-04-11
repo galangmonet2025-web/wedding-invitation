@@ -13,6 +13,7 @@ export function ManageThemesPage() {
     const [themes, setThemes] = useState<Theme[]>([]);
     const [loading, setLoading] = useState(true);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const [guideTab, setGuideTab] = useState<'guide' | 'variables' | 'logic'>('guide');
 
     const fetchThemes = async () => {
         setLoading(true);
@@ -161,7 +162,12 @@ export function ManageThemesPage() {
                 />
             </div>
 
-            <ThemeGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+            <ThemeGuideModal 
+                isOpen={isGuideOpen} 
+                onClose={() => setIsGuideOpen(false)} 
+                activeTab={guideTab}
+                onTabChange={setGuideTab}
+            />
         </div>
     );
 }

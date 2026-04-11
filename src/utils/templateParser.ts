@@ -108,7 +108,7 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
                 const arr = data[expression];
                 if (Array.isArray(arr)) {
                     replacement = arr.map((item, index) => {
-                        const itemData = { 
+                        const itemData: Record<string, any> = { 
                             ...data, 
                             this: item, 
                             '@index': index, 
@@ -120,10 +120,10 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
                         };
                         if (typeof item === 'object' && item !== null) {
                             Object.keys(item).forEach(key => {
-                                itemData[`this.${key}`] = item[key];
+                                itemData[`this.${key}`] = (item as any)[key];
                                 // Also allow direct property access for convenience
                                 if (itemData[key] === undefined) {
-                                    itemData[key] = item[key];
+                                    itemData[key] = (item as any)[key];
                                 }
                             });
                         }
