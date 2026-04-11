@@ -288,7 +288,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             });
             const result = { success: res.success, message: res.message };
             setRsvpResult(result);
-            if (res.success) setRsvpCode('');
+            if (res.success) {
+                setRsvpCode('');
+                // Update local guest status so variables like {{flag_konfirmasi_kehadiran_dari_tamu}} are updated immediately
+                if (data) {
+                    setData({
+                        ...data,
+                        guest: data.guest 
+                            ? { ...data.guest, status: status, number_of_guests: guests } 
+                            : res.data // If it was a general link, the API might return the identified guest
+                    });
+                }
+            }
             return result;
         } catch {
             const errorResult = { success: false, message: 'Gagal mengirim konfirmasi' };
@@ -341,6 +352,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     const prevLightbox = () => {
         setCurrentLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
+    };
+
+    const scrollToSection = (index: number) => {
+        if (index < 0 || index >= sections.length) return;
+        const targetId = sections[index].id;
+        const el = document.getElementById(targetId);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
     };
 
     const formatDate = (dateStr: string) => {
@@ -1227,6 +1245,41 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 >
                     <HiOutlineQrcode className="w-6 h-6" />
                 </button>
+            )}
+
+            {/* SECTION NAVIGATION (Floating Right) */}
+            {isOpened && sections.length > 0 && (
+                <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3 animate-fade-in">
+                    {/* Only show up/top if past first section */}
+                    {activeSectionIndex >= 1 && (
+                        <>
+                            <button
+                                onClick={() => scrollToSection(0)}
+                                className="p-2 bg-gold-600 text-white rounded-full shadow-lg hover:bg-gold-700 transition-all hover:scale-110 active:scale-95"
+                                title="Kembali ke Atas"
+                            >
+                                <HiChevronLeft className="w-5 h-5 rotate-90" />
+                            </button>
+                            <button
+                                onClick={() => scrollToSection(activeSectionIndex - 1)}
+                                className="p-2 bg-white/90 backdrop-blur-sm text-gold-600 rounded-full shadow-md border border-gold-100 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95"
+                                title="Seksi Sebelumnya"
+                            >
+                                <HiChevronLeft className="w-5 h-5 rotate-90" />
+                            </button>
+                        </>
+                    )}
+                    
+                    {activeSectionIndex < sections.length - 1 && (
+                        <button
+                            onClick={() => scrollToSection(activeSectionIndex + 1)}
+                            className="p-2 bg-white/90 backdrop-blur-sm text-gold-600 rounded-full shadow-md border border-gold-100 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95"
+                            title="Seksi Selanjutnya"
+                        >
+                            <HiChevronRight className="w-5 h-5 rotate-90" />
+                        </button>
+                    )}
+                </div>
             )}
 
             {guestQrModal}

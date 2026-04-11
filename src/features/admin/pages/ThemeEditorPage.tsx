@@ -26,8 +26,7 @@ export function ThemeEditorPage() {
         const saved = localStorage.getItem('theme-editor-show-preview');
         return saved !== 'false';
     });
-    const [isDelayPreview, setIsDelayPreview] = useState(false);
-    const [delaySeconds, setDelaySeconds] = useState(5);
+
 
     // Form and Editor State
     const [name, setName] = useState('');
@@ -42,6 +41,16 @@ export function ThemeEditorPage() {
 
     const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
     const [activeTabPanel, setActiveTabPanel] = useState<'editor' | 'settings'>('editor');
+    const [guideActiveTab, setGuideActiveTab] = useState<'guide' | 'variables' | 'logic'>('guide');
+
+    // Refs for code to keep updatePreview stable
+    const htmlCodeRef = useRef(htmlCode);
+    const cssCodeRef = useRef(cssCode);
+    const jsCodeRef = useRef(jsCode);
+
+    useEffect(() => { htmlCodeRef.current = htmlCode; }, [htmlCode]);
+    useEffect(() => { cssCodeRef.current = cssCode; }, [cssCode]);
+    useEffect(() => { jsCodeRef.current = jsCode; }, [jsCode]);
 
     // Preview iframe
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -190,7 +199,7 @@ export function ThemeEditorPage() {
         }
     };
 
-    const updatePreview = () => {
+    const updatePreview = useCallback(() => {
         if (!iframeRef.current) return;
 
         const doc = iframeRef.current.contentWindow?.document;
@@ -199,7 +208,7 @@ export function ThemeEditorPage() {
         // Dummy tenant data mapped just like in InvitationPage
         const t = previewTenant || { bride_name: 'Fiona', groom_name: 'Galang', wedding_date: '2026-10-20' };
 
-        let finalHtml = htmlCode;
+        let finalHtml = htmlCodeRef.current;
         let activeBacksound = '';
 
         if (showDataBinding) {
@@ -341,7 +350,7 @@ export function ThemeEditorPage() {
             });
 
             activeBacksound = mockData.link_backsound_music || '';
-            finalHtml = parseTemplate(htmlCode, mockData);
+            finalHtml = parseTemplate(htmlCodeRef.current, mockData);
         }
 
         // Construct HTML content to render inside iframe
@@ -363,7 +372,7 @@ export function ThemeEditorPage() {
                 <style>
                     /* Reset body margin for iframe */
                     body { margin: 0; padding: 0; box-sizing: border-box; }
-                    ${cssCode}
+                    ${cssCodeRef.current}
                     ${!showCover ? `
                     #theme-cover { display: none !important; }
                     #main-content { display: block !important; }
@@ -376,7 +385,7 @@ export function ThemeEditorPage() {
                 <script>
                     // Execute JS template content
                     try {
-                        ${jsCode}
+                        ${jsCodeRef.current}
                     } catch(e) {
                         console.error("Theme JS Error:", e);
                     }
@@ -389,20 +398,65 @@ export function ThemeEditorPage() {
                         }
 
                         // Mock Submission Handlers for Preview
-                        if (e.target.closest('#btn-submit-kehadiran')) {
+                        if (target.closest('#btn-submit-kehadiran')) {
                             e.preventDefault();
-                            const btn = e.target.closest('#btn-submit-kehadiran');
+                            const btn = target.closest('#btn-submit-kehadiran');
+                            if (btn.disabled) return;
+                            
+                            const originalText = btn.innerHTML;
                             btn.disabled = true;
-                            const alertBox = document.getElementById('alert-submit-kehadiran');
-                            if (alertBox) alertBox.innerHTML = '<div class="uk-alert uk-alert-success">Simulasi: RSVP Berhasil Terkirim!</div>';
+                            btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
+                            
+                            setTimeout(() => {
+                                btn.innerHTML = originalText;
+                                btn.disabled = true;
+                                const alertBox = document.getElementById('alert-submit-kehadiran');
+                                if (alertBox) {
+                                    alertBox.className = 'uk-margin-small-top uk-text-small uk-text-success';
+                                    alertBox.innerHTML = '<i class="ri-checkbox-circle-line"></i> Simulasi: RSVP Berhasil Terkirim!';
+                                }
+                            }, 1000);
                         }
 
-                        if (e.target.closest('#btn-submit-ucapan')) {
+                        if (target.closest('#btn-submit-ucapan')) {
                             e.preventDefault();
-                            const btn = e.target.closest('#btn-submit-ucapan');
+                            const btn = target.closest('#btn-submit-ucapan');
+                            if (btn.disabled) return;
+
+                            const originalText = btn.innerHTML;
                             btn.disabled = true;
-                            const alertBox = document.getElementById('alert-submit-ucapan');
-                            if (alertBox) alertBox.innerHTML = '<div class="uk-alert uk-alert-success">Simulasi: Ucapan Berhasil Terkirim!</div>';
+                            btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
+
+                            setTimeout(() => {
+                                btn.innerHTML = originalText;
+                                btn.disabled = true;
+                                const alertBox = document.getElementById('alert-submit-ucapan');
+                                if (alertBox) {
+                                    alertBox.className = 'uk-margin-small-top uk-text-small uk-text-success';
+                                    alertBox.innerHTML = '<i class="ri-checkbox-circle-line"></i> Simulasi: Ucapan Berhasil Terkirim!';
+                                }
+                                // Clear inputs in simulation
+                                const name = document.getElementById('wish-name');
+                                const msg = document.getElementById('wish-message');
+                                if (name) name.value = '';
+                                if (msg) msg.value = '';
+                            }, 1000);
+                        }
+                    });
+
+                    // Auto-disable rsvp-guests on decline (Universal mock logic)
+                    document.addEventListener('input', function(e) {
+                        if (e.target.id === 'rsvp-status') {
+                            const guestsEl = document.getElementById('rsvp-guests');
+                            if (guestsEl) {
+                                if (e.target.value === 'declined') {
+                                    guestsEl.value = '0';
+                                    guestsEl.disabled = true;
+                                } else {
+                                    guestsEl.disabled = false;
+                                    if (guestsEl.value === '0') guestsEl.value = '1';
+                                }
+                            }
                         }
                     });
 
@@ -426,15 +480,28 @@ export function ThemeEditorPage() {
         doc.open();
         doc.write(iframeContent);
         doc.close();
-    };
+    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes]);
 
-    // Auto update preview when code changes (debounced)
+    // Auto-update preview when data finishing loading (initial load or tenant switch)
     useEffect(() => {
-        const timer = setTimeout(() => {
+        if (!loading && !loadingPreview) {
             updatePreview();
-        }, isDelayPreview ? delaySeconds * 1000 : 800);
-        return () => clearTimeout(timer);
-    }, [htmlCode, cssCode, jsCode, previewTenant, previewImages, previewImagesB64, showDataBinding, showCover, isDelayPreview, delaySeconds]);
+        }
+    }, [loading, loadingPreview, updatePreview]);
+
+    // Keyboard Shortcut (CTRL+S) for manual preview update
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                updatePreview();
+                toast.success('Preview Updated', { id: 'preview-update', duration: 1500 });
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [updatePreview]);
 
     const handleEditorWillMount = (monaco: any) => {
         monaco.editor.defineTheme('monokai', {
@@ -461,6 +528,13 @@ export function ThemeEditorPage() {
                 'editorIndentGuide.background': '#464741',
                 'editorIndentGuide.activeBackground': '#767771',
             }
+        });
+    };
+
+    const handleEditorDidMount = (editor: any, monaco: any) => {
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            updatePreview();
+            toast.success('Preview Updated', { id: 'preview-update', duration: 1500 });
         });
     };
 
@@ -595,130 +669,90 @@ export function ThemeEditorPage() {
                         )}
                     </div>
 
-                    {activeTabPanel === 'settings' && (
-                        <div className="p-6 space-y-4 overflow-y-auto">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Tema *</label>
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    className="input-field"
-                                    placeholder="Contoh: Gold Ivy Template"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
-                                <select
-                                    value={planType}
-                                    onChange={e => setPlanType(e.target.value as PlanType)}
-                                    className="input-field"
-                                >
-                                    <option value="basic">Basic</option>
-                                    <option value="pro">Pro</option>
-                                    <option value="premium">Premium</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preview Image URL</label>
-                                <input
-                                    type="text"
-                                    value={previewImage}
-                                    onChange={e => setPreviewImage(e.target.value)}
-                                    className="input-field"
-                                    placeholder="https://..."
-                                />
-                                {previewImage && <img src={previewImage} alt="Preview" className="mt-2 h-32 w-auto rounded-lg object-cover border border-gray-200" />}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>
-                                <p className="text-xs text-gray-500 mb-2">Tambahkan nama variabel gambar untuk diupload tenant (contoh: <code>hero_cover</code>)</p>
-                                <div className="flex gap-2 mb-3">
+                    <div className="flex-1 flex flex-col min-h-0 relative">
+                        {/* Settings Panel */}
+                        <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 ${activeTabPanel === 'settings' ? 'block' : 'hidden'}`}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Tema *</label>
                                     <input
                                         type="text"
-                                        value={newImageType}
-                                        onChange={e => setNewImageType(e.target.value)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        className="input-field"
+                                        placeholder="Contoh: Gold Ivy Template"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
+                                    <select
+                                        value={planType}
+                                        onChange={e => setPlanType(e.target.value as PlanType)}
+                                        className="input-field"
+                                    >
+                                        <option value="basic">Basic</option>
+                                        <option value="pro">Pro</option>
+                                        <option value="premium">Premium</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preview Image URL</label>
+                                    <input
+                                        type="text"
+                                        value={previewImage}
+                                        onChange={e => setPreviewImage(e.target.value)}
+                                        className="input-field"
+                                        placeholder="https://..."
+                                    />
+                                    {previewImage && <img src={previewImage} alt="Preview" className="mt-2 h-32 w-auto rounded-lg object-cover border border-gray-200" />}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>
+                                    <p className="text-xs text-gray-500 mb-2">Tambahkan nama variabel gambar untuk diupload tenant (contoh: <code>hero_cover</code>)</p>
+                                    <div className="flex gap-2 mb-3">
+                                        <input
+                                            type="text"
+                                            value={newImageType}
+                                            onChange={e => setNewImageType(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
+                                                    if (val && !imageTypes.includes(val)) {
+                                                        setImageTypes([...imageTypes, val]);
+                                                        setNewImageType('');
+                                                    }
+                                                }
+                                            }}
+                                            placeholder="hero_cover"
+                                            className="input-field"
+                                        />
+                                        <button
+                                            onClick={() => {
                                                 const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
                                                 if (val && !imageTypes.includes(val)) {
                                                     setImageTypes([...imageTypes, val]);
                                                     setNewImageType('');
                                                 }
-                                            }
-                                        }}
-                                        placeholder="hero_cover"
-                                        className="input-field"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
-                                            if (val && !imageTypes.includes(val)) {
-                                                setImageTypes([...imageTypes, val]);
-                                                setNewImageType('');
-                                            }
-                                        }}
-                                        className="btn-primary"
-                                    >Tambah</button>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {imageTypes.map(it => (
-                                        <span key={it} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-100 text-gold-800 border border-gold-200">
-                                            {it}
-                                            <button onClick={() => setImageTypes(imageTypes.filter(i => i !== it))} className="text-gold-600 hover:text-gold-900">&times;</button>
-                                        </span>
-                                    ))}
-                                    {imageTypes.length === 0 && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
-                                </div>
-                            </div>
-
-                            {/* Editor Configurations */}
-                            <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
-                                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
-                                    <HiOutlineRefresh className="w-4 h-4" /> Editor Configuration
-                                </h3>
-                                <div className="space-y-4">
-                                    <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Delay Update Preview</span>
-                                            <span className="text-xs text-gray-500">Wait before refreshing the live preview</span>
-                                        </div>
-                                        <div className="relative inline-flex items-center">
-                                            <input type="checkbox" className="sr-only peer" checked={isDelayPreview} onChange={() => setIsDelayPreview(!isDelayPreview)} />
-                                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
-                                        </div>
-                                    </label>
-                                    
-                                    {isDelayPreview && (
-                                        <div className="pl-4 border-l-2 border-gold-200 dark:border-gold-800 animate-in slide-in-from-top-1 duration-200">
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Delay (Detik) - Min 5s</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="number"
-                                                    min="5"
-                                                    value={delaySeconds}
-                                                    onChange={e => {
-                                                        const val = parseInt(e.target.value);
-                                                        setDelaySeconds(isNaN(val) ? 5 : val);
-                                                    }}
-                                                    onBlur={e => {
-                                                        const val = parseInt(e.target.value);
-                                                        if (isNaN(val) || val < 5) setDelaySeconds(5);
-                                                    }}
-                                                    className="input-field w-24"
-                                                />
-                                                <span className="text-xs text-gray-400">detik</span>
-                                            </div>
-                                        </div>
-                                    )}
+                                            }}
+                                            className="btn-primary"
+                                        >Tambah</button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {imageTypes.map(it => (
+                                            <span key={it} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-100 text-gold-800 border border-gold-200">
+                                                {it}
+                                                <button onClick={() => setImageTypes(imageTypes.filter(i => i !== it))} className="text-gold-600 hover:text-gold-900">&times;</button>
+                                            </span>
+                                        ))}
+                                        {imageTypes.length === 0 && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    {activeTabPanel === 'editor' && (
-                        <div className="flex-1 flex flex-col min-h-0 bg-[#1e1e1e]">
+                        {/* Editor Panel */}
+                        <div className={`flex-1 flex flex-col min-h-0 bg-[#1e1e1e] ${activeTabPanel === 'editor' ? 'flex' : 'hidden'}`}>
                             {/* Editor Tabs */}
                             <div className="flex bg-[#2d2d2d]">
                                 {(['html', 'css', 'js'] as const).map(tab => (
@@ -737,6 +771,7 @@ export function ThemeEditorPage() {
                                     height="100%"
                                     theme="monokai"
                                     beforeMount={handleEditorWillMount}
+                                    onMount={handleEditorDidMount}
                                     path={`index.${activeTab === 'js' ? 'javascript' : activeTab}`}
                                     defaultLanguage={activeTab === 'js' ? 'javascript' : activeTab}
                                     value={activeTab === 'html' ? htmlCode : activeTab === 'css' ? cssCode : jsCode}
@@ -759,15 +794,23 @@ export function ThemeEditorPage() {
                                 />
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Right Panel (Live Preview) */}
                 {showPreview && (
                     <div className="w-full lg:w-1/2 flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
                     <div className="flex-none px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <div className="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                             <HiOutlineEye className="w-4 h-4" /> Live Preview
+                            <button 
+                                onClick={() => updatePreview()}
+                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom"
+                                title="Refresh Preview (CTRL+S)"
+                            >
+                                <HiOutlineRefresh className="w-4 h-4" />
+                            </button>
+                            <span className="text-[10px] text-gray-400 font-normal hidden sm:inline-block">Press <kbd className="font-sans px-1 bg-gray-100 border rounded">Ctrl+S</kbd> to update</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan Halaman Cover Depan">
@@ -830,6 +873,8 @@ export function ThemeEditorPage() {
                 onClose={() => setIsGuideOpen(false)}
                 previewTenant={previewTenant}
                 imageTypes={imageTypes}
+                activeTab={guideActiveTab}
+                onTabChange={setGuideActiveTab}
             />
         </div>
     );

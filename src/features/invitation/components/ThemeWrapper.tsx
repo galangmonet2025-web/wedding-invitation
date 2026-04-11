@@ -227,6 +227,23 @@ export function ThemeWrapper({
                 className="w-full min-h-screen"
                 dangerouslySetInnerHTML={{ __html: htmlBase }}
                 onClick={handleClick}
+                onInput={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.id === 'rsvp-status' || target.closest('#rsvp-status')) {
+                        const statusEl = (target.id === 'rsvp-status' ? target : target.closest('#rsvp-status')) as HTMLSelectElement | HTMLInputElement;
+                        const container = containerRef.current;
+                        const guestsEl = container?.querySelector('#rsvp-guests') as HTMLInputElement;
+                        if (guestsEl) {
+                            if (statusEl.value === 'declined') {
+                                guestsEl.value = '0';
+                                guestsEl.disabled = true;
+                            } else {
+                                guestsEl.disabled = false;
+                                if (guestsEl.value === '0') guestsEl.value = '1';
+                            }
+                        }
+                    }
+                }}
                 onSubmit={(e) => e.preventDefault()}
             />
 

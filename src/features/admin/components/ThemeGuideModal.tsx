@@ -7,10 +7,11 @@ interface ThemeGuideModalProps {
     onClose: () => void;
     previewTenant?: Tenant | null;
     imageTypes?: string[];
+    activeTab: 'guide' | 'variables' | 'logic';
+    onTabChange: (tab: 'guide' | 'variables' | 'logic') => void;
 }
 
-export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [] }: ThemeGuideModalProps) {
-    const [activeTab, setActiveTab] = useState<'guide' | 'variables' | 'logic'>('guide');
+export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [], activeTab, onTabChange }: ThemeGuideModalProps) {
     const [copiedTag, setCopiedTag] = useState<string | null>(null);
 
     const copyToClipboard = useCallback((tag: string) => {
@@ -139,19 +140,19 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
             <div className="flex border-b border-gray-200 dark:border-gray-700 mt-2 mb-4">
                 <button
                     className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'guide' ? 'border-gold-500 text-gold-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('guide')}
+                    onClick={() => onTabChange('guide')}
                 >
                     📚 Panduan Dasar
                 </button>
                 <button
                     className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'variables' ? 'border-gold-500 text-gold-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('variables')}
+                    onClick={() => onTabChange('variables')}
                 >
                     🏷️ Variabel Tema (Live)
                 </button>
                 <button
                     className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'logic' ? 'border-gold-500 text-gold-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('logic')}
+                    onClick={() => onTabChange('logic')}
                 >
                     ⚙️ Panduan Logika & Looping
                 </button>
