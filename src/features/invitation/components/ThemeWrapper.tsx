@@ -102,7 +102,23 @@ export function ThemeWrapper({
         };
     }, [jsBase, isOpened, htmlBase]); // Re-run js execution if isOpened or htmlBase changes
  
-    // Audio logic removed for brevity in this chunk, keeping it in the file
+    // Sync music icon state for themes injected via dangerouslySetInnerHTML
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const musicBtnIcon = container.querySelector('#btn-toggle-music i');
+        if (musicBtnIcon) {
+            if (isPlaying) {
+                // Change to pause icon when playing
+                musicBtnIcon.className = 'ri-pause-circle-line';
+                musicBtnIcon.classList.add('uk-animation-stroke'); // Add a subtle animation if using UIkit
+            } else {
+                // Change back to music/play icon when paused
+                musicBtnIcon.className = 'ri-music-2-line';
+            }
+        }
+    }, [isPlaying, htmlBase]); // Re-run when playing state OR html content changes
 
     const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
