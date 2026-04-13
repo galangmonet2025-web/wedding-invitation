@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import '../invitation.css';
 import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
@@ -52,26 +52,31 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
     const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0);
 
-    // We merge the fetched content with the injected previewData (which takes precedence)
-    const activeContent = previewData || data?.content || {};
+    // Memoized core data to prevent reference changes every second during countdown updates
+    const activeContent = useMemo(() => 
+        previewData || data?.content || {} as Partial<InvitationContent>
+    , [previewData, data?.content]);
 
-    // Parse Timeline if exists
-    let timeline: TimelineItem[] = [];
-    if (activeContent.timeline_kisah) {
+    const timeline = useMemo(() => {
+        if (!activeContent.timeline_kisah) return [] as TimelineItem[];
         try {
-            timeline = JSON.parse(activeContent.timeline_kisah);
-        } catch { }
-    }
-
-    const { tenant } = data || {
-        // Demo fallback for previewing without fetching a tenant
-        tenant: {
-            bride_name: 'Fiona',
-            groom_name: 'Galang',
-            wedding_date: '2026-10-20',
-            domain_slug: 'demo'
+            return JSON.parse(activeContent.timeline_kisah) as TimelineItem[];
+        } catch {
+            return [] as TimelineItem[];
         }
-    };
+    }, [activeContent.timeline_kisah]);
+
+    const { tenant } = useMemo(() => {
+        if (data) return { tenant: data.tenant };
+        return {
+            tenant: {
+                bride_name: 'Fiona',
+                groom_name: 'Galang',
+                wedding_date: '2026-10-20',
+                domain_slug: 'demo'
+            }
+        };
+    }, [data]);
 
     // Audio State
     const [isPlaying, setIsPlaying] = useState(false);
@@ -407,26 +412,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         return img?.cdn_url || '';
     };
 
-    // LOADING
-    if (loading) {
-        return (
-            <div className="inv-page inv-loading">
-                <div className="inv-spinner" />
-                <p>Memuat undangan...</p>
-            </div>
-        );
-    }
 
-    // ERROR
-    if (error || (!data && !previewData)) {
-        return (
-            <div className="inv-page inv-error">
-                <div className="inv-error-icon">💌</div>
-                <h2>Undangan Tidak Ditemukan</h2>
-                <p>{error || 'Link undangan tidak valid.'}</p>
-            </div>
-        );
-    }
 
     const guestQrModal = data?.guest ? (
         <Modal
@@ -567,104 +553,147 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         </Modal>
     );
 
-    // THEME RENDERING
+    // THEME RENDERING - HOOKS MUST BE TOP LEVEL
     const activeTheme = data?.theme;
-    if (activeTheme?.html_template) {
-        let renderedHtml = activeTheme.html_template;
 
-        // Build replacements dictionary as a context object
-        const dataContext: Record<string, any> = {
-            bride_name: tenant.bride_name,
-            groom_name: tenant.groom_name,
-            wedding_date: formatDate(tenant.wedding_date),
-            tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
-            jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
-            nama_lokasi_akad: activeContent.nama_lokasi_akad || '',
-            keterangan_lokasi_akad: activeContent.keterangan_lokasi_akad || '',
-            akad_map: activeContent.akad_map || '',
-            tanggal_resepsi: formatDate(activeContent.wedding_date || tenant.wedding_date),
-            jam_resepsi: `${activeContent.jam_awal_resepsi || ''} - ${activeContent.jam_akhir_resepsi || 'Selesai'}`,
-            nama_lokasi_resepsi: activeContent.nama_lokasi_resepsi || '',
-            keterangan_lokasi_resepsi: activeContent.keterangan_lokasi_resepsi || '',
-            resepsi_map: activeContent.resepsi_map || '',
-            nama_bapak_laki_laki: activeContent.nama_bapak_laki_laki || '',
-            nama_ibu_laki_laki: activeContent.nama_ibu_laki_laki || '',
-            nama_bapak_perempuan: activeContent.nama_bapak_perempuan || '',
-            nama_ibu_perempuan: activeContent.nama_ibu_perempuan || '',
-            ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
-            ig_perempuan: activeContent.account_media_sosial_perempuan || '',
-            guest_name: data?.guest?.name || 'Tamu Undangan',
-            nama_tamu: data?.guest?.name || 'Tamu Undangan',
-            kode_undangan: data?.guest?.invitation_code || '',
-            is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
-            flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
-            kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
-            kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
-            quote: activeContent.custom_kalimat_1 || '',
-            bank_1: activeContent.nama_bank_1 || '',
-            rek_1: activeContent.nomor_rekening_bank_1 || '',
-            nama_rek_1: activeContent.nama_rekening_bank_1 || '',
-            bank_2: activeContent.nama_bank_2 || '',
-            rek_2: activeContent.nomor_rekening_bank_2 || '',
-            nama_rek_2: activeContent.nama_rekening_bank_2 || '',
-            flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
-            timeline_kisah: timeline,
-            tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
-            flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
-            flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
-            flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
-            is_link_umum_and_not_for_spesific_guest: !data?.guest,
+    // Build replacements dictionary as a context object
+    const dataContext: Record<string, any> = useMemo(() => ({
+        bride_name: tenant.bride_name,
+        groom_name: tenant.groom_name,
+        wedding_date: formatDate(tenant.wedding_date),
+        tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
+        jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
+        nama_lokasi_akad: activeContent.nama_lokasi_akad || '',
+        keterangan_lokasi_akad: activeContent.keterangan_lokasi_akad || '',
+        akad_map: activeContent.akad_map || '',
+        tanggal_resepsi: formatDate(activeContent.wedding_date || tenant.wedding_date),
+        jam_resepsi: `${activeContent.jam_awal_resepsi || ''} - ${activeContent.jam_akhir_resepsi || 'Selesai'}`,
+        nama_lokasi_resepsi: activeContent.nama_lokasi_resepsi || '',
+        keterangan_lokasi_resepsi: activeContent.keterangan_lokasi_resepsi || '',
+        resepsi_map: activeContent.resepsi_map || '',
+        nama_bapak_laki_laki: activeContent.nama_bapak_laki_laki || '',
+        nama_ibu_laki_laki: activeContent.nama_ibu_laki_laki || '',
+        nama_bapak_perempuan: activeContent.nama_bapak_perempuan || '',
+        nama_ibu_perempuan: activeContent.nama_ibu_perempuan || '',
+        ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
+        ig_perempuan: activeContent.account_media_sosial_perempuan || '',
+        guest_name: data?.guest?.name || 'Tamu Undangan',
+        nama_tamu: data?.guest?.name || 'Tamu Undangan',
+        kode_undangan: data?.guest?.invitation_code || '',
+        is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
+        flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
+        kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
+        kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
+        quote: activeContent.custom_kalimat_1 || '',
+        bank_1: activeContent.nama_bank_1 || '',
+        rek_1: activeContent.nomor_rekening_bank_1 || '',
+        nama_rek_1: activeContent.nama_rekening_bank_1 || '',
+        bank_2: activeContent.nama_bank_2 || '',
+        rek_2: activeContent.nomor_rekening_bank_2 || '',
+        nama_rek_2: activeContent.nama_rekening_bank_2 || '',
+        flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
+        timeline_kisah: timeline,
+        tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
+        flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
+        flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
+        flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
+        is_link_umum_and_not_for_spesific_guest: !data?.guest,
 
-            // Advanced features 
-            has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
-            has_story: getBool(activeContent.is_fitur_cerita),
-            live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
-                url: activeContent.link_live_streaming || '',
-                platform: activeContent.platform_live_streaming || 'YouTube'
-            } : null,
-            galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
-                .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
-            love_stories: activeContent.love_stories || [],
+        // Advanced features 
+        has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
+        has_story: getBool(activeContent.is_fitur_cerita),
+        live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
+            url: activeContent.link_live_streaming || '',
+            platform: activeContent.platform_live_streaming || 'YouTube'
+        } : null,
+        galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
+            .filter(img => img.image_type === 'gallery')
+            .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
+        love_stories: activeContent.love_stories || [],
 
-            // Wishes variables
-            wishes: (wishes || []).map(w => ({
-                ...w,
-                guest_message: w.message, // Support both names
-                guest_comment_time: timeAgo(w.created_at || new Date().toISOString()),
-                guest_initial: w.guest_name ? w.guest_name.charAt(0).toUpperCase() : '?'
-            })),
-            has_wishes: wishes && wishes.length > 0,
-            empty_wishes: !wishes || wishes.length === 0,
+        // Wishes variables
+        wishes: (wishes || []).map(w => ({
+            ...w,
+            guest_message: w.message, // Support both names
+            guest_comment_time: timeAgo(w.created_at || new Date().toISOString()),
+            guest_initial: w.guest_name ? w.guest_name.charAt(0).toUpperCase() : '?'
+        })),
+        has_wishes: wishes && wishes.length > 0,
+        empty_wishes: !wishes || wishes.length === 0,
 
-            // === Variabel Foto Standar ===
-            photo_hero_cover: resolvedImages['hero_cover'] || getImageUrl('hero_cover'),
-            photo_groom_photo: resolvedImages['groom_photo'] || getImageUrl('groom_photo'),
-            photo_bride_photo: resolvedImages['bride_photo'] || getImageUrl('bride_photo'),
-            photo_background: resolvedImages['background'] || getImageUrl('background'),
-            photo_closing: resolvedImages['closing'] || getImageUrl('closing'),
-            photo_story_photo: resolvedImages['story_photo'] || getImageUrl('story_photo'),
-            photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
-                .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
+        // === Variabel Foto Standar ===
+        photo_hero_cover: resolvedImages['hero_cover'] || getImageUrl('hero_cover'),
+        photo_groom_photo: resolvedImages['groom_photo'] || getImageUrl('groom_photo'),
+        photo_bride_photo: resolvedImages['bride_photo'] || getImageUrl('bride_photo'),
+        photo_background: resolvedImages['background'] || getImageUrl('background'),
+        photo_closing: resolvedImages['closing'] || getImageUrl('closing'),
+        photo_story_photo: resolvedImages['story_photo'] || getImageUrl('story_photo'),
+        photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
+            .filter(img => img.image_type === 'gallery')
+            .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
 
-            // Dynamic theme image variables - inject resolved base64 or CDN URLs
-            ...resolvedImages
+        // Dynamic theme image variables - inject resolved base64 or CDN URLs
+        ...resolvedImages
+    }), [tenant, activeContent, data, timeline, wishes, resolvedImages]);
+
+    // Memoize the rendered HTML to prevent re-parsing and re-injecting DOM nodes
+    // every second when the countdown state updates.
+    const finalHtml = useMemo(() => {
+        if (!activeTheme?.html_template) return '';
+        
+        // Static/Initial Countdown Values for the first render
+        // These will be updated live by ThemeWrapper's system script
+        const diff = Math.max(0, new Date(tenant.wedding_date).getTime() - Date.now());
+        const staticCountdown = {
+            days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+            hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+            minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+            seconds: Math.floor((diff % (1000 * 60)) / 1000)
         };
 
-        // Cache the renderedHtml in UseMemo to prevent re-parsing? No, just rely on standard parse, it's fast enough. But now at least `dataContext` is purely data-driven, so when `isOpened` changes, we don't change `renderedHtml`.
-        // Wait, parseTemplate is still fast. 
-        renderedHtml = parseTemplate(renderedHtml, dataContext);
+        const themedDataContext = {
+            ...dataContext,
+            countdown_hari: `<span id="tm-countdown-days">${String(staticCountdown.days).padStart(2, '0')}</span>`,
+            countdown_jam: `<span id="tm-countdown-hours">${String(staticCountdown.hours).padStart(2, '0')}</span>`,
+            countdown_menit: `<span id="tm-countdown-minutes">${String(staticCountdown.minutes).padStart(2, '0')}</span>`,
+            countdown_detik: `<span id="tm-countdown-seconds">${String(staticCountdown.seconds).padStart(2, '0')}</span>`,
+        };
 
+        return parseTemplate(activeTheme.html_template, themedDataContext);
+    }, [activeTheme?.html_template, tenant.wedding_date, dataContext]);
+
+    // LOADING - Moved after hooks
+    if (loading) {
+        return (
+            <div className="inv-page inv-loading">
+                <div className="inv-spinner" />
+                <p>Memuat undangan...</p>
+            </div>
+        );
+    }
+
+    // ERROR - Moved after hooks
+    if (error || (!data && !previewData)) {
+        return (
+            <div className="inv-page inv-error">
+                <div className="inv-error-icon">💌</div>
+                <h2>Undangan Tidak Ditemukan</h2>
+                <p>{error || 'Link undangan tidak valid.'}</p>
+            </div>
+        );
+    }
+
+    if (activeTheme?.html_template) {
         return (
             <ThemeWrapper
-                htmlBase={renderedHtml}
+                htmlBase={finalHtml}
                 cssBase={activeTheme.css_template}
                 jsBase={activeTheme.js_template}
                 isPlaying={isPlaying}
                 isOpened={isOpened}
                 setIsPlaying={setIsPlaying}
                 setIsOpened={setIsOpened}
+                weddingDate={tenant.wedding_date}
                 onShowQR={() => {
                     if (data?.guest) setShowQRModal(true);
                     else setShowGuestForm(true);

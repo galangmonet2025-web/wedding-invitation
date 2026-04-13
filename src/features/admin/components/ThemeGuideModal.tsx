@@ -69,6 +69,11 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         { tag: '{{bride_name}}', desc: 'Nama Wanita', value: t.bride_name, type: 'String', code: '<h1>{{bride_name}}</h1>' },
         { tag: '{{groom_name}}', desc: 'Nama Pria', value: t.groom_name, type: 'String', code: '<h1>{{groom_name}}</h1>' },
         { tag: '{{wedding_date}}', desc: 'Tgl Resepsi (Format Lokal)', value: formatDate(t.wedding_date), type: 'String', code: '<span>{{wedding_date}}</span>' },
+        // === Variabel Countdown (Dinamis per detik) ===
+        { tag: '{{countdown_hari}}', desc: 'Angka Hari tersisa (Dinamis)', value: '12', type: 'Number', code: '<div id="hari">{{countdown_hari}}</div>' },
+        { tag: '{{countdown_jam}}', desc: 'Angka Jam tersisa (Dinamis)', value: '05', type: 'Number', code: '<div id="jam">{{countdown_jam}}</div>' },
+        { tag: '{{countdown_menit}}', desc: 'Angka Menit tersisa (Dinamis)', value: '30', type: 'Number', code: '<div id="menit">{{countdown_menit}}</div>' },
+        { tag: '{{countdown_detik}}', desc: 'Angka Detik tersisa (Dinamis)', value: '45', type: 'Number', code: '<div id="detik">{{countdown_detik}}</div>' },
         { tag: '{{tanggal_akad}}', desc: 'Tgl Akad', value: formatDate(t.wedding_date), type: 'String', code: '<span>{{tanggal_akad}}</span>' },
         { tag: '{{jam_akad}}', desc: 'Jam Akad', value: '08:00 - Selesai', type: 'String', code: '<span>{{jam_akad}}</span>' },
         { tag: '{{jam_resepsi}}', desc: 'Jam Resepsi', value: '11:00 - Selesai', type: 'String', code: '<span>{{jam_resepsi}}</span>' },

@@ -33,7 +33,7 @@ function UnauthorizedPage() {
                 </div>
                 <h2 className="text-xl font-display font-bold text-gray-800 dark:text-white mb-2">Access Denied</h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">You don't have permission to access this page.</p>
-                <a href="/dashboard" className="btn-primary inline-block">Go to Dashboard</a>
+                <a href="#/private/dashboard" className="btn-primary inline-block">Go to Dashboard</a>
             </div>
         </div>
     );
@@ -46,7 +46,7 @@ function NotFoundPage() {
                 <p className="text-6xl font-display font-bold text-gradient-gold mb-4">404</p>
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Page Not Found</h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-6">The page you're looking for doesn't exist.</p>
-                <a href="/dashboard" className="btn-primary inline-block">Back to Dashboard</a>
+                <a href="#/private/dashboard" className="btn-primary inline-block">Back to Dashboard</a>
             </div>
         </div>
     );

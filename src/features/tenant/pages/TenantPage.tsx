@@ -146,7 +146,7 @@ export function TenantPage() {
             }
             // Encode auth data as base64 and open impersonate page in a new tab
             const encoded = btoa(JSON.stringify(res.data));
-            window.open(`${window.location.origin}${window.location.pathname}#/impersonate?data=${encoded}`, '_blank');
+            window.open(`${window.location.origin}${window.location.pathname}#/private/impersonate?data=${encoded}`, '_blank');
         } catch {
             toast.error('Gagal membuka sesi tenant');
         }

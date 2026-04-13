@@ -13,6 +13,7 @@ interface ThemeWrapperProps {
     onSubmitRSVP: (data: { status: string; guests: number; code: string }) => Promise<{ success: boolean; message: string }>;
     onSubmitWish: (data: { name: string; message: string }) => Promise<{ success: boolean; message: string }>;
     onOpenLightbox: (index: number, images: string[]) => void;
+    weddingDate?: string;
     children?: React.ReactNode;
 }
 
@@ -29,6 +30,7 @@ export function ThemeWrapper({
     onSubmitRSVP,
     onSubmitWish,
     onOpenLightbox,
+    weddingDate,
     children
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -119,6 +121,42 @@ export function ThemeWrapper({
             }
         }
     }, [isPlaying, htmlBase]); // Re-run when playing state OR html content changes
+
+    // --- SYSTEM COUNTDOWN HELPER ---
+    useEffect(() => {
+        if (!weddingDate) return;
+
+        const updateCountdown = () => {
+            const target = new Date(weddingDate).getTime();
+            const now = Date.now();
+            const diff = Math.max(0, target - now);
+
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+            const container = containerRef.current;
+            if (!container) return;
+
+            // Target elements by ID (which are auto-wrapped in InvitationPage)
+            const els = {
+                days: container.querySelector('#tm-countdown-days'),
+                hours: container.querySelector('#tm-countdown-hours'),
+                minutes: container.querySelector('#tm-countdown-minutes'),
+                seconds: container.querySelector('#tm-countdown-seconds')
+            };
+
+            if (els.days) els.days.textContent = String(d).padStart(2, '0');
+            if (els.hours) els.hours.textContent = String(h).padStart(2, '0');
+            if (els.minutes) els.minutes.textContent = String(m).padStart(2, '0');
+            if (els.seconds) els.seconds.textContent = String(s).padStart(2, '0');
+        };
+
+        updateCountdown(); // Initial run
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+    }, [weddingDate, htmlBase]); // Restart if wedding date or HTML structure changes
 
     const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;

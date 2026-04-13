@@ -342,6 +342,10 @@ export function ThemeEditorPage() {
                     }
                 ],
                 empty_wishes: false,
+                countdown_hari: 12,
+                countdown_jam: 5,
+                countdown_menit: 30,
+                countdown_detik: 45,
             };
 
             // Inject dynamic image type variables (real base64 or dummy fallback)

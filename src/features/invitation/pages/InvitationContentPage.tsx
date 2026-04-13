@@ -369,7 +369,7 @@ export function InvitationContentPage() {
                 <div className="flex items-center gap-3">
                     {tenant?.domain_slug && (
                         <a
-                            href={`${window.location.origin}${window.location.pathname}#/invitation/${tenant.domain_slug}`}
+                            href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-secondary flex items-center justify-center gap-2 px-6"
@@ -966,7 +966,7 @@ export function InvitationContentPage() {
                             {tenant?.domain_slug ? (
                                 <iframe
                                     key={iframeKey}
-                                    src={`${window.location.origin}${import.meta.env.BASE_URL}#/invitation/${tenant.domain_slug}`}
+                                    src={`${window.location.origin}${import.meta.env.BASE_URL}#/${tenant.domain_slug}`}
                                     className="w-full h-full border-none pointer-events-auto"
                                     title="Invitation Preview"
                                 />
