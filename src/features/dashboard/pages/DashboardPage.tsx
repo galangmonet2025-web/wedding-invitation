@@ -89,7 +89,7 @@ export function DashboardPage() {
                 </div>
                 {tenant?.domain_slug && (
                     <a
-                        href={`${window.location.origin}${window.location.pathname}#/invitation/${tenant.domain_slug}`}
+                        href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="btn-primary text-sm flex items-center gap-2"

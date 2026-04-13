@@ -27,7 +27,7 @@ export function ImpersonatePage() {
                 tenant: Tenant;
             };
             setAuth(token, user, tenant);
-            navigate('/dashboard', { replace: true });
+            navigate('/private/dashboard', { replace: true });
         } catch {
             navigate('/login');
         }

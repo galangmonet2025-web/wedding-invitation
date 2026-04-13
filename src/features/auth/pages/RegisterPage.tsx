@@ -38,7 +38,7 @@ export function RegisterPage() {
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success('Wedding registered successfully! 🎊');
-                navigate('/dashboard');
+                navigate('/private/dashboard');
             } else {
                 toast.error(response.message || 'Registration failed');
             }
@@ -159,7 +159,9 @@ export function RegisterPage() {
                                     placeholder="bride-and-groom"
                                 />
                             </div>
-                            <p className="text-xs text-gray-400 mt-1">URL: yoursite.com/<span className="text-gold-500">{form.domain_slug || 'your-slug'}</span></p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                URL: {window.location.host}{window.location.pathname}#/<span className="text-gold-500">{form.domain_slug || 'your-slug'}</span>
+                            </p>
                         </div>
 
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
