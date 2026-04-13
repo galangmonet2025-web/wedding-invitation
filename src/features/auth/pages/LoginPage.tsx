@@ -48,7 +48,7 @@ export function LoginPage() {
             };
             setAuth('dummy-superadmin-token', fakeSuperAdminUser, mockTenant);
             toast.success('Welcome back, Super Admin! 👑');
-            navigate('/global-dashboard');
+            navigate('/private/global-dashboard');
             return;
         }
         // ------------------------------------------------
@@ -60,11 +60,11 @@ export function LoginPage() {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success('Welcome back! 🎉');
                 if (response.data.user.role === 'superadmin') {
-                    navigate('/global-dashboard');
+                    navigate('/private/global-dashboard');
                 } else if (response.data.user.role === 'staff') {
-                    navigate('/scanner');
+                    navigate('/private/scanner');
                 } else {
-                    navigate('/dashboard');
+                    navigate('/private/dashboard');
                 }
             } else {
                 setErrorMsg(response.message || 'Username atau password salah.');
@@ -196,7 +196,7 @@ export function LoginPage() {
 
                     <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
                         <p className="text-xs text-center text-gray-400">
-                            Demo credentials: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">galang / galang</span> or <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">admin / admin123</span>
+                            Demo credentials: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">galang / galang</span> or <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">superadmin / admin123</span>
                         </p>
                     </div>
                 </div>

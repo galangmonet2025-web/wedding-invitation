@@ -493,13 +493,13 @@ export function GuestPage() {
                                         <input
                                             type="text"
                                             readOnly
-                                            value={`${window.location.origin}/wedding-invitation/#/invitation/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                            value={`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
                                             className="bg-transparent border-none text-xs w-full text-gray-600 dark:text-gray-300 focus:outline-none"
                                             onClick={(e) => e.currentTarget.select()}
                                         />
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/invitation/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
+                                                navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
                                                 toast.success('Link undangan disalin!');
                                             }}
                                             className="px-4 py-1.5 bg-gold-600 hover:bg-gold-700 text-white rounded outline-none text-xs font-medium transition-colors shrink-0 whitespace-nowrap shadow-sm"
@@ -519,7 +519,7 @@ export function GuestPage() {
                                     {/* <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Preview Undangan</p> */}
                                     <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden h-[670px] w-full bg-gray-100 dark:bg-gray-900 shadow-inner relative group flex-shrink-0">
                                         <iframe
-                                            src={`/wedding-invitation/#/invitation/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                            src={`/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
                                             className="w-full h-full border-none opacity-90 group-hover:opacity-100 transition-opacity"
                                             title="Live Preview"
                                         />

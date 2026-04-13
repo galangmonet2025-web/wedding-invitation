@@ -40,21 +40,21 @@ export function DashboardLayout() {
 
     const navItems = !showTenantMenu
         ? [
-            { to: '/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
-            { to: '/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
-            { to: '/themes', icon: HiOutlineColorSwatch, label: 'Manage Themes', roles: ['superadmin'] },
-            { to: '/website-config', icon: HiOutlineCog, label: 'Website Config', roles: ['superadmin'] },
-            { to: '/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
+            { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
+            { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
+            { to: '/private/themes', icon: HiOutlineColorSwatch, label: 'Manage Themes', roles: ['superadmin'] },
+            { to: '/private/website-config', icon: HiOutlineCog, label: 'Website Config', roles: ['superadmin'] },
+            { to: '/private/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
         ]
         : [
-            { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin', 'superadmin'] },
         ];
 
     const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
