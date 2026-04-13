@@ -180,7 +180,7 @@ export function ThemeEditorPage() {
                 if (res.success) {
                     toast.success('Theme created successfully');
                     setFlagDraft(isDraft);
-                    navigate(`/themes/editor/${res.data.id}`, { replace: true });
+                    navigate(`private/themes/editor/${res.data.id}`, { replace: true });
                 } else {
                     toast.error(res.message);
                 }
