@@ -908,6 +908,7 @@ var GuestService = {
       status: sanitized.status || 'pending',
       number_of_guests: parseInt(sanitized.number_of_guests) || 1,
       checkin_status: 'not_checked_in',
+      flag_sudah_kirim_undangan_via_whatsapp: 'FALSE',
       created_at: new Date().toISOString()
     };
 
@@ -1016,6 +1017,7 @@ var GuestService = {
           status: 'confirmed',
           number_of_guests: guestData.pax || 1,
           checkin_status: 'checked_in',
+          flag_sudah_kirim_undangan_via_whatsapp: 'FALSE',
           created_at: new Date().toISOString()
         };
         
@@ -1075,6 +1077,7 @@ var GuestService = {
         status: g.status || 'pending',
         number_of_guests: parseInt(g.number_of_guests) || 1,
         checkin_status: 'not_checked_in',
+        flag_sudah_kirim_undangan_via_whatsapp: 'FALSE',
         created_at: new Date().toISOString()
       };
       DB.insert('Guests', guest);

@@ -38,7 +38,13 @@ export const useGuestStore = create<GuestState>((set, get) => ({
 
     setFilters: (newFilters: Partial<GuestFilters>) =>
         set((state) => ({
-            filters: { ...state.filters, ...newFilters },
+            filters: { 
+                ...state.filters, 
+                ...newFilters,
+                search: newFilters.search !== undefined ? (newFilters.search || '') : state.filters.search,
+                status: newFilters.status !== undefined ? (newFilters.status || '') : state.filters.status,
+                category: newFilters.category !== undefined ? (newFilters.category || '') : state.filters.category,
+            },
         })),
 
     setSelectedIds: (ids: string[]) => set({ selectedIds: ids }),

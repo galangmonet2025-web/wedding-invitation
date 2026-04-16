@@ -61,23 +61,32 @@ export function GuestPage() {
         number_of_guests: 1,
     });
 
-    useEffect(() => {
-        fetchGuests();
-    }, [filters.page, filters.status, filters.category]);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const debouncedSearch = useCallback(
-        (() => {
-            let timeout: ReturnType<typeof setTimeout>;
-            return (value: string) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    setFilters({ search: value, page: 1 });
-                    fetchGuests();
-                }, 400);
-            };
-        })(),
-        []
-    );
+    useEffect(() => {
+        // Fetch a large batch of guests initially to enable frontend search
+        setFilters({ limit: 1000, page: 1 });
+        fetchGuests();
+    }, [filters.status, filters.category]);
+
+    // Perform frontend filtering
+    const filteredGuests = useMemo(() => {
+        if (!searchTerm) return guests;
+        const lowSearch = searchTerm.toLowerCase();
+        return guests.filter(g => 
+            String(g.name || '').toLowerCase().includes(lowSearch) || 
+            String(g.phone || '').toLowerCase().includes(lowSearch) ||
+            String(g.invitation_code || '').toLowerCase().includes(lowSearch)
+        );
+    }, [guests, searchTerm]);
+
+    // Local pagination calculation for filtered results
+    const paginatedGuests = useMemo(() => {
+        // If we are filtering, we might want to handle pagination locally
+        // But the user just asked for "filter di frontend aja", typically implying
+        // the search should be instant across the visible/loaded set.
+        return filteredGuests;
+    }, [filteredGuests]);
 
     const handleAdd = async () => {
         if (!form.name.trim()) {
@@ -385,7 +394,8 @@ export function GuestPage() {
                             type="text"
                             placeholder="Search guests..."
                             className="input-field pl-10"
-                            onChange={(e) => debouncedSearch(e.target.value)}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <div className="flex gap-3">
@@ -440,7 +450,7 @@ export function GuestPage() {
             {/* Data Table */}
             <DataTable
                 columns={columns}
-                data={guests}
+                data={paginatedGuests}
                 loading={loading}
                 emptyMessage="No guests found"
                 selectedIds={!isStaff ? selectedIds : undefined}
@@ -493,7 +503,7 @@ export function GuestPage() {
                 isOpen={showQRModal}
                 onClose={() => { setShowQRModal(false); setSelectedGuest(null); }}
                 title="Guest QR Code & Link"
-                size="lg"
+                size="xl"
             >
                 {selectedGuest && (
                     <div className="flex flex-col md:flex-row gap-6 w-full h-full items-start">
@@ -519,22 +529,34 @@ export function GuestPage() {
                             {tenant && (
                                 <div className="w-full h-full text-left mt-6">
                                     <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Link Undangan Khusus</p>
-                                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-gold-500/20 transition-all">
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
-                                            className="bg-transparent border-none text-xs w-full text-gray-600 dark:text-gray-300 focus:outline-none"
-                                            onClick={(e) => e.currentTarget.select()}
-                                        />
+                                    <div className="space-y-3">
+                                        <div className="relative group">
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value={`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl py-3 pl-3 pr-20 text-xs text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gold-500/20 transition-all shadow-sm group-hover:border-gold-300"
+                                                onClick={(e) => e.currentTarget.select()}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
+                                                    toast.success('Link undangan disalin!');
+                                                }}
+                                                className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-gold-50 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 hover:bg-gold-100 dark:hover:bg-gold-900/50 rounded-lg text-[11px] font-bold transition-all border border-gold-200 dark:border-gold-800"
+                                            >
+                                                Salin
+                                            </button>
+                                        </div>
+                                        
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
-                                                toast.success('Link undangan disalin!');
+                                                window.open(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`, '_blank');
                                             }}
-                                            className="px-4 py-1.5 bg-gold-600 hover:bg-gold-700 text-white rounded outline-none text-xs font-medium transition-colors shrink-0 whitespace-nowrap shadow-sm"
+                                            className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]"
                                         >
-                                            Salin
+                                            <HiOutlineSpeakerphone className="w-4 h-4" />
+                                            Buka Undangan
                                         </button>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-2">Kirim link ini ke tamu Anda via WhatsApp atau Email.</p>
@@ -544,11 +566,12 @@ export function GuestPage() {
 
                         {/* Kanan: Link & Preview */}
                         {tenant && (
-                            <div className="flex-[1.5] flex flex-col w-full h-full">
+                            <div className="flex-1 flex flex-col w-full h-full">
                                 <div className="w-full ">
                                     {/* <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Preview Undangan</p> */}
                                     <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden h-[670px] w-full bg-gray-100 dark:bg-gray-900 shadow-inner relative group flex-shrink-0">
                                         <iframe
+                                            style={{ zoom: '0.8' }}
                                             src={`/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
                                             className="w-full h-full border-none opacity-90 group-hover:opacity-100 transition-opacity"
                                             title="Live Preview"

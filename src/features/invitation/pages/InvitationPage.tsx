@@ -86,6 +86,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [youtubeId, setYoutubeId] = useState<string | null>(null);
     const ytIframeRef = useRef<HTMLIFrameElement>(null);
 
+    // Update Page Title
+    useEffect(() => {
+        if (data && data.tenant) {
+            document.title = `The Wedding of ${data.tenant.bride_name} & ${data.tenant.groom_name} | Wedding Invitation`;
+        }
+        return () => {
+            document.title = 'Digital Wedding Invitation - You are Invited!';
+        };
+    }, [data?.tenant]);
+
     useEffect(() => {
         const musicLink = activeContent.link_backsound_music;
         if (!musicLink) return;
