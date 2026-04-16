@@ -96,13 +96,18 @@ export const guestApi = {
         return res.data;
     },
 
-    importGuests: async (guests: CreateGuestRequest[]): Promise<ApiResponse<{ imported: number }>> => {
-        const res = await apiClient.post('', { action: 'importGuests', guests });
+    importGuests: async (guests: CreateGuestRequest[], overwrite: boolean = false): Promise<ApiResponse<{ imported: number }>> => {
+        const res = await apiClient.post('', { action: 'importGuests', guests, overwrite });
         return res.data;
     },
 
     exportGuests: async (): Promise<ApiResponse<Guest[]>> => {
         const res = await apiClient.post('', { action: 'exportGuests' });
+        return res.data;
+    },
+    
+    updateGuestBlastStatus: async (id: string, status: boolean): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateGuestBlastStatus', id, sent: status });
         return res.data;
     },
 };

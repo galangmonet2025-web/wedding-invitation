@@ -54,6 +54,7 @@ export interface Guest {
     status: GuestStatus;
     number_of_guests: number;
     checkin_status: CheckinStatus;
+    flag_sudah_kirim_undangan_via_whatsapp?: boolean | string;
     created_at: string;
 }
 
@@ -362,6 +363,7 @@ export interface InvitationContent {
     galleries?: { url: string; caption?: string }[];
     is_fitur_cerita?: boolean | string;
     love_stories?: { title: string; date: string; content: string }[];
+    wa_blast_template?: string;
 }
 
 // =============================================

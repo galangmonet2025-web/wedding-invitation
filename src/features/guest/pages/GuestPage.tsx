@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useGuestStore } from '../store/guestStore';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Pagination } from '@/shared/components/Pagination';
@@ -17,7 +17,11 @@ import {
     HiOutlineDownload,
     HiOutlineUpload,
     HiOutlineRefresh,
+    HiOutlineUserGroup,
+    HiOutlineSpeakerphone,
 } from 'react-icons/hi';
+import { GoogleContactModal } from '../components/GoogleContactModal';
+import { WhatsAppBlastModal } from '../components/WhatsAppBlastModal';
 
 export function GuestPage() {
     const {
@@ -34,6 +38,7 @@ export function GuestPage() {
         updateGuest,
         deleteGuest,
         bulkDelete,
+        bulkCreateGuests,
     } = useGuestStore();
 
     const { user, tenant } = useAuthStore();
@@ -43,6 +48,8 @@ export function GuestPage() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showGoogleModal, setShowGoogleModal] = useState(false);
+    const [showBlastModal, setShowBlastModal] = useState(false);
     const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
@@ -169,6 +176,14 @@ export function GuestPage() {
         e.target.value = '';
     };
 
+    const handleImportGoogleContacts = async (contacts: CreateGuestRequest[]) => {
+        return await bulkCreateGuests(contacts);
+    };
+
+    const selectedGuestsObjects = useMemo(() => {
+        return guests.filter(g => selectedIds.includes(g.id));
+    }, [guests, selectedIds]);
+
     const statusBadge = (status: string) => {
         const classes: Record<string, string> = {
             confirmed: 'badge-success',
@@ -208,7 +223,7 @@ export function GuestPage() {
             header: 'RSVP',
             render: (g: Guest) => statusBadge(g.status),
         },
-        { key: 'number_of_guests', header: 'Pax' },
+        { key: 'number_of_guests', header: 'Jml. Tamu' },
         {
             key: 'checkin_status',
             header: 'Check-in',
@@ -344,6 +359,14 @@ export function GuestPage() {
                                 <HiOutlineDownload className="w-4 h-4" />
                                 Export
                             </button>
+                            <button 
+                                onClick={() => setShowGoogleModal(true)} 
+                                className="btn-ghost text-sm flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                                title="Import Google Contacts CSV"
+                            >
+                                <HiOutlineUserGroup className="w-4 h-4" />
+                                Google Contacts (CSV)
+                            </button>
                             <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
                                 <HiOutlinePlus className="w-4 h-4" />
                                 Add Guest
@@ -400,6 +423,13 @@ export function GuestPage() {
                     <button onClick={handleBulkDelete} className="btn-danger text-sm py-1.5 px-4">
                         <HiOutlineTrash className="w-4 h-4 inline mr-1" />
                         Delete Selected
+                    </button>
+                    <button 
+                        onClick={() => setShowBlastModal(true)} 
+                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors"
+                    >
+                        <HiOutlineSpeakerphone className="w-4 h-4" />
+                        WhatsApp Blast
                     </button>
                     <button onClick={() => setSelectedIds([])} className="btn-ghost text-sm py-1.5">
                         Clear
@@ -551,6 +581,21 @@ export function GuestPage() {
                     Are you sure you want to delete this guest? This action cannot be undone.
                 </p>
             </Modal>
+
+            {/* Google Contacts Modal */}
+            <GoogleContactModal 
+                isOpen={showGoogleModal}
+                onClose={() => setShowGoogleModal(false)}
+                onImport={handleImportGoogleContacts}
+            />
+
+            {/* WhatsApp Blast Modal */}
+            <WhatsAppBlastModal 
+                isOpen={showBlastModal}
+                onClose={() => setShowBlastModal(false)}
+                selectedGuests={selectedGuestsObjects}
+                tenant={tenant}
+            />
         </div>
     );
 }

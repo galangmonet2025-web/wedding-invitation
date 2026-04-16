@@ -134,6 +134,9 @@ function routeAction(action, payload, auth) {
       return GuestService.importGuests(auth, payload);
     case 'exportGuests':
       return GuestService.exportGuests(auth);
+    case 'updateGuestBlastStatus':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return GuestService.updateGuestBlastStatus(auth, payload);
 
     // Staff
     case 'getStaffs':
@@ -1085,6 +1088,25 @@ var GuestService = {
     var tenantId = auth.role === 'superadmin' ? null : auth.tenant_id;
     var guests = tenantId ? DB.getByTenant('Guests', tenantId) : DB.getAll('Guests');
     return ResponseHelper.success(guests, 'Guests exported');
+  },
+
+  updateGuestBlastStatus: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    Validator.required(payload, ['id', 'sent']);
+    
+    var guest = DB.findOne('Guests', 'id', payload.id);
+    if (!guest || (auth.role !== 'superadmin' && guest.tenant_id !== tenantId)) {
+      return ResponseHelper.error('Guest not found', 404);
+    }
+
+    var success = DB.update('Guests', payload.id, { 
+      flag_sudah_kirim_undangan_via_whatsapp: payload.sent === true || payload.sent === 'true' ? 'TRUE' : 'FALSE'
+    });
+
+    if (success) {
+      return ResponseHelper.success(null, 'Blast status updated');
+    }
+    return ResponseHelper.error('Failed to update status', 500);
   }
 };
 

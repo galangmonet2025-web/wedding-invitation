@@ -7,6 +7,7 @@ import { ImpersonatePage } from '@/features/auth/pages/ImpersonatePage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { GlobalDashboardPage } from '@/features/dashboard/pages/GlobalDashboardPage';
 import { GuestPage } from '@/features/guest/pages/GuestPage';
+import { WhatsAppBlastPage } from '@/features/guest/pages/WhatsAppBlastPage';
 import { StaffPage } from '@/features/tenant/pages/StaffPage';
 import { ScannerPage } from '@/features/scanner/pages/ScannerPage';
 import { TenantPage } from '@/features/tenant/pages/TenantPage';
@@ -104,6 +105,14 @@ export const router = createHashRouter([
                             {
                                 path: 'guests',
                                 element: <GuestPage />,
+                            },
+                            {
+                                path: 'whatsapp-blast',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['tenant_admin', 'superadmin']}>
+                                        <WhatsAppBlastPage />
+                                    </ProtectedRoute>
+                                ),
                             },
                             {
                                 path: 'staff',

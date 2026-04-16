@@ -15,9 +15,11 @@ interface GuestState {
     setSelectedIds: (ids: string[]) => void;
     fetchGuests: () => Promise<void>;
     createGuest: (data: CreateGuestRequest) => Promise<boolean>;
-    updateGuest: (data: UpdateGuestRequest) => Promise<boolean>;
+    updateGuest: (data: UpdateGuestRequest, silent?: boolean) => Promise<boolean>;
     deleteGuest: (id: string) => Promise<boolean>;
     bulkDelete: () => Promise<boolean>;
+    bulkCreateGuests: (guests: CreateGuestRequest[]) => Promise<{ successCount: number; failedItems: CreateGuestRequest[] }>;
+    updateBlastStatus: (id: string, sent: boolean, silent?: boolean) => Promise<boolean>;
 }
 
 export const useGuestStore = create<GuestState>((set, get) => ({
@@ -102,19 +104,29 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         }
     },
 
-    updateGuest: async (data: UpdateGuestRequest) => {
+    updateGuest: async (data: UpdateGuestRequest, silent = false) => {
+        if (!silent) set({ loading: true });
         try {
             const response = await guestApi.updateGuest(data);
             if (response.success) {
-                toast.success('Guest updated successfully');
-                get().fetchGuests();
+                if (!silent) {
+                    toast.success('Guest updated successfully');
+                    get().fetchGuests();
+                } else {
+                    // Update local state directly for silent mode
+                    set(state => ({
+                        guests: state.guests.map(g => g.id === data.id ? { ...g, ...data } : g)
+                    }));
+                }
                 return true;
             }
-            toast.error(response.message);
+            if (!silent) toast.error(response.message);
             return false;
         } catch {
-            toast.error('Failed to update guest');
+            if (!silent) toast.error('Failed to update guest');
             return false;
+        } finally {
+            if (!silent) set({ loading: false });
         }
     },
 
@@ -150,6 +162,82 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         } catch {
             toast.error('Failed to delete guests');
             return false;
+        }
+    },
+    bulkCreateGuests: async (data: CreateGuestRequest[]) => {
+        set({ loading: true });
+        const CHUNK_SIZE = 10;
+        let successCount = 0;
+        let failedItems: CreateGuestRequest[] = [];
+
+        try {
+            for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+                const chunk = data.slice(i, i + CHUNK_SIZE);
+                const progress = Math.min(i + CHUNK_SIZE, data.length);
+                
+                const toastId = toast.loading(`Mengimpor tamu... (${progress}/${data.length})`);
+                
+                try {
+                     // Always set overwrite to true as requested by user
+                    const response = await guestApi.importGuests(chunk, true);
+                    toast.dismiss(toastId);
+                    
+                    if (response.success) {
+                        successCount += chunk.length;
+                    } else {
+                        failedItems = [...failedItems, ...chunk];
+                        toast.error(`Gagal mengimpor batch ${Math.floor(i / CHUNK_SIZE) + 1}`);
+                    }
+                } catch (err) {
+                    toast.dismiss(toastId);
+                    failedItems = [...failedItems, ...chunk];
+                    toast.error(`Error pada batch ${Math.floor(i / CHUNK_SIZE) + 1}`);
+                }
+            }
+
+            if (successCount > 0) {
+                toast.success(`${successCount} tamu berhasil diproses`);
+                get().fetchGuests();
+            }
+            
+            return { successCount, failedItems };
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    updateBlastStatus: async (id: string, sent: boolean, silent = false) => {
+        if (!silent) set({ loading: true });
+        
+        // Optimistic update
+        const originalGuests = get().guests;
+        if (silent) {
+            set(state => ({
+                guests: state.guests.map(g => 
+                    g.id === id ? { ...g, flag_sudah_kirim_undangan_via_whatsapp: sent } : g
+                )
+            }));
+        }
+
+        try {
+            const response = await guestApi.updateGuestBlastStatus(id, sent);
+            if (response.success) {
+                if (!silent) {
+                    toast.success('Status blast diperbarui');
+                    get().fetchGuests();
+                }
+                return true;
+            }
+            // Rollback on failure if silent
+            if (silent) set({ guests: originalGuests });
+            if (!silent) toast.error(response.message);
+            return false;
+        } catch {
+            if (silent) set({ guests: originalGuests });
+            if (!silent) toast.error('Gagal memperbarui status blast');
+            return false;
+        } finally {
+            if (!silent) set({ loading: false });
         }
     },
 }));

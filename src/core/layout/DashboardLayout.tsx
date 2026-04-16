@@ -19,6 +19,7 @@ import {
     HiOutlineUserAdd,
     HiOutlineQrcode,
     HiOutlineColorSwatch,
+    HiOutlineChatAlt2,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 
@@ -50,6 +51,7 @@ export function DashboardLayout() {
             { to: '/private/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff', 'superadmin'] },
             { to: '/private/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff', 'superadmin'] },
             { to: '/private/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/whatsapp-blast', icon: HiOutlineChatAlt2, label: 'WhatsApp Blast', roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin', 'superadmin'] },

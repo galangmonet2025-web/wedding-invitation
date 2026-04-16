@@ -6,7 +6,7 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
-    size?: 'sm' | 'md' | 'lg' | 'xl';
+    size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
     footer?: React.ReactNode;
 }
 
@@ -15,6 +15,7 @@ const sizeClasses = {
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
+    '2xl': 'max-w-6xl',
 };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md', footer }: ModalProps) {
@@ -48,8 +49,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
         >
             {/* Backdrop */}
             <div 
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in cursor-pointer" 
+                className="fixed top-0 left-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm animate-fade-in cursor-pointer" 
                 onClick={onClose}
+                style={{ zIndex: -1 }}
             />
 
             {/* Modal */}
