@@ -10,7 +10,7 @@ interface ThemeWrapperProps {
     setIsPlaying: (val: boolean) => void;
     onShowQR: () => void;
     onShowMenu: () => void;
-    onSubmitRSVP: (data: { status: string; guests: number; code: string }) => Promise<{ success: boolean; message: string }>;
+    onSubmitRSVP: (data: { status: string; guests: number; code: string }) => Promise<{ success: boolean; message: string; calendarUrl?: string }>;
     onSubmitWish: (data: { name: string; message: string }) => Promise<{ success: boolean; message: string }>;
     onOpenLightbox: (index: number, images: string[]) => void;
     weddingDate?: string;
@@ -189,7 +189,12 @@ export function ThemeWrapper({
             }
 
             if (res.success) {
-                btn.disabled = true; // Stay disabled on success as requested
+                btn.disabled = true; 
+                
+                const thanksEl = container?.querySelector('#rsvp-thanks, .rsvp-thanks, #rsvp-success');
+                const formEl = container?.querySelector('#rsvp-form, .rsvp-form');
+                if (thanksEl) thanksEl.classList.remove('hidden', 'uk-hidden');
+                if (formEl) formEl.classList.add('hidden', 'uk-hidden');
             } else {
                 btn.disabled = false;
             }

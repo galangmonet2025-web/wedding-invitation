@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { ThemeWrapper } from '../components/ThemeWrapper';
 import { parseTemplate } from '@/utils/templateParser';
 import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
+import { generateGoogleCalendarUrl } from '@/utils/calendarUtils';
+import { RSVPSuccessModal } from '../components/RSVPSuccessModal';
 
 interface TenantPublic {
     bride_name: string;
@@ -128,7 +130,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [rsvpStatus, setRsvpStatus] = useState<'confirmed' | 'declined'>('confirmed');
     const [rsvpGuests, setRsvpGuests] = useState(1);
     const [rsvpLoading, setRsvpLoading] = useState(false);
-    const [rsvpResult, setRsvpResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [rsvpResult, setRsvpResult] = useState<{ success: boolean; message: string; calendarUrl?: string } | null>(null);
+    const [isRSVPModalOpen, setIsRSVPModalOpen] = useState(false);
+    const [rsvpModalData, setRsvpModalData] = useState<any>(null);
 
     // Wish State
     const [wishName, setWishName] = useState('');
@@ -291,20 +295,53 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 status: status,
                 number_of_guests: guests,
             });
-            const result = { success: res.success, message: res.message };
-            setRsvpResult(result);
-            if (res.success) {
+            let calendarUrl = undefined;
+            if (res.success && status === 'confirmed') {
                 setRsvpCode('');
-                // Update local guest status so variables like {{flag_konfirmasi_kehadiran_dari_tamu}} are updated immediately
+                
+                // Generate Google Calendar Link
+                try {
+                    const eventTitle = `Pernikahan ${tenant.groom_name} & ${tenant.bride_name}`;
+                    const startDate = activeContent.wedding_date || tenant.wedding_date;
+                    const startTime = activeContent.jam_awal_resepsi || '08:00';
+                    const endTime = activeContent.jam_akhir_resepsi;
+                    const location = `${activeContent.nama_lokasi_resepsi || ''}, ${activeContent.keterangan_lokasi_resepsi || ''}`.trim();
+                    
+                    calendarUrl = generateGoogleCalendarUrl({
+                        title: eventTitle,
+                        startDate: startDate,
+                        startTime: startTime,
+                        endTime: endTime,
+                        location: location,
+                        description: `Acara Pernikahan ${tenant.groom_name} & ${tenant.bride_name}. \nLihat Undangan: ${window.location.href}`
+                    });
+
+                    // Prepare Modal Data
+                    setRsvpModalData({
+                        title: eventTitle,
+                        date: startDate,
+                        time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
+                        location: location || 'Lokasi Resepsi',
+                        calendarUrl: calendarUrl
+                    });
+                    setIsRSVPModalOpen(true);
+                } catch (e) {
+                    console.error("Failed to generate calendar URL", e);
+                }
+
+                // Update local guest status
                 if (data) {
                     setData({
                         ...data,
                         guest: data.guest 
                             ? { ...data.guest, status: status, number_of_guests: guests } 
-                            : res.data // If it was a general link, the API might return the identified guest
+                            : res.data 
                     });
                 }
             }
+            
+            const result = { success: res.success, message: res.message, calendarUrl };
+            setRsvpResult(result);
             return result;
         } catch {
             const errorResult = { success: false, message: 'Gagal mengirim konfirmasi' };
@@ -845,6 +882,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                 </svg>
                             </button>
                         )}
+
+                        {/* RSVP Success Modal (Theme Agnostic) */}
+                        <RSVPSuccessModal 
+                            isOpen={isRSVPModalOpen}
+                            onClose={() => setIsRSVPModalOpen(false)}
+                            data={rsvpModalData}
+                        />
                     </ThemeWrapper>
         );
     }
@@ -1312,7 +1356,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             )}
 
             {guestQrModal}
-            {uninvitedGuestFormModal}
+
+            {/* RSVP Success Modal (Theme Agnostic - Default) */}
+            <RSVPSuccessModal 
+                isOpen={isRSVPModalOpen}
+                onClose={() => setIsRSVPModalOpen(false)}
+                data={rsvpModalData}
+            />
         </div>
     );
 }

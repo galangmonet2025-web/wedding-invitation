@@ -27,7 +27,6 @@ import {
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
-import { MapPickerModal } from '../components/MapPickerModal';
 import { MapTutorialModal } from '../components/MapTutorialModal';
 import { ImageUpload } from '@/shared/components/ImageUpload';
 import { imageApi } from '@/core/api/imageApi';
@@ -119,43 +118,11 @@ export function InvitationContentPage() {
     };
 
     // Map Picker State
-    const [showMapModal, setShowMapModal] = useState(false);
     const [showTutorialModal, setShowTutorialModal] = useState(false);
-    const [mapTarget, setMapTarget] = useState<'akad' | 'resepsi' | 'hadiah' | null>(null);
 
     useEffect(() => {
         fetchContent();
     }, []);
-
-    const handleMapConfirm = (data: { placeName: string; address: string; mapsUrl: string }) => {
-        if (!mapTarget || !content) return;
-
-        setContent(prev => {
-            if (!prev) return prev;
-            if (mapTarget === 'akad') {
-                return {
-                    ...prev,
-                    nama_lokasi_akad: data.placeName,
-                    keterangan_lokasi_akad: data.address,
-                    akad_map: data.mapsUrl
-                };
-            } else if (mapTarget === 'resepsi') {
-                return {
-                    ...prev,
-                    nama_lokasi_resepsi: data.placeName,
-                    keterangan_lokasi_resepsi: data.address,
-                    resepsi_map: data.mapsUrl
-                };
-            } else {
-                return {
-                    ...prev,
-                    nama_lokasi_kirim_hadiah_offline: data.placeName,
-                    alamat_lokasi_kirim_hadiah_offline: data.address,
-                    map_kirim_hadiah_offline: data.mapsUrl
-                };
-            }
-        });
-    };
 
     // Helpers to normalize data from GAS backend
     // GAS returns "null" string for empty cells, and dates/times as ISO timestamps
@@ -584,14 +551,12 @@ export function InvitationContentPage() {
                                                                 <div className="flex items-center justify-between mb-1">
                                                                     <label className="label-field mb-0">Link Google Maps</label>
                                                                     <button
-                                                                        title="buka map"
-                                                                        onClick={() => {
-                                                                            setMapTarget('akad');
-                                                                            setShowMapModal(true);
-                                                                        }}
+                                                                        type="button"
+                                                                        title="Buka Google Maps"
+                                                                        onClick={() => window.open('https://www.google.com/maps', '_blank')}
                                                                         className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
                                                                     >
-                                                                        <HiOutlineMap className="w-3.5 h-3.5" /> Pilih dari Peta
+                                                                        <HiOutlineMap className="w-3.5 h-3.5" /> Buka Google Maps
                                                                     </button>
                                                                 </div>
                                                                 <input type="url" value={content.akad_map || ''} onChange={(e) => updateField('akad_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
@@ -622,14 +587,12 @@ export function InvitationContentPage() {
                                                                     <div className="flex items-center justify-between mb-1">
                                                                         <label className="label-field mb-0">Link Google Maps</label>
                                                                         <button
-                                                                            title="buka map"
-                                                                            onClick={() => {
-                                                                                setMapTarget('resepsi');
-                                                                                setShowMapModal(true);
-                                                                            }}
+                                                                            type="button"
+                                                                            title="Buka Google Maps"
+                                                                            onClick={() => window.open('https://www.google.com/maps', '_blank')}
                                                                             className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
                                                                         >
-                                                                            <HiOutlineMap className="w-3.5 h-3.5" /> Pilih dari Peta
+                                                                            <HiOutlineMap className="w-3.5 h-3.5" /> Buka Google Maps
                                                                         </button>
                                                                     </div>
                                                                     <input type="url" value={content.resepsi_map || ''} onChange={(e) => updateField('resepsi_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
@@ -720,14 +683,12 @@ export function InvitationContentPage() {
                                                                 <div className="flex items-center justify-between mb-1">
                                                                     <label className="label-field mb-0">Link Google Maps (Pilihan)</label>
                                                                     <button
-                                                                        title="buka map"
-                                                                        onClick={() => {
-                                                                            setMapTarget('hadiah' as any);
-                                                                            setShowMapModal(true);
-                                                                        }}
+                                                                        type="button"
+                                                                        title="Buka Google Maps"
+                                                                        onClick={() => window.open('https://www.google.com/maps', '_blank')}
                                                                         className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
                                                                     >
-                                                                        <HiOutlineMap className="w-3.5 h-3.5" /> Pilih dari Peta
+                                                                        <HiOutlineMap className="w-3.5 h-3.5" /> Buka Google Maps
                                                                     </button>
                                                                 </div>
                                                                 <input type="url" value={content.map_kirim_hadiah_offline || ''} onChange={(e) => updateField('map_kirim_hadiah_offline', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
@@ -1135,16 +1096,12 @@ export function InvitationContentPage() {
             </div>
 
             {/* MODALS */}
-            <MapPickerModal
-                isOpen={showMapModal}
-                onClose={() => setShowMapModal(false)}
-                onConfirm={handleMapConfirm}
-            />
-
-            <MapTutorialModal
-                isOpen={showTutorialModal}
-                onClose={() => setShowTutorialModal(false)}
-            />
+            {showTutorialModal && (
+                <MapTutorialModal
+                    isOpen={showTutorialModal}
+                    onClose={() => setShowTutorialModal(false)}
+                />
+            )}
 
             {/* LIGHTBOX MODAL */}
             {lightboxImageIndex !== null && images[lightboxImageIndex] && (
