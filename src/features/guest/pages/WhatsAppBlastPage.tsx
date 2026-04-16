@@ -69,7 +69,7 @@ const formatPhoneForWhatsApp = (phone: any) => {
 };
 
 export function WhatsAppBlastPage() {
-    const { guests, loading, fetchGuests, updateBlastStatus, setFilters } = useGuestStore();
+    const { guests, loading, fetchGuests, updateGuest, updateBlastStatus, setFilters } = useGuestStore();
     const { tenant } = useAuthStore();
     const editorRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
