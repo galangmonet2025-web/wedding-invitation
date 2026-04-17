@@ -63,26 +63,26 @@ export function RegisterPage() {
                     <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl">
                         <HiOutlineHeart className="w-10 h-10" />
                     </div>
-                    <h1 className="text-4xl font-display font-bold mb-4 text-center">Start Your Journey</h1>
+                    <h1 className="text-4xl font-display font-bold mb-4 text-center">Mulai Perjalanan Anda</h1>
                     <p className="text-lg text-white/80 text-center max-w-md leading-relaxed">
-                        Create your digital wedding platform and manage everything from invitations to guest check-ins.
+                        Buat platform pernikahan digital Anda dan kelola segalanya mulai dari undangan hingga check-in tamu.
                     </p>
                     <div className="mt-12 grid grid-cols-2 gap-6 text-sm">
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Guest Management
+                            Manajemen Tamu
                         </div>
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            QR Check-in
+                            Check-in QR
                         </div>
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Gift Tracking
+                            Pelacakan Hadiah
                         </div>
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Analytics Dashboard
+                            Dasbor Analitik
                         </div>
                     </div>
                 </div>
@@ -98,14 +98,14 @@ export function RegisterPage() {
                     </div>
 
                     <div className="mb-6">
-                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">Register Wedding</h2>
-                        <p className="text-gray-500 dark:text-gray-400">Create your digital wedding invitation platform</p>
+                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">Daftar Pernikahan</h2>
+                        <p className="text-gray-500 dark:text-gray-400">Buat platform undangan pernikahan digital Anda</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="bride_name" className="label-field">Bride Name</label>
+                                <label htmlFor="bride_name" className="label-field">Nama Mempelai Wanita</label>
                                 <input
                                     id="bride_name"
                                     name="bride_name"
@@ -117,7 +117,7 @@ export function RegisterPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="groom_name" className="label-field">Groom Name</label>
+                                <label htmlFor="groom_name" className="label-field">Nama Mempelai Pria</label>
                                 <input
                                     id="groom_name"
                                     name="groom_name"
@@ -131,7 +131,7 @@ export function RegisterPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="wedding_date" className="label-field">Wedding Date</label>
+                            <label htmlFor="wedding_date" className="label-field">Tanggal Pernikahan</label>
                             <div className="relative">
                                 <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -146,7 +146,7 @@ export function RegisterPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="domain_slug" className="label-field">Domain Slug</label>
+                            <label htmlFor="domain_slug" className="label-field">Slug Domain</label>
                             <div className="relative">
                                 <HiOutlineGlobe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -165,7 +165,7 @@ export function RegisterPage() {
                         </div>
 
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Admin Account</p>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Akun Admin</p>
                         </div>
 
                         <div>
@@ -186,7 +186,7 @@ export function RegisterPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="reg-password" className="label-field">Password</label>
+                            <label htmlFor="reg-password" className="label-field">Kata Sandi</label>
                             <div className="relative">
                                 <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -203,15 +203,15 @@ export function RegisterPage() {
                         </div>
 
                         <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base mt-2">
-                            {loading ? 'Creating...' : 'Create Wedding Platform'}
+                            {loading ? 'Membuat...' : 'Buat Platform Pernikahan'}
                         </button>
                     </form>
 
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Already have an account?{' '}
+                            Sudah punya akun?{' '}
                             <Link to="/login" className="text-gold-600 hover:text-gold-700 font-medium transition-colors">
-                                Sign in
+                                Masuk
                             </Link>
                         </p>
                     </div>

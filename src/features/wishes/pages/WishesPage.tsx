@@ -137,7 +137,7 @@ export function WishesPage() {
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="label-field">Guest Name *</label>
+                        <label className="label-field">Nama Tamu *</label>
                         <input
                             type="text"
                             value={form.guest_name}
@@ -147,7 +147,7 @@ export function WishesPage() {
                         />
                     </div>
                     <div>
-                        <label className="label-field">Message *</label>
+                        <label className="label-field">Pesan *</label>
                         <textarea
                             value={form.message}
                             onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}

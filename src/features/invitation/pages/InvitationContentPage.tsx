@@ -445,11 +445,11 @@ export function InvitationContentPage() {
                                                 {getBool(content.flag_tampilkan_sosial_media_mempelai) && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                                                         <div>
-                                                            <label className="label-field">Groom's Instagram</label>
+                                                            <label className="label-field">Instagram Mempelai Pria</label>
                                                             <input type="text" value={content.account_media_sosial_laki_laki || ''} onChange={(e) => updateField('account_media_sosial_laki_laki', e.target.value)} className="input-field" prefix="@" />
                                                         </div>
                                                         <div>
-                                                            <label className="label-field">Bride's Instagram</label>
+                                                            <label className="label-field">Instagram Mempelai Wanita</label>
                                                             <input type="text" value={content.account_media_sosial_perempuan || ''} onChange={(e) => updateField('account_media_sosial_perempuan', e.target.value)} className="input-field" />
                                                         </div>
                                                     </div>
@@ -517,7 +517,7 @@ export function InvitationContentPage() {
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-3">
-                                                            <label className="label-field mb-0">Akad Time</label>
+                                                            <label className="label-field mb-0">Waktu Akad</label>
                                                             <div className="flex items-center gap-2">
                                                                 <input type="time" value={content.jam_awal_akad || ''} onChange={(e) => updateField('jam_awal_akad', e.target.value)} className="input-field shadow-none" title="Start Time" />
                                                                 <span className="text-gray-400">-</span>
@@ -525,7 +525,7 @@ export function InvitationContentPage() {
                                                             </div>
                                                         </div>
                                                         <div className="space-y-3">
-                                                            <label className="label-field mb-0">Resepsi Time</label>
+                                                            <label className="label-field mb-0">Waktu Resepsi</label>
                                                             <div className="flex items-center gap-2">
                                                                 <input type="time" value={content.jam_awal_resepsi || ''} onChange={(e) => updateField('jam_awal_resepsi', e.target.value)} className="input-field shadow-none" title="Start Time" />
                                                                 <span className="text-gray-400">-</span>
@@ -539,12 +539,12 @@ export function InvitationContentPage() {
                                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
                                                         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Akad Location</p>
                                                         <div>
-                                                            <label className="label-field">Venue Name</label>
+                                                            <label className="label-field">Nama Tempat</label>
                                                             <input type="text" value={content.nama_lokasi_akad || ''} onChange={(e) => updateField('nama_lokasi_akad', e.target.value)} className="input-field" placeholder="Masjid Raya / Hotel Grand..." />
                                                         </div>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
-                                                                <label className="label-field">Address & Info</label>
+                                                                <label className="label-field">Alamat & Info</label>
                                                                 <textarea value={content.keterangan_lokasi_akad || ''} onChange={(e) => updateField('keterangan_lokasi_akad', e.target.value)} className="input-field min-h-[80px]" placeholder="Jl. Sudirman No 1..." />
                                                             </div>
                                                             <div>
@@ -575,12 +575,12 @@ export function InvitationContentPage() {
                                                         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
                                                             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Resepsi Location</p>
                                                             <div>
-                                                                <label className="label-field">Venue Name</label>
+                                                                <label className="label-field">Nama Tempat</label>
                                                                 <input type="text" value={content.nama_lokasi_resepsi || ''} onChange={(e) => updateField('nama_lokasi_resepsi', e.target.value)} className="input-field" placeholder="Hotel Mulia..." />
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 <div>
-                                                                    <label className="label-field">Address & Info</label>
+                                                                    <label className="label-field">Alamat & Info</label>
                                                                     <textarea value={content.keterangan_lokasi_resepsi || ''} onChange={(e) => updateField('keterangan_lokasi_resepsi', e.target.value)} className="input-field min-h-[80px]" placeholder="Jl. Gatot Subroto No 5..." />
                                                                 </div>
                                                                 <div>
@@ -629,30 +629,30 @@ export function InvitationContentPage() {
                                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
                                                         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 1</p>
                                                         <div>
-                                                            <label className="label-field">Bank Name</label>
+                                                            <label className="label-field">Nama Bank</label>
                                                             <input type="text" value={content.nama_bank_1 || ''} onChange={(e) => updateField('nama_bank_1', e.target.value)} className="input-field" />
                                                         </div>
                                                         <div>
-                                                            <label className="label-field">Account Name</label>
+                                                            <label className="label-field">Nama Rekening</label>
                                                             <input type="text" value={content.nama_rekening_bank_1 || ''} onChange={(e) => updateField('nama_rekening_bank_1', e.target.value)} className="input-field" />
                                                         </div>
                                                         <div>
-                                                            <label className="label-field">Account Number</label>
+                                                            <label className="label-field">Nomor Rekening</label>
                                                             <input type="text" value={content.nomor_rekening_bank_1 || ''} onChange={(e) => updateField('nomor_rekening_bank_1', e.target.value)} className="input-field font-mono" />
                                                         </div>
                                                     </div>
                                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
                                                         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 2 <span className="text-gray-400 font-normal">(Optional)</span></p>
                                                         <div>
-                                                            <label className="label-field">Bank Name</label>
+                                                            <label className="label-field">Nama Bank</label>
                                                             <input type="text" value={content.nama_bank_2 || ''} onChange={(e) => updateField('nama_bank_2', e.target.value)} className="input-field" />
                                                         </div>
                                                         <div>
-                                                            <label className="label-field">Account Name</label>
+                                                            <label className="label-field">Nama Rekening</label>
                                                             <input type="text" value={content.nama_rekening_bank_2 || ''} onChange={(e) => updateField('nama_rekening_bank_2', e.target.value)} className="input-field" />
                                                         </div>
                                                         <div>
-                                                            <label className="label-field">Account Number</label>
+                                                            <label className="label-field">Nomor Rekening</label>
                                                             <input type="text" value={content.nomor_rekening_bank_2 || ''} onChange={(e) => updateField('nomor_rekening_bank_2', e.target.value)} className="input-field font-mono" />
                                                         </div>
                                                     </div>
@@ -736,7 +736,7 @@ export function InvitationContentPage() {
                                                             </button>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 <div>
-                                                                    <label className="label-field text-xs">Date</label>
+                                                                    <label className="label-field text-xs">Tanggal</label>
                                                                     <input type="date" value={item.tanggal} onChange={(e) => {
                                                                         const newArr = [...timelineItems];
                                                                         newArr[idx].tanggal = e.target.value;
@@ -744,7 +744,7 @@ export function InvitationContentPage() {
                                                                     }} className="input-field text-sm" />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="label-field text-xs">Title</label>
+                                                                    <label className="label-field text-xs">Judul</label>
                                                                     <input type="text" value={item.judul} onChange={(e) => {
                                                                         const newArr = [...timelineItems];
                                                                         newArr[idx].judul = e.target.value;
@@ -753,7 +753,7 @@ export function InvitationContentPage() {
                                                                 </div>
                                                             </div>
                                                             <div>
-                                                                <label className="label-field text-xs">Description</label>
+                                                                <label className="label-field text-xs">Deskripsi</label>
                                                                 <textarea value={item.deskripsi} onChange={(e) => {
                                                                     const newArr = [...timelineItems];
                                                                     newArr[idx].deskripsi = e.target.value;
@@ -796,19 +796,19 @@ export function InvitationContentPage() {
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Quote (Custom Text 1)</label>
+                                                    <label className="label-field">Kutipan (Teks Kustom 1)</label>
                                                     <textarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. And of His signs is that He created for you..." />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Welcome Text (Custom Text 2)</label>
+                                                    <label className="label-field">Teks Sambutan (Teks Kustom 2)</label>
                                                     <textarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. It is a joy and privilege to invite you..." />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Protocol / Health Text (Custom Text 3)</label>
+                                                    <label className="label-field">Protokol / Teks Kesehatan (Teks Kustom 3)</label>
                                                     <textarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Please follow health protocols..." />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Additional Footer Text (Custom Text 4)</label>
+                                                    <label className="label-field">Teks Tambahan Footer (Teks Kustom 4)</label>
                                                     <textarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Your presence is the best gift for us." />
                                                 </div>
                                             </div>
@@ -857,7 +857,18 @@ export function InvitationContentPage() {
 
                                                         {typesList.includes('gallery') && (
                                                             <div className="col-span-full mt-6 border-t border-gray-100 dark:border-gray-800 pt-6">
-                                                                <h3 className="text-md font-semibold text-gray-800 dark:text-white mb-4">Foto Album (Multi Image)</h3>
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    <h3 className="text-md font-semibold text-gray-800 dark:text-white">Foto Album (Multi Image)</h3>
+                                                                    {(() => {
+                                                                        const maxGallery = tenant?.plan_type === 'premium' ? 15 : tenant?.plan_type === 'pro' ? 10 : 5;
+                                                                        const currentCount = images.filter(img => img.image_type === 'gallery').length;
+                                                                        return (
+                                                                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${currentCount >= maxGallery ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'}`}>
+                                                                                {currentCount} / {maxGallery} Foto (Paket {tenant?.plan_type || 'basic'})
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                </div>
                                                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                                                     {images.filter(img => img.image_type === 'gallery').map(img => (
                                                                         <div key={img.id} className="relative group">
@@ -872,13 +883,19 @@ export function InvitationContentPage() {
                                                                             />
                                                                         </div>
                                                                     ))}
-                                                                    <ImageUpload
-                                                                        imageType="gallery"
-                                                                        title="Tambah Foto Album"
-                                                                        onUploadSuccess={(img) => setImages(prev => [...prev, img])}
-                                                                        onDeleteSuccess={() => { }}
-                                                                        aspectRatio="square"
-                                                                    />
+                                                                    {(() => {
+                                                                        const maxGallery = tenant?.plan_type === 'premium' ? 15 : tenant?.plan_type === 'pro' ? 10 : 5;
+                                                                        const currentCount = images.filter(img => img.image_type === 'gallery').length;
+                                                                        return currentCount < maxGallery ? (
+                                                                            <ImageUpload
+                                                                                imageType="gallery"
+                                                                                title="Tambah Foto Album"
+                                                                                onUploadSuccess={(img) => setImages(prev => [...prev, img])}
+                                                                                onDeleteSuccess={() => { }}
+                                                                                aspectRatio="square"
+                                                                            />
+                                                                        ) : null;
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -902,7 +919,7 @@ export function InvitationContentPage() {
                                             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Music Background</h2>
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="label-field">Background Music Link (URL YouTube)</label>
+                                            <label className="label-field">Link Musik Latar (URL YouTube)</label>
                                             <input type="text" value={content.link_backsound_music || ''} onChange={(e) => updateField('link_backsound_music', e.target.value)} className="input-field" placeholder="https://youtube.com/watch?v=..." />
                                             <p className="text-[10px] text-gray-400 mt-1">Gunakan link full URL dari YouTube</p>
                                         </div>
@@ -930,11 +947,11 @@ export function InvitationContentPage() {
                                             {getBool(content.flag_pakai_live_streaming) && (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                                                     <div>
-                                                        <label className="label-field">Platform (e.g. YouTube, Zoom)</label>
+                                                        <label className="label-field">Platform (misal: YouTube, Zoom)</label>
                                                         <input type="text" value={content.platform_live_streaming || ''} onChange={(e) => updateField('platform_live_streaming', e.target.value)} className="input-field" placeholder="YouTube" />
                                                     </div>
                                                     <div>
-                                                        <label className="label-field">Link Live Streaming / Meeting URL</label>
+                                                        <label className="label-field">Link Live Streaming / URL Meeting</label>
                                                         <input type="url" value={content.link_live_streaming || ''} onChange={(e) => updateField('link_live_streaming', e.target.value)} className="input-field" placeholder="https://..." />
                                                     </div>
                                                 </div>

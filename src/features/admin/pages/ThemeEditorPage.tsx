@@ -91,7 +91,7 @@ export function ThemeEditorPage() {
                         setImageTypes(theme.image_types || []);
                     } else {
                         toast.error('Theme not found');
-                        navigate('/themes');
+                        navigate('/private/themes');
                     }
                 }
             } else if (copiedTheme) {
@@ -180,7 +180,7 @@ export function ThemeEditorPage() {
                 if (res.success) {
                     toast.success('Theme created successfully');
                     setFlagDraft(isDraft);
-                    navigate(`private/themes/editor/${res.data.id}`, { replace: true });
+                    navigate(`/private/themes/editor/${res.data.id}`, { replace: true });
                 } else {
                     toast.error(res.message);
                 }
@@ -577,7 +577,7 @@ export function ThemeEditorPage() {
             {/* Toolbar */}
             <div className="flex-none flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm z-10">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/themes')} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <button onClick={() => navigate('/private/themes')} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <HiOutlineArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
@@ -688,7 +688,7 @@ export function ThemeEditorPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Paket</label>
                                     <select
                                         value={planType}
                                         onChange={e => setPlanType(e.target.value as PlanType)}
@@ -700,7 +700,7 @@ export function ThemeEditorPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preview Image URL</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL Gambar Pratinjau</label>
                                     <input
                                         type="text"
                                         value={previewImage}

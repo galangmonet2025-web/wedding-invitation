@@ -122,9 +122,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             audioRef.current.loop = true;
         }
 
-        if (isPlaying) {
+        if (isPlaying && isOpened) {
             audioRef.current.play().catch(console.error);
-        } else {
+        } else if (audioRef.current) {
             audioRef.current.pause();
         }
 
@@ -133,7 +133,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 audioRef.current.pause();
             }
         };
-    }, [isPlaying, activeContent.link_backsound_music]);
+    }, [isPlaying, isOpened, activeContent.link_backsound_music]);
 
     // RSVP State
     const [rsvpCode, setRsvpCode] = useState('');
@@ -752,7 +752,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             >
                 {guestQrModal}
                 {uninvitedGuestFormModal}
-                {youtubeId && (
+                {youtubeId && isPlaying && (
                     <iframe
                         ref={ytIframeRef}
                         width="0"

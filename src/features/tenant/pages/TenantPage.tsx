@@ -291,26 +291,26 @@ export function TenantPage() {
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="label-field">Bride Name *</label>
+                            <label className="label-field">Nama Mempelai Wanita *</label>
                             <input type="text" value={form.bride_name} onChange={(e) => setForm((f) => ({ ...f, bride_name: e.target.value }))} className="input-field" />
                         </div>
                         <div>
-                            <label className="label-field">Groom Name *</label>
+                            <label className="label-field">Nama Mempelai Pria *</label>
                             <input type="text" value={form.groom_name} onChange={(e) => setForm((f) => ({ ...f, groom_name: e.target.value }))} className="input-field" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="label-field">Wedding Date</label>
+                            <label className="label-field">Tanggal Pernikahan</label>
                             <input type="date" value={form.wedding_date} onChange={(e) => setForm((f) => ({ ...f, wedding_date: e.target.value }))} className="input-field" />
                         </div>
                         <div>
-                            <label className="label-field">Domain Slug</label>
+                            <label className="label-field">Slug Domain</label>
                             <input type="text" value={form.domain_slug} onChange={(e) => setForm((f) => ({ ...f, domain_slug: e.target.value }))} className="input-field" placeholder="couple-name" />
                         </div>
                     </div>
                     <div>
-                        <label className="label-field">Plan Type</label>
+                        <label className="label-field">Tipe Paket</label>
                         <select value={form.plan_type} onChange={(e) => setForm((f) => ({ ...f, plan_type: e.target.value as PlanType }))} className="select-field">
                             <option value="basic">Basic (Gratis)</option>
                             <option value="pro">Pro</option>
@@ -318,7 +318,7 @@ export function TenantPage() {
                         </select>
                     </div>
                     <div>
-                        <label className="label-field">Subscribed Theme</label>
+                        <label className="label-field">Tema Berlangganan</label>
                         <select
                             value={form.theme_id || ''}
                             onChange={(e) => setForm((f) => ({ ...f, theme_id: e.target.value }))}
@@ -339,11 +339,11 @@ export function TenantPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="label-field">Admin Username *</label>
+                            <label className="label-field">Username Admin *</label>
                             <input type="text" value={form.admin_username} onChange={(e) => setForm((f) => ({ ...f, admin_username: e.target.value }))} className="input-field" />
                         </div>
                         <div>
-                            <label className="label-field">Admin Password *</label>
+                            <label className="label-field">Password Admin *</label>
                             <input type="password" value={form.admin_password} onChange={(e) => setForm((f) => ({ ...f, admin_password: e.target.value }))} className="input-field" />
                         </div>
                     </div>
@@ -367,22 +367,22 @@ export function TenantPage() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="label-field text-xs text-gray-500 mb-1 block">Bride Name</label>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Nama Mempelai Wanita</label>
                                 <input type="text" value={editForm.bride_name || ''} onChange={(e) => setEditForm(prev => ({ ...prev, bride_name: e.target.value }))} className="input-field text-sm" />
                             </div>
                             <div>
-                                <label className="label-field text-xs text-gray-500 mb-1 block">Groom Name</label>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Nama Mempelai Pria</label>
                                 <input type="text" value={editForm.groom_name || ''} onChange={(e) => setEditForm(prev => ({ ...prev, groom_name: e.target.value }))} className="input-field text-sm" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="label-field text-xs text-gray-500 mb-1 block">Wedding Date</label>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Tanggal Pernikahan</label>
                                 <input type="date" value={editForm.wedding_date ? new Date(editForm.wedding_date).toISOString().split('T')[0] : ''} onChange={(e) => setEditForm(prev => ({ ...prev, wedding_date: e.target.value }))} className="input-field text-sm" />
                             </div>
                             <div>
-                                <label className="label-field text-xs text-gray-500 mb-1 block">Domain Slug</label>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Slug Domain</label>
                                 <input type="text" value={editForm.domain_slug || ''} onChange={(e) => setEditForm(prev => ({ ...prev, domain_slug: e.target.value }))} className="input-field text-sm" />
                             </div>
                         </div>
@@ -420,7 +420,7 @@ export function TenantPage() {
                         </div>
 
                         <div>
-                            <label className="label-field text-xs text-gray-500 mb-1 block">Assigned Theme</label>
+                            <label className="label-field text-xs text-gray-500 mb-1 block">Tema Terpilih</label>
                             <select
                                 value={editForm.theme_id || ''}
                                 onChange={(e) => setEditForm(prev => ({ ...prev, theme_id: e.target.value }))}

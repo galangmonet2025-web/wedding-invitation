@@ -94,7 +94,7 @@ export function LoginPage() {
                     </div>
                     <h1 className="text-4xl font-display font-bold mb-4 text-center">Wedding SaaS Platform</h1>
                     <p className="text-lg text-white/80 text-center max-w-md leading-relaxed">
-                        Manage multiple wedding events with elegance. A complete digital wedding invitation management system.
+                        Kelola berbagai acara pernikahan dengan elegan. Sistem manajemen undangan pernikahan digital yang lengkap.
                     </p>
                     <div className="mt-12 flex items-center gap-8">
                         <div className="text-center">
@@ -129,8 +129,8 @@ export function LoginPage() {
                     </div>
 
                     <div className="mb-8">
-                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">Welcome Back</h2>
-                        <p className="text-gray-500 dark:text-gray-400">Sign in to manage your wedding events</p>
+                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">Selamat Datang Kembali</h2>
+                        <p className="text-gray-500 dark:text-gray-400">Masuk untuk mengelola acara pernikahan Anda</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
@@ -152,7 +152,7 @@ export function LoginPage() {
 
 
                         <div>
-                            <label htmlFor="password" className="label-field">Password</label>
+                            <label htmlFor="password" className="label-field">Kata Sandi</label>
                             <div className="relative">
                                 <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -180,16 +180,16 @@ export function LoginPage() {
                             disabled={loading}
                             className="btn-primary w-full py-3 text-base"
                         >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                            {loading ? 'Masuk...' : 'Masuk'}
                         </button>
                     </form>
 
 
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Don't have an account?{' '}
+                            Belum punya akun?{' '}
                             <Link to="/register" className="text-gold-600 hover:text-gold-700 font-medium transition-colors">
-                                Register your wedding
+                                Daftarkan pernikahan Anda
                             </Link>
                         </p>
                     </div>
