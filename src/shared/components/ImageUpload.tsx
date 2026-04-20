@@ -15,6 +15,8 @@ interface ImageUploadProps {
     onDeleteSuccess: (imageId: string) => void;
     onClick?: (image: ImageRecord) => void;
     aspectRatio?: 'video' | 'square' | 'portrait' | 'auto';
+    allowMultiple?: boolean;
+    maxFiles?: number;
 }
 
 export function ImageUpload({
@@ -25,11 +27,14 @@ export function ImageUpload({
     onUploadSuccess,
     onDeleteSuccess,
     onClick,
-    aspectRatio = 'auto'
+    aspectRatio = 'auto',
+    allowMultiple = false,
+    maxFiles
 }: ImageUploadProps) {
     const [uploading, setUploading] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [dragActive, setDragActive] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
     // Compression constraints based on design
     const getCompressionOptions = () => {
@@ -80,83 +85,97 @@ export function ImageUpload({
         });
     };
 
-    const handleFileUpload = async (file: File) => {
-        if (!file) return;
+    const handleFileUpload = async (files: FileList | File[]) => {
+        if (!files || files.length === 0) return;
 
-        // Basic validation
-        if (!file.type.startsWith('image/')) {
-            toast.error('Silakan upload file gambar yang valid (JPG, PNG, WEBP).');
-            return;
-        }
+        const filesArray = Array.from(files);
 
-        // Limit roughly to 5MB upfront before compression to save browser memory
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('Ukuran file terlalu besar. Maksimal 5MB sebelum kompresi.');
+        // Check maxFiles if provided
+        if (maxFiles && filesArray.length > maxFiles) {
+            toast.error(`Anda hanya dapat memilih maksimal ${maxFiles} foto sekaligus.`);
             return;
         }
 
         setUploading(true);
-        const toastId = toast.loading('Memproses gambar...');
+        const total = filesArray.length;
+        setUploadProgress({ current: 0, total });
 
-        try {
-            // Compress image
-            const options = getCompressionOptions();
-            const compressedFile = await imageCompression(file, options);
+        for (let i = 0; i < total; i++) {
+            const file = filesArray[i];
+            setUploadProgress({ current: i + 1, total });
 
-            // Get dimensions (optional but good for tracking)
-            const getDimensions = (): Promise<{ w: number, h: number }> => {
-                return new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => resolve({ w: img.width, h: img.height });
-                    img.src = URL.createObjectURL(compressedFile);
-                });
-            };
-            const dims = await getDimensions();
-
-            // Convert to Base64
-            const base64Data = await convertToBase64(compressedFile);
-
-            toast.loading('Mengupload ke server...', { id: toastId });
-
-            // Upload via API
-            const response = await imageApi.uploadImage({
-                image_type: imageType,
-                file_name: file.name.replace(/\.[^/.]+$/, "") + ".webp", // Keep original name but change extension
-                base64_data: base64Data,
-                mime_type: 'image/webp',
-                width: dims.w,
-                height: dims.h,
-                size_kb: Math.round(compressedFile.size / 1024)
-            });
-
-            if (response.success && response.data) {
-                toast.success('Gambar berhasil diupload!', { id: toastId });
-                // We fake an ImageRecord response here based on the upload response
-                // Normally the backend would return this fully, but we adapt based on what we have.
-                const newRecord: ImageRecord = {
-                    id: response.data.id,
-                    tenant_id: 'temp', // Not strictly needed here, updated later if fetched
-                    image_type: imageType,
-                    file_name: response.data.file_name,
-                    drive_file_id: response.data.drive_file_id,
-                    drive_url: response.data.drive_url,
-                    cdn_url: response.data.cdn_url,
-                    width: dims.w,
-                    height: dims.h,
-                    size_kb: Math.round(compressedFile.size / 1024),
-                    created_at: new Date().toISOString()
-                };
-                onUploadSuccess(newRecord);
-            } else {
-                toast.error(response.message || 'Gagal mengupload gambar', { id: toastId });
+            // Basic validation
+            if (!file.type.startsWith('image/')) {
+                toast.error(`File "${file.name}" bukan gambar yang valid.`);
+                continue;
             }
 
-        } catch (error: any) {
-            console.error('Upload Error:', error);
-            toast.error(error.message || 'Terjadi kesalahan saat mengupload gambar', { id: toastId });
-        } finally {
-            setUploading(false);
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error(`Ukuran "${file.name}" terlalu besar (Max 5MB).`);
+                continue;
+            }
+
+            const toastId = toast.loading(`${total > 1 ? `[${i + 1}/${total}] ` : ''}Memproses ${file.name}...`);
+
+            try {
+                // Compress image
+                const options = getCompressionOptions();
+                const compressedFile = await imageCompression(file, options);
+
+                // Get dimensions
+                const getDimensions = (): Promise<{ w: number, h: number }> => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => resolve({ w: img.width, h: img.height });
+                        img.src = URL.createObjectURL(compressedFile);
+                    });
+                };
+                const dims = await getDimensions();
+
+                // Convert to Base64
+                const base64Data = await convertToBase64(compressedFile);
+
+                toast.loading(`${total > 1 ? `[${i + 1}/${total}] ` : ''}Mengupload ${file.name}...`, { id: toastId });
+
+                // Upload via API
+                const response = await imageApi.uploadImage({
+                    image_type: imageType,
+                    file_name: file.name.replace(/\.[^/.]+$/, "") + ".webp",
+                    base64_data: base64Data,
+                    mime_type: 'image/webp',
+                    width: dims.w,
+                    height: dims.h,
+                    size_kb: Math.round(compressedFile.size / 1024)
+                });
+
+                if (response.success && response.data) {
+                    toast.success(`${file.name} berhasil diupload!`, { id: toastId });
+                    const newRecord: ImageRecord = {
+                        id: response.data.id,
+                        tenant_id: 'temp',
+                        image_type: imageType,
+                        file_name: response.data.file_name,
+                        drive_file_id: response.data.drive_file_id,
+                        drive_url: response.data.drive_url,
+                        cdn_url: response.data.cdn_url,
+                        width: dims.w,
+                        height: dims.h,
+                        size_kb: Math.round(compressedFile.size / 1024),
+                        created_at: new Date().toISOString()
+                    };
+                    onUploadSuccess(newRecord);
+                } else {
+                    toast.error(response.message || `Gagal mengupload ${file.name}`, { id: toastId });
+                }
+
+            } catch (error: any) {
+                console.error('Upload Error:', error);
+                toast.error(`Terjadi kesalahan pada ${file.name}: ${error.message}`, { id: toastId });
+            }
         }
+
+        setUploading(false);
+        setUploadProgress(null);
     };
 
     const handleDelete = async () => {
@@ -199,8 +218,8 @@ export function ImageUpload({
         e.stopPropagation();
         setDragActive(false);
 
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFileUpload(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileUpload(e.dataTransfer.files);
         }
     }, []);
 
@@ -208,7 +227,7 @@ export function ImageUpload({
         'video': 'aspect-video',
         'square': 'aspect-square',
         'portrait': 'aspect-[3/4]',
-        'auto': 'aspect-auto min-h-[140px]' // Made more compact
+        'auto': 'aspect-auto min-h-[140px]'
     }[aspectRatio];
 
     return (
@@ -277,8 +296,10 @@ export function ImageUpload({
                         {uploading ? (
                             <>
                                 <div className="w-6 h-6 border-[3px] border-gold-200 border-t-gold-500 rounded-full animate-spin mb-2" />
-                                <p className="mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">Memproses...</p>
-                                <p className="text-[10px] text-gray-400 dark:text-gray-500">Upload</p>
+                                <p className="mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                    {uploadProgress ? `Mengupload ${uploadProgress.current}/${uploadProgress.total}` : 'Memproses...'}
+                                </p>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500">Mohon tunggu</p>
                             </>
                         ) : (
                             <>
@@ -286,10 +307,10 @@ export function ImageUpload({
                                     <HiOutlineUpload className="w-5 h-5" />
                                 </div>
                                 <p className="mb-0.5 text-xs text-gray-600 dark:text-gray-300">
-                                    <span className="font-semibold text-gold-600 dark:text-gold-400">Pilih gambar</span>
+                                    <span className="font-semibold text-gold-600 dark:text-gold-400">Pilih {allowMultiple ? 'foto-foto' : 'gambar'}</span>
                                 </p>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                                    Max 5MB
+                                    Max 5MB {allowMultiple ? '(Banyak file sekaligus)' : ''}
                                 </p>
                             </>
                         )}
@@ -298,9 +319,10 @@ export function ImageUpload({
                         type="file"
                         className="hidden"
                         accept="image/jpeg, image/png, image/webp"
+                        multiple={allowMultiple}
                         onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                                handleFileUpload(e.target.files[0]);
+                            if (e.target.files && e.target.files.length > 0) {
+                                handleFileUpload(e.target.files);
                             }
                         }}
                         disabled={uploading}

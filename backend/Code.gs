@@ -71,7 +71,7 @@ function handleRequest(e, method) {
     }
 
     // Public endpoints (no auth required)
-    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'checkPublicGuest', 'getWebsiteConfig'];
+    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug'];
     if (publicActions.indexOf(action) !== -1) {
       return routeAction(action, payload, null);
     }
@@ -102,6 +102,8 @@ function routeAction(action, payload, auth) {
       return AuthService.login(payload);
     case 'registerTenant':
       return AuthService.registerTenant(payload);
+    case 'checkSlug':
+      return AuthService.checkSlug(payload);
     case 'logout':
       return ResponseHelper.success(null, 'Logged out successfully');
 
@@ -598,6 +600,12 @@ var AuthService = {
     } catch (e) {
       return null;
     }
+  },
+
+  checkSlug: function(payload) {
+    if (!payload.slug) return ResponseHelper.error('slug required', 400);
+    var existingTenant = DB.findOne('Tenants', 'domain_slug', payload.slug);
+    return ResponseHelper.success({ available: !existingTenant }, 'Slug check complete');
   },
 
   impersonateTenant: function(auth, payload) {

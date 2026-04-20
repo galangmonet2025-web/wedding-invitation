@@ -43,6 +43,11 @@ export const authApi = {
         const res = await apiClient.post('', { action: 'logout' });
         return res.data;
     },
+
+    checkSlug: async (slug: string): Promise<ApiResponse<{ available: boolean }>> => {
+        const res = await apiClient.post('', { action: 'checkSlug', slug }, { skipLoader: true } as any);
+        return res.data;
+    },
 };
 
 // =============================================

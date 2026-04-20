@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useGuestStore } from '../store/guestStore';
-import { 
-    HiOutlineSearch, 
-    HiOutlineChatAlt2, 
-    HiOutlineCheckCircle, 
-    HiOutlineClock, 
+import {
+    HiOutlineSearch,
+    HiOutlineChatAlt2,
+    HiOutlineCheckCircle,
+    HiOutlineClock,
     HiOutlineSave,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { invitationContentApi } from '@/core/api/endpoints';
+import { InvitationContent } from '@/types';
 
 // Helper: Convert WhatsApp Markdown to HTML for visual editor
 const whatsAppToHtml = (text: string) => {
@@ -26,7 +27,7 @@ const whatsAppToHtml = (text: string) => {
 // Helper: Convert HTML back to WhatsApp Markdown for sending/saving
 const htmlToWhatsApp = (html: string) => {
     if (!html) return '';
-    
+
     let text = html
         // Handle newlines
         .replace(/<br\s*\/?>/gi, "\n")
@@ -55,7 +56,7 @@ const htmlToWhatsApp = (html: string) => {
 const formatPhoneForWhatsApp = (phone: any) => {
     // Convert to string and remove non-numeric characters
     let cleaned = String(phone || '').replace(/\D/g, '');
-    
+
     // Handle 0 prefix (e.g. 0812 -> 62812)
     if (cleaned.startsWith('0')) {
         cleaned = '62' + cleaned.substring(1);
@@ -64,7 +65,7 @@ const formatPhoneForWhatsApp = (phone: any) => {
     else if (cleaned.startsWith('8')) {
         cleaned = '62' + cleaned;
     }
-    
+
     return cleaned;
 };
 
@@ -74,12 +75,13 @@ export function WhatsAppBlastPage() {
     const editorRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-    
+    const [invitationContent, setInvitationContent] = useState<InvitationContent | null>(null);
+
     // Sub-component for editable row to prevent full-list re-renders
-    const GuestRow = ({ guest, onSend, onUpdate }: { 
-        guest: any, 
+    const GuestRow = ({ guest, onSend, onUpdate }: {
+        guest: any,
         onSend: (g: any) => void,
-        onUpdate: (id: string, data: any) => void 
+        onUpdate: (id: string, data: any) => void
     }) => {
         const [localName, setLocalName] = useState(guest.name || '');
         const [localPhone, setLocalPhone] = useState(guest.phone || '');
@@ -99,7 +101,7 @@ export function WhatsAppBlastPage() {
         return (
             <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                 <td className="px-4 py-2">
-                    <input 
+                    <input
                         type="text"
                         value={localName}
                         onChange={(e) => setLocalName(e.target.value)}
@@ -109,7 +111,7 @@ export function WhatsAppBlastPage() {
                     />
                 </td>
                 <td className="px-4 py-2">
-                    <input 
+                    <input
                         type="text"
                         value={localPhone}
                         onChange={(e) => setLocalPhone(e.target.value)}
@@ -143,7 +145,7 @@ export function WhatsAppBlastPage() {
             </tr>
         );
     };
-    
+
     // We store the Markdown version for logic, but editor displays HTML
     const [templateMarkdown, setTemplateMarkdown] = useState(
         `Halo {{nama}},\n\nKami mengundang Anda untuk hadir di acara pernikahan kami.\n\nDetail undangan dapat dilihat pada link berikut:\n{{link}}\n\nTerima kasih.`
@@ -158,15 +160,18 @@ export function WhatsAppBlastPage() {
     const loadTemplate = async () => {
         try {
             const res = await invitationContentApi.getContent();
-            if (res.success && res.data?.wa_blast_template) {
-                setTemplateMarkdown(res.data.wa_blast_template);
-                if (editorRef.current) {
-                    editorRef.current.innerHTML = whatsAppToHtml(res.data.wa_blast_template);
-                }
-            } else {
-                // Initialize with default if empty
-                if (editorRef.current) {
-                    editorRef.current.innerHTML = whatsAppToHtml(templateMarkdown);
+            if (res.success && res.data) {
+                setInvitationContent(res.data);
+                if (res.data.wa_blast_template) {
+                    setTemplateMarkdown(res.data.wa_blast_template);
+                    if (editorRef.current) {
+                        editorRef.current.innerHTML = whatsAppToHtml(res.data.wa_blast_template);
+                    }
+                } else {
+                    // Initialize with default if empty
+                    if (editorRef.current) {
+                        editorRef.current.innerHTML = whatsAppToHtml(templateMarkdown);
+                    }
                 }
             }
         } catch (err) {
@@ -178,7 +183,7 @@ export function WhatsAppBlastPage() {
         setIsSavingTemplate(true);
         const currentHtml = editorRef.current?.innerHTML || '';
         const markdown = htmlToWhatsApp(currentHtml);
-        
+
         try {
             const res = await invitationContentApi.updateContent({ wa_blast_template: markdown });
             if (res.success) {
@@ -226,7 +231,7 @@ export function WhatsAppBlastPage() {
             // Fallback: append to the end of editor if focus is outside
             const textNode = document.createTextNode(text);
             editor.appendChild(textNode);
-            
+
             // Focus and move cursor to end
             editor.focus();
             const range = document.createRange();
@@ -241,8 +246,8 @@ export function WhatsAppBlastPage() {
     const filteredGuests = useMemo(() => {
         return guests.filter((g) => {
             const phoneStr = String(g.phone || '');
-            const matchesSearch = (g.name || '').toLowerCase().includes(search.toLowerCase()) || 
-                                 phoneStr.includes(search);
+            const matchesSearch = (g.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                phoneStr.includes(search);
             return matchesSearch;
         });
     }, [guests, search]);
@@ -266,6 +271,17 @@ export function WhatsAppBlastPage() {
         let message = markdown
             .replace(/{{nama}}/g, guest.name)
             .replace(/{{link}}/g, invitationLink);
+
+        // Replace additional global variables if invitationContent is available
+        if (invitationContent) {
+            const waktu = `${invitationContent.jam_awal_resepsi || ''} - ${invitationContent.jam_akhir_resepsi || ''}`;
+            message = message
+                .replace(/{{groom}}/g, invitationContent.groom_name || '')
+                .replace(/{{bride}}/g, invitationContent.bride_name || '')
+                .replace(/{{lokasi}}/g, invitationContent.keterangan_lokasi_resepsi || '')
+                .replace(/{{tanggal}}/g, invitationContent.wedding_date || '')
+                .replace(/{{waktu}}/g, waktu);
+        }
 
         // Encode message
         const encodedMessage = encodeURIComponent(message);
@@ -309,26 +325,26 @@ export function WhatsAppBlastPage() {
                                 Simpan
                             </button>
                         </div>
-                        
+
                         <div className="space-y-4 flex-1 flex flex-col">
                             <div>
                                 {/* Visual Toolbar */}
                                 <div className="flex items-center gap-1 mb-2 bg-gray-50 dark:bg-gray-900/50 p-1 rounded-lg border border-gray-100 dark:border-gray-800">
-                                    <button 
+                                    <button
                                         onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
                                         className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all font-bold"
                                         title="Bold"
                                     >
                                         B
                                     </button>
-                                    <button 
+                                    <button
                                         onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
                                         className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all italic"
                                         title="Italic"
                                     >
                                         I
                                     </button>
-                                    <button 
+                                    <button
                                         onMouseDown={(e) => { e.preventDefault(); handleFormat('strikeThrough'); }}
                                         className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all line-through"
                                         title="Strikethrough"
@@ -336,17 +352,55 @@ export function WhatsAppBlastPage() {
                                         S
                                     </button>
                                     <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-                                    <button 
+                                    <button
                                         onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
-                                        className="text-[10px] font-bold px-2.5 py-1.5 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
+                                        className="text-[10px] font-bold px-2 py-1 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
+                                        title={`Nama Tamu\n(Otomatis sesuai nama masing-masing tamu)`}
                                     >
                                         + NAMA
                                     </button>
-                                    <button 
+                                    <button
                                         onMouseDown={(e) => { e.preventDefault(); insertText('{{link}}'); }}
-                                        className="text-[10px] font-bold px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 transition-colors shadow-sm"
+                                        className="text-[10px] font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md hover:bg-emerald-100 transition-colors shadow-sm"
+                                        title={`Link Undangan\n(Otomatis sesuai link unik tamu)`}
                                     >
-                                        + LINK 
+                                        + LINK
+                                    </button>
+                                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{groom}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md hover:bg-indigo-100 transition-colors shadow-sm"
+                                        title={`Nama Pengantin Pria\n${invitationContent?.groom_name || '-'}`}
+                                    >
+                                        + PRIA
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{bride}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100 transition-colors shadow-sm"
+                                        title={`Nama Pengantin Wanita\n${invitationContent?.bride_name || '-'}`}
+                                    >
+                                        + WANITA
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{lokasi}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-md hover:bg-amber-100 transition-colors shadow-sm"
+                                        title={`Lokasi Resepsi\n${invitationContent?.keterangan_lokasi_resepsi || '-'}`}
+                                    >
+                                        + LOKASI
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{tanggal}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md hover:bg-teal-100 transition-colors shadow-sm"
+                                        title={`Tanggal Resepsi\n${invitationContent?.wedding_date || '-'}`}
+                                    >
+                                        + TANGGAL
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{waktu}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-md hover:bg-violet-100 transition-colors shadow-sm"
+                                        title={`Waktu Resepsi\n${invitationContent?.jam_awal_resepsi || ''} - ${invitationContent?.jam_akhir_resepsi || ''}`}
+                                    >
+                                        + WAKTU
                                     </button>
                                 </div>
 
@@ -418,9 +472,9 @@ export function WhatsAppBlastPage() {
                                         </tr>
                                     ) : (
                                         filteredGuests.map((guest) => (
-                                            <GuestRow 
-                                                key={guest.id} 
-                                                guest={guest} 
+                                            <GuestRow
+                                                key={guest.id}
+                                                guest={guest}
                                                 onSend={handleSend}
                                                 onUpdate={(id, data) => updateGuest({ id, ...data }, true)}
                                             />

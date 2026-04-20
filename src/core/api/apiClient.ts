@@ -15,8 +15,10 @@ const apiClient = axios.create({
 
 // Request interceptor - inject token
 apiClient.interceptors.request.use(
-    (config) => {
-        useApiStore.getState().incrementLoading();
+    (config: any) => {
+        if (!config.skipLoader) {
+            useApiStore.getState().incrementLoading();
+        }
         const token = useAuthStore.getState().token;
         if (token) {
             // Send token via params (GET) or body (POST)
@@ -33,15 +35,19 @@ apiClient.interceptors.request.use(
         return config;
     },
     (error) => {
-        useApiStore.getState().decrementLoading();
+        if (!error.config?.skipLoader) {
+            useApiStore.getState().decrementLoading();
+        }
         return Promise.reject(error);
     }
 );
 
 // Response interceptor - handle errors
 apiClient.interceptors.response.use(
-    (response) => {
-        useApiStore.getState().decrementLoading();
+    (response: any) => {
+        if (!response.config?.skipLoader) {
+            useApiStore.getState().decrementLoading();
+        }
 
         // Detect if Google Apps Script returned an HTML page (usually a login redirect due to wrong deployment settings)
         if (typeof response.data === 'string' && response.data.trim().toLowerCase().startsWith('<!doctype html>')) {
@@ -69,7 +75,9 @@ apiClient.interceptors.response.use(
         return response;
     },
     (error) => {
-        useApiStore.getState().decrementLoading();
+        if (!error.config?.skipLoader) {
+            useApiStore.getState().decrementLoading();
+        }
         if (error.response?.status === 401 || error.response?.data?.message === 'Token expired') {
             const isLoginRequest = typeof error.config?.data === 'string' &&
                 error.config.data.includes('"action":"login"');
