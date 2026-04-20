@@ -7,7 +7,9 @@ import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { parseTemplate } from '@/utils/templateParser';
 import Editor from '@monaco-editor/react';
-import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
+import { ProxyImage, fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
+import html2canvas from 'html2canvas';
+import { imageApi } from '@/core/api/imageApi';
 
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
@@ -26,6 +28,7 @@ export function ThemeEditorPage() {
         const saved = localStorage.getItem('theme-editor-show-preview');
         return saved !== 'false';
     });
+    const [isCapturing, setIsCapturing] = useState(false);
 
 
     // Form and Editor State
@@ -159,8 +162,65 @@ export function ThemeEditorPage() {
         }
     }, [selectedPreviewTenantId, allTenants]);
 
+    const handleCaptureScreenshot = async () => {
+        if (!iframeRef.current) return;
+
+        setIsCapturing(true);
+        const loadingToast = toast.loading('Mengambil screenshot pratinjau...');
+        
+        try {
+            const iframe = iframeRef.current;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+
+            if (!iframeDoc || !iframeDoc.body) {
+                throw new Error("Konten pratinjau tidak dapat diakses.");
+            }
+
+            // Tambahkan delay kecil agar render stabil
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const canvas = await html2canvas(iframeDoc.documentElement, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                scale: 1, // Skala 1 cukup untuk teaser
+                logging: false,
+                width: iframeDoc.documentElement.clientWidth || 1200,
+                height: Math.min(iframeDoc.documentElement.scrollHeight, 1600), // Batas tinggi agar tidak terlalu panjang
+                windowWidth: iframeDoc.documentElement.clientWidth || 1200,
+                windowHeight: iframeDoc.documentElement.clientHeight || 800
+            });
+
+            const base64Full = canvas.toDataURL('image/jpeg', 0.8);
+            const base64 = base64Full.split(',')[1];
+
+            const res = await imageApi.uploadImage({
+                image_type: 'theme_preview',
+                file_name: `preview-${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.jpg`,
+                base64_data: base64,
+                mime_type: 'image/jpeg'
+            });
+
+            if (res.success) {
+                setPreviewImage(res.data.cdn_url);
+                toast.success('Screenshot berhasil dijadikan pratinjau!', { id: loadingToast });
+            } else {
+                toast.error(res.message, { id: loadingToast });
+            }
+        } catch (error: any) {
+            console.error('Screenshot error:', error);
+            toast.error('Gagal mengambil screenshot: ' + error.message, { id: loadingToast });
+        } finally {
+            setIsCapturing(false);
+        }
+    };
+
     const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
+
+        // Final safety check: if preview image is still empty, no longer auto-fills from hero
+        // as we now prefer screenshots.
+        // We leave it empty if the user hasn't clicked screenshot yet.
 
         setSaving(true);
         try {
@@ -700,7 +760,26 @@ export function ThemeEditorPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL Gambar Pratinjau</label>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">URL Gambar Pratinjau</label>
+                                        <button 
+                                            type="button"
+                                            disabled={isCapturing}
+                                            onClick={handleCaptureScreenshot}
+                                            className="text-[10px] font-bold text-gold-600 hover:text-gold-700 flex items-center gap-1 uppercase tracking-wider transition-colors hover:scale-105 active:scale-95 disabled:opacity-50"
+                                        >
+                                            {isCapturing ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-gold-200 border-t-gold-600 rounded-full animate-spin" />
+                                                    Capturing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="ri-camera-lens-line"></i> Ambil Screenshot Preview
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                     <input
                                         type="text"
                                         value={previewImage}
@@ -708,7 +787,18 @@ export function ThemeEditorPage() {
                                         className="input-field"
                                         placeholder="https://..."
                                     />
-                                    {previewImage && <img src={previewImage} alt="Preview" className="mt-2 h-32 w-auto rounded-lg object-cover border border-gray-200" />}
+                                    {previewImage && (
+                                        <div className="mt-3 relative group w-max">
+                                            <ProxyImage 
+                                                src={previewImage} 
+                                                alt="Preview" 
+                                                className="h-32 w-48 rounded-xl object-cover border-2 border-gray-100 dark:border-gray-700 shadow-lg transition-transform group-hover:scale-105" 
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
+                                                <span className="text-[10px] text-white font-bold uppercase tracking-widest">Preview Mode</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>

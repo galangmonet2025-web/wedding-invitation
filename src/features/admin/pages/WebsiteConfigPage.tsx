@@ -348,7 +348,7 @@ export function WebsiteConfigPage() {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => setShowVariableRef(!showVariableRef)}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all z-10 ${
                                                 showVariableRef 
                                                 ? 'bg-gold-500 text-white' 
                                                 : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5'
@@ -409,7 +409,7 @@ export function WebsiteConfigPage() {
 
                                 {/* Variable Reference Sider */}
                                 {showVariableRef && (
-                                    <div className="w-64 bg-[#181825] border-l border-white/5 flex flex-col animate-slide-left">
+                                    <div className="w-64 bg-[#181825] border-l border-white/5 flex flex-col animate-slide-in-right z-30 shadow-2xl">
                                         <div className="p-3 border-b border-white/5 flex items-center justify-between">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
                                                 <HiOutlineInformationCircle className="w-3.5 h-3.5" />
@@ -447,10 +447,12 @@ export function WebsiteConfigPage() {
                                 {!showVariableRef && (
                                     <button 
                                         onClick={() => setShowVariableRef(true)}
-                                        className="absolute right-4 top-4 z-20 p-2 bg-gold-500 text-white rounded-lg shadow-lg hover:scale-110 transition-transform"
+                                        className="absolute right-6 top-6 z-50 p-3 bg-gold-500 text-white rounded-2xl shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center gap-2 group overflow-hidden"
                                         title="Show Variables"
                                     >
-                                        <HiOutlineInformationCircle className="w-5 h-5" />
+                                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                                        <HiOutlineInformationCircle className="w-6 h-6 relative z-10" />
+                                        <span className="text-xs font-bold uppercase tracking-widest relative z-10 pr-1">Variables</span>
                                     </button>
                                 )}
                             </div>
