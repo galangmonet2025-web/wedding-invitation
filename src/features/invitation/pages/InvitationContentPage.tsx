@@ -843,7 +843,7 @@ export function InvitationContentPage() {
                                                             <div key={type} className="relative">
                                                                 <ImageUpload
                                                                     imageType={type}
-                                                                    title={type.replace('_', ' ')}
+                                                                    title={type.replace(/_/g, ' ')}
                                                                     description=""
                                                                     aspectRatio="square"
                                                                     currentImage={currentImg}
@@ -854,7 +854,6 @@ export function InvitationContentPage() {
                                                             </div>
                                                         );
                                                     })}
-
                                                     {typesList.includes('gallery') && (
                                                         <div className="col-span-full mt-6 border-t border-gray-100 dark:border-gray-800 pt-6">
                                                             <div className="flex items-center justify-between mb-4">
@@ -1000,7 +999,11 @@ export function InvitationContentPage() {
                                                 >
                                                     <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-800 relative">
                                                         {theme.preview_image ? (
-                                                            <img src={theme.preview_image} alt={theme.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                            <ProxyImage 
+                                                                src={theme.preview_image} 
+                                                                alt={theme.name} 
+                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                                                            />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-gray-400">
                                                                 <HiOutlineColorSwatch className="w-12 h-12 opacity-50" />
@@ -1171,4 +1174,3 @@ export function InvitationContentPage() {
         </div>
     );
 }
-

@@ -347,10 +347,11 @@ export function WebsiteConfigPage() {
                                 </div>
                                     <div className="flex items-center gap-2">
                                         <button
+                                            type="button"
                                             onClick={() => setShowVariableRef(!showVariableRef)}
                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all z-10 ${
                                                 showVariableRef 
-                                                ? 'bg-gold-500 text-white' 
+                                                ? 'bg-gold-500 text-white shadow-lg shadow-gold-500/30' 
                                                 : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5'
                                             }`}
                                         >
