@@ -5,12 +5,12 @@ export const imageApi = {
     /**
      * Upload compressed image base64 to Google Drive via backend.
      */
-    uploadImage: async (payload: UploadImageRequest): Promise<ApiResponse<UploadImageResponse>> => {
+    uploadImage: async (payload: UploadImageRequest, config: any = {}): Promise<ApiResponse<UploadImageResponse>> => {
         try {
             const response = await apiClient.post<any, { data: ApiResponse<UploadImageResponse> }>('', {
                 action: 'uploadImage',
                 ...payload
-            });
+            }, config);
             return response.data;
         } catch (error: any) {
             console.error('API Error (uploadImage):', error);

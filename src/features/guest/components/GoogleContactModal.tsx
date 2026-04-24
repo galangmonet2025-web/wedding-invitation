@@ -16,9 +16,16 @@ interface EditableContact extends CreateGuestRequest {
     id: string; // Temporary ID for table reconciliation
 }
 
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
+
 export function GoogleContactModal({ isOpen, onClose, onImport }: GoogleContactModalProps) {
-    const { loading: isSaving } = useGuestStore();
+    const { loading: isApiStoreSaving } = useGuestStore();
+    const { tasks } = useBackgroundTaskStore();
+    const isBackgroundSaving = tasks.some(t => t.status === 'running' && t.id.startsWith('bulk-guest'));
+    const isSaving = isApiStoreSaving || isBackgroundSaving;
+
     const [contacts, setContacts] = useState<EditableContact[]>([]);
+
     const [isUploaded, setIsUploaded] = useState(false);
     const [failedInfoVisible, setFailedInfoVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<'upload' | 'tutorial'>('upload');
@@ -123,9 +130,17 @@ export function GoogleContactModal({ isOpen, onClose, onImport }: GoogleContactM
             size="2xl"
             footer={
                 <div className="flex justify-between items-center w-full">
-                    <p className="text-sm text-gray-500">
-                        {contacts.length} baris data
-                    </p>
+                    <div className="flex flex-col items-start">
+                        <p className="text-sm text-gray-500">
+                            {contacts.length} baris data
+                        </p>
+                        {isBackgroundSaving && (
+                            <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 mt-0.5">
+                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                                Data sedang diproses di latar belakang...
+                            </p>
+                        )}
+                    </div>
                     <div className="flex gap-2">
                         <button onClick={resetModal} className="btn-ghost" disabled={isSaving}>Batal</button>
                         {isUploaded && (
@@ -137,7 +152,7 @@ export function GoogleContactModal({ isOpen, onClose, onImport }: GoogleContactM
                                 {isSaving ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Menyimpan...
+                                        {isBackgroundSaving ? 'Memproses...' : 'Menyimpan...'}
                                     </>
                                 ) : (
                                     'Simpan ke Database'

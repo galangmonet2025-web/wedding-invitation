@@ -22,6 +22,8 @@ import {
     HiOutlineChatAlt2,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
+import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
+
 
 export function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -186,6 +188,9 @@ export function DashboardLayout() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Background Tasks Indicator */}
+                            <BackgroundTaskIndicator />
+
                             {/* Dark Mode Toggle */}
                             <button
                                 onClick={toggleTheme}

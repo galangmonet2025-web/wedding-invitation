@@ -4,6 +4,7 @@ import { HiOutlineUpload, HiOutlineTrash, HiOutlinePhotograph } from 'react-icon
 import toast from 'react-hot-toast';
 import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage } from './ProxyImage';
+import { useBackgroundTaskStore } from '../store/backgroundTaskStore';
 import type { ImageRecord } from '@/types';
 
 interface ImageUploadProps {
@@ -35,6 +36,8 @@ export function ImageUpload({
     const [deleting, setDeleting] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+    const { tasks, addTask, updateTask } = useBackgroundTaskStore();
+
 
     // Compression constraints based on design
     const getCompressionOptions = () => {
@@ -100,6 +103,17 @@ export function ImageUpload({
         const total = filesArray.length;
         setUploadProgress({ current: 0, total });
 
+        // Always use background task for visibility in header and store
+        const taskId = `upload-${imageType}-${Date.now()}`;
+        addTask({
+            id: taskId,
+            name: total > 1 ? `Upload ${total} Foto: ${title}` : `Upload Foto: ${title}`,
+            total: total
+        });
+
+        let successCount = 0;
+        let failCount = 0;
+
         for (let i = 0; i < total; i++) {
             const file = filesArray[i];
             setUploadProgress({ current: i + 1, total });
@@ -107,15 +121,25 @@ export function ImageUpload({
             // Basic validation
             if (!file.type.startsWith('image/')) {
                 toast.error(`File "${file.name}" bukan gambar yang valid.`);
+                failCount++;
+                updateTask(taskId, { 
+                    failCount, 
+                    progress: Math.round(((successCount + failCount) / total) * 100) 
+                });
                 continue;
             }
 
             if (file.size > 5 * 1024 * 1024) {
                 toast.error(`Ukuran "${file.name}" terlalu besar (Max 5MB).`);
+                failCount++;
+                updateTask(taskId, { 
+                    failCount, 
+                    progress: Math.round(((successCount + failCount) / total) * 100) 
+                });
                 continue;
             }
 
-            const toastId = toast.loading(`${total > 1 ? `[${i + 1}/${total}] ` : ''}Memproses ${file.name}...`);
+            // No toast.loading here, using background task indicator instead
 
             try {
                 // Compress image
@@ -135,9 +159,9 @@ export function ImageUpload({
                 // Convert to Base64
                 const base64Data = await convertToBase64(compressedFile);
 
-                toast.loading(`${total > 1 ? `[${i + 1}/${total}] ` : ''}Mengupload ${file.name}...`, { id: toastId });
+                // No toast updates
 
-                // Upload via API
+                // Upload via API - use skipLoader if background
                 const response = await imageApi.uploadImage({
                     image_type: imageType,
                     file_name: file.name.replace(/\.[^/.]+$/, "") + ".webp",
@@ -146,10 +170,11 @@ export function ImageUpload({
                     width: dims.w,
                     height: dims.h,
                     size_kb: Math.round(compressedFile.size / 1024)
-                });
+                }, { skipLoader: true } as any);
 
                 if (response.success && response.data) {
-                    toast.success(`${file.name} berhasil diupload!`, { id: toastId });
+                    successCount++;
+
                     const newRecord: ImageRecord = {
                         id: response.data.id,
                         tenant_id: 'temp',
@@ -165,17 +190,28 @@ export function ImageUpload({
                     };
                     onUploadSuccess(newRecord);
                 } else {
-                    toast.error(response.message || `Gagal mengupload ${file.name}`, { id: toastId });
+                    failCount++;
                 }
 
             } catch (error: any) {
+                failCount++;
                 console.error('Upload Error:', error);
-                toast.error(`Terjadi kesalahan pada ${file.name}: ${error.message}`, { id: toastId });
             }
+
+            // Update background task status
+            const isFinished = (successCount + failCount) === total;
+            updateTask(taskId, {
+                successCount,
+                failCount,
+                progress: Math.round(((successCount + failCount) / total) * 100),
+                status: isFinished ? (failCount === 0 ? 'success' : 'error') : 'running',
+                details: isFinished ? `Selesai: ${successCount} berhasil, ${failCount} gagal` : undefined
+            });
         }
 
         setUploading(false);
         setUploadProgress(null);
+
     };
 
     const handleDelete = async () => {
@@ -284,8 +320,9 @@ export function ImageUpload({
                 </div>
             ) : (
                 <label
-                    className={`relative flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed transition-colors cursor-pointer
+                    className={`relative flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed transition-all cursor-pointer
                         ${dragActive ? 'border-gold-500 bg-gold-50/50 dark:bg-gold-500/10' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500'}
+                        ${tasks.some(t => t.status === 'running' && t.id.startsWith(`upload-${imageType}`)) ? 'opacity-50 cursor-not-allowed pointer-events-none grayscale' : ''}
                         ${aspectClass}`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
@@ -293,27 +330,35 @@ export function ImageUpload({
                     onDrop={handleDrop}
                 >
                     <div className="flex flex-col items-center justify-center pt-3 pb-4 text-center px-2">
-                        {uploading ? (
-                            <>
-                                <div className="w-6 h-6 border-[3px] border-gold-200 border-t-gold-500 rounded-full animate-spin mb-2" />
-                                <p className="mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                    {uploadProgress ? `Mengupload ${uploadProgress.current}/${uploadProgress.total}` : 'Memproses...'}
-                                </p>
-                                <p className="text-[10px] text-gray-400 dark:text-gray-500">Mohon tunggu</p>
-                            </>
-                        ) : (
-                            <>
-                                <div className="p-2 bg-gold-50 dark:bg-gold-900/20 rounded-full text-gold-500 mb-2">
-                                    <HiOutlineUpload className="w-5 h-5" />
-                                </div>
-                                <p className="mb-0.5 text-xs text-gray-600 dark:text-gray-300">
-                                    <span className="font-semibold text-gold-600 dark:text-gold-400">Pilih {allowMultiple ? 'foto-foto' : 'gambar'}</span>
-                                </p>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                                    Max 5MB {allowMultiple ? '(Banyak file sekaligus)' : ''}
-                                </p>
-                            </>
-                        )}
+                        {(() => {
+                            const isCurrentlyUploading = tasks.some(t => t.status === 'running' && t.id.startsWith(`upload-${imageType}`));
+                            
+                            if (uploading || isCurrentlyUploading) {
+                                return (
+                                    <>
+                                        <div className="w-6 h-6 border-[3px] border-gold-200 border-t-gold-500 rounded-full animate-spin mb-2" />
+                                        <p className="mb-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                                            Sedang mengupload...
+                                        </p>
+                                        <p className="text-[9px] text-gray-400 dark:text-gray-500">Mohon tunggu hingga selesai</p>
+                                    </>
+                                );
+                            }
+
+                            return (
+                                <>
+                                    <div className="p-2 bg-gold-50 dark:bg-gold-900/20 rounded-full text-gold-500 mb-2">
+                                        <HiOutlineUpload className="w-5 h-5" />
+                                    </div>
+                                    <p className="mb-0.5 text-xs text-gray-600 dark:text-gray-300">
+                                        <span className="font-semibold text-gold-600 dark:text-gold-400">Pilih {allowMultiple ? 'foto-foto' : 'gambar'}</span>
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                        Max 5MB {allowMultiple ? '(Banyak file sekaligus)' : ''}
+                                    </p>
+                                </>
+                            );
+                        })()}
                     </div>
                     <input
                         type="file"
@@ -325,7 +370,7 @@ export function ImageUpload({
                                 handleFileUpload(e.target.files);
                             }
                         }}
-                        disabled={uploading}
+                        disabled={uploading || tasks.some(t => t.status === 'running' && t.id.startsWith(`upload-${imageType}`))}
                     />
                 </label>
             )}

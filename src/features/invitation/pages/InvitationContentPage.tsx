@@ -30,7 +30,9 @@ import { ProxyImage } from '@/shared/components/ProxyImage';
 import { MapTutorialModal } from '../components/MapTutorialModal';
 import { ImageUpload } from '@/shared/components/ImageUpload';
 import { imageApi } from '@/core/api/imageApi';
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import type { ImageRecord } from '@/types';
+
 
 export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, isOpen, onToggle }: {
     id: string;
@@ -79,6 +81,10 @@ export function InvitationContentPage() {
     const [iframeKey, setIframeKey] = useState(0);
     const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set(['mempelai', 'acara', 'hadiah', 'teks', 'cerita']));
     const [currentStep, setCurrentStep] = useState(1);
+    const { tasks } = useBackgroundTaskStore();
+
+    const isUploadingGallery = tasks.some(t => t.status === 'running' && t.id.startsWith('upload-gallery'));
+
 
     const steps = [
         { id: 1, title: 'Isi Konten', subTitle: 'Detail Informasi' },
@@ -357,15 +363,15 @@ export function InvitationContentPage() {
                     )}
                     <button
                         onClick={handleSave}
-                        disabled={saving}
-                        className="btn-primary flex items-center justify-center gap-2 px-6"
+                        disabled={saving || isUploadingGallery}
+                        className="btn-primary flex items-center justify-center gap-2 px-6 disabled:opacity-50 disabled:grayscale"
                     >
-                        {saving ? (
+                        {saving || isUploadingGallery ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                             <HiOutlineSave className="w-5 h-5" />
                         )}
-                        {saving ? 'Saving...' : 'Save Settings'}
+                        {saving ? 'Saving...' : isUploadingGallery ? 'Uploading...' : 'Save Settings'}
                     </button>
                 </div>
             </div>
@@ -1055,7 +1061,8 @@ export function InvitationContentPage() {
                                 if (currentStep < 4) setCurrentStep(prev => prev + 1);
                                 else handleSave();
                             }}
-                            className="btn-primary flex items-center gap-2 px-8"
+                            disabled={currentStep === 4 && (saving || isUploadingGallery)}
+                            className={`btn-primary flex items-center gap-2 px-8 ${(currentStep === 4 && (saving || isUploadingGallery)) ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {currentStep < 4 ? (
                                 <>
@@ -1064,12 +1071,17 @@ export function InvitationContentPage() {
                                 </>
                             ) : (
                                 <>
-                                    {saving ? (
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    {saving || isUploadingGallery ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            {isUploadingGallery ? 'Mengupload Foto...' : 'Menyimpan...'}
+                                        </>
                                     ) : (
-                                        <HiOutlineSave className="w-5 h-5" />
+                                        <>
+                                            <HiOutlineSave className="w-5 h-5" />
+                                            Simpan Pengaturan
+                                        </>
                                     )}
-                                    {saving ? 'Menyimpan...' : 'Simpan Settings'}
                                 </>
                             )}
                         </button>

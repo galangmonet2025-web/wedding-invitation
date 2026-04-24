@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { guestApi } from '@/core/api/endpoints';
 import type { Guest, GuestFilters, CreateGuestRequest, UpdateGuestRequest } from '@/types';
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import toast from 'react-hot-toast';
 
 interface GuestState {
@@ -171,7 +172,15 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         }
     },
     bulkCreateGuests: async (data: CreateGuestRequest[]) => {
-        set({ loading: true });
+        const { addTask, updateTask } = (useBackgroundTaskStore as any).getState();
+        const taskId = `bulk-guest-${Date.now()}`;
+        
+        addTask({
+            id: taskId,
+            name: `Import ${data.length} Kontak Google`,
+            total: data.length
+        });
+
         const CHUNK_SIZE = 10;
         let successCount = 0;
         let failedItems: CreateGuestRequest[] = [];
@@ -179,36 +188,40 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         try {
             for (let i = 0; i < data.length; i += CHUNK_SIZE) {
                 const chunk = data.slice(i, i + CHUNK_SIZE);
-                const progress = Math.min(i + CHUNK_SIZE, data.length);
-                
-                const toastId = toast.loading(`Mengimpor tamu... (${progress}/${data.length})`);
                 
                 try {
-                     // Always set overwrite to true as requested by user
-                    const response = await guestApi.importGuests(chunk, true);
-                    toast.dismiss(toastId);
+                    // Always set overwrite to true as requested by user
+                    // Use skipLoader: true to prevent blocking UI
+                    const response = await (guestApi.importGuests as any)(chunk, true, { skipLoader: true });
                     
                     if (response.success) {
                         successCount += chunk.length;
                     } else {
                         failedItems = [...failedItems, ...chunk];
-                        toast.error(`Gagal mengimpor batch ${Math.floor(i / CHUNK_SIZE) + 1}`);
                     }
                 } catch (err) {
-                    toast.dismiss(toastId);
                     failedItems = [...failedItems, ...chunk];
-                    toast.error(`Error pada batch ${Math.floor(i / CHUNK_SIZE) + 1}`);
                 }
+
+                // Update background task status
+                const progress = Math.round((Math.min(i + CHUNK_SIZE, data.length) / data.length) * 100);
+                const isFinished = (i + CHUNK_SIZE) >= data.length;
+                updateTask(taskId, {
+                    successCount,
+                    failCount: failedItems.length,
+                    progress,
+                    status: isFinished ? (failedItems.length === 0 ? 'success' : 'error') : 'running',
+                    details: isFinished ? `Selesai: ${successCount} berhasil, ${failedItems.length} gagal` : undefined
+                });
             }
 
             if (successCount > 0) {
-                toast.success(`${successCount} tamu berhasil diproses`);
                 get().fetchGuests();
             }
             
             return { successCount, failedItems };
         } finally {
-            set({ loading: false });
+            // No need to set loading: true/false because we are using background task
         }
     },
 

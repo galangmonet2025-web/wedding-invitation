@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast';
 import { Html5Qrcode } from 'html5-qrcode';
 import { HiOutlinePlus, HiOutlineSave, HiOutlineTrash, HiOutlineSwitchVertical } from 'react-icons/hi';
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 
 interface ManualGuest {
     id: string;
@@ -44,6 +45,7 @@ export function ScannerPage() {
     const [manualGuests, setManualGuests] = useState<ManualGuest[]>([]);
     const [sortBy, setSortBy] = useState<'name' | 'time'>('time');
     const [isSaving, setIsSaving] = useState(false);
+    const { addTask, updateTask } = useBackgroundTaskStore();
 
     // Ensure only Staff and Tenant Admin can access
     useEffect(() => {
@@ -245,35 +247,52 @@ export function ScannerPage() {
         }
 
         setIsSaving(true);
+        const taskId = `manual-guest-${Date.now()}`;
+        addTask({
+            id: taskId,
+            name: `Simpan Kehadiran Manual (${drafts.length} Tamu)`,
+            total: drafts.length
+        });
+
         let successCount = 0;
+        let failCount = 0;
 
         // Update status to saving
         setManualGuests(prev => prev.map(g => g.status === 'draft' ? { ...g, status: 'saving' } : g));
 
         // Save sequentially to avoid race conditions and handle individual errors
-        for (const guest of drafts) {
+        for (let i = 0; i < drafts.length; i++) {
+            const guest = drafts[i];
             try {
                 // Send shorthand dynamic payload (simulating scanner behavior for uninvited checkin)
                 const payload = `NEW_GUEST:${guest.name.trim()}:${guest.category.trim()}:${guest.phone.trim()}:${guest.pax}`;
-                const res = await guestApi.checkinGuest(payload);
+                const res = await (guestApi.checkinGuest as any)(payload, { skipLoader: true });
 
                 if (res.success) {
                     setManualGuests(prev => prev.map(g => g.id === guest.id ? { ...g, status: 'saved' } : g));
                     successCount++;
                 } else {
-                    toast.error(`Gagal menyimpan ${guest.name}: ${res.message}`);
+                    failCount++;
                     setManualGuests(prev => prev.map(g => g.id === guest.id ? { ...g, status: 'draft' } : g));
                 }
             } catch (err: any) {
-                toast.error(`Error menyimpan ${guest.name}`);
+                failCount++;
                 setManualGuests(prev => prev.map(g => g.id === guest.id ? { ...g, status: 'draft' } : g));
             }
+
+            // Update background task status
+            const progress = Math.round(((i + 1) / drafts.length) * 100);
+            const isFinished = (i + 1) === drafts.length;
+            updateTask(taskId, {
+                successCount,
+                failCount,
+                progress,
+                status: isFinished ? (failCount === 0 ? 'success' : 'error') : 'running',
+                details: isFinished ? `Selesai: ${successCount} berhasil, ${failCount} gagal` : undefined
+            });
         }
 
         setIsSaving(false);
-        if (successCount > 0) {
-            toast.success(`Berhasil menyimpan ${successCount} tamu manual.`);
-        }
     };
 
     // Sorting logic: Drafts always on top, then sort the rest

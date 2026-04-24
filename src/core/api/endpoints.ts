@@ -96,13 +96,13 @@ export const guestApi = {
         return res.data;
     },
 
-    checkinGuest: async (invitation_code: string): Promise<ApiResponse<Guest>> => {
-        const res = await apiClient.post('', { action: 'checkinGuest', invitation_code });
+    checkinGuest: async (invitation_code: string, config: any = {}): Promise<ApiResponse<Guest>> => {
+        const res = await apiClient.post('', { action: 'checkinGuest', invitation_code }, config);
         return res.data;
     },
 
-    importGuests: async (guests: CreateGuestRequest[], overwrite: boolean = false): Promise<ApiResponse<{ imported: number }>> => {
-        const res = await apiClient.post('', { action: 'importGuests', guests, overwrite });
+    importGuests: async (guests: CreateGuestRequest[], overwrite: boolean = false, config: any = {}): Promise<ApiResponse<{ imported: number }>> => {
+        const res = await apiClient.post('', { action: 'importGuests', guests, overwrite }, config);
         return res.data;
     },
 
