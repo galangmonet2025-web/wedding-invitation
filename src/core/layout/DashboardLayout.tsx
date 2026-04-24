@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { additionalFeatureApi } from '@/core/api/endpoints';
+
 import {
     HiOutlineHome,
     HiOutlineUsers,
@@ -20,32 +22,53 @@ import {
     HiOutlineQrcode,
     HiOutlineColorSwatch,
     HiOutlineChatAlt2,
+    HiOutlinePuzzle,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
-
 
 export function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user, tenant, logout } = useAuthStore();
     const { isDark, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
+    const [hasActiveFeatures, setHasActiveFeatures] = useState(true);
 
     const isSuperAdmin = user?.role === 'superadmin';
     const isImpersonating = !!(user as any)?.is_impersonating;
     // When impersonating, show tenant menus even though role is superadmin
     const showTenantMenu = !isSuperAdmin || isImpersonating;
 
+    useEffect(() => {
+        const checkFeatures = async () => {
+            // Only check for tenants (or when impersonating a tenant)
+            if (showTenantMenu) {
+                try {
+                    const res = await additionalFeatureApi.getTenantFeatures();
+                    if (res.success) {
+                        const activeFeatures = res.data?.filter(f => f.active && f.mst_active) || [];
+                        setHasActiveFeatures(activeFeatures.length > 0);
+                    }
+                } catch {
+                    // Fail safe: keep visible
+                    setHasActiveFeatures(true);
+                }
+            }
+        };
+        checkFeatures();
+    }, [tenant?.id, showTenantMenu]);
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
     const navItems = !showTenantMenu
         ? [
             { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
             { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
             { to: '/private/themes', icon: HiOutlineColorSwatch, label: 'Manage Themes', roles: ['superadmin'] },
+            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: 'Additional feature', roles: ['superadmin'] },
             { to: '/private/website-config', icon: HiOutlineCog, label: 'Website Config', roles: ['superadmin'] },
             { to: '/private/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
         ]
@@ -58,10 +81,20 @@ export function DashboardLayout() {
             { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: 'Additional feature', roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin', 'superadmin'] },
         ];
 
-    const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
+    const filteredNavItems = navItems.filter((item) => {
+        const isRoleAllowed = item.roles.includes(user?.role || '');
+        
+        // Hide Additional Feature menu for tenants if no active features
+        if (item.to === '/private/additional-features' && showTenantMenu && !hasActiveFeatures) {
+            return false;
+        }
+
+        return isRoleAllowed;
+    });
 
     return (
         <div className={`min-h-screen flex ${isDark ? 'dark' : ''}`}>

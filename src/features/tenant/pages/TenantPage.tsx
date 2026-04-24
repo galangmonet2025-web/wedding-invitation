@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { tenantApi, themeApi } from '@/core/api/endpoints';
+import { tenantApi, themeApi, additionalFeatureApi } from '@/core/api/endpoints';
+import { imageApi } from '@/core/api/imageApi';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
-import type { Tenant, CreateTenantRequest, PlanType, TenantStatus, Theme } from '@/types';
+import type { Tenant, CreateTenantRequest, PlanType, TenantStatus, Theme, TenantActiveFeature } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineExternalLink, HiOutlineRefresh } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineExternalLink, HiOutlineRefresh, HiOutlineSave, HiOutlineTrash } from 'react-icons/hi';
+import { ImageUpload } from '@/shared/components/ImageUpload';
+import { ProxyImage } from '@/shared/components/ProxyImage';
+import { Lightbox } from '@/shared/components/Lightbox';
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 
 export function TenantPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -14,7 +19,13 @@ export function TenantPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+    const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
+    const [tenantFeatures, setTenantFeatures] = useState<TenantActiveFeature[]>([]);
+    const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const { tasks } = useBackgroundTaskStore();
 
     const [form, setForm] = useState<CreateTenantRequest & { theme_id?: string }>({
         bride_name: '',
@@ -124,12 +135,90 @@ export function TenantPage() {
         try {
             const response = await tenantApi.updateTenant({ id: selectedTenant.id, ...updates });
             if (response.success) {
+                // Save additional features if any
+                if (tenantFeatures.length > 0) {
+                    try {
+                        await Promise.all(tenantFeatures.map(f => 
+                            additionalFeatureApi.updateTenantFeature({
+                                tenant_id: selectedTenant.id,
+                                additional_feature_id: f.additional_feature_id,
+                                active: f.active,
+                                output_data: f.output_data
+                            })
+                        ));
+                        
+                        if (imagesToDelete.length > 0) {
+                            // Using standard fetch/axios if imageApi is not imported, but wait I need imageApi.
+                            // Let me just import imageApi at the top. Wait, I will add the import below.
+                            await Promise.all(imagesToDelete.map(id => imageApi.deleteImage(id).catch(() => {})));
+                        }
+                    } catch (err) {
+                        console.error('Error saving features', err);
+                        toast.error('Gagal menyimpan beberapa fitur tambahan');
+                    }
+                }
+
                 toast.success('Tenant updated');
                 setShowEditModal(false);
+                setImagesToDelete([]);
                 fetchTenants();
             }
         } catch {
             toast.error('Failed to update tenant');
+        }
+    };
+
+    const handleDeleteTenantAction = async () => {
+        if (!tenantToDelete) return;
+        const tenantId = tenantToDelete.id;
+        const taskId = `delete-tenant-${tenantId}`;
+
+        // Register background task
+        useBackgroundTaskStore.getState().addTask({
+            id: taskId,
+            type: 'delete-tenant',
+            status: 'running',
+            progress: 0,
+            details: `Menghapus tenant ${tenantToDelete.domain_slug}...`
+        });
+
+        // Close modal immediately
+        setTenantToDelete(null);
+        setDeleteConfirmText('');
+
+        try {
+            const res = await tenantApi.deleteTenant(tenantId);
+            if (res.success) {
+                useBackgroundTaskStore.getState().updateTask(taskId, {
+                    status: 'success',
+                    progress: 100,
+                    details: 'Tenant beserta seluruh data terkait berhasil dihapus'
+                });
+                fetchTenants();
+            } else {
+                useBackgroundTaskStore.getState().updateTask(taskId, {
+                    status: 'error',
+                    details: res.message || 'Gagal menghapus tenant'
+                });
+            }
+        } catch {
+            useBackgroundTaskStore.getState().updateTask(taskId, {
+                status: 'error',
+                details: 'Terjadi kesalahan saat menghapus tenant'
+            });
+        }
+    };
+
+    const handleFeatureUpdateLocal = (featureId: string, updates: Partial<TenantActiveFeature>) => {
+        setTenantFeatures(prev => prev.map(f => f.additional_feature_id === featureId ? { ...f, ...updates } : f));
+    };
+
+
+    const isValidUrl = (urlString: string) => {
+        try {
+            return Boolean(new URL(urlString));
+        } catch (e) {
+            return false;
         }
     };
 
@@ -219,28 +308,51 @@ export function TenantPage() {
         {
             key: 'actions',
             header: 'Actions',
-            render: (t: Tenant) => (
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={() => handleImpersonate(t)}
-                        className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 transition-colors"
-                        title="Buka sebagai Tenant Admin"
-                    >
-                        <HiOutlineExternalLink className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => {
-                            setSelectedTenant(t);
-                            setEditForm(t);
-                            setShowEditModal(true);
-                        }}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
-                        title="Edit"
-                    >
-                        <HiOutlinePencil className="w-4 h-4" />
-                    </button>
-                </div>
-            ),
+            render: (t: Tenant) => {
+                const isDeletingRow = tasks.some(task => task.id === `delete-tenant-${t.id}` && task.status === 'running');
+                return (
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => handleImpersonate(t)}
+                            disabled={isDeletingRow}
+                            className={`p-1.5 rounded-lg transition-colors ${isDeletingRow ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600'}`}
+                            title="Buka sebagai Tenant Admin"
+                        >
+                            <HiOutlineExternalLink className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={async () => {
+                                setSelectedTenant(t);
+                                setEditForm(t);
+                                setShowEditModal(true);
+                                // Fetch tenant features
+                                try {
+                                    const res = await additionalFeatureApi.getTenantFeatures(t.id);
+                                    if (res.success) setTenantFeatures(res.data || []);
+                                } catch {
+                                    toast.error('Failed to load tenant features');
+                                }
+                            }}
+                            disabled={isDeletingRow}
+                            className={`p-1.5 rounded-lg transition-colors ${isDeletingRow ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600'}`}
+                            title="Edit"
+                        >
+                            <HiOutlinePencil className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setTenantToDelete(t);
+                                setDeleteConfirmText('');
+                            }}
+                            disabled={isDeletingRow}
+                            className={`p-1.5 rounded-lg transition-colors ${isDeletingRow ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600'}`}
+                            title="Hapus"
+                        >
+                            {isDeletingRow ? <HiOutlineRefresh className="w-4 h-4 animate-spin text-red-400" /> : <HiOutlineTrash className="w-4 h-4" />}
+                        </button>
+                    </div>
+                );
+            },
         },
     ];
 
@@ -464,9 +576,204 @@ export function TenantPage() {
 
                             </div>
                         </div>
+
+                        {/* Tenant Features Section */}
+                        {tenantFeatures.length > 0 && (
+                            <div className="card bg-gray-50 dark:bg-gray-800 p-4 mt-6">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Additional Features</p>
+                                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                                    {tenantFeatures.map((f) => (
+                                        <div key={f.additional_feature_id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={f.active} 
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            const updates: Partial<TenantActiveFeature> = { active: isChecked };
+                                                            if (isChecked && f.output_data_type === 'boolean' && !f.output_data) {
+                                                                updates.output_data = 'FALSE';
+                                                            }
+                                                            handleFeatureUpdateLocal(f.additional_feature_id, updates);
+                                                        }}
+                                                        className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500"
+                                                    />
+                                                    <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>
+                                                </div>
+                                            </div>
+
+                                            {f.active && (
+                                                <div className="pl-8 space-y-4">
+                                                    {/* Tenant Input Readonly */}
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Data dari Tenant</p>
+                                                        {!f.is_required_tenant_input || f.input_data_type === 'empty' ? (
+                                                            <p className="text-sm text-gray-400 italic">Tidak perlu input dari tenant</p>
+                                                        ) : (
+                                                            <>
+                                                                <p className="text-xs text-blue-500 dark:text-blue-400 mb-2 font-medium">Data ini diinput oleh tenant</p>
+                                                                {!f.input_tenant_data ? (
+                                                                    <p className="text-sm text-gray-400 italic">Belum di isi oleh tenant</p>
+                                                                ) : f.input_data_type === 'gambar' ? (
+                                                                    <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
+                                                                        <ProxyImage 
+                                                                            src={f.input_tenant_data} 
+                                                                            alt={f.feature_name} 
+                                                                            className="w-full h-full object-cover cursor-pointer" 
+                                                                            onClick={() => setLightboxUrl(f.input_tenant_data)}
+                                                                        />
+                                                                    </div>
+                                                                ) : f.input_data_type === 'link' ? (
+                                                                    <a href={f.input_tenant_data} target="_blank" rel="noreferrer" className="text-sm text-blue-500 hover:underline">{f.input_tenant_data}</a>
+                                                                ) : f.input_data_type === 'boolean' ? (
+                                                                    <span className="text-sm">{f.input_tenant_data === 'TRUE' || f.input_tenant_data === 'true' ? 'Ya' : 'Tidak'}</span>
+                                                                ) : (
+                                                                    <p className="text-sm text-gray-800 dark:text-gray-200">{f.input_tenant_data}</p>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Admin Result Output */}
+                                                    {f.output_data_type && f.output_data_type !== 'empty' && (
+                                                        <div>
+                                                            <p className="text-xs text-gray-500 mb-1">Result / Output Admin</p>
+                                                            {f.output_data_type === 'gambar' ? (
+                                                                <div className="w-32">
+                                                                    {f.output_data ? (
+                                                                        <div className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
+                                                                            <ProxyImage 
+                                                                                src={f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data} 
+                                                                                alt="Result" 
+                                                                                className="w-full h-full object-cover cursor-pointer" 
+                                                                                onClick={() => setLightboxUrl(f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data)}
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const [id] = f.output_data.split('|');
+                                                                                    if (id && f.output_data.includes('|')) {
+                                                                                        setImagesToDelete(prev => [...prev, id]);
+                                                                                    }
+                                                                                    handleFeatureUpdateLocal(f.additional_feature_id, { output_data: '' });
+                                                                                }}
+                                                                                className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                                                            >
+                                                                                Hapus
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <ImageUpload
+                                                                            imageType={`feature-out-${f.additional_feature_id}`}
+                                                                            title="Upload Result"
+                                                                            onUploadSuccess={(img) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: `${img.id}|${img.cdn_url || img.drive_url}` })}
+                                                                            onDeleteSuccess={() => {}}
+                                                                            aspectRatio="auto"
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            ) : f.output_data_type === 'link' || f.output_data_type === 'text' ? (
+                                                                <div className="flex gap-2">
+                                                                    <input
+                                                                        type={f.output_data_type === 'link' ? 'url' : 'text'}
+                                                                        value={f.output_data || ''}
+                                                                        onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: e.target.value })}
+                                                                        className="input-field text-sm flex-1"
+                                                                        placeholder={f.output_data_type === 'link' ? 'https://...' : 'Input text...'}
+                                                                    />
+                                                                </div>
+                                                            ) : f.output_data_type === 'boolean' ? (
+                                                                <div className="flex items-center gap-3 mt-1">
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={f.output_data === 'TRUE' || f.output_data === 'true'} 
+                                                                        onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: e.target.checked ? 'TRUE' : 'FALSE' })}
+                                                                        className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500"
+                                                                    />
+                                                                    <span className="text-sm">{f.output_data === 'TRUE' || f.output_data === 'true' ? 'Selesai' : 'Belum selesai'}</span>
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </Modal>
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!tenantToDelete}
+                onClose={() => setTenantToDelete(null)}
+                title="Hapus Data Tenant"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm space-y-2">
+                                <p className="font-semibold text-base">Peringatan Penghapusan Permanen!</p>
+                                <p>Anda akan menghapus tenant <b>{tenantToDelete?.domain_slug}</b> beserta <b>semua data terkaitnya</b>:</p>
+                                <ul className="list-disc pl-4 space-y-1 opacity-90">
+                                    <li>Data Tenant & Akun Admin</li>
+                                    <li>Data Tamu Undangan</li>
+                                    <li>Data Ucapan & Hadiah</li>
+                                    <li>Konfigurasi Fitur Tambahan</li>
+                                    <li>Log Aktivitas</li>
+                                    <li><b>Semua File Gambar di Google Drive</b></li>
+                                </ul>
+                                <p className="font-medium pt-2">Tindakan ini tidak dapat dibatalkan!</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <label className="label-field text-red-600 dark:text-red-400">Ketik <b>DELETE</b> untuk mengkonfirmasi:</label>
+                        <input 
+                            type="text" 
+                            className="input-field border-red-300 focus:ring-red-500 focus:border-red-500 dark:border-red-900/50" 
+                            placeholder="DELETE"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            autoComplete="off"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setTenantToDelete(null);
+                                setDeleteConfirmText('');
+                            }}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gold-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleDeleteTenantAction}
+                            disabled={deleteConfirmText !== 'DELETE'}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Ya, Hapus Permanen
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {lightboxUrl && (
+                <Lightbox
+                    images={[{ url: lightboxUrl }]}
+                    initialIndex={0}
+                    onClose={() => setLightboxUrl(null)}
+                />
+            )}
         </div>
     );
 }

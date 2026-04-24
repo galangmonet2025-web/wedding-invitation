@@ -339,9 +339,15 @@ export interface InvitationContent {
     nama_bank_1: string;
     nama_rekening_bank_1: string;
     nomor_rekening_bank_1: string;
+    flag_pakai_qris_rekening_1?: boolean | string;
+    gambar_qris_rekening_1?: string;
+    
+    flag_pakai_2_rekening?: boolean | string;
     nama_bank_2: string;
     nama_rekening_bank_2: string;
     nomor_rekening_bank_2: string;
+    flag_pakai_qris_rekening_2?: boolean | string;
+    gambar_qris_rekening_2?: string;
     custom_kalimat_1: string;
     custom_kalimat_2: string;
     custom_kalimat_3: string;
@@ -364,6 +370,37 @@ export interface InvitationContent {
     is_fitur_cerita?: boolean | string;
     love_stories?: { title: string; date: string; content: string }[];
     wa_blast_template?: string;
+}
+
+// =============================================
+// Additional Features
+// =============================================
+
+export interface MstAdditionalFeature {
+    id: string;
+    feature_name: string;
+    is_required_tenant_input: boolean;
+    input_data_type: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
+    output_data_type: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
+    active: boolean;
+    created_at: string;
+}
+
+export interface TenantActiveFeature {
+    id: string;
+    tenant_id: string;
+    additional_feature_id: string;
+    
+    // MstData Joined
+    feature_name?: string;
+    is_required_tenant_input?: boolean;
+    input_data_type?: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
+    output_data_type?: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
+    mst_active?: boolean;
+
+    input_tenant_data: string;
+    output_data: string;
+    active: boolean;
 }
 
 // =============================================

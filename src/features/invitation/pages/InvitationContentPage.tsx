@@ -620,48 +620,158 @@ export function InvitationContentPage() {
 
                                 <AccordionItem id="hadiah" isOpen={openAccordions.has('hadiah')} onToggle={toggleAccordion} icon={<HiOutlineCreditCard className="w-5 h-5" />} iconBg="bg-gold-50 dark:bg-gold-900/20" iconColor="text-gold-600" title="Hadiah & Alamat Kado">
                                     <div className="space-y-6">
-                                        <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800 w-fit">
-                                            <input
-                                                type="checkbox"
-                                                className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
-                                                checked={getBool(content.tampilkan_amplop_online)}
-                                                onChange={(e) => updateField('tampilkan_amplop_online', e.target.checked)}
-                                            />
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable digital envelopes (Show bank accounts)</span>
-                                        </label>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800 w-fit">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                                    checked={getBool(content.tampilkan_amplop_online)}
+                                                    onChange={(e) => updateField('tampilkan_amplop_online', e.target.checked)}
+                                                />
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aktifkan Amplop Digital (Tampilkan Rekening Bank)</span>
+                                            </label>
+
+                                            {getBool(content.tampilkan_amplop_online) && (
+                                                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800 w-fit">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                                        checked={getBool(content.flag_pakai_2_rekening)}
+                                                        onChange={(e) => updateField('flag_pakai_2_rekening', e.target.checked)}
+                                                    />
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Gunakan 2 Rekening</span>
+                                                </label>
+                                            )}
+                                        </div>
 
                                         {getBool(content.tampilkan_amplop_online) && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                            <div className={`grid grid-cols-1 ${getBool(content.flag_pakai_2_rekening) ? 'md:grid-cols-2' : ''} gap-6 pt-2`}>
                                                 <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
                                                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 1</p>
                                                     <div>
-                                                        <label className="label-field">Nama Bank</label>
+                                                        <label className="label-field">Nama Bank / E-wallet</label>
                                                         <input type="text" value={content.nama_bank_1 || ''} onChange={(e) => updateField('nama_bank_1', e.target.value)} className="input-field" />
                                                     </div>
                                                     <div>
                                                         <label className="label-field">Nama Rekening</label>
                                                         <input type="text" value={content.nama_rekening_bank_1 || ''} onChange={(e) => updateField('nama_rekening_bank_1', e.target.value)} className="input-field" />
                                                     </div>
-                                                    <div>
-                                                        <label className="label-field">Nomor Rekening</label>
-                                                        <input type="text" value={content.nomor_rekening_bank_1 || ''} onChange={(e) => updateField('nomor_rekening_bank_1', e.target.value)} className="input-field font-mono" />
+                                                    {!getBool(content.flag_pakai_qris_rekening_1) && (
+                                                        <div>
+                                                            <label className="label-field">Nomor Rekening</label>
+                                                            <input type="text" value={content.nomor_rekening_bank_1 || ''} onChange={(e) => updateField('nomor_rekening_bank_1', e.target.value)} className="input-field font-mono" />
+                                                            <p className="text-[10px] text-gray-500 mt-1 italic leading-tight">
+                                                                * Tidak perlu diisi jika menggunakan QRIS
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                                                        <label className="flex items-center gap-2 cursor-pointer mb-3 w-fit">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="w-4 h-4 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                                                checked={getBool(content.flag_pakai_qris_rekening_1)}
+                                                                onChange={(e) => updateField('flag_pakai_qris_rekening_1', e.target.checked)}
+                                                            />
+                                                            <span className="text-sm text-gray-700 dark:text-gray-300">Pakai QRIS</span>
+                                                        </label>
+                                                        {getBool(content.flag_pakai_qris_rekening_1) && (
+                                                            <div className="w-full">
+                                                                {content.gambar_qris_rekening_1 ? (
+                                                                    <div className="relative group w-32 h-32 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                                                                        <ProxyImage
+                                                                            src={content.gambar_qris_rekening_1}
+                                                                            alt="QRIS 1"
+                                                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                                                            onClick={() => window.open(content.gambar_qris_rekening_1!, '_blank')}
+                                                                        />
+                                                                        <button
+                                                                            onClick={() => updateField('gambar_qris_rekening_1', '')}
+                                                                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                                                        >
+                                                                            Hapus
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <ImageUpload
+                                                                        imageType="qris_1"
+                                                                        title="Upload QRIS 1"
+                                                                        onUploadSuccess={(img) => updateField('gambar_qris_rekening_1', img.cdn_url || img.drive_url)}
+                                                                        onDeleteSuccess={() => {}}
+                                                                        aspectRatio="auto"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
-                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 2 <span className="text-gray-400 font-normal">(Optional)</span></p>
-                                                    <div>
-                                                        <label className="label-field">Nama Bank</label>
-                                                        <input type="text" value={content.nama_bank_2 || ''} onChange={(e) => updateField('nama_bank_2', e.target.value)} className="input-field" />
+
+                                                {getBool(content.flag_pakai_2_rekening) && (
+                                                    <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
+                                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 2</p>
+                                                        
+                                                        <div className="space-y-3 pt-2">
+                                                            <div>
+                                                                <label className="label-field">Nama Bank / E-wallet</label>
+                                                                <input type="text" value={content.nama_bank_2 || ''} onChange={(e) => updateField('nama_bank_2', e.target.value)} className="input-field" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="label-field">Nama Rekening</label>
+                                                                <input type="text" value={content.nama_rekening_bank_2 || ''} onChange={(e) => updateField('nama_rekening_bank_2', e.target.value)} className="input-field" />
+                                                            </div>
+                                                            {!getBool(content.flag_pakai_qris_rekening_2) && (
+                                                                <div>
+                                                                    <label className="label-field">Nomor Rekening</label>
+                                                                    <input type="text" value={content.nomor_rekening_bank_2 || ''} onChange={(e) => updateField('nomor_rekening_bank_2', e.target.value)} className="input-field font-mono" />
+                                                                    <p className="text-[10px] text-gray-500 mt-1 italic leading-tight">
+                                                                        * Tidak perlu diisi jika menggunakan QRIS
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                                                                <label className="flex items-center gap-2 cursor-pointer mb-3 w-fit">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="w-4 h-4 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                                                        checked={getBool(content.flag_pakai_qris_rekening_2)}
+                                                                        onChange={(e) => updateField('flag_pakai_qris_rekening_2', e.target.checked)}
+                                                                    />
+                                                                    <span className="text-sm text-gray-700 dark:text-gray-300">Pakai QRIS</span>
+                                                                </label>
+                                                                {getBool(content.flag_pakai_qris_rekening_2) && (
+                                                                    <div className="w-full">
+                                                                        {content.gambar_qris_rekening_2 ? (
+                                                                            <div className="relative group w-32 h-32 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                                                                                <ProxyImage
+                                                                                    src={content.gambar_qris_rekening_2}
+                                                                                    alt="QRIS 2"
+                                                                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                                                                    onClick={() => window.open(content.gambar_qris_rekening_2!, '_blank')}
+                                                                                />
+                                                                                <button
+                                                                                    onClick={() => updateField('gambar_qris_rekening_2', '')}
+                                                                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                                                                >
+                                                                                    Hapus
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <ImageUpload
+                                                                                imageType="qris_2"
+                                                                                title="Upload QRIS 2"
+                                                                                onUploadSuccess={(img) => updateField('gambar_qris_rekening_2', img.cdn_url || img.drive_url)}
+                                                                                onDeleteSuccess={() => {}}
+                                                                                aspectRatio="auto"
+                                                                            />
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="label-field">Nama Rekening</label>
-                                                        <input type="text" value={content.nama_rekening_bank_2 || ''} onChange={(e) => updateField('nama_rekening_bank_2', e.target.value)} className="input-field" />
-                                                    </div>
-                                                    <div>
-                                                        <label className="label-field">Nomor Rekening</label>
-                                                        <input type="text" value={content.nomor_rekening_bank_2 || ''} onChange={(e) => updateField('nomor_rekening_bank_2', e.target.value)} className="input-field font-mono" />
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
                                         )}
 

@@ -22,6 +22,8 @@ import type {
     CreateThemeRequest,
     UpdateThemeRequest,
     WebsiteConfig,
+    MstAdditionalFeature,
+    TenantActiveFeature,
 } from '@/types';
 
 // =============================================
@@ -134,6 +136,11 @@ export const tenantApi = {
 
     updateTenant: async (data: UpdateTenantRequest): Promise<ApiResponse<Tenant>> => {
         const res = await apiClient.post('', { action: 'updateTenant', ...data });
+        return res.data;
+    },
+
+    deleteTenant: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteTenant', id }, { skipLoader: true } as any);
         return res.data;
     },
 
@@ -315,4 +322,42 @@ export const publicApi = {
         const res = await publicClient.post('', JSON.stringify({ action: 'getWebsiteConfig' }));
         return res.data;
     },
+};
+
+// =============================================
+// ADDITIONAL FEATURES API
+// =============================================
+
+export const additionalFeatureApi = {
+    getMstFeatures: async (): Promise<ApiResponse<MstAdditionalFeature[]>> => {
+        const res = await apiClient.post('', { action: 'getMstAdditionalFeatures' });
+        return res.data;
+    },
+    
+    createMstFeature: async (data: Partial<MstAdditionalFeature>): Promise<ApiResponse<MstAdditionalFeature>> => {
+        const res = await apiClient.post('', { action: 'createMstAdditionalFeature', ...data });
+        return res.data;
+    },
+    
+    updateMstFeature: async (data: Partial<MstAdditionalFeature>): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateMstAdditionalFeature', ...data });
+        return res.data;
+    },
+    
+    deleteMstFeature: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteMstAdditionalFeature', id });
+        return res.data;
+    },
+
+    getTenantFeatures: async (tenantId?: string): Promise<ApiResponse<TenantActiveFeature[]>> => {
+        const payload: any = { action: 'getTenantActiveFeatures' };
+        if (tenantId) payload.tenant_id = tenantId;
+        const res = await apiClient.post('', payload);
+        return res.data;
+    },
+    
+    updateTenantFeature: async (data: Partial<TenantActiveFeature>): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateTenantActiveFeature', ...data });
+        return res.data;
+    }
 };

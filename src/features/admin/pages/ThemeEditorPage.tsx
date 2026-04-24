@@ -327,9 +327,16 @@ export function ThemeEditorPage() {
                 bank_1: c.nama_bank_1 || 'BCA',
                 rek_1: c.nomor_rekening_bank_1 || '1234567890',
                 nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
+                flag_pakai_qris_rekening_1: !!(c.flag_pakai_qris_rekening_1),
+                gambar_qris_rekening_1: c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
+                
                 bank_2: c.nama_bank_2 || 'Mandiri',
                 rek_2: c.nomor_rekening_bank_2 || '0987654321',
                 nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
+                flag_pakai_qris_rekening_2: !!(c.flag_pakai_qris_rekening_2),
+                gambar_qris_rekening_2: c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
+                flag_pakai_2_rekening: !!(c.flag_pakai_2_rekening),
+
                 link_backsound_music: c.link_backsound_music || '',
                 link_live_streaming: c.link_live_streaming || '',
                 platform_live_streaming: c.platform_live_streaming || 'YouTube',
@@ -339,7 +346,7 @@ export function ThemeEditorPage() {
                     { tanggal: 'Maret 2022', judul: 'Memutuskan Bersama', deskripsi: 'Kami resmi berpacaran dan memiliki komitmen.' },
                     { tanggal: 'Desember 2024', judul: 'Lamaran', deskripsi: 'Momen berharga ketika dua keluarga bertemu.' }
                 ],
-                tampilkan_amplop_online: true,
+                tampilkan_amplop_online: !!(c.tampilkan_amplop_online),
                 flag_lokasi_akad_dan_resepsi_berbeda: true,
                 flag_tampilkan_nama_orang_tua: true,
                 flag_tampilkan_sosial_media_mempelai: true,

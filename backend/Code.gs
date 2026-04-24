@@ -161,6 +161,9 @@ function routeAction(action, payload, auth) {
     case 'updateTenant':
       PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
       return TenantService.updateTenant(auth, payload);
+    case 'deleteTenant':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return TenantService.deleteTenant(auth, payload);
     case 'impersonateTenant':
       PermissionService.requireRole(auth, ['superadmin']);
       return AuthService.impersonateTenant(auth, payload);
@@ -216,6 +219,26 @@ function routeAction(action, payload, auth) {
       return ImageService.uploadImage(auth, payload);
     case 'deleteImage':
       return ImageService.deleteImage(auth, payload);
+
+    // Additional Features
+    case 'getMstAdditionalFeatures':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return AdditionalFeatureService.getMstFeatures(auth);
+    case 'createMstAdditionalFeature':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return AdditionalFeatureService.createMstFeature(auth, payload);
+    case 'updateMstAdditionalFeature':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return AdditionalFeatureService.updateMstFeature(auth, payload);
+    case 'deleteMstAdditionalFeature':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return AdditionalFeatureService.deleteMstFeature(auth, payload);
+    case 'getTenantActiveFeatures':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return AdditionalFeatureService.getTenantFeatures(auth, payload);
+    case 'updateTenantActiveFeature':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return AdditionalFeatureService.updateTenantFeature(auth, payload);
 
     // Public Invitation
     case 'getPublicInvitation':
@@ -840,6 +863,52 @@ var TenantService = {
     DB.update('Tenants', payload.id, updates);
 
     return ResponseHelper.success(null, 'Tenant updated successfully');
+  },
+
+  deleteTenant: function(auth, payload) {
+    Validator.required(payload, ['id']);
+    var tenantId = payload.id;
+    
+    if (auth.role !== 'superadmin') {
+      return ResponseHelper.error('Only superadmin can delete a tenant', 403);
+    }
+    
+    // 1. Hard Delete Images from Google Drive & Sheet
+    var images = DB.getByTenant('Images', tenantId);
+    for (var i = 0; i < images.length; i++) {
+        var img = images[i];
+        try {
+            if (img.drive_id) {
+                // Try hard delete using Advanced Drive Service if enabled
+                try {
+                    Drive.Files.remove(img.drive_id);
+                } catch (err) {
+                    // Fallback to trash if advanced service is not enabled
+                    var file = DriveApp.getFileById(img.drive_id);
+                    file.setTrashed(true);
+                }
+            }
+        } catch(e) {}
+        DB.deleteRow('Images', img.id);
+    }
+
+    // 2. Cascading Delete other sheets
+    var sheetsToClean = ['Users', 'Guests', 'Wishes', 'Gifts', 'TenantActiveFeature', 'ActivityLogs'];
+    for (var s = 0; s < sheetsToClean.length; s++) {
+        var sheetName = sheetsToClean[s];
+        var rows = DB.getByTenant(sheetName, tenantId);
+        for (var r = 0; r < rows.length; r++) {
+            DB.deleteRow(sheetName, rows[r].id);
+        }
+    }
+    
+    // 3. Delete Tenant itself
+    var success = DB.deleteRow('Tenants', tenantId);
+    
+    if (success) {
+      return ResponseHelper.success(null, 'Tenant and all associated data deleted successfully');
+    }
+    return ResponseHelper.error('Failed to delete tenant', 500);
   }
 };
 
@@ -1786,6 +1855,144 @@ var ThemeService = {
   }
 };
 
+
+// =====================================================================
+// ADDITIONAL FEATURE SERVICE
+// =====================================================================
+
+var AdditionalFeatureService = {
+  getMstFeatures: function(auth) {
+    var features = DB.getAll('MstAdditionalFeature');
+    // Convert string booleans to actual booleans for frontend consistency
+    features.forEach(function(f) {
+      f.is_required_tenant_input = (f.is_required_tenant_input === true || f.is_required_tenant_input === 'true' || f.is_required_tenant_input === 'TRUE');
+      f.active = (f.active === true || f.active === 'true' || f.active === 'TRUE');
+    });
+    return ResponseHelper.success(features, 'Master additional features retrieved');
+  },
+
+  createMstFeature: function(auth, payload) {
+    Validator.required(payload, ['feature_name', 'input_data_type', 'output_data_type']);
+    var sanitized = Validator.sanitizeObject(payload);
+    
+    var feature = {
+      id: DB.generateId(),
+      feature_name: sanitized.feature_name,
+      is_required_tenant_input: payload.is_required_tenant_input ? 'TRUE' : 'FALSE',
+      input_data_type: sanitized.input_data_type || '',
+      output_data_type: sanitized.output_data_type || '',
+      active: payload.active !== false ? 'TRUE' : 'FALSE',
+      created_at: new Date().toISOString()
+    };
+
+    DB.insert('MstAdditionalFeature', feature);
+    return ResponseHelper.success(feature, 'Feature created successfully');
+  },
+
+  updateMstFeature: function(auth, payload) {
+    Validator.required(payload, ['id']);
+    
+    var updates = {};
+    if (payload.feature_name !== undefined) updates.feature_name = Validator.sanitizeObject({n: payload.feature_name}).n;
+    if (payload.is_required_tenant_input !== undefined) updates.is_required_tenant_input = payload.is_required_tenant_input ? 'TRUE' : 'FALSE';
+    if (payload.input_data_type !== undefined) updates.input_data_type = Validator.sanitizeObject({t: payload.input_data_type}).t;
+    if (payload.output_data_type !== undefined) updates.output_data_type = Validator.sanitizeObject({t: payload.output_data_type}).t;
+    if (payload.active !== undefined) updates.active = payload.active ? 'TRUE' : 'FALSE';
+
+    var success = DB.update('MstAdditionalFeature', payload.id, updates);
+    if (!success) return ResponseHelper.error('Feature not found', 404);
+    
+    return ResponseHelper.success(null, 'Feature updated successfully');
+  },
+
+  deleteMstFeature: function(auth, payload) {
+    Validator.required(payload, ['id']);
+    var success = DB.deleteRow('MstAdditionalFeature', payload.id);
+    if (!success) return ResponseHelper.error('Feature not found', 404);
+    
+    // Also delete associated TenantActiveFeatures
+    var tenantFeatures = DB.getAll('TenantActiveFeature').filter(function(f) { return f.additional_feature_id === payload.id; });
+    tenantFeatures.forEach(function(f) {
+      DB.deleteRow('TenantActiveFeature', f.id);
+    });
+
+    return ResponseHelper.success(null, 'Feature deleted successfully');
+  },
+
+  getTenantFeatures: function(auth, payload) {
+    // If superadmin requests, they must provide tenant_id. Otherwise, get from auth.
+    var targetTenantId = auth.role === 'superadmin' ? payload.tenant_id : PermissionService.getTenantId(auth);
+    if (!targetTenantId) return ResponseHelper.error('Tenant ID required', 400);
+
+    var mstFeatures = DB.getAll('MstAdditionalFeature');
+    var tenantFeatures = DB.getAll('TenantActiveFeature').filter(function(f) { return f.tenant_id === targetTenantId; });
+
+    // Combine them
+    var result = mstFeatures.map(function(mst) {
+      var active = tenantFeatures.find(function(tf) { return tf.additional_feature_id === mst.id; });
+      return {
+        id: active ? active.id : null,
+        tenant_id: targetTenantId,
+        additional_feature_id: mst.id,
+        feature_name: mst.feature_name,
+        is_required_tenant_input: (mst.is_required_tenant_input === true || mst.is_required_tenant_input === 'true' || mst.is_required_tenant_input === 'TRUE'),
+        input_data_type: mst.input_data_type,
+        output_data_type: mst.output_data_type,
+        input_tenant_data: active ? active.input_tenant_data : '',
+        output_data: active ? active.output_data : '',
+        active: active ? (active.active === true || active.active === 'true' || active.active === 'TRUE') : false,
+        mst_active: (mst.active === true || mst.active === 'true' || mst.active === 'TRUE')
+      };
+    });
+
+    // For tenant_admin, only show features that are active at the master level AND enabled by superadmin
+    if (auth.role !== 'superadmin') {
+      result = result.filter(function(r) { return r.active && r.mst_active; });
+    }
+
+    return ResponseHelper.success(result, 'Tenant features retrieved');
+  },
+
+  updateTenantFeature: function(auth, payload) {
+    // payload should have: additional_feature_id, tenant_id (if superadmin)
+    var targetTenantId = auth.role === 'superadmin' ? payload.tenant_id : PermissionService.getTenantId(auth);
+    if (!targetTenantId) return ResponseHelper.error('Tenant ID required', 400);
+    Validator.required(payload, ['additional_feature_id']);
+
+    var tenantFeatures = DB.getAll('TenantActiveFeature').filter(function(f) { return f.tenant_id === targetTenantId; });
+    var existing = tenantFeatures.find(function(f) { return f.additional_feature_id === payload.additional_feature_id; });
+
+    var updates = {};
+    
+    // Superadmin can update active and output_data
+    if (auth.role === 'superadmin') {
+      if (payload.active !== undefined) updates.active = payload.active ? 'TRUE' : 'FALSE';
+      if (payload.output_data !== undefined) updates.output_data = payload.output_data;
+    }
+    
+    // Tenant can update input_tenant_data
+    if (auth.role !== 'superadmin' || payload.input_tenant_data !== undefined) {
+      if (payload.input_tenant_data !== undefined) updates.input_tenant_data = payload.input_tenant_data;
+    }
+
+    if (existing) {
+      DB.update('TenantActiveFeature', existing.id, updates);
+    } else {
+      // Create new
+      var newFeature = {
+        id: DB.generateId(),
+        tenant_id: targetTenantId,
+        additional_feature_id: payload.additional_feature_id,
+        input_tenant_data: updates.input_tenant_data || '',
+        output_data: updates.output_data || '',
+        active: updates.active || 'FALSE'
+      };
+      DB.insert('TenantActiveFeature', newFeature);
+    }
+
+    return ResponseHelper.success(null, 'Tenant feature updated successfully');
+  }
+};
 
 // =====================================================================
 // SETUP FUNCTION - Run this once to initialize spreadsheet

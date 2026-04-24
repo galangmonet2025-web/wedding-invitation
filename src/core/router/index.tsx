@@ -21,6 +21,17 @@ import { ThemeEditorPage } from '@/features/admin/pages/ThemeEditorPage';
 import { Navigate } from 'react-router-dom';
 import { WebsiteConfigPage } from '@/features/admin/pages/WebsiteConfigPage';
 import { LandingPage } from '@/features/landing/pages/LandingPage';
+import { AdditionalFeaturePage } from '@/features/admin/pages/AdditionalFeaturePage';
+import { TenantAdditionalFeaturePage } from '@/features/tenant/pages/TenantAdditionalFeaturePage';
+import { useAuthStore } from '@/features/auth/store/authStore';
+
+function AdditionalFeatureRouter() {
+    const user = useAuthStore(state => state.user);
+    if (user?.role === 'superadmin') {
+        return <AdditionalFeaturePage />;
+    }
+    return <TenantAdditionalFeaturePage />;
+}
 
 
 function UnauthorizedPage() {
@@ -191,6 +202,14 @@ export const router = createHashRouter([
                                 element: (
                                     <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
                                         <InvitationContentPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'additional-features',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                        <AdditionalFeatureRouter />
                                     </ProtectedRoute>
                                 ),
                             },
