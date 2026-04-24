@@ -176,9 +176,8 @@ export function TenantPage() {
         // Register background task
         useBackgroundTaskStore.getState().addTask({
             id: taskId,
-            type: 'delete-tenant',
-            status: 'running',
-            progress: 0,
+            name: 'delete-tenant',
+            total: 1,
             details: `Menghapus tenant ${tenantToDelete.domain_slug}...`
         });
 

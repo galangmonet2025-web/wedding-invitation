@@ -465,7 +465,12 @@ export function GlobalDashboardPage() {
                 )}
             </Modal>
 
-            {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+            {lightboxUrl && (
+                <Lightbox 
+                    images={[{ url: lightboxUrl }]} 
+                    onClose={() => setLightboxUrl(null)} 
+                />
+            )}
         </div>
     );
 }
