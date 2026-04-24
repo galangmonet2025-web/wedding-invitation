@@ -651,7 +651,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         has_story: getBool(activeContent.is_fitur_cerita),
         live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
             url: activeContent.link_live_streaming || '',
-            platform: activeContent.platform_live_streaming || 'YouTube'
+            platform: activeContent.platform_live_streaming || ''
         } : null,
         galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
             .filter(img => img.image_type === 'gallery')

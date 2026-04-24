@@ -921,7 +921,7 @@ export function InvitationContentPage() {
                                     </div>
                                     <div className="space-y-1">
                                         <label className="label-field">Link Musik Latar (URL YouTube)</label>
-                                        <input type="text" value={content.link_backsound_music || ''} onChange={(e) => updateField('link_backsound_music', e.target.value)} className="input-field" placeholder="https://youtube.com/watch?v=..." />
+                                        <input type="text" autoComplete="off" value={content.link_backsound_music || ''} onChange={(e) => updateField('link_backsound_music', e.target.value)} className="input-field" placeholder="https://youtube.com/watch?v=..." />
                                         <p className="text-[10px] text-gray-400 mt-1">Gunakan link full URL dari YouTube</p>
                                     </div>
                                 </div>
@@ -949,11 +949,11 @@ export function InvitationContentPage() {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                                                 <div>
                                                     <label className="label-field">Platform (misal: YouTube, Zoom)</label>
-                                                    <input type="text" value={content.platform_live_streaming || ''} onChange={(e) => updateField('platform_live_streaming', e.target.value)} className="input-field" placeholder="YouTube" />
+                                                    <input type="text" autoComplete="off" value={content.platform_live_streaming || ''} onChange={(e) => updateField('platform_live_streaming', e.target.value)} className="input-field" placeholder="YouTube" />
                                                 </div>
                                                 <div>
                                                     <label className="label-field">Link Live Streaming / URL Meeting</label>
-                                                    <input type="url" value={content.link_live_streaming || ''} onChange={(e) => updateField('link_live_streaming', e.target.value)} className="input-field" placeholder="https://..." />
+                                                    <input type="url" autoComplete="off" value={content.link_live_streaming || ''} onChange={(e) => updateField('link_live_streaming', e.target.value)} className="input-field" placeholder="https://..." />
                                                 </div>
                                             </div>
                                         )}
