@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { dashboardApi } from '@/core/api/endpoints';
+import { dashboardApi, reviewApi } from '@/core/api/endpoints';
+import { Modal } from '@/shared/components/Modal';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { StatCard } from '@/shared/components/StatCard';
 import { PageLoader } from '@/shared/components/Loading';
@@ -12,6 +13,9 @@ import {
     HiOutlineHeart,
     HiOutlineGift,
     HiOutlineCurrencyDollar,
+    HiOutlineStar,
+    HiStar,
+    HiOutlineChatAlt2,
 } from 'react-icons/hi';
 import {
     PieChart,
@@ -34,9 +38,17 @@ export function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const { tenant } = useAuthStore();
 
+    // Review State
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
+    const [reviewForm, setReviewForm] = useState({ rate_star: 5, comment: '' });
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    const [isHPlusOnePassed, setIsHPlusOnePassed] = useState(false);
+
     useEffect(() => {
         fetchDashboard();
-    }, []);
+        checkReviewStatus();
+    }, [tenant?.id]);
 
     const fetchDashboard = async () => {
         try {
@@ -66,6 +78,76 @@ export function DashboardPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const checkReviewStatus = async () => {
+        if (!tenant?.wedding_date) return;
+
+        // Parse YYYY-MM-DD manually to avoid UTC issues
+        const dateParts = tenant.wedding_date.split('-');
+        if (dateParts.length !== 3) return;
+        
+        const weddingDate = new Date(
+            parseInt(dateParts[0]),
+            parseInt(dateParts[1]) - 1,
+            parseInt(dateParts[2])
+        );
+
+        const dayAfterWedding = new Date(weddingDate);
+        dayAfterWedding.setDate(dayAfterWedding.getDate() + 1);
+        
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        const passed = today >= dayAfterWedding;
+        setIsHPlusOnePassed(passed);
+        
+        if (passed) {
+            try {
+                const res = await reviewApi.getTenantReview();
+                if (res.success) {
+                    if (res.data) {
+                        setHasSubmittedReview(true);
+                    } else {
+                        // Not reviewed yet, check if they clicked "Fill Later" in this session
+                        const fillLater = sessionStorage.getItem('review_fill_later');
+                        if (!fillLater) {
+                            setShowReviewModal(true);
+                        }
+                    }
+                }
+            } catch {
+                console.error('Failed to check review status');
+            }
+        }
+    };
+
+    const handleSubmitReview = async () => {
+        if (!reviewForm.comment.trim()) {
+            toast.error('Mohon isi komentar Anda');
+            return;
+        }
+
+        setIsSubmittingReview(true);
+        try {
+            const res = await reviewApi.submitReview(reviewForm);
+            if (res.success) {
+                toast.success('Terima kasih atas review Anda!');
+                setHasSubmittedReview(true);
+                setShowReviewModal(false);
+            } else {
+                toast.error(res.message);
+            }
+        } catch {
+            toast.error('Gagal mengirim review');
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    };
+
+    const handleFillLater = () => {
+        sessionStorage.setItem('review_fill_later', 'true');
+        setShowReviewModal(false);
     };
 
     if (loading) return <PageLoader />;
@@ -199,6 +281,29 @@ export function DashboardPage() {
                     </ResponsiveContainer>
                 </div>
             </div>
+            
+            {/* Review Widget */}
+            {!hasSubmittedReview && isHPlusOnePassed && (
+                <div className="card bg-gold-50 dark:bg-gold-900/10 border-gold-200 dark:border-gold-900/30 p-6 animate-fade-in">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 text-center md:text-left">
+                            <div className="w-12 h-12 rounded-full bg-gold-100 dark:bg-gold-900/30 flex items-center justify-center shrink-0">
+                                <HiOutlineStar className="w-6 h-6 text-gold-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gold-800 dark:text-gold-400">Bagaimana pengalaman Anda?</h3>
+                                <p className="text-sm text-gold-700/70 dark:text-gold-500/70">Berikan review untuk membantu kami meningkatkan layanan.</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setShowReviewModal(true)}
+                            className="btn-primary whitespace-nowrap"
+                        >
+                            Tulis Review Sekarang
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Quick Info */}
             {tenant && (
@@ -230,6 +335,70 @@ export function DashboardPage() {
                     </div>
                 </div>
             )}
+
+            {/* Review Modal */}
+            <Modal
+                isOpen={showReviewModal}
+                onClose={() => setShowReviewModal(false)}
+                title="Bagaimana Pengalaman Anda?"
+                size="md"
+            >
+                <div className="space-y-6 py-2">
+                    <div className="text-center">
+                        <p className="text-gray-500 dark:text-gray-400 mb-4 px-4">Pernikahan Anda telah selesai. Kami ingin mendengar pendapat Anda mengenai layanan kami.</p>
+                        
+                        {/* Star Rating */}
+                        <div className="flex justify-center gap-2 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    onClick={() => setReviewForm(prev => ({ ...prev, rate_star: star }))}
+                                    className="p-1 transition-transform hover:scale-110 active:scale-95"
+                                >
+                                    {star <= reviewForm.rate_star ? (
+                                        <HiStar className="w-10 h-10 text-amber-400" />
+                                    ) : (
+                                        <HiOutlineStar className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-sm font-medium text-amber-600">
+                            {reviewForm.rate_star === 5 && 'Luar Biasa!'}
+                            {reviewForm.rate_star === 4 && 'Sangat Baik'}
+                            {reviewForm.rate_star === 3 && 'Cukup Baik'}
+                            {reviewForm.rate_star === 2 && 'Kurang Memuaskan'}
+                            {reviewForm.rate_star === 1 && 'Sangat Kurang'}
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="label-field">Komentar / Feedback</label>
+                        <textarea
+                            value={reviewForm.comment}
+                            onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))}
+                            className="input-field min-h-[120px] resize-none"
+                            placeholder="Ceritakan pengalaman Anda menggunakan Wedding SaaS..."
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2">
+                        <button
+                            onClick={handleSubmitReview}
+                            disabled={isSubmittingReview}
+                            className="btn-primary w-full py-3"
+                        >
+                            {isSubmittingReview ? 'Mengirim...' : 'Kirim Review'}
+                        </button>
+                        <button
+                            onClick={handleFillLater}
+                            className="btn-ghost w-full py-2 text-gray-400"
+                        >
+                            Isi Nanti
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

@@ -106,6 +106,8 @@ function routeAction(action, payload, auth) {
       return AuthService.checkSlug(payload);
     case 'logout':
       return ResponseHelper.success(null, 'Logged out successfully');
+    case 'changePassword':
+      return AuthService.changePassword(auth, payload);
 
     // Dashboard
     case 'getDashboard':
@@ -113,6 +115,9 @@ function routeAction(action, payload, auth) {
     case 'getGlobalDashboard':
       PermissionService.requireRole(auth, ['superadmin']);
       return DashboardService.getGlobalDashboard(auth);
+    case 'getPendingActions':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return DashboardService.getPendingActions(auth);
 
     // Guests
     case 'getGuests':
@@ -256,6 +261,18 @@ function routeAction(action, payload, auth) {
     case 'updateWebsiteConfig':
       PermissionService.requireRole(auth, ['superadmin']);
       return WebsiteConfigService.updateConfig(auth, payload);
+      
+    // Review and Rating
+    case 'getReviews':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return ReviewService.getReviews(auth);
+    case 'submitReview':
+      return ReviewService.submitReview(auth, payload);
+    case 'updateReviewStatus':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return ReviewService.updateReview(auth, payload);
+    case 'getReviewByTenant':
+      return ReviewService.getReviewByTenant(auth);
 
     default:
       return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -290,7 +307,7 @@ var Validator = {
   required: function(obj, fields) {
     for (var i = 0; i < fields.length; i++) {
       var field = fields[i];
-      if (!obj[field] || String(obj[field]).trim() === '') {
+      if (obj[field] === undefined || obj[field] === null || String(obj[field]).trim() === '') {
         throw new Error('Field "' + field + '" is required');
       }
     }
@@ -742,6 +759,29 @@ var AuthService = {
       return ResponseHelper.success(null, 'Staff account deleted');
     }
     return ResponseHelper.error('Failed to delete staff account', 500);
+  },
+
+  changePassword: function(auth, payload) {
+    Validator.required(payload, ['old_password', 'new_password']);
+    
+    var user = DB.findOne('Users', 'id', auth.user_id);
+    if (!user) {
+      return ResponseHelper.error('User not found', 404);
+    }
+
+    if (!this.verifyPassword(payload.old_password, user.password_hash)) {
+      return ResponseHelper.error('Password lama salah', 400);
+    }
+
+    var success = DB.update('Users', user.id, {
+      password_hash: this.hashPassword(payload.new_password)
+    });
+
+    if (success) {
+      ActivityLogService.log(user.tenant_id, user.id, 'change_password');
+      return ResponseHelper.success(null, 'Password berhasil diubah');
+    }
+    return ResponseHelper.error('Gagal mengubah password', 500);
   }
 };
 
@@ -1288,6 +1328,57 @@ var DashboardService = {
       ],
       tenant_growth: tenantGrowth
     }, 'Global dashboard retrieved');
+  },
+
+  getPendingActions: function(auth) {
+    PermissionService.requireRole(auth, ['superadmin']);
+
+    var tenants = DB.getAll('Tenants');
+    var mstFeatures = DB.getAll('MstAdditionalFeature').filter(function(f) { 
+      var isActive = (f.active === true || f.active === 'true' || f.active === 'TRUE');
+      var needsAdminOutput = (f.output_data_type && f.output_data_type !== 'empty');
+      return isActive && needsAdminOutput;
+    });
+
+    if (mstFeatures.length === 0) return ResponseHelper.success({ incomplete_tenants: [] }, 'No features require admin output');
+
+    var tenantFeatures = DB.getAll('TenantActiveFeature');
+    var incompleteTenants = [];
+
+    tenants.forEach(function(tenant) {
+      var featuresForTenant = tenantFeatures.filter(function(tf) { return tf.tenant_id === tenant.id; });
+      
+      var pending = [];
+      mstFeatures.forEach(function(mst) {
+        var tf = featuresForTenant.find(function(f) { return f.additional_feature_id === mst.id; });
+        var isActiveForTenant = tf && (tf.active === true || tf.active === 'true' || tf.active === 'TRUE');
+        var hasNoOutput = tf && !tf.output_data;
+        
+        if (isActiveForTenant && hasNoOutput) {
+          pending.push(mst.feature_name);
+        }
+      });
+
+      if (pending.length > 0) {
+        incompleteTenants.push({
+          id: tenant.id,
+          bride_name: tenant.bride_name,
+          groom_name: tenant.groom_name,
+          domain_slug: tenant.domain_slug,
+          plan_type: tenant.plan_type,
+          status_account: tenant.status_account,
+          status_payment: tenant.status_payment,
+          payment_deadline: tenant.payment_deadline,
+          wedding_date: tenant.wedding_date,
+          theme_id: tenant.theme_id,
+          pending_features: pending
+        });
+      }
+    });
+
+    return ResponseHelper.success({
+      incomplete_tenants: incompleteTenants
+    }, 'Pending actions retrieved');
   }
 };
 
@@ -2006,6 +2097,22 @@ var WebsiteConfigService = {
   getConfig: function() {
     var all = DB.getAll('WebsiteConfig');
     var config = all.length > 0 ? all[0] : this.getDefaultConfig();
+    
+    // Add additional data for public landing page looping
+    var reviews = DB.getAll('ReviewAndRating').filter(function(r) {
+      return r.flag_show_review === 'TRUE' || r.flag_show_review === true || r.flag_show_review === 'true';
+    });
+    
+    // Sort reviews by newest first
+    reviews.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+    var features = DB.getAll('MstAdditionalFeature').filter(function(f) {
+      return f.active === 'TRUE' || f.active === true || f.active === 'true';
+    });
+
+    config.reviews = reviews;
+    config.features = features;
+
     return ResponseHelper.success(config, 'Website config retrieved');
   },
 
@@ -2066,6 +2173,77 @@ var WebsiteConfigService = {
 };
 
 
+// =====================================================================
+// REVIEW SERVICE
+// =====================================================================
+
+var ReviewService = {
+  getReviews: function(auth) {
+    var reviews = DB.getAll('ReviewAndRating');
+    return ResponseHelper.success(reviews, 'Reviews retrieved');
+  },
+
+  submitReview: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    Validator.required(payload, ['comment', 'rate_star']);
+    
+    var tenant = DB.findOne('Tenants', 'id', tenantId);
+    if (!tenant) return ResponseHelper.error('Tenant not found', 404);
+
+    // Check if already reviewed
+    var existing = DB.findOne('ReviewAndRating', 'tenant_id', tenantId);
+    if (existing) return ResponseHelper.error('You have already submitted a review', 400);
+
+    // Fetch address from InvitationContent
+    var content = DB.findOne('InvitationContent', 'tenant_id', tenantId);
+    var alamat = content ? content.keterangan_lokasi_resepsi : '';
+
+    var review = {
+      id: DB.generateId(),
+      tenant_id: tenantId,
+      comment: payload.comment,
+      rate_star: payload.rate_star,
+      wedding_date: tenant.wedding_date,
+      bride_name: tenant.bride_name,
+      groom_name: tenant.groom_name,
+      domain_slug: tenant.domain_slug,
+      plan_type: tenant.plan_type,
+      theme_id: tenant.theme_id || '',
+      alamat: alamat || '',
+      flag_show_review: 'FALSE',
+      created_at: new Date().toISOString()
+    };
+
+    DB.insert('ReviewAndRating', review);
+    ActivityLogService.log(tenantId, auth.user_id, 'submit_review');
+
+    return ResponseHelper.success(review, 'Review submitted successfully');
+  },
+
+  updateReview: function(auth, payload) {
+    Validator.required(payload, ['id']);
+    
+    var updates = {};
+    if (payload.flag_show_review !== undefined) {
+      updates.flag_show_review = payload.flag_show_review === true || payload.flag_show_review === 'TRUE' || payload.flag_show_review === 'true' ? 'TRUE' : 'FALSE';
+    }
+    if (payload.alamat !== undefined) {
+      updates.alamat = payload.alamat;
+    }
+
+    var success = DB.update('ReviewAndRating', payload.id, updates);
+    if (success) return ResponseHelper.success(null, 'Review updated');
+    return ResponseHelper.error('Failed to update review', 500);
+  },
+
+  getReviewByTenant: function(auth) {
+    var tenantId = PermissionService.getTenantId(auth);
+    var review = DB.findOne('ReviewAndRating', 'tenant_id', tenantId);
+    return ResponseHelper.success(review, 'Review retrieved');
+  }
+};
+
+
 function setupSpreadsheet() {
   var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
@@ -2100,7 +2278,8 @@ function setupSpreadsheet() {
       'id', 'site_name', 'site_url', 'site_logo', 'site_instagram', 'site_tiktok', 'site_youtube', 
       'contact_email', 'contact_whatsapp', 'tagline', 'site_description', 
       'site_code_html', 'site_code_css', 'site_code_js', 'primary_color', 'accent_color'
-    ]
+    ],
+    'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at']
   };
 
   for (var name in sheets) {

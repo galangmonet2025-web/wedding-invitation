@@ -425,3 +425,23 @@ export interface WebsiteConfig {
     primary_color: string;
     accent_color: string;
 }
+
+// =============================================
+// Review and Rating
+// =============================================
+
+export interface ReviewAndRating {
+    id: string;
+    tenant_id: string;
+    comment: string;
+    rate_star: number;
+    wedding_date: string;
+    bride_name: string;
+    groom_name: string;
+    domain_slug: string;
+    plan_type: string;
+    theme_id: string;
+    alamat: string;
+    flag_show_review: boolean | string;
+    created_at: string;
+}

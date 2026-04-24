@@ -23,9 +23,11 @@ import {
     HiOutlineColorSwatch,
     HiOutlineChatAlt2,
     HiOutlinePuzzle,
+    HiOutlineKey,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
+import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 
 export function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,6 +35,7 @@ export function DashboardLayout() {
     const { isDark, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
     const [hasActiveFeatures, setHasActiveFeatures] = useState(true);
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
     const isSuperAdmin = user?.role === 'superadmin';
     const isImpersonating = !!(user as any)?.is_impersonating;
@@ -60,6 +63,7 @@ export function DashboardLayout() {
 
     const handleLogout = () => {
         logout();
+        sessionStorage.removeItem('review_fill_later');
         navigate('/login');
     };
 
@@ -69,6 +73,7 @@ export function DashboardLayout() {
             { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
             { to: '/private/themes', icon: HiOutlineColorSwatch, label: 'Manage Themes', roles: ['superadmin'] },
             { to: '/private/additional-features', icon: HiOutlinePuzzle, label: 'Additional feature', roles: ['superadmin'] },
+            { to: '/private/reviews', icon: HiOutlineChatAlt2, label: 'Review and Rating', roles: ['superadmin'] },
             { to: '/private/website-config', icon: HiOutlineCog, label: 'Website Config', roles: ['superadmin'] },
             { to: '/private/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
         ]
@@ -179,6 +184,13 @@ export function DashboardLayout() {
                         </div>
                     </div>
                     <button
+                        onClick={() => setPasswordModalOpen(true)}
+                        className="sidebar-link w-full mb-1 text-gray-600 dark:text-gray-300"
+                    >
+                        <HiOutlineKey className="w-5 h-5" />
+                        <span>Ubah Password</span>
+                    </button>
+                    <button
                         onClick={handleLogout}
                         className="sidebar-link w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
                     >
@@ -260,6 +272,11 @@ export function DashboardLayout() {
                     </p>
                 </footer>
             </div>
+
+            <ChangePasswordModal 
+                isOpen={passwordModalOpen} 
+                onClose={() => setPasswordModalOpen(false)} 
+            />
         </div>
     );
 }

@@ -24,6 +24,7 @@ import type {
     WebsiteConfig,
     MstAdditionalFeature,
     TenantActiveFeature,
+    ReviewAndRating,
 } from '@/types';
 
 // =============================================
@@ -50,6 +51,11 @@ export const authApi = {
         const res = await apiClient.post('', { action: 'checkSlug', slug }, { skipLoader: true } as any);
         return res.data;
     },
+
+    changePassword: async (data: any): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'changePassword', ...data });
+        return res.data;
+    },
 };
 
 // =============================================
@@ -64,6 +70,11 @@ export const dashboardApi = {
 
     getGlobalDashboard: async (): Promise<ApiResponse<GlobalDashboard>> => {
         const res = await apiClient.post('', { action: 'getGlobalDashboard' });
+        return res.data;
+    },
+
+    getPendingActions: async (): Promise<ApiResponse<{ incomplete_tenants: any[] }>> => {
+        const res = await apiClient.post('', { action: 'getPendingActions' });
         return res.data;
     },
 };
@@ -360,4 +371,30 @@ export const additionalFeatureApi = {
         const res = await apiClient.post('', { action: 'updateTenantActiveFeature', ...data });
         return res.data;
     }
+};
+
+// =============================================
+// REVIEW API
+// =============================================
+
+export const reviewApi = {
+    getReviews: async (): Promise<ApiResponse<ReviewAndRating[]>> => {
+        const res = await apiClient.post('', { action: 'getReviews' });
+        return res.data;
+    },
+
+    submitReview: async (data: Partial<ReviewAndRating>): Promise<ApiResponse<ReviewAndRating>> => {
+        const res = await apiClient.post('', { action: 'submitReview', ...data });
+        return res.data;
+    },
+
+    updateReviewStatus: async (id: string, data: Partial<ReviewAndRating>, config: any = {}): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateReviewStatus', id, ...data }, config);
+        return res.data;
+    },
+
+    getTenantReview: async (): Promise<ApiResponse<ReviewAndRating | null>> => {
+        const res = await apiClient.post('', { action: 'getReviewByTenant' });
+        return res.data;
+    },
 };

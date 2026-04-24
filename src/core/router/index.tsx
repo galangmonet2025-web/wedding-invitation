@@ -18,11 +18,12 @@ import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
 import { InvitationContentPage } from '@/features/invitation/pages/InvitationContentPage';
 import { ManageThemesPage } from '@/features/admin/pages/ManageThemesPage';
 import { ThemeEditorPage } from '@/features/admin/pages/ThemeEditorPage';
-import { Navigate } from 'react-router-dom';
 import { WebsiteConfigPage } from '@/features/admin/pages/WebsiteConfigPage';
+import { Navigate } from 'react-router-dom';
 import { LandingPage } from '@/features/landing/pages/LandingPage';
 import { AdditionalFeaturePage } from '@/features/admin/pages/AdditionalFeaturePage';
 import { TenantAdditionalFeaturePage } from '@/features/tenant/pages/TenantAdditionalFeaturePage';
+import { ReviewPage } from '@/features/admin/pages/ReviewPage';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 function AdditionalFeatureRouter() {
@@ -170,6 +171,14 @@ export const router = createHashRouter([
                                 element: (
                                     <ProtectedRoute allowedRoles={['superadmin']}>
                                         <WebsiteConfigPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'reviews',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <ReviewPage />
                                     </ProtectedRoute>
                                 ),
                             },
