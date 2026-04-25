@@ -5,6 +5,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
+import { AiThemeModal } from '../components/AiThemeModal';
 import { parseTemplate } from '@/utils/templateParser';
 import Editor from '@monaco-editor/react';
 import { ProxyImage, fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
@@ -21,6 +22,7 @@ export function ThemeEditorPage() {
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [showDataBinding, setShowDataBinding] = useState(true);
     const [showCover, setShowCover] = useState(true);
     const [isFocusMode, setIsFocusMode] = useState(false);
@@ -54,6 +56,107 @@ export function ThemeEditorPage() {
     useEffect(() => { htmlCodeRef.current = htmlCode; }, [htmlCode]);
     useEffect(() => { cssCodeRef.current = cssCode; }, [cssCode]);
     useEffect(() => { jsCodeRef.current = jsCode; }, [jsCode]);
+
+    // AI Theme Upload Handler
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        let uploadedHtml = false;
+        let uploadedCss = false;
+        let uploadedJs = false;
+
+        for (const file of files) {
+            const text = await file.text();
+            const ext = file.name.split('.').pop()?.toLowerCase();
+
+            if (ext === 'css') {
+                setCssCode(text);
+                uploadedCss = true;
+            } else if (ext === 'js') {
+                let cleanJs = text.replace(/<script[^>]*>/gi, '').replace(/<\/script>/gi, '');
+                setJsCode(cleanJs);
+                uploadedJs = true;
+            } else if (ext === 'html') {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+
+                    // Convert data-var
+                    doc.querySelectorAll('[data-var]').forEach(el => {
+                        const varName = el.getAttribute('data-var');
+                        el.removeAttribute('data-var');
+                        if (el.tagName === 'A' && (!el.getAttribute('href') || el.getAttribute('href') === '#' || el.getAttribute('href') === '')) {
+                            el.setAttribute('href', `{{${varName}}}`);
+                        } else {
+                            el.innerHTML = `{{${varName}}}`;
+                        }
+                    });
+
+                    // Convert data-img
+                    doc.querySelectorAll('[data-img]').forEach(el => {
+                        const varName = el.getAttribute('data-img');
+                        el.removeAttribute('data-img');
+                        el.setAttribute('src', `{{${varName}}}`);
+                    });
+
+                    // Convert data-bg
+                    doc.querySelectorAll('[data-bg]').forEach(el => {
+                        const varName = el.getAttribute('data-bg');
+                        el.removeAttribute('data-bg');
+                        (el as HTMLElement).style.backgroundImage = `url('{{${varName}}}')`;
+                    });
+
+                    // Convert data-loop
+                    doc.querySelectorAll('[data-loop]').forEach(el => {
+                        const loopVar = el.getAttribute('data-loop');
+                        el.removeAttribute('data-loop');
+                        if (el.children.length > 0) {
+                            const template = el.children[0].outerHTML;
+                            el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
+                        } else {
+                            const template = el.innerHTML;
+                            el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
+                        }
+                    });
+
+                    // Convert data-if
+                    doc.querySelectorAll('[data-if]').forEach(el => {
+                        const condition = el.getAttribute('data-if');
+                        el.removeAttribute('data-if');
+                        const content = el.outerHTML;
+                        el.outerHTML = `\n{{#if ${condition}}}\n${content}\n{{/if}}\n`;
+                    });
+
+                    let resultHtml = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
+                    resultHtml = resultHtml.trim();
+
+                    setHtmlCode(resultHtml);
+                    uploadedHtml = true;
+                } catch (err) {
+                    console.error("Error parsing HTML:", err);
+                    toast.error("Gagal memproses file HTML");
+                }
+            }
+        }
+
+        e.target.value = '';
+
+        const uploadedTypes = [];
+        if (uploadedHtml) uploadedTypes.push('HTML');
+        if (uploadedCss) uploadedTypes.push('CSS');
+        if (uploadedJs) uploadedTypes.push('JS');
+
+        if (uploadedTypes.length > 0) {
+            toast.success(`Berhasil mengunggah dan memproses ${uploadedTypes.join(', ')}!`);
+            setActiveTabPanel('editor');
+            if (uploadedHtml) setActiveTab('html');
+            else if (uploadedCss) setActiveTab('css');
+            else setActiveTab('js');
+        }
+    };
 
     // Preview iframe
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -167,7 +270,7 @@ export function ThemeEditorPage() {
 
         setIsCapturing(true);
         const loadingToast = toast.loading('Mengambil screenshot pratinjau...');
-        
+
         try {
             const iframe = iframeRef.current;
             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -329,7 +432,7 @@ export function ThemeEditorPage() {
                 nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
                 flag_pakai_qris_rekening_1: !!(c.flag_pakai_qris_rekening_1),
                 gambar_qris_rekening_1: c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
-                
+
                 bank_2: c.nama_bank_2 || 'Mandiri',
                 rek_2: c.nomor_rekening_bank_2 || '0987654321',
                 nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
@@ -360,7 +463,7 @@ export function ThemeEditorPage() {
                 is_fitur_cerita: true,
                 is_fitur_live_streaming: !!(c.flag_pakai_live_streaming),
                 live_streaming: { url: c.link_live_streaming || 'https://youtube.com', platform: c.platform_live_streaming || 'YouTube' },
-                
+
                 // Gift Delivery Offline
                 flag_kirim_hadiah_offline: !!(c.flag_kirim_hadiah_offline),
                 nama_lokasi_kirim_hadiah_offline: c.nama_lokasi_kirim_hadiah_offline || 'Rumah Mempelai Wanita / Bpk. Sigit',
@@ -377,35 +480,35 @@ export function ThemeEditorPage() {
                 photo_gallery: galleryImgs.length > 0 ? galleryImgs : [
                     { url: dummies[0] }, { url: dummies[1] }, { url: dummies[2] }
                 ],
-                
+
                 // Wishes / Comments
                 wishes: [
-                    { 
-                        guest_name: 'Bpk. Ridwan', 
-                        name: 'Bpk. Ridwan', 
-                        guest_message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.', 
+                    {
+                        guest_name: 'Bpk. Ridwan',
+                        name: 'Bpk. Ridwan',
+                        guest_message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
                         message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
-                        guest_comment_time: '2 jam lalu', 
+                        guest_comment_time: '2 jam lalu',
                         created_at: new Date().toISOString(),
-                        guest_initial: 'R' 
+                        guest_initial: 'R'
                     },
-                    { 
-                        guest_name: 'Sdr. Andi', 
-                        name: 'Sdr. Andi', 
-                        guest_message: 'Selamat menempuh hidup baru ya!', 
+                    {
+                        guest_name: 'Sdr. Andi',
+                        name: 'Sdr. Andi',
+                        guest_message: 'Selamat menempuh hidup baru ya!',
                         message: 'Selamat menempuh hidup baru ya!',
-                        guest_comment_time: '1 hari lalu', 
+                        guest_comment_time: '1 hari lalu',
                         created_at: new Date(Date.now() - 86400000).toISOString(),
-                        guest_initial: 'A' 
+                        guest_initial: 'A'
                     },
-                    { 
-                        guest_name: 'Ibu Siti', 
-                        name: 'Ibu Siti', 
-                        guest_message: 'Barakallahu lakuma wa baraka alaikuma.', 
+                    {
+                        guest_name: 'Ibu Siti',
+                        name: 'Ibu Siti',
+                        guest_message: 'Barakallahu lakuma wa baraka alaikuma.',
                         message: 'Barakallahu lakuma wa baraka alaikuma.',
-                        guest_comment_time: '13 Maret 2021', 
+                        guest_comment_time: '13 Maret 2021',
                         created_at: '2021-03-13T10:00:00Z',
-                        guest_initial: 'S' 
+                        guest_initial: 'S'
                     }
                 ],
                 empty_wishes: false,
@@ -769,7 +872,7 @@ export function ThemeEditorPage() {
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">URL Gambar Pratinjau</label>
-                                        <button 
+                                        <button
                                             type="button"
                                             disabled={isCapturing}
                                             onClick={handleCaptureScreenshot}
@@ -796,10 +899,10 @@ export function ThemeEditorPage() {
                                     />
                                     {previewImage && (
                                         <div className="mt-3 relative group w-max">
-                                            <ProxyImage 
-                                                src={previewImage} 
-                                                alt="Preview" 
-                                                className="h-32 w-48 rounded-xl object-cover border-2 border-gray-100 dark:border-gray-700 shadow-lg transition-transform group-hover:scale-105" 
+                                            <ProxyImage
+                                                src={previewImage}
+                                                alt="Preview"
+                                                className="h-32 w-48 rounded-xl object-cover border-2 border-gray-100 dark:border-gray-700 shadow-lg transition-transform group-hover:scale-105"
                                             />
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
                                                 <span className="text-[10px] text-white font-bold uppercase tracking-widest">Preview Mode</span>
@@ -855,16 +958,35 @@ export function ThemeEditorPage() {
                         {/* Editor Panel */}
                         <div className={`flex-1 flex flex-col min-h-0 bg-[#1e1e1e] ${activeTabPanel === 'editor' ? 'flex' : 'hidden'}`}>
                             {/* Editor Tabs */}
-                            <div className="flex bg-[#2d2d2d]">
-                                {(['html', 'css', 'js'] as const).map(tab => (
+                            <div className="flex bg-[#2d2d2d] justify-between items-center">
+                                <div className="flex">
+                                    {(['html', 'css', 'js'] as const).map(tab => (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveTab(tab)}
+                                            className={`px-4 py-2 text-xs font-mono border-t-2 ${activeTab === tab ? 'border-gold-500 bg-[#1e1e1e] text-white' : 'border-transparent text-gray-400 hover:bg-[#3d3d3d] hover:text-gray-200'}`}
+                                        >
+                                            index.{tab}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="px-3">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        multiple
+                                        accept=".html,.css,.js"
+                                    />
                                     <button
-                                        key={tab}
-                                        onClick={() => setActiveTab(tab)}
-                                        className={`px-4 py-2 text-xs font-mono border-t-2 ${activeTab === tab ? 'border-gold-500 bg-[#1e1e1e] text-white' : 'border-transparent text-gray-400 hover:bg-[#3d3d3d] hover:text-gray-200'}`}
+                                        onClick={() => setIsAiModalOpen(true)}
+                                        className="text-[11px] font-medium flex items-center gap-1.5 bg-[#444] hover:bg-gold-600 text-gray-200 hover:text-white px-3 py-1.5 rounded transition-colors tooltip tooltip-left"
+                                        title="Panduan & Auto-Convert AI Theme"
                                     >
-                                        index.{tab}
+                                        <i className="ri-magic-line"></i> Generate tema dengan AI?
                                     </button>
-                                ))}
+                                </div>
                             </div>
                             {/* Editor Textarea */}
                             <div className="flex-1 w-full min-h-0">
@@ -901,71 +1023,71 @@ export function ThemeEditorPage() {
                 {/* Right Panel (Live Preview) */}
                 {showPreview && (
                     <div className="w-full lg:w-1/2 flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
-                    <div className="flex-none px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
-                        <div className="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            <HiOutlineEye className="w-4 h-4" /> Live Preview
-                            <button 
-                                onClick={() => updatePreview()}
-                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom"
-                                title="Refresh Preview (CTRL+S)"
-                            >
-                                <HiOutlineRefresh className="w-4 h-4" />
-                            </button>
-                            <span className="text-[10px] text-gray-400 font-normal hidden sm:inline-block">Press <kbd className="font-sans px-1 bg-gray-100 border rounded">Ctrl+S</kbd> to update</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan Halaman Cover Depan">
-                                <span className={`text-xs font-medium ${!showCover ? 'text-gray-500' : 'text-gold-600'}`}>Halaman Cover</span>
-                                <div className="relative inline-flex items-center">
-                                    <input type="checkbox" className="sr-only peer" checked={showCover} onChange={() => setShowCover(!showCover)} />
-                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
-                                </div>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan injeksi data asli vs tag {{variabel}}">
-                                <span className={`text-xs font-medium ${!showDataBinding ? 'text-gray-500' : 'text-gold-600'}`}>Data Binding</span>
-                                <div className="relative inline-flex items-center">
-                                    <input type="checkbox" className="sr-only peer" checked={showDataBinding} onChange={() => setShowDataBinding(!showDataBinding)} />
-                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
-                                </div>
-                            </label>
-                            <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
-                                <span className="text-xs text-gray-500 whitespace-nowrap">Data Tenant:</span>
-                                <select
-                                    value={selectedPreviewTenantId}
-                                    onChange={e => setSelectedPreviewTenantId(e.target.value)}
-                                    className="text-xs border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-gold-400 max-w-[140px]"
-                                    disabled={loadingPreview}
-                                >
-                                    {allTenants.length === 0 && <option value="">Demo</option>}
-                                    {allTenants.map(t => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.bride_name} & {t.groom_name}
-                                        </option>
-                                    ))}
-                                </select>
+                        <div className="flex-none px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
+                            <div className="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <HiOutlineEye className="w-4 h-4" /> Live Preview
                                 <button
-                                    onClick={() => selectedPreviewTenantId && loadTenantPreviewData(selectedPreviewTenantId)}
-                                    className="text-gray-400 hover:text-gold-500 transition-colors"
-                                    title="Reload data tenant"
-                                    disabled={loadingPreview}
+                                    onClick={() => updatePreview()}
+                                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom"
+                                    title="Refresh Preview (CTRL+S)"
                                 >
-                                    <HiOutlineRefresh className={`w-4 h-4 ${loadingPreview ? 'animate-spin' : ''}`} />
+                                    <HiOutlineRefresh className="w-4 h-4" />
                                 </button>
+                                <span className="text-[10px] text-gray-400 font-normal hidden sm:inline-block">Press <kbd className="font-sans px-1 bg-gray-100 border rounded">Ctrl+S</kbd> to update</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan Halaman Cover Depan">
+                                    <span className={`text-xs font-medium ${!showCover ? 'text-gray-500' : 'text-gold-600'}`}>Halaman Cover</span>
+                                    <div className="relative inline-flex items-center">
+                                        <input type="checkbox" className="sr-only peer" checked={showCover} onChange={() => setShowCover(!showCover)} />
+                                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                    </div>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan injeksi data asli vs tag {{variabel}}">
+                                    <span className={`text-xs font-medium ${!showDataBinding ? 'text-gray-500' : 'text-gold-600'}`}>Data Binding</span>
+                                    <div className="relative inline-flex items-center">
+                                        <input type="checkbox" className="sr-only peer" checked={showDataBinding} onChange={() => setShowDataBinding(!showDataBinding)} />
+                                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                    </div>
+                                </label>
+                                <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
+                                    <span className="text-xs text-gray-500 whitespace-nowrap">Data Tenant:</span>
+                                    <select
+                                        value={selectedPreviewTenantId}
+                                        onChange={e => setSelectedPreviewTenantId(e.target.value)}
+                                        className="text-xs border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-gold-400 max-w-[140px]"
+                                        disabled={loadingPreview}
+                                    >
+                                        {allTenants.length === 0 && <option value="">Demo</option>}
+                                        {allTenants.map(t => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.bride_name} & {t.groom_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={() => selectedPreviewTenantId && loadTenantPreviewData(selectedPreviewTenantId)}
+                                        className="text-gray-400 hover:text-gold-500 transition-colors"
+                                        title="Reload data tenant"
+                                        disabled={loadingPreview}
+                                    >
+                                        <HiOutlineRefresh className={`w-4 h-4 ${loadingPreview ? 'animate-spin' : ''}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Full width preview wrapper */}
+                        <div className="flex-1 overflow-auto p-0 flex items-center justify-center min-h-[400px]">
+                            <div className="w-full h-full bg-white relative">
+                                {/* Iframe for isolated styling */}
+                                <iframe
+                                    ref={iframeRef}
+                                    className="w-full h-full border-0 bg-white"
+                                    title="Theme Preview"
+                                />
                             </div>
                         </div>
                     </div>
-                    {/* Full width preview wrapper */}
-                    <div className="flex-1 overflow-auto p-0 flex items-center justify-center min-h-[400px]">
-                        <div className="w-full h-full bg-white relative">
-                            {/* Iframe for isolated styling */}
-                            <iframe
-                                ref={iframeRef}
-                                className="w-full h-full border-0 bg-white"
-                                title="Theme Preview"
-                            />
-                        </div>
-                    </div>
-                </div>
                 )}
             </div>
             {/* Guide Modal */}
@@ -976,6 +1098,13 @@ export function ThemeEditorPage() {
                 imageTypes={imageTypes}
                 activeTab={guideActiveTab}
                 onTabChange={setGuideActiveTab}
+            />
+
+            {/* AI Theme Modal */}
+            <AiThemeModal
+                isOpen={isAiModalOpen}
+                onClose={() => setIsAiModalOpen(false)}
+                onTriggerUpload={() => fileInputRef.current?.click()}
             />
         </div>
     );
