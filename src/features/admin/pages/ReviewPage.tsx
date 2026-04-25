@@ -4,6 +4,7 @@ import { PageLoader } from '@/shared/components/Loading';
 import type { ReviewAndRating } from '@/types';
 import toast from 'react-hot-toast';
 import { HiOutlineChatAlt2, HiOutlineExternalLink, HiOutlineStar, HiSave } from 'react-icons/hi';
+import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
 export function ReviewPage() {
     const [reviews, setReviews] = useState<ReviewAndRating[]>([]);
@@ -73,13 +74,43 @@ export function ReviewPage() {
         );
     };
 
+    const exportColumns = [
+        { header: 'Nama Pasangan', key: 'couple', render: (r: ReviewAndRating) => `${r.bride_name} & ${r.groom_name}` },
+        { header: 'Domain Slug', key: 'domain_slug' },
+        { header: 'Paket Langganan', key: 'plan_type', render: (r: ReviewAndRating) => r.plan_type.toUpperCase() },
+        { header: 'Rating (Bintang)', key: 'rate_star' },
+        { header: 'Komentar', key: 'comment' },
+        { header: 'Alamat', key: 'alamat' },
+        { header: 'Ditampilkan?', key: 'flag_show_review', render: (r: ReviewAndRating) => r.flag_show_review === 'TRUE' || r.flag_show_review === true ? 'Ya' : 'Tidak' },
+    ];
+
+    const handleExportExcel = () => {
+        exportToExcel(reviews, exportColumns, 'Data_Review_Rating', 'Daftar Review & Rating');
+    };
+
+    const handleExportPdf = () => {
+        exportToPdf(reviews, exportColumns, 'Data_Review_Rating', 'Laporan Data Review & Rating');
+    };
+
     if (loading) return <PageLoader />;
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div>
-                <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Review and Rating</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Kelola review dari tenant setelah hari pernikahan</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Review and Rating</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Kelola review dari tenant setelah hari pernikahan</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
+                        <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            Excel
+                        </button>
+                        <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            PDF
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div className="card overflow-hidden">

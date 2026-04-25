@@ -5,6 +5,7 @@ import { PageLoader } from '@/shared/components/Loading';
 import type { Wish } from '@/types';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineHeart, HiOutlineRefresh } from 'react-icons/hi';
+import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
 export function WishesPage() {
     const [wishes, setWishes] = useState<Wish[]>([]);
@@ -58,6 +59,20 @@ export function WishesPage() {
         }
     };
 
+    const exportColumns = [
+        { header: 'Nama Tamu', key: 'guest_name' },
+        { header: 'Pesan / Ucapan', key: 'message' },
+        { header: 'Tanggal Kirim', key: 'created_at', render: (w: Wish) => new Date(w.created_at).toLocaleString('id-ID') },
+    ];
+
+    const handleExportExcel = () => {
+        exportToExcel(wishes, exportColumns, 'Data_Ucapan_Pernikahan', 'Data Ucapan');
+    };
+
+    const handleExportPdf = () => {
+        exportToPdf(wishes, exportColumns, 'Data_Ucapan_Pernikahan', 'Data Ucapan & Doa Pernikahan');
+    };
+
     if (loading) return <PageLoader />;
 
     return (
@@ -75,6 +90,14 @@ export function WishesPage() {
                     >
                         <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
+                        <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            Excel
+                        </button>
+                        <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            PDF
+                        </button>
+                    </div>
                     <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
                         <HiOutlinePlus className="w-4 h-4" />
                         Add Wish

@@ -11,6 +11,7 @@ import { ImageUpload } from '@/shared/components/ImageUpload';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
+import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
 export function TenantPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -249,6 +250,24 @@ export function TenantPage() {
         return <span className={`${classes[plan]} uppercase`}>{plan}</span>;
     };
 
+    const exportColumns = [
+        { header: 'Nama Pasangan', key: 'couple', render: (t: Tenant) => `${t.bride_name} & ${t.groom_name}` },
+        { header: 'Domain Slug', key: 'domain_slug' },
+        { header: 'Tanggal Pernikahan', key: 'wedding_date', render: (t: Tenant) => new Date(t.wedding_date).toLocaleDateString('id-ID') },
+        { header: 'Paket Langganan', key: 'plan_type', render: (t: Tenant) => t.plan_type.toUpperCase() },
+        { header: 'Limit Tamu', key: 'guest_limit', render: (t: Tenant) => t.guest_limit === -1 ? 'Unlimited' : String(t.guest_limit) },
+        { header: 'Status Pembayaran', key: 'status_payment' },
+        { header: 'Status Akun', key: 'status_account' },
+    ];
+
+    const handleExportExcel = () => {
+        exportToExcel(tenants, exportColumns, 'Data_Tenant_SuperAdmin', 'Daftar Tenant Aktif');
+    };
+
+    const handleExportPdf = () => {
+        exportToPdf(tenants, exportColumns, 'Data_Tenant_SuperAdmin', 'Laporan Data Tenant SuperAdmin');
+    };
+
     const columns: Column<Tenant>[] = [
         {
             key: 'couple',
@@ -365,6 +384,14 @@ export function TenantPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{tenants.length} tenants registered</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
+                        <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            Excel
+                        </button>
+                        <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            PDF
+                        </button>
+                    </div>
                     <button 
                         onClick={() => fetchTenants()} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"

@@ -6,6 +6,7 @@ import { PageLoader } from '@/shared/components/Loading';
 import type { MstAdditionalFeature } from '@/types';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineRefresh } from 'react-icons/hi';
+import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
 const DATA_TYPES = [
     { value: 'empty', label: 'Tidak Perlu Input' },
@@ -97,6 +98,22 @@ export function AdditionalFeaturePage() {
         return DATA_TYPES.find(d => d.value === type)?.label || '-';
     };
 
+    const exportColumns = [
+        { header: 'Nama Fitur', key: 'feature_name' },
+        { header: 'Perlu Input Tenant?', key: 'is_required_tenant_input', render: (f: MstAdditionalFeature) => f.is_required_tenant_input ? 'Ya' : 'Tidak' },
+        { header: 'Tipe Input', key: 'input_data_type', render: (f: MstAdditionalFeature) => getTypeLabel(f.input_data_type) },
+        { header: 'Tipe Output', key: 'output_data_type', render: (f: MstAdditionalFeature) => getTypeLabel(f.output_data_type) },
+        { header: 'Status', key: 'active', render: (f: MstAdditionalFeature) => f.active ? 'Aktif' : 'Nonaktif' },
+    ];
+
+    const handleExportExcel = () => {
+        exportToExcel(features, exportColumns, 'Data_Fitur_Tambahan', 'Daftar Fitur Tambahan');
+    };
+
+    const handleExportPdf = () => {
+        exportToPdf(features, exportColumns, 'Data_Fitur_Tambahan', 'Laporan Data Fitur Tambahan');
+    };
+
     const columns: Column<MstAdditionalFeature>[] = [
         {
             key: 'feature_name',
@@ -165,6 +182,14 @@ export function AdditionalFeaturePage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage custom features for tenants</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
+                        <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            Excel
+                        </button>
+                        <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            PDF
+                        </button>
+                    </div>
                     <button 
                         onClick={() => fetchFeatures()} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"

@@ -6,6 +6,7 @@ import { PageLoader } from '@/shared/components/Loading';
 import type { Gift } from '@/types';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineCurrencyDollar } from 'react-icons/hi';
+import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
 export function GiftsPage() {
     const [gifts, setGifts] = useState<Gift[]>([]);
@@ -64,6 +65,23 @@ export function GiftsPage() {
         }
     };
 
+    const exportColumns = [
+        { header: 'Nama Pemberi', key: 'guest_name' },
+        { header: 'Nominal Hadiah', key: 'amount', render: (g: Gift) => formatCurrency(g.amount) },
+        { header: 'Bank / Sumber', key: 'bank_name' },
+        { header: 'Tanggal Diterima', key: 'created_at', render: (g: Gift) => new Date(g.created_at).toLocaleString('id-ID') },
+    ];
+
+    const handleExportExcel = () => {
+        exportToExcel(gifts, exportColumns, 'Data_Hadiah_Pernikahan', 'Data Hadiah');
+    };
+
+    const handleExportPdf = () => {
+        // Append Total amount at the end
+        // Wait, jspdf autotable will just print the table, but giving it the data is enough.
+        exportToPdf(gifts, exportColumns, 'Data_Hadiah_Pernikahan', `Laporan Data Hadiah Pemberian (Total: ${formatCurrency(totalAmount)})`);
+    };
+
     const columns: Column<Gift>[] = [
         {
             key: 'guest_name',
@@ -108,10 +126,20 @@ export function GiftsPage() {
                     <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Gift Records</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{gifts.length} gifts recorded</p>
                 </div>
-                <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
-                    <HiOutlinePlus className="w-4 h-4" />
-                    Record Gift
-                </button>
+                <div className="flex items-center gap-2">
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
+                        <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            Excel
+                        </button>
+                        <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            PDF
+                        </button>
+                    </div>
+                    <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
+                        <HiOutlinePlus className="w-4 h-4" />
+                        Record Gift
+                    </button>
+                </div>
             </div>
 
             {/* Total Gift Card */}

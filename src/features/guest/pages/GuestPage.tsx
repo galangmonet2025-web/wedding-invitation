@@ -7,6 +7,7 @@ import type { Guest, CreateGuestRequest, GuestStatus } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
+import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 import {
     HiOutlinePlus,
     HiOutlineSearch,
@@ -143,21 +144,22 @@ export function GuestPage() {
         setShowQRModal(true);
     };
 
-    const handleExportCSV = () => {
-        const csvContent = [
-            ['Name', 'Phone', 'Category', 'Status', 'Number of Guests', 'Invitation Code', 'Check-in'].join(','),
-            ...guests.map((g) =>
-                [g.name, g.phone, g.category, g.status, g.number_of_guests, g.invitation_code, g.checkin_status].join(',')
-            ),
-        ].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'guests.csv';
-        a.click();
-        window.URL.revokeObjectURL(url);
-        toast.success('CSV exported successfully');
+    const exportColumns = [
+        { header: 'Kode Unik', key: 'invitation_code' },
+        { header: 'Nama Lengkap', key: 'name' },
+        { header: 'No. WhatsApp', key: 'phone' },
+        { header: 'Kategori', key: 'category' },
+        { header: 'Status RSVP', key: 'status' },
+        { header: 'Jml. Tamu', key: 'number_of_guests' },
+        { header: 'Check-in', key: 'checkin_status', render: (g: Guest) => g.checkin_status === 'checked_in' ? 'Hadir (Checked-In)' : 'Belum' },
+    ];
+
+    const handleExportExcel = () => {
+        exportToExcel(filteredGuests, exportColumns, 'Data_Tamu_Undangan', 'Daftar Tamu');
+    };
+
+    const handleExportPdf = () => {
+        exportToPdf(filteredGuests, exportColumns, 'Data_Tamu_Undangan', 'Laporan Data Tamu Undangan');
     };
 
     const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,10 +366,14 @@ export function GuestPage() {
                                 Import
                                 <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
                             </label>
-                            <button onClick={handleExportCSV} className="btn-ghost text-sm flex items-center gap-2">
-                                <HiOutlineDownload className="w-4 h-4" />
-                                Export
-                            </button>
+                            <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
+                                <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                                    Excel
+                                </button>
+                                <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                                    PDF
+                                </button>
+                            </div>
                             <button 
                                 onClick={() => setShowGoogleModal(true)} 
                                 className="btn-ghost text-sm flex items-center gap-2 text-blue-600 hover:text-blue-700"
