@@ -43,6 +43,12 @@ function handleRequest(e, method) {
       payload = body;
     }
 
+    // --- Social Preview Handler ---
+    // Serves dynamic meta tags for WhatsApp/Facebook then redirects
+    if (action === 'share') {
+      return SocialPreviewService.serve(e.parameter);
+    }
+
     // --- Special Image Proxy Handler ---
     // Since Google Drive blocks direct <img> embeds due to security rules,
     // we return the image data as base64 JSON which the frontend can parse.
@@ -2467,3 +2473,82 @@ function seedThemes() {
 
   Logger.log('Themes seeded successfully.');
 }
+
+// =====================================================================
+// SOCIAL PREVIEW SERVICE
+// =====================================================================
+
+var SocialPreviewService = {
+  serve: function(params) {
+    var slug = params.slug;
+    var guestId = params.guestid || params.to; // allow both
+    
+    if (!slug) return HtmlService.createHtmlOutput("Invalid link");
+    
+    var tenant = DB.findOne('Tenants', 'domain_slug', slug);
+    if (!tenant) return HtmlService.createHtmlOutput("Invitation not found");
+    
+    // Find Guest info if provided
+    var guestName = "";
+    if (guestId) {
+      try {
+        var allGuests = DB.getByTenant('Guests', tenant.id);
+        var guest = allGuests.find(function(g) {
+          return g.invitation_code === guestId;
+        });
+        if (guest) {
+          guestName = guest.name;
+        } else {
+          // If not an invitation code, maybe it's just a raw name (manual "to" param)
+          guestName = guestId;
+        }
+      } catch (e) {
+        guestName = guestId;
+      }
+    }
+    
+    var pageTitle = "The Wedding of " + tenant.bride_name + " & " + tenant.groom_name;
+    var displayTitle = guestName ? pageTitle + " - Spesial untuk " + guestName : pageTitle;
+    var description = "Buka undangan pernikahan digital kami untuk detail acara, lokasi, dan RSVP. Sampai jumpa di hari bahagia kami!";
+    
+    // Find Hero Image for OG Preview
+    var imageUrl = "https://msiso.github.io/wedding-invitation/social-preview.png"; // Default fallback
+    try {
+      var tenantImages = DB.getByTenant('Images', tenant.id);
+      var heroImage = tenantImages.find(function(img) {
+        return img.image_type === 'hero_cover';
+      });
+      if (heroImage && heroImage.drive_file_id) {
+        imageUrl = "https://drive.google.com/uc?export=view&id=" + heroImage.drive_file_id;
+      }
+    } catch(e) {}
+    
+    var targetUrl = "https://msiso.github.io/wedding-invitation/#/" + slug;
+    if (guestId) {
+       targetUrl += "?guestid=" + encodeURIComponent(guestId);
+    }
+
+    var html = '<!DOCTYPE html><html><head>' +
+      '<title>' + displayTitle + '</title>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<meta property="og:title" content="' + displayTitle + '">' +
+      '<meta property="og:description" content="' + description + '">' +
+      '<meta property="og:image" content="' + imageUrl + '">' +
+      '<meta property="og:url" content="' + targetUrl + '">' +
+      '<meta property="og:type" content="website">' +
+      '<meta name="twitter:card" content="summary_large_image">' +
+      '<meta name="twitter:title" content="' + displayTitle + '">' +
+      '<meta name="twitter:description" content="' + description + '">' +
+      '<meta name="twitter:image" content="' + imageUrl + '">' +
+      '<meta http-equiv="refresh" content="0;URL=\'' + targetUrl + '\'">' +
+      '<script>window.location.href="' + targetUrl + '";</script>' +
+      '</head><body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #666;">' +
+      '<div>Redirecting to invitation... if you are not redirected, <a href="' + targetUrl + '" style="color: #C6A769;">click here</a>.</div>' +
+      '</body></html>';
+      
+    return HtmlService.createHtmlOutput(html)
+      .setTitle(displayTitle)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+};

@@ -76,6 +76,7 @@ export function WhatsAppBlastPage() {
     const [search, setSearch] = useState('');
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [invitationContent, setInvitationContent] = useState<InvitationContent | null>(null);
+    const [useOptimizedLink, setUseOptimizedLink] = useState(true);
 
     // Sub-component for editable row to prevent full-list re-renders
     const GuestRow = ({ guest, onSend, onUpdate }: {
@@ -267,7 +268,18 @@ export function WhatsAppBlastPage() {
         const markdown = htmlToWhatsApp(editorHtml);
 
         // Generate personalized message
-        const invitationLink = `${window.location.origin}/#/${tenant.domain_slug}?guestid=${guest.invitation_code}`;
+        let invitationLink = `${window.location.origin}/#/${tenant.domain_slug}?guestid=${guest.invitation_code}`;
+        
+        // If optimized link is enabled, use the GAS Proxy URL
+        if (useOptimizedLink) {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            if (apiUrl) {
+                // Remove /exec if present in parts to avoid double
+                const baseUrl = apiUrl.split('?')[0];
+                invitationLink = `${baseUrl}?action=share&slug=${tenant.domain_slug}&guestid=${guest.invitation_code}`;
+            }
+        }
+
         let message = markdown
             .replace(/{{nama}}/g, guest.name)
             .replace(/{{link}}/g, invitationLink);
@@ -428,6 +440,30 @@ export function WhatsAppBlastPage() {
                                     <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
                                         Gunakan <strong>62...</strong> atau <strong>08...</strong>. Jika melihat <code className="bg-red-100 dark:bg-red-900/40 px-1 rounded text-red-700">#error</code>, silakan hapus dan ketik ulang nomornya di tabel.
                                     </p>
+                                </div>
+                            </div>
+
+                            {/* Optimized Link Toggle */}
+                            <div className="p-3 bg-gold-50 dark:bg-gold-900/20 border border-gold-100 dark:border-gold-800 rounded-xl">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex gap-2">
+                                        <HiOutlineSave className="w-4 h-4 text-gold-600 dark:text-gold-400 shrink-0 mt-0.5" />
+                                        <div>
+                                            <h4 className="text-[10px] font-bold text-gold-800 dark:text-gold-300 uppercase mb-0.5">Optimasi Social Preview</h4>
+                                            <p className="text-[10px] text-gold-700 dark:text-gold-400 leading-tight">
+                                                Tampilkan nama tamu & foto mempelai di pratinjau WhatsApp.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only peer" 
+                                            checked={useOptimizedLink}
+                                            onChange={(e) => setUseOptimizedLink(e.target.checked)}
+                                        />
+                                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                    </label>
                                 </div>
                             </div>
                         </div>

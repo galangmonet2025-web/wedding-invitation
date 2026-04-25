@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import '../invitation.css';
 import { useParams, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { publicApi } from '@/core/api/endpoints';
 import type { Wish, InvitationContent, TimelineItem, ImageRecord } from '@/types';
 import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi';
@@ -86,15 +87,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [youtubeId, setYoutubeId] = useState<string | null>(null);
     const ytIframeRef = useRef<HTMLIFrameElement>(null);
 
-    // Update Page Title
-    useEffect(() => {
-        if (data && data.tenant) {
-            document.title = `The Wedding of ${data.tenant.bride_name} & ${data.tenant.groom_name} | Wedding Invitation`;
-        }
-        return () => {
-            document.title = 'Digital Wedding Invitation - You are Invited!';
-        };
-    }, [data?.tenant]);
+    // Page Title handling is now managed via Helmet
 
     useEffect(() => {
         const musicLink = activeContent.link_backsound_music;
@@ -736,6 +729,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     }
 
     if (activeTheme?.html_template) {
+        const pageTitle = data?.tenant 
+            ? `The Wedding of ${data.tenant.bride_name} & ${data.tenant.groom_name}` 
+            : 'Digital Wedding Invitation';
+        
+        const guestName = data?.guest?.name || new URLSearchParams(location.search).get('to') || 'Tamu Undangan';
+        const displayTitle = guestName !== 'Tamu Undangan' 
+            ? `${pageTitle} - Spesial untuk ${guestName}`
+            : pageTitle;
+
+        const description = `Buka undangan pernikahan digital kami untuk detail acara, lokasi, dan RSVP. Sampai jumpa di hari bahagia kami!`;
+        const shareImg = resolvedImages['hero_cover'] || getImageUrl('hero_cover') || 'https://msiso.github.io/wedding-invitation/social-preview.png';
+
         return (
             <ThemeWrapper
                 htmlBase={finalHtml}
@@ -755,6 +760,23 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 onSubmitWish={(data) => handleWish(undefined, data)}
                 onOpenLightbox={openLightbox}
             >
+                <Helmet>
+                    <title>{displayTitle}</title>
+                    <meta name="description" content={description} />
+                    
+                    {/* Open Graph / Facebook */}
+                    <meta property="og:type" content="website" />
+                    <meta property="og:title" content={displayTitle} />
+                    <meta property="og:description" content={description} />
+                    <meta property="og:image" content={shareImg} />
+                    <meta property="og:url" content={window.location.href} />
+
+                    {/* Twitter */}
+                    <meta property="twitter:card" content="summary_large_image" />
+                    <meta property="twitter:title" content={displayTitle} />
+                    <meta property="twitter:description" content={description} />
+                    <meta property="twitter:image" content={shareImg} />
+                </Helmet>
                 {guestQrModal}
                 {uninvitedGuestFormModal}
                 {youtubeId && isPlaying && (
