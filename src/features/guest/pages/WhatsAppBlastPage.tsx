@@ -329,79 +329,86 @@ export function WhatsAppBlastPage() {
                         <div className="space-y-4 flex-1 flex flex-col">
                             <div>
                                 {/* Visual Toolbar */}
-                                <div className="flex items-center gap-1 mb-2 bg-gray-50 dark:bg-gray-900/50 p-1 rounded-lg border border-gray-100 dark:border-gray-800">
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
-                                        className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all font-bold"
-                                        title="Bold"
-                                    >
-                                        B
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
-                                        className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all italic"
-                                        title="Italic"
-                                    >
-                                        I
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); handleFormat('strikeThrough'); }}
-                                        className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all line-through"
-                                        title="Strikethrough"
-                                    >
-                                        S
-                                    </button>
-                                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
-                                        title={`Nama Tamu\n(Otomatis sesuai nama masing-masing tamu)`}
-                                    >
-                                        + NAMA
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{link}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md hover:bg-emerald-100 transition-colors shadow-sm"
-                                        title={`Link Undangan\n(Otomatis sesuai link unik tamu)`}
-                                    >
-                                        + LINK
-                                    </button>
-                                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{groom}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md hover:bg-indigo-100 transition-colors shadow-sm"
-                                        title={`Nama Pengantin Pria\n${invitationContent?.groom_name || '-'}`}
-                                    >
-                                        + PRIA
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{bride}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100 transition-colors shadow-sm"
-                                        title={`Nama Pengantin Wanita\n${invitationContent?.bride_name || '-'}`}
-                                    >
-                                        + WANITA
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{lokasi}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-md hover:bg-amber-100 transition-colors shadow-sm"
-                                        title={`Lokasi Resepsi\n${invitationContent?.keterangan_lokasi_resepsi || '-'}`}
-                                    >
-                                        + LOKASI
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{tanggal}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md hover:bg-teal-100 transition-colors shadow-sm"
-                                        title={`Tanggal Resepsi\n${invitationContent?.wedding_date || '-'}`}
-                                    >
-                                        + TANGGAL
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{waktu}}'); }}
-                                        className="text-[10px] font-bold px-2 py-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-md hover:bg-violet-100 transition-colors shadow-sm"
-                                        title={`Waktu Resepsi\n${invitationContent?.jam_awal_resepsi || ''} - ${invitationContent?.jam_akhir_resepsi || ''}`}
-                                    >
-                                        + WAKTU
-                                    </button>
+                                <div className="flex flex-col gap-2 mb-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg border border-gray-100 dark:border-gray-800">
+                                    {/* Formatting Icons */}
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
+                                            className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all font-bold"
+                                            title="Bold"
+                                        >
+                                            B
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
+                                            className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all italic"
+                                            title="Italic"
+                                        >
+                                            I
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); handleFormat('strikeThrough'); }}
+                                            className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all line-through"
+                                            title="Strikethrough"
+                                        >
+                                            S
+                                        </button>
+                                    </div>
+
+                                    <div className="h-px bg-gray-100 dark:bg-gray-800 w-full" />
+
+                                    {/* Template Variables */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
+                                            title={`Nama Tamu\n(Otomatis sesuai nama masing-masing tamu)`}
+                                        >
+                                            NAMA
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{link}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md hover:bg-emerald-100 transition-colors shadow-sm"
+                                            title={`Link Undangan\n(Otomatis sesuai link unik tamu)`}
+                                        >
+                                            LINK
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{groom}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md hover:bg-indigo-100 transition-colors shadow-sm"
+                                            title={`Nama Pengantin Pria\n${invitationContent?.groom_name || '-'}`}
+                                        >
+                                            PRIA
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{bride}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100 transition-colors shadow-sm"
+                                            title={`Nama Pengantin Wanita\n${invitationContent?.bride_name || '-'}`}
+                                        >
+                                            WANITA
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{lokasi}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-md hover:bg-amber-100 transition-colors shadow-sm"
+                                            title={`Lokasi Resepsi\n${invitationContent?.keterangan_lokasi_resepsi || '-'}`}
+                                        >
+                                            LOKASI
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{tanggal}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md hover:bg-teal-100 transition-colors shadow-sm"
+                                            title={`Tanggal Resepsi\n${invitationContent?.wedding_date || '-'}`}
+                                        >
+                                            TANGGAL
+                                        </button>
+                                        <button
+                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{waktu}}'); }}
+                                            className="text-[10px] font-bold px-2 py-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-md hover:bg-violet-100 transition-colors shadow-sm"
+                                            title={`Waktu Resepsi\n${invitationContent?.jam_awal_resepsi || ''} - ${invitationContent?.jam_akhir_resepsi || ''}`}
+                                        >
+                                            WAKTU
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* ContentEditable Editor */}

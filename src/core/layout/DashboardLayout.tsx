@@ -113,7 +113,7 @@ export function DashboardLayout() {
 
             {/* Sidebar */}
             <aside
-                className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700 
+                className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700 
         transform transition-transform duration-300 ease-in-out flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
             >
@@ -201,7 +201,7 @@ export function DashboardLayout() {
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark">
+            <div className="flex-1 lg:ml-72 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark">
                 {/* Topbar */}
                 <header className="sticky top-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between px-4 lg:px-8 h-16">
