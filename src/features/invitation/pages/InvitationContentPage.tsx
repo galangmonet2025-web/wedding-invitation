@@ -29,6 +29,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { MapTutorialModal } from '../components/MapTutorialModal';
 import { ImageUpload } from '@/shared/components/ImageUpload';
+import { QrisUpload } from '@/shared/components/QrisUpload';
 import { imageApi } from '@/core/api/imageApi';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import type { ImageRecord } from '@/types';
@@ -335,6 +336,24 @@ export function InvitationContentPage() {
 
     const updateField = (field: keyof InvitationContent, value: any) => {
         setContent(prev => prev ? { ...prev, [field]: value } : null);
+        setIsDirty(true);
+    };
+
+    const handleImmediateSave = async (field: keyof InvitationContent, value: any) => {
+        if (!content || !tenant) return;
+        const newContent = { ...content, [field]: value };
+        setContent(newContent);
+
+        try {
+            const payload = { ...newContent, timeline_kisah: JSON.stringify(timelineItems) };
+            const res = await invitationContentApi.updateContent(payload);
+            if (res.success) {
+                toast.success('QRIS berhasil tersimpan ke sistem database undangan!');
+                setIframeKey(prev => prev + 1);
+            }
+        } catch(e) {
+            console.error("Gagal menyimpan otomatis", e);
+        }
     };
 
     // Safe boolean parsing since DB might return 'TRUE' or boolean true
@@ -678,30 +697,13 @@ export function InvitationContentPage() {
                                                         </label>
                                                         {getBool(content.flag_pakai_qris_rekening_1) && (
                                                             <div className="w-full">
-                                                                {content.gambar_qris_rekening_1 ? (
-                                                                    <div className="relative group w-32 h-32 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                                        <ProxyImage
-                                                                            src={content.gambar_qris_rekening_1}
-                                                                            alt="QRIS 1"
-                                                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                                                            onClick={() => window.open(content.gambar_qris_rekening_1!, '_blank')}
-                                                                        />
-                                                                        <button
-                                                                            onClick={() => updateField('gambar_qris_rekening_1', '')}
-                                                                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                                                        >
-                                                                            Hapus
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <ImageUpload
-                                                                        imageType="qris_1"
-                                                                        title="Upload QRIS 1"
-                                                                        onUploadSuccess={(img) => updateField('gambar_qris_rekening_1', img.cdn_url || img.drive_url)}
-                                                                        onDeleteSuccess={() => {}}
-                                                                        aspectRatio="auto"
-                                                                    />
-                                                                )}
+                                                                <QrisUpload
+                                                                    imageType="qris_1"
+                                                                    title="Upload QRIS 1"
+                                                                    currentImageUrl={content.gambar_qris_rekening_1}
+                                                                    onUploadSuccess={(url) => handleImmediateSave('gambar_qris_rekening_1', url)}
+                                                                    onDeleteSuccess={() => handleImmediateSave('gambar_qris_rekening_1', '')}
+                                                                />
                                                             </div>
                                                         )}
                                                     </div>
@@ -742,30 +744,13 @@ export function InvitationContentPage() {
                                                                 </label>
                                                                 {getBool(content.flag_pakai_qris_rekening_2) && (
                                                                     <div className="w-full">
-                                                                        {content.gambar_qris_rekening_2 ? (
-                                                                            <div className="relative group w-32 h-32 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                                                <ProxyImage
-                                                                                    src={content.gambar_qris_rekening_2}
-                                                                                    alt="QRIS 2"
-                                                                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                                                                    onClick={() => window.open(content.gambar_qris_rekening_2!, '_blank')}
-                                                                                />
-                                                                                <button
-                                                                                    onClick={() => updateField('gambar_qris_rekening_2', '')}
-                                                                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                                                                >
-                                                                                    Hapus
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <ImageUpload
-                                                                                imageType="qris_2"
-                                                                                title="Upload QRIS 2"
-                                                                                onUploadSuccess={(img) => updateField('gambar_qris_rekening_2', img.cdn_url || img.drive_url)}
-                                                                                onDeleteSuccess={() => {}}
-                                                                                aspectRatio="auto"
-                                                                            />
-                                                                        )}
+                                                                        <QrisUpload
+                                                                            imageType="qris_2"
+                                                                            title="Upload QRIS 2"
+                                                                            currentImageUrl={content.gambar_qris_rekening_2}
+                                                                            onUploadSuccess={(url) => handleImmediateSave('gambar_qris_rekening_2', url)}
+                                                                            onDeleteSuccess={() => handleImmediateSave('gambar_qris_rekening_2', '')}
+                                                                        />
                                                                     </div>
                                                                 )}
                                                             </div>
