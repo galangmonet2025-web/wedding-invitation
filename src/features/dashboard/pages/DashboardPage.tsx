@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { dashboardApi, reviewApi } from '@/core/api/endpoints';
 import { Modal } from '@/shared/components/Modal';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useTranslation } from 'react-i18next';
 import { StatCard } from '@/shared/components/StatCard';
 import { PageLoader } from '@/shared/components/Loading';
 import type { TenantDashboard } from '@/types';
@@ -37,6 +38,7 @@ export function DashboardPage() {
     const [dashboard, setDashboard] = useState<TenantDashboard | null>(null);
     const [loading, setLoading] = useState(true);
     const { tenant } = useAuthStore();
+    const { t } = useTranslation();
 
     // Review State
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -166,7 +168,7 @@ export function DashboardPage() {
                         {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : 'Dashboard'}
                     </h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {tenant ? `Wedding Date: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : 'Overview of your wedding event'}
+                        {tenant ? `${t('dashboard.wedding_date')}: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : t('dashboard.overview')}
                     </p>
                 </div>
                 {tenant?.domain_slug && (
@@ -176,7 +178,7 @@ export function DashboardPage() {
                         rel="noopener noreferrer"
                         className="btn-primary text-sm flex items-center gap-2"
                     >
-                        💌 Lihat Undangan
+                        💌 {t('dashboard.view_invitation')}
                     </a>
                 )}
             </div>
@@ -184,37 +186,37 @@ export function DashboardPage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <StatCard
-                    title="Total Guests"
+                    title={t('dashboard.total_guests')}
                     value={dashboard.total_guests}
                     icon={<HiOutlineUsers className="w-6 h-6" />}
                     color="gold"
                 />
                 <StatCard
-                    title="Confirmed"
+                    title={t('dashboard.confirmed')}
                     value={dashboard.total_confirmed}
                     icon={<HiOutlineCheckCircle className="w-6 h-6" />}
                     color="emerald"
                 />
                 <StatCard
-                    title="Declined"
+                    title={t('dashboard.declined')}
                     value={dashboard.total_declined}
                     icon={<HiOutlineXCircle className="w-6 h-6" />}
                     color="rose"
                 />
                 <StatCard
-                    title="Wishes"
+                    title={t('dashboard.wishes')}
                     value={dashboard.total_wishes}
                     icon={<HiOutlineHeart className="w-6 h-6" />}
                     color="violet"
                 />
                 <StatCard
-                    title="Gifts"
+                    title={t('dashboard.gifts')}
                     value={dashboard.total_gifts}
                     icon={<HiOutlineGift className="w-6 h-6" />}
                     color="blue"
                 />
                 <StatCard
-                    title="Total Amount"
+                    title={t('dashboard.total_amount')}
                     value={formatCurrency(dashboard.total_nominal)}
                     icon={<HiOutlineCurrencyDollar className="w-6 h-6" />}
                     color="gold"
@@ -225,7 +227,7 @@ export function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Guest Growth Chart */}
                 <div className="lg:col-span-2 card">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Guest Growth</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.guest_growth')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <AreaChart data={dashboard.guest_growth}>
                             <defs>
@@ -259,7 +261,7 @@ export function DashboardPage() {
 
                 {/* RSVP Pie Chart */}
                 <div className="card">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">RSVP Breakdown</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.rsvp_breakdown')}</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie
@@ -291,15 +293,15 @@ export function DashboardPage() {
                                 <HiOutlineStar className="w-6 h-6 text-gold-600" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gold-800 dark:text-gold-400">Bagaimana pengalaman Anda?</h3>
-                                <p className="text-sm text-gold-700/70 dark:text-gold-500/70">Berikan review untuk membantu kami meningkatkan layanan.</p>
+                                <h3 className="text-lg font-bold text-gold-800 dark:text-gold-400">{t('dashboard.experience_question')}</h3>
+                                <p className="text-sm text-gold-700/70 dark:text-gold-500/70">{t('dashboard.experience_description')}</p>
                             </div>
                         </div>
                         <button 
                             onClick={() => setShowReviewModal(true)}
                             className="btn-primary whitespace-nowrap"
                         >
-                            Tulis Review Sekarang
+                            {t('dashboard.write_review')}
                         </button>
                     </div>
                 </div>
@@ -308,26 +310,26 @@ export function DashboardPage() {
             {/* Quick Info */}
             {tenant && (
                 <div className="card">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Wedding Info</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.wedding_info')}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Plan</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{t('dashboard.plan')}</p>
                             {tenant.plan_type === 'basic' && <span className="badge-gray text-sm capitalize">{tenant.plan_type}</span>}
                             {tenant.plan_type === 'pro' && <span className="badge-blue text-sm capitalize">{tenant.plan_type}</span>}
                             {tenant.plan_type === 'premium' && <span className="badge-gold text-sm capitalize">{tenant.plan_type}</span>}
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Guest Limit</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{t('dashboard.guest_limit')}</p>
                             <p className="text-sm font-medium text-gray-800 dark:text-white">
-                                {tenant.guest_limit === -1 ? 'Unlimited' : tenant.guest_limit}
+                                {tenant.guest_limit === -1 ? t('dashboard.unlimited') : tenant.guest_limit}
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Domain</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{t('dashboard.domain')}</p>
                             <p className="text-sm font-medium text-gold-600">{tenant.domain_slug}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{t('dashboard.status')}</p>
                             <span className={`badge ${tenant.status_account === 'active' ? 'badge-success' : 'badge-danger'}`}>
                                 {tenant.status_account}
                             </span>

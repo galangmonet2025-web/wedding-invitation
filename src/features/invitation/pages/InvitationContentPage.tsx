@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { invitationContentApi, tenantApi, themeApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
 import type { InvitationContent, Theme } from '@/types';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
     HiOutlineMap,
@@ -80,6 +81,7 @@ export function InvitationContentPage() {
     const [saving, setSaving] = useState(false);
     const { tenant } = useAuthStore();
     const [iframeKey, setIframeKey] = useState(0);
+    const { t } = useTranslation();
     const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set(['mempelai', 'acara', 'hadiah', 'teks', 'cerita']));
     const [currentStep, setCurrentStep] = useState(1);
     const { tasks } = useBackgroundTaskStore();
@@ -89,10 +91,10 @@ export function InvitationContentPage() {
 
 
     const steps = [
-        { id: 1, title: 'Isi Konten', subTitle: 'Detail Informasi' },
-        { id: 2, title: 'Galery', subTitle: 'Foto & Gambar' },
-        { id: 3, title: 'Backsound & Streaming', subTitle: 'Media & Link' },
-        { id: 4, title: 'Tema', subTitle: 'Pilih Desain' },
+        { id: 1, title: t('invitation_content.step_content_title', 'Isi Konten'), subTitle: t('invitation_content.couple_info') },
+        { id: 2, title: t('invitation_content.step_gallery_title', 'Galeri'), subTitle: t('invitation_content.media_link') },
+        { id: 3, title: t('invitation_content.step_media_title', 'Backsound & Streaming'), subTitle: t('invitation_content.media_link') },
+        { id: 4, title: t('invitation_content.step_theme_title', 'Tema'), subTitle: t('invitation_content.design_pilih') },
     ];
 
     const toggleAccordion = (id: string) => {
@@ -277,7 +279,7 @@ export function InvitationContentPage() {
             }
         } catch (error: any) {
             console.error('Failed to fetch invitation content:', error);
-            toast.error('Failed to load invitation content settings');
+            toast.error(t('invitation_content.load_error', 'Failed to load invitation content settings'));
             // Ensure content is set to defaults even after error
             setContent(prev => prev ?? defaultValues);
         } finally {
@@ -318,7 +320,7 @@ export function InvitationContentPage() {
             }
 
             if (contentRes.success) {
-                toast.success('Settings saved successfully');
+                toast.success(t('invitation_content.save_success'));
                 setIsDirty(false);
                 // Don't overwrite content state with response.data — the backend
                 // may not return all fields (e.g. tenant-injected wedding_date,
@@ -330,7 +332,7 @@ export function InvitationContentPage() {
             }
         } catch (error: any) {
             console.error('Save error:', error);
-            toast.error('An error occurred while saving');
+            toast.error(t('invitation_content.save_error'));
         } finally {
             setSaving(false);
         }
@@ -367,8 +369,8 @@ export function InvitationContentPage() {
         <div className="space-y-6 animate-fade-in w-full max-w-[1600px] mx-auto pb-20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Invitation Content Settings</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure exactly what to show on your digital invitation</p>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('invitation_content.title')}</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('invitation_content.description')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {tenant?.domain_slug && (
@@ -379,7 +381,7 @@ export function InvitationContentPage() {
                             className="btn-secondary flex items-center justify-center gap-2 px-6"
                         >
                             <HiOutlineExternalLink className="w-5 h-5" />
-                            Open Invitation
+                            {t('invitation_content.open_wedding')}
                         </a>
                     )}
                     <button
@@ -392,7 +394,7 @@ export function InvitationContentPage() {
                         ) : (
                             <HiOutlineSave className="w-5 h-5" />
                         )}
-                        {saving ? 'Saving...' : isUploadingGallery ? 'Uploading...' : 'Save Settings'}
+                        {saving ? t('invitation_content.saving') : isUploadingGallery ? t('invitation_content.uploading') : t('invitation_content.save_settings')}
                     </button>
                 </div>
             </div>
@@ -438,7 +440,7 @@ export function InvitationContentPage() {
                         {/* STEP 1: ISI KONTEN */}
                         {currentStep === 1 && (
                             <div className="space-y-6 animate-slide-up">
-                                <AccordionItem id="mempelai" isOpen={openAccordions.has('mempelai')} onToggle={toggleAccordion} icon={<HiOutlineUserGroup className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title="Informasi Mempelai & Orang Tua">
+                                <AccordionItem id="mempelai" isOpen={openAccordions.has('mempelai')} onToggle={toggleAccordion} icon={<HiOutlineUserGroup className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title={t('invitation_content.couple_info')}>
                                     <div className="space-y-6">
                                         {/* ================= MEMPELAI UTAMA ================= */}
                                         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
@@ -515,7 +517,7 @@ export function InvitationContentPage() {
                                     </div>
                                 </AccordionItem>
 
-                                <AccordionItem id="acara" isOpen={openAccordions.has('acara')} onToggle={toggleAccordion} icon={<HiOutlineMap className="w-5 h-5" />} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-600" title="Alamat & Lokasi Acara">
+                                <AccordionItem id="acara" isOpen={openAccordions.has('acara')} onToggle={toggleAccordion} icon={<HiOutlineMap className="w-5 h-5" />} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-600" title={t('invitation_content.location_info')}>
                                     <div className="space-y-6">
                                         {/* ================= LOCATION SETTINGS ================= */}
                                         <div className="space-y-4">
@@ -639,7 +641,7 @@ export function InvitationContentPage() {
                                     </div>
                                 </AccordionItem>
 
-                                <AccordionItem id="hadiah" isOpen={openAccordions.has('hadiah')} onToggle={toggleAccordion} icon={<HiOutlineCreditCard className="w-5 h-5" />} iconBg="bg-gold-50 dark:bg-gold-900/20" iconColor="text-gold-600" title="Hadiah & Alamat Kado">
+                                <AccordionItem id="hadiah" isOpen={openAccordions.has('hadiah')} onToggle={toggleAccordion} icon={<HiOutlineCreditCard className="w-5 h-5" />} iconBg="bg-gold-50 dark:bg-gold-900/20" iconColor="text-gold-600" title={t('invitation_content.gift_info')}>
                                     <div className="space-y-6">
                                         <div className="flex flex-wrap items-center gap-3">
                                             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800 w-fit">

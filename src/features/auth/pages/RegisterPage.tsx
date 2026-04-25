@@ -5,6 +5,8 @@ import { authApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 import { HiOutlineHeart, HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe } from 'react-icons/hi';
 import { LoadingOverlay } from '@/shared/components/Loading';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 
 export function RegisterPage() {
     const [form, setForm] = useState({
@@ -21,6 +23,7 @@ export function RegisterPage() {
     const [slugStatus, setSlugStatus] = useState({ message: '', isConflict: false });
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -86,7 +89,7 @@ export function RegisterPage() {
 
                 // Both taken
                 setSlugStatus({
-                    message: 'Kedua kombinasi slug (pria-wanita & wanita-pria) sudah dipakai. Silakan isi slug manual.',
+                    message: t('auth.slug_conflict_error', 'Kedua kombinasi slug (pria-wanita & wanita-pria) sudah dipakai. Silakan isi slug manual.'),
                     isConflict: true
                 });
                 setIsAutoSlug(false); // Enable manual input
@@ -104,7 +107,7 @@ export function RegisterPage() {
         e.preventDefault();
 
         if (Object.values(form).some((v) => !v.trim())) {
-            toast.error('Please fill in all fields');
+            toast.error(t('auth.fill_all_fields', 'Please fill in all fields'));
             return;
         }
 
@@ -113,13 +116,13 @@ export function RegisterPage() {
             const response = await authApi.registerTenant(form);
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
-                toast.success('Wedding registered successfully! 🎊');
+                toast.success(t('auth.register_success', 'Wedding registered successfully! 🎊'));
                 navigate('/private/dashboard');
             } else {
-                toast.error(response.message || 'Registration failed');
+                toast.error(response.message || t('auth.register_failed', 'Registration failed'));
             }
         } catch (error: unknown) {
-            toast.error('Registration failed. Please try again.');
+            toast.error(t('auth.register_error', 'Registration failed. Please try again.'));
         } finally {
             setLoading(false);
         }
@@ -127,7 +130,7 @@ export function RegisterPage() {
 
     return (
         <div className="min-h-screen flex">
-            {loading && <LoadingOverlay message="Creating your wedding..." />}
+            {loading && <LoadingOverlay message={t('auth.creating_wedding')} />}
 
             {/* Left Panel */}
             <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gold-600 via-gold-500 to-gold-700 relative overflow-hidden">
@@ -139,33 +142,37 @@ export function RegisterPage() {
                     <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl">
                         <HiOutlineHeart className="w-10 h-10" />
                     </div>
-                    <h1 className="text-4xl font-display font-bold mb-4 text-center">Mulai Perjalanan Anda</h1>
+                    <h1 className="text-4xl font-display font-bold mb-4 text-center">{t('auth.start_journey')}</h1>
                     <p className="text-lg text-white/80 text-center max-w-md leading-relaxed">
-                        Buat platform pernikahan digital Anda dan kelola segalanya mulai dari undangan hingga check-in tamu.
+                        {t('auth.start_desc')}
                     </p>
                     <div className="mt-12 grid grid-cols-2 gap-6 text-sm">
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Manajemen Tamu
+                            {t('auth.feat_guests')}
                         </div>
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Check-in QR
+                            {t('auth.feat_checkin')}
                         </div>
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Pelacakan Hadiah
+                            {t('auth.feat_gifts')}
                         </div>
                         <div className="flex items-center gap-2 text-white/80">
                             <div className="w-2 h-2 rounded-full bg-white/60" />
-                            Dasbor Analitik
+                            {t('auth.feat_analytics')}
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Right Panel - Registration Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-wedding-dark overflow-y-auto">
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-wedding-dark overflow-y-auto relative">
+                <div className="absolute top-8 right-8">
+                    <LanguageSwitcher />
+                </div>
+
                 <div className="w-full max-w-md">
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-6">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
@@ -174,15 +181,15 @@ export function RegisterPage() {
                     </div>
 
                     <div className="mb-6">
-                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">Daftar Pernikahan</h2>
-                        <p className="text-gray-500 dark:text-gray-400">Buat platform undangan pernikahan digital Anda</p>
+                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">{t('auth.register_title')}</h2>
+                        <p className="text-gray-500 dark:text-gray-400">{t('auth.register_desc')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
 
                             <div>
-                                <label htmlFor="groom_name" className="label-field">Nama Mempelai Pria</label>
+                                <label htmlFor="groom_name" className="label-field">{t('auth.groom_name')}</label>
                                 <input
                                     id="groom_name"
                                     name="groom_name"
@@ -194,7 +201,7 @@ export function RegisterPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="bride_name" className="label-field">Nama Mempelai Wanita</label>
+                                <label htmlFor="bride_name" className="label-field">{t('auth.bride_name')}</label>
                                 <input
                                     id="bride_name"
                                     name="bride_name"
@@ -209,7 +216,7 @@ export function RegisterPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="wedding_date" className="label-field">Tanggal Pernikahan</label>
+                            <label htmlFor="wedding_date" className="label-field">{t('auth.wedding_date')}</label>
                             <div className="relative">
                                 <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -225,7 +232,7 @@ export function RegisterPage() {
 
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
-                                <label htmlFor="domain_slug" className="label-field !mb-0">Slug Domain</label>
+                                <label htmlFor="domain_slug" className="label-field !mb-0">{t('auth.domain_slug')}</label>
                                 <label className="flex items-center gap-2 cursor-pointer group">
                                     <input
                                         type="checkbox"
@@ -236,7 +243,7 @@ export function RegisterPage() {
                                         }}
                                         className="w-4 h-4 rounded border-gray-300 text-gold-600 focus:ring-gold-500 cursor-pointer"
                                     />
-                                    <span className="text-[10px] font-bold text-gray-400 group-hover:text-gold-600 transition-colors uppercase tracking-wider">Isi Otomatis</span>
+                                    <span className="text-[10px] font-bold text-gray-400 group-hover:text-gold-600 transition-colors uppercase tracking-wider">{t('auth.auto_fill')}</span>
                                 </label>
                             </div>
                             <div className="relative">
@@ -268,11 +275,11 @@ export function RegisterPage() {
                         </div>
 
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Akun Admin</p>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">{t('auth.admin_account')}</p>
                         </div>
 
                         <div>
-                            <label htmlFor="reg-username" className="label-field">Username</label>
+                            <label htmlFor="reg-username" className="label-field">{t('auth.username')}</label>
                             <div className="relative">
                                 <HiOutlineUser className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -289,7 +296,7 @@ export function RegisterPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="reg-password" className="label-field">Kata Sandi</label>
+                            <label htmlFor="reg-password" className="label-field">{t('auth.password')}</label>
                             <div className="relative">
                                 <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -306,15 +313,15 @@ export function RegisterPage() {
                         </div>
 
                         <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base mt-2">
-                            {loading ? 'Membuat...' : 'Buat Platform Pernikahan'}
+                            {loading ? t('auth.creating_wedding') : t('auth.register_button')}
                         </button>
                     </form>
 
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Sudah punya akun?{' '}
+                            {t('auth.already_have_account')}{' '}
                             <Link to="/login" className="text-gold-600 hover:text-gold-700 font-medium transition-colors">
-                                Masuk
+                                {t('auth.login_link')}
                             </Link>
                         </p>
                     </div>

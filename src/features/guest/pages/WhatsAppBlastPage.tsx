@@ -10,6 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { invitationContentApi } from '@/core/api/endpoints';
+import { useTranslation } from 'react-i18next';
 import { InvitationContent } from '@/types';
 
 // Helper: Convert WhatsApp Markdown to HTML for visual editor
@@ -71,6 +72,7 @@ const formatPhoneForWhatsApp = (phone: any) => {
 
 export function WhatsAppBlastPage() {
     const { guests, loading, fetchGuests, updateGuest, updateBlastStatus, setFilters } = useGuestStore();
+    const { t } = useTranslation();
     const { tenant } = useAuthStore();
     const editorRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
@@ -107,7 +109,7 @@ export function WhatsAppBlastPage() {
                         onChange={(e) => setLocalName(e.target.value)}
                         onBlur={handleBlur}
                         className="w-full bg-transparent border-none focus:ring-1 focus:ring-gold-500/30 rounded py-1 px-2 text-gray-800 dark:text-white font-medium text-sm transition-all"
-                        placeholder="Nama Tamu"
+                        placeholder={t('common.name')}
                     />
                 </td>
                 <td className="px-4 py-2">
@@ -117,19 +119,19 @@ export function WhatsAppBlastPage() {
                         onChange={(e) => setLocalPhone(e.target.value)}
                         onBlur={handleBlur}
                         className="w-full bg-transparent border-none focus:ring-1 focus:ring-gold-500/30 rounded py-1 px-2 text-sm text-gray-600 dark:text-gray-400 transition-all"
-                        placeholder="Nomor Telepon"
+                        placeholder={t('common.phone')}
                     />
                 </td>
                 <td className="px-4 py-3 text-center">
                     {(guest.flag_sudah_kirim_undangan_via_whatsapp === true || guest.flag_sudah_kirim_undangan_via_whatsapp === 'TRUE') ? (
                         <div className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full text-[10px] font-bold">
                             <HiOutlineCheckCircle className="w-3 h-3" />
-                            TERKIRIM
+                            {t('whatsapp_blast.sent')}
                         </div>
                     ) : (
                         <div className="inline-flex items-center gap-1 text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-[10px] font-bold">
                             <HiOutlineClock className="w-3 h-3" />
-                            BELUM
+                            {t('whatsapp_blast.pending')}
                         </div>
                     )}
                 </td>
@@ -139,7 +141,7 @@ export function WhatsAppBlastPage() {
                         className="btn-primary py-1.5 px-3 text-xs flex items-center gap-2 ml-auto"
                     >
                         <HiOutlineChatAlt2 className="w-4 h-4" />
-                        Kirim
+                        {t('whatsapp_blast.send')}
                     </button>
                 </td>
             </tr>
@@ -188,12 +190,12 @@ export function WhatsAppBlastPage() {
             const res = await invitationContentApi.updateContent({ wa_blast_template: markdown });
             if (res.success) {
                 setTemplateMarkdown(markdown);
-                toast.success('Template berhasil disimpan');
+                toast.success(t('whatsapp_blast.save_success'));
             } else {
-                toast.error('Gagal menyimpan template');
+                toast.error(t('whatsapp_blast.save_error'));
             }
         } catch (err) {
-            toast.error('Terjadi kesalahan saat menyimpan');
+            toast.error(t('common.error'));
         } finally {
             setIsSavingTemplate(false);
         }
@@ -258,7 +260,7 @@ export function WhatsAppBlastPage() {
         const formattedPhone = formatPhoneForWhatsApp(guest.phone);
 
         if (!formattedPhone || formattedPhone.length < 10) {
-            toast.error('Nomor telepon tidak valid atau kosong');
+            toast.error(t('whatsapp_blast.invalid_phone'));
             return;
         }
 
@@ -298,8 +300,8 @@ export function WhatsAppBlastPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">WhatsApp Blast</h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">Kirim undangan personal ke tamu via WhatsApp</p>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.title')}</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('whatsapp_blast.description')}</p>
                 </div>
             </div>
 
@@ -310,7 +312,7 @@ export function WhatsAppBlastPage() {
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                                 <HiOutlineChatAlt2 className="w-5 h-5 text-gold-500" />
-                                <h2 className="font-bold text-gray-800 dark:text-white">Template Pesan</h2>
+                                <h2 className="font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.template_title')}</h2>
                             </div>
                             <button
                                 onClick={handleSaveTemplate}
@@ -322,7 +324,7 @@ export function WhatsAppBlastPage() {
                                 ) : (
                                     <HiOutlineSave className="w-3.5 h-3.5" />
                                 )}
-                                Simpan
+                                {t('common.save')}
                             </button>
                         </div>
 
@@ -362,49 +364,49 @@ export function WhatsAppBlastPage() {
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
-                                            title={`Nama Tamu\n(Otomatis sesuai nama masing-masing tamu)`}
+                                            title={t('whatsapp_blast.var_name')}
                                         >
                                             NAMA
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{link}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md hover:bg-emerald-100 transition-colors shadow-sm"
-                                            title={`Link Undangan\n(Otomatis sesuai link unik tamu)`}
+                                            title={t('whatsapp_blast.var_link')}
                                         >
                                             LINK
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{groom}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md hover:bg-indigo-100 transition-colors shadow-sm"
-                                            title={`Nama Pengantin Pria\n${invitationContent?.groom_name || '-'}`}
+                                            title={t('whatsapp_blast.var_groom')}
                                         >
                                             PRIA
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{bride}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100 transition-colors shadow-sm"
-                                            title={`Nama Pengantin Wanita\n${invitationContent?.bride_name || '-'}`}
+                                            title={t('whatsapp_blast.var_bride')}
                                         >
                                             WANITA
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{lokasi}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-md hover:bg-amber-100 transition-colors shadow-sm"
-                                            title={`Lokasi Resepsi\n${invitationContent?.keterangan_lokasi_resepsi || '-'}`}
+                                            title={t('whatsapp_blast.var_location')}
                                         >
                                             LOKASI
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{tanggal}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md hover:bg-teal-100 transition-colors shadow-sm"
-                                            title={`Tanggal Resepsi\n${invitationContent?.wedding_date || '-'}`}
+                                            title={t('whatsapp_blast.var_date')}
                                         >
                                             TANGGAL
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{waktu}}'); }}
                                             className="text-[10px] font-bold px-2 py-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-md hover:bg-violet-100 transition-colors shadow-sm"
-                                            title={`Waktu Resepsi\n${invitationContent?.jam_awal_resepsi || ''} - ${invitationContent?.jam_akhir_resepsi || ''}`}
+                                            title={t('whatsapp_blast.var_time')}
                                         >
                                             WAKTU
                                         </button>
@@ -421,9 +423,9 @@ export function WhatsAppBlastPage() {
                             </div>
 
                             <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
-                                <h4 className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">Preview Real-time</h4>
+                                <h4 className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">{t('whatsapp_blast.preview_realtime')}</h4>
                                 <p className="text-[10px] text-emerald-600 dark:text-emerald-300 leading-tight">
-                                    Editor di atas akan menampilkan teks <strong>tebal</strong> atau <em>miring</em> sesuai yang akan diterima tamu. Simbol * atau _ akan ditambahkan otomatis saat pengiriman.
+                                    {t('whatsapp_blast.preview_desc')}
                                 </p>
                             </div>
 
@@ -431,9 +433,9 @@ export function WhatsAppBlastPage() {
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex gap-2">
                                 <HiOutlineChatAlt2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <h4 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase mb-0.5">Format WhatsApp</h4>
+                                    <h4 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase mb-0.5">{t('whatsapp_blast.format_title')}</h4>
                                     <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
-                                        Gunakan <strong>62...</strong> atau <strong>08...</strong>. Jika melihat <code className="bg-red-100 dark:bg-red-900/40 px-1 rounded text-red-700">#error</code>, silakan hapus dan ketik ulang nomornya di tabel.
+                                        {t('whatsapp_blast.format_desc')}
                                     </p>
                                 </div>
                             </div>
@@ -445,12 +447,12 @@ export function WhatsAppBlastPage() {
                 <div className="lg:col-span-2 space-y-4">
                     <div className="card h-full flex flex-col min-h-[500px]">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <h2 className="font-bold text-gray-800 dark:text-white">Daftar Tamu</h2>
+                            <h2 className="font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.guest_list')}</h2>
                             <div className="relative w-full sm:w-64">
                                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Cari nama atau nomor..."
+                                    placeholder={t('common.search')}
                                     className="input-field pl-10"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}

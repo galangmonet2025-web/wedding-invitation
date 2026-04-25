@@ -5,6 +5,8 @@ import { authApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineHeart, HiOutlineExclamationCircle } from 'react-icons/hi';
 import { LoadingOverlay } from '@/shared/components/Loading';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 
 export function LoginPage() {
     const [username, setUsername] = useState('');
@@ -13,6 +15,7 @@ export function LoginPage() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,7 +82,7 @@ export function LoginPage() {
 
     return (
         <div className="min-h-screen flex">
-            {loading && <LoadingOverlay message="Signing in..." />}
+            {loading && <LoadingOverlay message={t('auth.logging_in')} />}
 
             {/* Left Panel - Decorative */}
             <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gold-500 via-gold-600 to-gold-800 relative overflow-hidden">
@@ -99,24 +102,28 @@ export function LoginPage() {
                     <div className="mt-12 flex items-center gap-8">
                         <div className="text-center">
                             <p className="text-3xl font-bold">100+</p>
-                            <p className="text-sm text-white/60">Active Weddings</p>
+                            <p className="text-sm text-white/60">{t('auth.active_weddings')}</p>
                         </div>
                         <div className="w-px h-12 bg-white/20" />
                         <div className="text-center">
                             <p className="text-3xl font-bold">10K+</p>
-                            <p className="text-sm text-white/60">Guests Managed</p>
+                            <p className="text-sm text-white/60">{t('auth.guests_managed')}</p>
                         </div>
                         <div className="w-px h-12 bg-white/20" />
                         <div className="text-center">
                             <p className="text-3xl font-bold">99%</p>
-                            <p className="text-sm text-white/60">Uptime</p>
+                            <p className="text-sm text-white/60">{t('auth.uptime')}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Right Panel - Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-wedding-dark">
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-wedding-dark relative">
+                <div className="absolute top-8 right-8">
+                    <LanguageSwitcher />
+                </div>
+                
                 <div className="w-full max-w-md">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
@@ -129,13 +136,13 @@ export function LoginPage() {
                     </div>
 
                     <div className="mb-8">
-                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">Selamat Datang Kembali</h2>
-                        <p className="text-gray-500 dark:text-gray-400">Masuk untuk mengelola acara pernikahan Anda</p>
+                        <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">{t('auth.welcome_back')}</h2>
+                        <p className="text-gray-500 dark:text-gray-400">{t('auth.login_desc')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label htmlFor="username" className="label-field">Username</label>
+                            <label htmlFor="username" className="label-field">{t('auth.username')}</label>
                             <div className="relative">
                                 <HiOutlineMail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -144,7 +151,7 @@ export function LoginPage() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     className="input-field pl-12"
-                                    placeholder="Enter your username"
+                                    placeholder={t('auth.username_placeholder', 'Enter your username')}
                                     autoComplete="username"
                                 />
                             </div>
@@ -152,7 +159,7 @@ export function LoginPage() {
 
 
                         <div>
-                            <label htmlFor="password" className="label-field">Kata Sandi</label>
+                            <label htmlFor="password" className="label-field">{t('auth.password')}</label>
                             <div className="relative">
                                 <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -161,7 +168,7 @@ export function LoginPage() {
                                     value={password}
                                     onChange={(e) => { setPassword(e.target.value); setErrorMsg(null); }}
                                     className={`input-field pl-12 ${errorMsg ? 'border-red-400 dark:border-red-500 focus:ring-red-400' : ''}`}
-                                    placeholder="Enter your password"
+                                    placeholder={t('auth.password_placeholder', 'Enter your password')}
                                     autoComplete="current-password"
                                 />
                             </div>
@@ -180,16 +187,16 @@ export function LoginPage() {
                             disabled={loading}
                             className="btn-primary w-full py-3 text-base"
                         >
-                            {loading ? 'Masuk...' : 'Masuk'}
+                            {loading ? t('auth.logging_in') : t('auth.login_button')}
                         </button>
                     </form>
 
 
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Belum punya akun?{' '}
+                            {t('auth.no_account')}{' '}
                             <Link to="/register" className="text-gold-600 hover:text-gold-700 font-medium transition-colors">
-                                Daftarkan pernikahan Anda
+                                {t('auth.register_link')}
                             </Link>
                         </p>
                     </div>

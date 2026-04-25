@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useGuestStore } from '../store/guestStore';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Pagination } from '@/shared/components/Pagination';
@@ -8,14 +8,13 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
+import { useTranslation } from 'react-i18next';
 import {
     HiOutlinePlus,
     HiOutlineSearch,
-    HiOutlineFilter,
     HiOutlineTrash,
     HiOutlinePencil,
     HiOutlineQrcode,
-    HiOutlineDownload,
     HiOutlineUpload,
     HiOutlineRefresh,
     HiOutlineUserGroup,
@@ -25,6 +24,7 @@ import { GoogleContactModal } from '../components/GoogleContactModal';
 import { WhatsAppBlastModal } from '../components/WhatsAppBlastModal';
 
 export function GuestPage() {
+    const { t } = useTranslation();
     const {
         guests,
         total,
@@ -65,12 +65,10 @@ export function GuestPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        // Fetch a large batch of guests initially to enable frontend search
         setFilters({ limit: 1000, page: 1 });
         fetchGuests();
     }, [filters.status, filters.category]);
 
-    // Perform frontend filtering
     const filteredGuests = useMemo(() => {
         if (!searchTerm) return guests;
         const lowSearch = searchTerm.toLowerCase();
@@ -81,17 +79,13 @@ export function GuestPage() {
         );
     }, [guests, searchTerm]);
 
-    // Local pagination calculation for filtered results
     const paginatedGuests = useMemo(() => {
-        // If we are filtering, we might want to handle pagination locally
-        // But the user just asked for "filter di frontend aja", typically implying
-        // the search should be instant across the visible/loaded set.
         return filteredGuests;
     }, [filteredGuests]);
 
     const handleAdd = async () => {
         if (!form.name.trim()) {
-            toast.error('Guest name is required');
+            toast.error(t('guests.name_required'));
             return;
         }
         const success = await createGuest(form);
@@ -121,6 +115,7 @@ export function GuestPage() {
 
     const handleBulkDelete = async () => {
         await bulkDelete();
+        setSelectedIds([]);
     };
 
     const resetForm = () => {
@@ -145,21 +140,20 @@ export function GuestPage() {
     };
 
     const exportColumns = [
-        { header: 'Kode Unik', key: 'invitation_code' },
-        { header: 'Nama Lengkap', key: 'name' },
-        { header: 'No. WhatsApp', key: 'phone' },
-        { header: 'Kategori', key: 'category' },
-        { header: 'Status RSVP', key: 'status' },
-        { header: 'Jml. Tamu', key: 'number_of_guests' },
-        { header: 'Check-in', key: 'checkin_status', render: (g: Guest) => g.checkin_status === 'checked_in' ? 'Hadir (Checked-In)' : 'Belum' },
+        { header: t('guests.code'), key: 'invitation_code' },
+        { header: t('common.name'), key: 'name' },
+        { header: t('common.phone'), key: 'phone' },
+        { header: t('common.category'), key: 'category' },
+        { header: t('common.status'), key: 'status' },
+        { header: t('guests.num_guests'), key: 'number_of_guests' },
     ];
 
     const handleExportExcel = () => {
-        exportToExcel(filteredGuests, exportColumns, 'Data_Tamu_Undangan', 'Daftar Tamu');
+        exportToExcel(filteredGuests, exportColumns, 'Data_Tamu', t('guests.management'));
     };
 
     const handleExportPdf = () => {
-        exportToPdf(filteredGuests, exportColumns, 'Data_Tamu_Undangan', 'Laporan Data Tamu Undangan');
+        exportToPdf(filteredGuests, exportColumns, 'Data_Tamu', t('guests.management'));
     };
 
     const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,7 +175,7 @@ export function GuestPage() {
                         number_of_guests: parseInt(number_of_guests?.trim() || '1') || 1,
                     };
                 });
-            toast.success(`${imported.length} guests ready to import`);
+            toast.success(t('guests.import_ready', { count: imported.length }));
         };
         reader.readAsText(file);
         e.target.value = '';
@@ -201,21 +195,13 @@ export function GuestPage() {
             declined: 'badge-danger',
             pending: 'badge-warning',
         };
-        return <span className={classes[status] || 'badge-info'}>{status}</span>;
-    };
-
-    const checkinBadge = (status: string) => {
-        return status === 'checked_in' ? (
-            <span className="badge-success">Checked In</span>
-        ) : (
-            <span className="badge-info">Not Yet</span>
-        );
+        return <span className={classes[status] || 'badge-info'}>{t(`guests.status.${status}`)}</span>;
     };
 
     const columns: Column<Guest>[] = [
         {
             key: 'name',
-            header: 'Name',
+            header: t('common.name'),
             render: (g: Guest) => (
                 <div>
                     <p className="font-medium text-gray-800 dark:text-white">{g.name}</p>
@@ -223,32 +209,27 @@ export function GuestPage() {
                 </div>
             ),
         },
-        { key: 'phone', header: 'Phone' },
+        { key: 'phone', header: t('common.phone') },
         {
             key: 'category',
-            header: 'Category',
+            header: t('common.category'),
             render: (g: Guest) => <span className="badge-gold">{g.category}</span>,
         },
         {
             key: 'status',
-            header: 'RSVP',
+            header: t('common.status'),
             render: (g: Guest) => statusBadge(g.status),
         },
-        { key: 'number_of_guests', header: 'Jml. Tamu' },
-        {
-            key: 'checkin_status',
-            header: 'Check-in',
-            render: (g: Guest) => checkinBadge(g.checkin_status),
-        },
+        { key: 'number_of_guests', header: t('guests.num_guests') },
         {
             key: 'actions',
-            header: 'Actions',
+            header: t('common.actions'),
             render: (g: Guest) => (
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                         onClick={() => openQRModal(g)}
                         className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors"
-                        title="QR Code"
+                        title={t('guests.qr_code')}
                     >
                         <HiOutlineQrcode className="w-4 h-4" />
                     </button>
@@ -257,7 +238,7 @@ export function GuestPage() {
                             <button
                                 onClick={() => openEditModal(g)}
                                 className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
-                                title="Edit"
+                                title={t('common.edit')}
                             >
                                 <HiOutlinePencil className="w-4 h-4" />
                             </button>
@@ -267,7 +248,7 @@ export function GuestPage() {
                                     setShowDeleteConfirm(true);
                                 }}
                                 className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
-                                title="Delete"
+                                title={t('common.delete')}
                             >
                                 <HiOutlineTrash className="w-4 h-4" />
                             </button>
@@ -281,17 +262,17 @@ export function GuestPage() {
     const guestFormFields = (
         <div className="space-y-4">
             <div>
-                <label className="label-field">Guest Name *</label>
+                <label className="label-field">{t('common.name')} *</label>
                 <input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className="input-field"
-                    placeholder="Full name"
+                    placeholder={t('common.name')}
                 />
             </div>
             <div>
-                <label className="label-field">Phone</label>
+                <label className="label-field">{t('common.phone')}</label>
                 <input
                     type="text"
                     value={form.phone}
@@ -302,33 +283,33 @@ export function GuestPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="label-field">Category</label>
+                    <label className="label-field">{t('common.category')}</label>
                     <select
                         value={form.category}
                         onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                         className="select-field"
                     >
-                        <option value="Family">Family</option>
-                        <option value="Friends">Friends</option>
-                        <option value="Work">Work</option>
-                        <option value="VIP">VIP</option>
+                        <option value="Family">{t('guests.categories.family')}</option>
+                        <option value="Friends">{t('guests.categories.friends')}</option>
+                        <option value="Work">{t('guests.categories.work')}</option>
+                        <option value="VIP">{t('guests.categories.vip')}</option>
                     </select>
                 </div>
                 <div>
-                    <label className="label-field">RSVP Status</label>
+                    <label className="label-field">{t('common.status')}</label>
                     <select
                         value={form.status}
                         onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as GuestStatus }))}
                         className="select-field"
                     >
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="declined">Declined</option>
+                        <option value="pending">{t('guests.status.pending')}</option>
+                        <option value="confirmed">{t('guests.status.confirmed')}</option>
+                        <option value="declined">{t('guests.status.declined')}</option>
                     </select>
                 </div>
             </div>
             <div>
-                <label className="label-field">Number of Guests</label>
+                <label className="label-field">{t('guests.num_guests')}</label>
                 <input
                     type="number"
                     min={1}
@@ -343,19 +324,18 @@ export function GuestPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Guest Management</h1>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('guests.management')}</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {total} guests total
+                        {t('guests.total_count', { count: total })}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={() => fetchGuests()} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                        title="Refresh Data"
+                        title={t('common.refresh')}
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
@@ -363,7 +343,7 @@ export function GuestPage() {
                         <>
                             <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2">
                                 <HiOutlineUpload className="w-4 h-4" />
-                                Import
+                                {t('common.import')}
                                 <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
                             </label>
                             <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
@@ -377,28 +357,26 @@ export function GuestPage() {
                             <button 
                                 onClick={() => setShowGoogleModal(true)} 
                                 className="btn-ghost text-sm flex items-center gap-2 text-blue-600 hover:text-blue-700"
-                                title="Import Google Contacts CSV"
                             >
                                 <HiOutlineUserGroup className="w-4 h-4" />
-                                Google Contacts (CSV)
+                                Google
                             </button>
                             <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
                                 <HiOutlinePlus className="w-4 h-4" />
-                                Add Guest
+                                {t('guests.add_new')}
                             </button>
                         </>
                     )}
                 </div>
             </div>
 
-            {/* Filters */}
             <div className="card">
                 <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
                         <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search guests..."
+                            placeholder={t('guests.search_placeholder')}
                             className="input-field pl-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -410,60 +388,57 @@ export function GuestPage() {
                             onChange={(e) => setFilters({ status: e.target.value as GuestStatus | '', page: 1 })}
                             className="select-field w-auto"
                         >
-                            <option value="">All Status</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="declined">Declined</option>
-                            <option value="pending">Pending</option>
+                            <option value="">{t('guests.all_status')}</option>
+                            <option value="confirmed">{t('guests.status.confirmed')}</option>
+                            <option value="declined">{t('guests.status.declined')}</option>
+                            <option value="pending">{t('guests.status.pending')}</option>
                         </select>
                         <select
                             value={filters.category}
                             onChange={(e) => setFilters({ category: e.target.value, page: 1 })}
                             className="select-field w-auto"
                         >
-                            <option value="">All Categories</option>
-                            <option value="Family">Family</option>
-                            <option value="Friends">Friends</option>
-                            <option value="Work">Work</option>
-                            <option value="VIP">VIP</option>
+                            <option value="">{t('guests.all_categories')}</option>
+                            <option value="Family">{t('guests.categories.family')}</option>
+                            <option value="Friends">{t('guests.categories.friends')}</option>
+                            <option value="Work">{t('guests.categories.work')}</option>
+                            <option value="VIP">{t('guests.categories.vip')}</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* Bulk Actions */}
             {selectedIds.length > 0 && !isStaff && (
                 <div className="flex items-center gap-4 px-4 py-3 bg-gold-50 dark:bg-gold-900/20 rounded-xl border border-gold-200 dark:border-gold-800">
                     <span className="text-sm font-medium text-gold-700 dark:text-gold-400">
-                        {selectedIds.length} selected
+                        {t('guests.selected_count', { count: selectedIds.length })}
                     </span>
                     <button onClick={handleBulkDelete} className="btn-danger text-sm py-1.5 px-4">
                         <HiOutlineTrash className="w-4 h-4 inline mr-1" />
-                        Delete Selected
+                        {t('common.delete')}
                     </button>
                     <button 
                         onClick={() => setShowBlastModal(true)} 
                         className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors"
                     >
                         <HiOutlineSpeakerphone className="w-4 h-4" />
-                        WhatsApp Blast
+                        Blast
                     </button>
                     <button onClick={() => setSelectedIds([])} className="btn-ghost text-sm py-1.5">
-                        Clear
+                        {t('common.clear')}
                     </button>
                 </div>
             )}
 
-            {/* Data Table */}
             <DataTable
                 columns={columns}
                 data={paginatedGuests}
                 loading={loading}
-                emptyMessage="No guests found"
+                emptyMessage={t('guests.no_guests')}
                 selectedIds={!isStaff ? selectedIds : undefined}
                 onSelectChange={!isStaff ? setSelectedIds : undefined}
             />
 
-            {/* Pagination */}
             {totalPages > 1 && (
                 <Pagination
                     page={filters.page}
@@ -474,46 +449,42 @@ export function GuestPage() {
                 />
             )}
 
-            {/* Add Guest Modal */}
             <Modal
                 isOpen={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                title="Add New Guest"
+                title={t('guests.add_new')}
                 footer={
                     <>
-                        <button onClick={() => setShowAddModal(false)} className="btn-ghost">Cancel</button>
-                        <button onClick={handleAdd} className="btn-primary">Add Guest</button>
+                        <button onClick={() => setShowAddModal(false)} className="btn-ghost">{t('common.cancel')}</button>
+                        <button onClick={handleAdd} className="btn-primary">{t('common.save')}</button>
                     </>
                 }
             >
                 {guestFormFields}
             </Modal>
 
-            {/* Edit Guest Modal */}
             <Modal
                 isOpen={showEditModal}
                 onClose={() => { setShowEditModal(false); setSelectedGuest(null); }}
-                title="Edit Guest"
+                title={t('common.edit')}
                 footer={
                     <>
-                        <button onClick={() => { setShowEditModal(false); setSelectedGuest(null); }} className="btn-ghost">Cancel</button>
-                        <button onClick={handleEdit} className="btn-primary">Save Changes</button>
+                        <button onClick={() => { setShowEditModal(false); setSelectedGuest(null); }} className="btn-ghost">{t('common.cancel')}</button>
+                        <button onClick={handleEdit} className="btn-primary">{t('common.save')}</button>
                     </>
                 }
             >
                 {guestFormFields}
             </Modal>
 
-            {/* QR Code Modal */}
             <Modal
                 isOpen={showQRModal}
                 onClose={() => { setShowQRModal(false); setSelectedGuest(null); }}
-                title="Guest QR Code & Link"
+                title={t('guests.qr_code')}
                 size="xl"
             >
                 {selectedGuest && (
                     <div className="flex flex-col md:flex-row gap-6 w-full h-full items-start">
-                        {/* Kiri: QR Code & Detail Guest */}
                         <div className="flex flex-col items-center flex-1 w-full bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
                             <div className="p-4 bg-white rounded-2xl shadow-sm mb-4">
                                 <QRCodeSVG
@@ -534,7 +505,7 @@ export function GuestPage() {
 
                             {tenant && (
                                 <div className="w-full h-full text-left mt-6">
-                                    <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Link Undangan Khusus</p>
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">{t('guests.invitation_link')}</p>
                                     <div className="space-y-3">
                                         <div className="relative group">
                                             <input
@@ -547,11 +518,11 @@ export function GuestPage() {
                                             <button
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
-                                                    toast.success('Link undangan disalin!');
+                                                    toast.success(t('common.copied'));
                                                 }}
                                                 className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-gold-50 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 hover:bg-gold-100 dark:hover:bg-gold-900/50 rounded-lg text-[11px] font-bold transition-all border border-gold-200 dark:border-gold-800"
                                             >
-                                                Salin
+                                                {t('common.copy')}
                                             </button>
                                         </div>
                                         
@@ -562,19 +533,16 @@ export function GuestPage() {
                                             className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]"
                                         >
                                             <HiOutlineSpeakerphone className="w-4 h-4" />
-                                            Buka Undangan
+                                            {t('guests.open_invitation')}
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">Kirim link ini ke tamu Anda via WhatsApp atau Email.</p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Kanan: Link & Preview */}
                         {tenant && (
                             <div className="flex-1 flex flex-col w-full h-full">
                                 <div className="w-full ">
-                                    {/* <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Preview Undangan</p> */}
                                     <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden h-[670px] w-full bg-gray-100 dark:bg-gray-900 shadow-inner relative group flex-shrink-0">
                                         <iframe
                                             style={{ zoom: '0.8' }}
@@ -593,32 +561,29 @@ export function GuestPage() {
                 )}
             </Modal>
 
-            {/* Delete Confirmation */}
             <Modal
                 isOpen={showDeleteConfirm}
                 onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
-                title="Delete Guest"
+                title={t('common.delete')}
                 size="sm"
                 footer={
                     <>
-                        <button onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} className="btn-ghost">Cancel</button>
-                        <button onClick={handleDeleteConfirm} className="btn-danger">Delete</button>
+                        <button onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} className="btn-ghost">{t('common.cancel')}</button>
+                        <button onClick={handleDeleteConfirm} className="btn-danger">{t('common.delete')}</button>
                     </>
                 }
             >
                 <p className="text-gray-600 dark:text-gray-300">
-                    Are you sure you want to delete this guest? This action cannot be undone.
+                    {t('guests.delete_confirm')}
                 </p>
             </Modal>
 
-            {/* Google Contacts Modal */}
             <GoogleContactModal 
                 isOpen={showGoogleModal}
                 onClose={() => setShowGoogleModal(false)}
                 onImport={handleImportGoogleContacts}
             />
 
-            {/* WhatsApp Blast Modal */}
             <WhatsAppBlastModal 
                 isOpen={showBlastModal}
                 onClose={() => setShowBlastModal(false)}

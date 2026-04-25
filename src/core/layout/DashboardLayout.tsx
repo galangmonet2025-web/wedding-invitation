@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { additionalFeatureApi } from '@/core/api/endpoints';
+import { useTranslation } from 'react-i18next';
 
+import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 import {
     HiOutlineHome,
     HiOutlineUsers,
@@ -34,6 +36,7 @@ export function DashboardLayout() {
     const { user, tenant, logout } = useAuthStore();
     const { isDark, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [hasActiveFeatures, setHasActiveFeatures] = useState(true);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
@@ -69,25 +72,25 @@ export function DashboardLayout() {
 
     const navItems = !showTenantMenu
         ? [
-            { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: 'Global Dashboard', roles: ['superadmin'] },
-            { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: 'Manage Tenants', roles: ['superadmin'] },
-            { to: '/private/themes', icon: HiOutlineColorSwatch, label: 'Manage Themes', roles: ['superadmin'] },
-            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: 'Additional feature', roles: ['superadmin'] },
-            { to: '/private/reviews', icon: HiOutlineChatAlt2, label: 'Review and Rating', roles: ['superadmin'] },
-            { to: '/private/website-config', icon: HiOutlineCog, label: 'Website Config', roles: ['superadmin'] },
-            { to: '/private/activity', icon: HiOutlineClipboardList, label: 'System Activity', roles: ['superadmin'] },
+            { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: t('sidebar.global_dashboard'), roles: ['superadmin'] },
+            { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: t('sidebar.manage_tenants'), roles: ['superadmin'] },
+            { to: '/private/themes', icon: HiOutlineColorSwatch, label: t('sidebar.manage_themes'), roles: ['superadmin'] },
+            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['superadmin'] },
+            { to: '/private/reviews', icon: HiOutlineChatAlt2, label: t('sidebar.review_rating'), roles: ['superadmin'] },
+            { to: '/private/website-config', icon: HiOutlineCog, label: t('sidebar.website_config'), roles: ['superadmin'] },
+            { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.system_activity'), roles: ['superadmin'] },
         ]
         : [
-            { to: '/private/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/private/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/private/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/private/whatsapp-blast', icon: HiOutlineChatAlt2, label: 'WhatsApp Blast', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: 'Additional feature', roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/dashboard', icon: HiOutlineHome, label: t('sidebar.dashboard'), roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/scanner', icon: HiOutlineQrcode, label: t('sidebar.scanner_kehadiran', 'Scanner Kehadiran'), roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/guests', icon: HiOutlineUsers, label: t('sidebar.guests'), roles: ['tenant_admin', 'staff', 'superadmin'] },
+            { to: '/private/whatsapp-blast', icon: HiOutlineChatAlt2, label: t('sidebar.whatsapp_blast'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/staff', icon: HiOutlineUserAdd, label: t('sidebar.manage_staff'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: t('sidebar.content_settings'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/wishes', icon: HiOutlineHeart, label: t('sidebar.wishes'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/gifts', icon: HiOutlineGift, label: t('sidebar.gifts'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.activity_log'), roles: ['tenant_admin', 'superadmin'] },
         ];
 
     const filteredNavItems = navItems.filter((item) => {
@@ -137,7 +140,7 @@ export function DashboardLayout() {
                     <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
                         {isImpersonating && (
                             <div className="mb-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-xs text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1">
-                                <span>👤</span> Viewing as Tenant
+                                <span>👤</span> {t('sidebar.viewing_tenant', 'Viewing as Tenant')}
                             </div>
                         )}
                         <div className="flex items-center gap-3">
@@ -156,7 +159,7 @@ export function DashboardLayout() {
 
                 {/* Navigation */}
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Menu</p>
+                    <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.menu')}</p>
                     {filteredNavItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -188,14 +191,14 @@ export function DashboardLayout() {
                         className="sidebar-link w-full mb-1 text-gray-600 dark:text-gray-300"
                     >
                         <HiOutlineKey className="w-5 h-5" />
-                        <span>Ubah Password</span>
+                        <span>{t('sidebar.change_password')}</span>
                     </button>
                     <button
                         onClick={handleLogout}
                         className="sidebar-link w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
                     >
                         <HiOutlineLogout className="w-5 h-5" />
-                        <span>Logout</span>
+                        <span>{t('sidebar.logout')}</span>
                     </button>
                 </div>
             </aside>
@@ -215,18 +218,18 @@ export function DashboardLayout() {
                             <div>
                                 {user?.role === 'staff' ? (
                                     <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                        Resepsionis Pernikahan {tenant?.groom_name} & {tenant?.bride_name}
+                                        {t('topbar.staff_reception', 'Resepsionis Pernikahan')} {tenant?.groom_name} & {tenant?.bride_name}
                                     </h2>
                                 ) : isImpersonating ? (
                                     <div className="flex items-center gap-2">
                                         <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full">SUPERADMIN</span>
                                         <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                            Viewing: {tenant?.bride_name} & {tenant?.groom_name}
+                                            {t('topbar.viewing', 'Viewing')}: {tenant?.bride_name} & {tenant?.groom_name}
                                         </h2>
                                     </div>
                                 ) : (
                                     <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                        {isSuperAdmin ? 'Super Admin Panel' : 'Wedding Dashboard'}
+                                        {isSuperAdmin ? t('topbar.superadmin_panel', 'Super Admin Panel') : t('topbar.wedding_dashboard', 'Wedding Dashboard')}
                                     </h2>
                                 )}
                             </div>
@@ -235,6 +238,9 @@ export function DashboardLayout() {
                         <div className="flex items-center gap-3">
                             {/* Background Tasks Indicator */}
                             <BackgroundTaskIndicator />
+
+                            {/* Language Toggle */}
+                            <LanguageSwitcher />
 
                             {/* Dark Mode Toggle */}
                             <button
