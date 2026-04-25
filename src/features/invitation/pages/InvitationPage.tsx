@@ -49,16 +49,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [tempGuestData, setTempGuestData] = useState({ name: '', category: 'Tamu' });
     const [generatedUninvitedQR, setGeneratedUninvitedQR] = useState<string | null>(null);
     const [isCheckingGuest, setIsCheckingGuest] = useState(false);
-    
+
     // Lightbox State
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
     const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0);
 
     // Memoized core data to prevent reference changes every second during countdown updates
-    const activeContent = useMemo(() => 
+    const activeContent = useMemo(() =>
         previewData || data?.content || {} as Partial<InvitationContent>
-    , [previewData, data?.content]);
+        , [previewData, data?.content]);
 
     const timeline = useMemo(() => {
         if (!activeContent.timeline_kisah) return [] as TimelineItem[];
@@ -97,7 +97,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const ytMatch = musicLink.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|.*embed\/))([^&?\n]+)/);
         if (ytMatch && ytMatch[1]) {
             setYoutubeId(ytMatch[1]);
-            
+
             // Send command to the existing iframe
             if (ytIframeRef.current && ytIframeRef.current.contentWindow) {
                 if (isPlaying) {
@@ -282,13 +282,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     const handleRSVP = async (e?: React.FormEvent, manualData?: { status: string; guests: number; code: string }) => {
         if (e) e.preventDefault();
-        
+
         const status = manualData?.status || rsvpStatus;
         const guests = manualData?.guests || rsvpGuests;
         const code = manualData?.code || rsvpCode;
 
         if (!code.trim()) return { success: false, message: 'Kode undangan wajib diisi' };
-        
+
         setRsvpLoading(true);
         setRsvpResult(null);
         try {
@@ -301,7 +301,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             let calendarUrl = undefined;
             if (res.success && status === 'confirmed') {
                 setRsvpCode('');
-                
+
                 // Generate Google Calendar Link
                 try {
                     const eventTitle = `Pernikahan ${tenant.groom_name} & ${tenant.bride_name}`;
@@ -309,7 +309,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     const startTime = activeContent.jam_awal_resepsi || '08:00';
                     const endTime = activeContent.jam_akhir_resepsi;
                     const location = `${activeContent.nama_lokasi_resepsi || ''}, ${activeContent.keterangan_lokasi_resepsi || ''}`.trim();
-                    
+
                     calendarUrl = generateGoogleCalendarUrl({
                         title: eventTitle,
                         startDate: startDate,
@@ -336,13 +336,13 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 if (data) {
                     setData({
                         ...data,
-                        guest: data.guest 
-                            ? { ...data.guest, status: status, number_of_guests: guests } 
-                            : res.data 
+                        guest: data.guest
+                            ? { ...data.guest, status: status, number_of_guests: guests }
+                            : res.data
                     });
                 }
             }
-            
+
             const result = { success: res.success, message: res.message, calendarUrl };
             setRsvpResult(result);
             return result;
@@ -357,12 +357,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     const handleWish = async (e?: React.FormEvent, manualData?: { name: string; message: string }) => {
         if (e) e.preventDefault();
-        
+
         const name = manualData?.name || wishName;
         const message = manualData?.message || wishMessage;
 
         if (!name.trim() || !message.trim()) return { success: false, message: 'Nama dan pesan wajib diisi' };
-        
+
         setWishLoading(true);
         try {
             const res = await publicApi.submitWish({
@@ -430,7 +430,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             if (hours < 24) return `${hours} jam lalu`;
             const days = Math.floor(hours / 24);
             if (days <= 3) return `${days} hari lalu`;
-            
+
             return date.toLocaleDateString('id-ID', {
                 year: 'numeric',
                 month: 'long',
@@ -685,7 +685,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // every second when the countdown state updates.
     const finalHtml = useMemo(() => {
         if (!activeTheme?.html_template) return '';
-        
+
         // Static/Initial Countdown Values for the first render
         // These will be updated live by ThemeWrapper's system script
         const diff = Math.max(0, new Date(tenant.wedding_date).getTime() - Date.now());
@@ -729,12 +729,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     }
 
     if (activeTheme?.html_template) {
-        const pageTitle = data?.tenant 
-            ? `The Wedding of ${data.tenant.bride_name} & ${data.tenant.groom_name}` 
+        const pageTitle = data?.tenant
+            ? `The Wedding of ${data.tenant.bride_name} & ${data.tenant.groom_name}`
             : 'Digital Wedding Invitation';
-        
+
         const guestName = data?.guest?.name || new URLSearchParams(location.search).get('to') || 'Tamu Undangan';
-        const displayTitle = guestName !== 'Tamu Undangan' 
+        const displayTitle = guestName !== 'Tamu Undangan'
             ? `${pageTitle} - Spesial untuk ${guestName}`
             : pageTitle;
 
@@ -763,7 +763,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 <Helmet>
                     <title>{displayTitle}</title>
                     <meta name="description" content={description} />
-                    
+
                     {/* Open Graph / Facebook */}
                     <meta property="og:type" content="website" />
                     <meta property="og:title" content={displayTitle} />
@@ -791,142 +791,142 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         className="hidden"
                     />
                 )}
-                        {/* Full Screen Navigation Menu Modal */}
-                        {showMenuModal && (
-                            <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
-                                {/* Backdrop */}
-                                <div 
-                                    className="absolute inset-0 bg-black/85 backdrop-blur-xl animate-fade-in"
-                                    onClick={() => setShowMenuModal(false)}
-                                />
-                                
-                                {/* Content */}
-                                <div className="relative w-full max-w-lg bg-transparent text-center animate-scale-in">
-                                    <button 
-                                        onClick={() => setShowMenuModal(false)}
-                                        className="absolute -top-16 right-0 text-white/70 hover:text-white transition-colors"
-                                    >
-                                        <HiOutlineX className="w-8 h-8" />
-                                    </button>
-
-                                    <h2 className="text-gold-400 font-serif text-3xl mb-12 tracking-widest uppercase">Menu Navigasi</h2>
-                                    
-                                    <div className="flex flex-col gap-6">
-                                        {/* Link to Top/Sampul */}
-                                        <button
-                                            onClick={() => {
-                                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                // Fallbacks for themes that use fixed containers
-                                                const cw1 = document.getElementById('main-content');
-                                                if (cw1) cw1.scrollTo({ top: 0, behavior: 'smooth' });
-                                                const cw2 = document.getElementById('content-body');
-                                                if (cw2) cw2.scrollTo({ top: 0, behavior: 'smooth' });
-                                                
-                                                setShowMenuModal(false);
-                                            }}
-                                            className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
-                                        >
-                                            Sampul
-                                        </button>
-
-                                        {sections.slice(1).map(s => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => {
-                                                    const el = document.getElementById(s.id);
-                                                    if (el) {
-                                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                    }
-                                                    setShowMenuModal(false);
-                                                }}
-                                                className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
-                                            >
-                                                {s.label}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-16 text-gold-500/50 font-serif italic">
-                                        {tenant.groom_name} & {tenant.bride_name}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Universal Lightbox Component */}
-                        {isLightboxOpen && (
-                            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in select-none">
-                                {/* Close Button */}
-                                <button 
-                                    onClick={() => setIsLightboxOpen(false)}
-                                    className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[2002]"
-                                >
-                                    <HiX className="w-8 h-8 md:w-10 md:h-10" />
-                                </button>
-
-                                {/* Images Counter */}
-                                <div className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-light tracking-widest z-[2002]">
-                                    {currentLightboxIndex + 1} / {lightboxImages.length}
-                                </div>
-
-                                {/* Navigation - Left */}
-                                <button 
-                                    onClick={prevLightbox}
-                                    className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
-                                >
-                                    <HiChevronLeft className="w-8 h-8 md:w-12 md:h-12" />
-                                </button>
-
-                                {/* Navigation - Right */}
-                                <button 
-                                    onClick={nextLightbox}
-                                    className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
-                                >
-                                    <HiChevronRight className="w-8 h-8 md:w-12 md:h-12" />
-                                </button>
-
-                                {/* Main Image Container */}
-                                <div className="w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setIsLightboxOpen(false)}>
-                                    <img 
-                                        src={lightboxImages[currentLightboxIndex]} 
-                                        alt="Lightbox" 
-                                        className="max-w-full max-h-full object-contain animate-scale-in"
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Universal Scroll Up Button */}
-                        {isOpened && activeSectionIndex >= 1 && (
-                            <button
-                                id="btn-scroll-to-top"
-                                onClick={() => {
-                                    const targetIndex = Math.max(0, activeSectionIndex - 1);
-                                    const targetId = sections[targetIndex]?.id;
-                                    if (targetId) {
-                                        const el = document.getElementById(targetId);
-                                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    } else {
-                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }
-                                }}
-                                className="fixed right-6 bottom-24 z-[900] w-12 h-12 flex items-center justify-center bg-[#b89564]/90 hover:bg-[#a68453] text-white rounded-full shadow-lg shadow-[#b89564]/20 backdrop-blur-sm transition-all animate-fade-in hover:scale-105 border border-white/20"
-                                title="Scroll ke Atas"
-                            >
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </button>
-                        )}
-
-                        {/* RSVP Success Modal (Theme Agnostic) */}
-                        <RSVPSuccessModal 
-                            isOpen={isRSVPModalOpen}
-                            onClose={() => setIsRSVPModalOpen(false)}
-                            data={rsvpModalData}
+                {/* Full Screen Navigation Menu Modal */}
+                {showMenuModal && (
+                    <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
+                        {/* Backdrop */}
+                        <div
+                            className="absolute inset-0 bg-black/85 backdrop-blur-xl animate-fade-in"
+                            onClick={() => setShowMenuModal(false)}
                         />
-                    </ThemeWrapper>
+
+                        {/* Content */}
+                        <div className="relative w-full max-w-lg bg-transparent text-center animate-scale-in">
+                            <button
+                                onClick={() => setShowMenuModal(false)}
+                                className="absolute -top-16 right-0 text-white/70 hover:text-white transition-colors"
+                            >
+                                <HiOutlineX className="w-8 h-8" />
+                            </button>
+
+                            <h2 className="text-gold-400 font-serif text-3xl mb-12 tracking-widest uppercase">Menu Navigasi</h2>
+
+                            <div className="flex flex-col gap-6">
+                                {/* Link to Top/Sampul */}
+                                <button
+                                    onClick={() => {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        // Fallbacks for themes that use fixed containers
+                                        const cw1 = document.getElementById('main-content');
+                                        if (cw1) cw1.scrollTo({ top: 0, behavior: 'smooth' });
+                                        const cw2 = document.getElementById('content-body');
+                                        if (cw2) cw2.scrollTo({ top: 0, behavior: 'smooth' });
+
+                                        setShowMenuModal(false);
+                                    }}
+                                    className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
+                                >
+                                    Sampul
+                                </button>
+
+                                {sections.slice(1).map(s => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => {
+                                            const el = document.getElementById(s.id);
+                                            if (el) {
+                                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }
+                                            setShowMenuModal(false);
+                                        }}
+                                        className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
+                                    >
+                                        {s.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="mt-16 text-gold-500/50 font-serif italic">
+                                {tenant.groom_name} & {tenant.bride_name}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Universal Lightbox Component */}
+                {isLightboxOpen && (
+                    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in select-none">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setIsLightboxOpen(false)}
+                            className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[2002]"
+                        >
+                            <HiX className="w-8 h-8 md:w-10 md:h-10" />
+                        </button>
+
+                        {/* Images Counter */}
+                        <div className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-light tracking-widest z-[2002]">
+                            {currentLightboxIndex + 1} / {lightboxImages.length}
+                        </div>
+
+                        {/* Navigation - Left */}
+                        <button
+                            onClick={prevLightbox}
+                            className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
+                        >
+                            <HiChevronLeft className="w-8 h-8 md:w-12 md:h-12" />
+                        </button>
+
+                        {/* Navigation - Right */}
+                        <button
+                            onClick={nextLightbox}
+                            className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
+                        >
+                            <HiChevronRight className="w-8 h-8 md:w-12 md:h-12" />
+                        </button>
+
+                        {/* Main Image Container */}
+                        <div className="w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setIsLightboxOpen(false)}>
+                            <img
+                                src={lightboxImages[currentLightboxIndex]}
+                                alt="Lightbox"
+                                className="max-w-full max-h-full object-contain animate-scale-in"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Universal Scroll Up Button */}
+                {isOpened && activeSectionIndex >= 1 && (
+                    <button
+                        id="btn-scroll-to-top"
+                        onClick={() => {
+                            const targetIndex = Math.max(0, activeSectionIndex - 1);
+                            const targetId = sections[targetIndex]?.id;
+                            if (targetId) {
+                                const el = document.getElementById(targetId);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            } else {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                        }}
+                        className="fixed right-6 bottom-24 z-[900] w-12 h-12 flex items-center justify-center bg-[#b89564]/90 hover:bg-[#a68453] text-white rounded-full shadow-lg shadow-[#b89564]/20 backdrop-blur-sm transition-all animate-fade-in hover:scale-105 border border-white/20"
+                        title="Scroll ke Atas"
+                    >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
+                )}
+
+                {/* RSVP Success Modal (Theme Agnostic) */}
+                <RSVPSuccessModal
+                    isOpen={isRSVPModalOpen}
+                    onClose={() => setIsRSVPModalOpen(false)}
+                    data={rsvpModalData}
+                />
+            </ThemeWrapper>
         );
     }
 
@@ -1379,7 +1379,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                             </button>
                         </>
                     )}
-                    
+
                     {activeSectionIndex < sections.length - 1 && (
                         <button
                             onClick={() => scrollToSection(activeSectionIndex + 1)}
@@ -1395,7 +1395,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             {guestQrModal}
 
             {/* RSVP Success Modal (Theme Agnostic - Default) */}
-            <RSVPSuccessModal 
+            <RSVPSuccessModal
                 isOpen={isRSVPModalOpen}
                 onClose={() => setIsRSVPModalOpen(false)}
                 data={rsvpModalData}

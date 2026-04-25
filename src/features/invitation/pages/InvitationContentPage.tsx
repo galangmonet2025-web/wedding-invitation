@@ -84,6 +84,7 @@ export function InvitationContentPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const { tasks } = useBackgroundTaskStore();
 
+    const [isDirty, setIsDirty] = useState(false);
     const isUploadingGallery = tasks.some(t => t.status === 'running' && t.id.startsWith('upload-gallery'));
 
 
@@ -318,6 +319,7 @@ export function InvitationContentPage() {
 
             if (contentRes.success) {
                 toast.success('Settings saved successfully');
+                setIsDirty(false);
                 // Don't overwrite content state with response.data — the backend
                 // may not return all fields (e.g. tenant-injected wedding_date,
                 // time fields, resepsi location). The state already has the
