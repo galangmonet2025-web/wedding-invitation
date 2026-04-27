@@ -12,7 +12,7 @@ const SUPER_PROMPT = `Buatkan saya kode untuk sebuah website SPA (Single Page Ap
 Output HANYA boleh berupa 3 file terpisah: index.html, style.css, dan script.js. Tidak perlu penjelasan panjang, langsung berikan kodenya.
 
 ### ATURAN INTEGRASI DATA (SANGAT PENTING - BACA BAIK-BAIK)
-Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB menggunakan data dummy yang indah agar saya bisa preview desainnya, TAPI kamu WAJIB menambahkan atribut data-var, data-img, data-bg, data-loop, atau data-if secara ketat sesuai daftar di bawah ini. Jangan lewatkan satupun!
+Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB menggunakan data dummy yang indah agar saya bisa preview desainnya, TAPI kamu WAJIB menambahkan atribut data-var, data-img, data-bg, data-loop, data-if, atau data-menu-label secara ketat sesuai daftar di bawah ini.
 
 1. TEKS BIASA (Gunakan data-var="..." pada elemen HTML):
    - Cover & Intro: data-var="guest_name" (Nama Tamu), data-var="kalimat_pembuka", data-var="quote"
@@ -52,7 +52,7 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    
    A. Gallery Foto:
    - Parent: data-loop="galleries"
-   - Gambar anak pertama: data-img="this.url"
+   - Gambar anak pertama: data-img="this.url" (WAJIB tambahkan class="lightbox-injection")
    
    B. Kisah Cinta (Timeline):
    - Parent: data-loop="timeline_kisah"
@@ -62,19 +62,33 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    - Parent: data-loop="wishes"
    - Teks anak pertama: data-var="this.guest_initial", data-var="this.name", data-var="this.guest_comment_time", data-var="this.message"
 
+5. NAVIGASI & MENU (PENTING):
+    Untuk mengaktifkan fitur navigasi, tambahkan attribut data-menu-label="Nama Menu" pada section-section ini
+    - section Mempelai ->  data-menu-label="Mempelai"
+    - section Waktu & tempat -> data-menu-label="Waktu & tempat"
+    - section Streaming -> data-menu-label="Streaming"
+    - section Doa & Ucapan -> data-menu-label="Doa & Ucapan"
+    - section Wedding gifts -> data-menu-label="Wedding gifts"
+    - section gift -> data-menu-label="Wedding gifts"
+
 ### ATURAN TEKNIS & UI/UX
 1. Layout Khusus Mobile: Container utama MAKSIMAL selebar 480px, posisikan di tengah layar (margin: 0 auto; box-shadow).
 2. Animasi Interaktif: Berikan efek (fade-in, slide-up) saat di-scroll ke suatu section.
-3. Struktur ID yang Wajib Ada Persis:
+3. Struktur ID & Class yang Wajib Ada Persis:
    - Tombol Buka Undangan: id="btn-open-invitation"
    - Halaman Cover: id="theme-cover"
    - Halaman Utama (awalnya hidden): id="main-content"
+   - Container Tombol Melayang (FAB): id="theme-fab-container"
+   - Tombol Menu Navigasi: id="btn-show-menu"
+   - Tombol Musik (Play/Pause): id="btn-toggle-music" (Di dalamnya wajib ada tag <i> untuk icon)
+   - Tombol QR Code Tamu: id="btn-show-qr"
    - Form RSVP: id="rsvp-code", id="rsvp-status", id="rsvp-guests"
    - Tombol Submit RSVP: id="btn-submit-kehadiran"
-   - Alert RSVP: id="alert-submit-kehadiran" (form disembunyikan saat alert ini aktif via JS)
+   - Alert RSVP: id="alert-submit-kehadiran"
    - Form Ucapan: id="wish-name", id="wish-message"
    - Tombol Submit Ucapan: id="btn-submit-ucapan"
    - Alert Ucapan: id="alert-submit-ucapan"
+   - Lightbox Gallery: Setiap tag <img> di dalam galeri WAJIB memiliki class="lightbox-injection" agar bisa diklik.
 
 Semua ID ini harus akurat. Gunakan desain terbaikmu yang paling premium dan mewah. Pastikan bagian Gift benar-benar mematuhi seluruh data-if yang saya berikan.`;
 
