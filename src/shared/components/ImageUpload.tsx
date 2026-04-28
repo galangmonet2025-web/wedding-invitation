@@ -64,6 +64,11 @@ export function ImageUpload({
                 maxWidthOrHeight = 800;
                 maxSizeMB = 0.15;
                 break;
+            case 'theme_preview':
+                // Theme preview images: allow up to 5 MB and max dimension 1200
+                maxWidthOrHeight = 1200;
+                maxSizeMB = 0.2;
+                break;
             default:
                 maxWidthOrHeight = 1200;
                 maxSizeMB = 0.2;
@@ -129,10 +134,10 @@ export function ImageUpload({
                 toast.error(`File "${file.name}" bukan gambar yang valid.`);
                 failCount++;
                 failedFiles.push(file.name);
-                updateTask(taskId, { 
-                    failCount, 
+                updateTask(taskId, {
+                    failCount,
                     failedFiles,
-                    progress: Math.round(((successCount + failCount) / total) * 100) 
+                    progress: Math.round(((successCount + failCount) / total) * 100)
                 });
                 continue;
             }
@@ -141,10 +146,10 @@ export function ImageUpload({
                 toast.error(`Ukuran "${file.name}" terlalu besar (Max 10MB).`);
                 failCount++;
                 failedFiles.push(file.name);
-                updateTask(taskId, { 
-                    failCount, 
+                updateTask(taskId, {
+                    failCount,
                     failedFiles,
-                    progress: Math.round(((successCount + failCount) / total) * 100) 
+                    progress: Math.round(((successCount + failCount) / total) * 100)
                 });
                 continue;
             }
@@ -191,7 +196,7 @@ export function ImageUpload({
                         }, { skipLoader: true } as any);
 
                         if (response.success) break;
-                        
+
                         retries++;
                         if (retries <= maxRetries) await sleep(1000 * retries); // Exponential backoff
                     } catch (err) {
@@ -237,7 +242,7 @@ export function ImageUpload({
             // Update background task status
             const isFinished = (successCount + failCount) === total;
             let details = isFinished ? `Selesai: ${successCount} berhasil, ${failCount} gagal` : undefined;
-            
+
             if (isFinished && failCount > 0) {
                 details += ` (Gagal: ${failedFiles.join(', ')})`;
             }
@@ -383,7 +388,7 @@ export function ImageUpload({
                     <div className="flex flex-col items-center justify-center pt-3 pb-4 text-center px-2">
                         {(() => {
                             const isCurrentlyUploading = tasks.some(t => t.status === 'running' && t.id.startsWith(`upload-${imageType}`));
-                            
+
                             if (uploading || isCurrentlyUploading) {
                                 return (
                                     <>
@@ -446,8 +451,8 @@ export function ImageUpload({
 
                     <div className="flex items-center justify-end gap-3">
                         <button onClick={() => setShowDeleteModal(false)} className="btn-ghost" disabled={deleting}>Batal</button>
-                        <button 
-                            onClick={handleDelete} 
+                        <button
+                            onClick={handleDelete}
                             className="btn-danger py-2 px-6 flex items-center gap-2"
                             disabled={deleting}
                         >
