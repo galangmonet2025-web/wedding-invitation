@@ -5,32 +5,20 @@ import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Gift } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineCurrencyDollar } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineCurrencyDollar, HiOutlineRefresh } from 'react-icons/hi';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
+import { useGiftStore } from '../store/giftStore';
+
 export function GiftsPage() {
-    const [gifts, setGifts] = useState<Gift[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { gifts, loading, fetchGifts, addGift, deleteGift: deleteGiftInStore } = useGiftStore();
     const [showAddModal, setShowAddModal] = useState(false);
+    const [giftToDelete, setGiftToDelete] = useState<Gift | null>(null);
     const [form, setForm] = useState({ guest_name: '', amount: 0, bank_name: '' });
 
     useEffect(() => {
         fetchGifts();
     }, []);
-
-    const fetchGifts = async () => {
-        try {
-            const response = await giftApi.getGifts();
-            if (response.success) {
-                setGifts(response.data);
-            }
-        } catch {
-            toast.error('Failed to load gifts');
-            setGifts([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -46,20 +34,22 @@ export function GiftsPage() {
             const response = await giftApi.createGift(form);
             if (response.success) {
                 toast.success('Gift recorded!');
+                addGift(response.data); // Optimistic update
                 setShowAddModal(false);
                 setForm({ guest_name: '', amount: 0, bank_name: '' });
-                fetchGifts();
             }
         } catch {
             toast.error('Failed to record gift');
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async () => {
+        if (!giftToDelete) return;
         try {
-            await giftApi.deleteGift(id);
+            await giftApi.deleteGift(giftToDelete.id);
             toast.success('Gift removed');
-            setGifts((g) => g.filter((gift) => gift.id !== id));
+            deleteGiftInStore(giftToDelete.id); // Optimistic update
+            setGiftToDelete(null);
         } catch {
             toast.error('Failed to delete');
         }
@@ -108,7 +98,7 @@ export function GiftsPage() {
             header: '',
             render: (g: Gift) => (
                 <button
-                    onClick={() => handleDelete(g.id)}
+                    onClick={() => setGiftToDelete(g)}
                     className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 transition-colors"
                 >
                     <HiOutlineTrash className="w-4 h-4" />
@@ -117,7 +107,7 @@ export function GiftsPage() {
         },
     ];
 
-    if (loading) return <PageLoader />;
+    if (loading && gifts.length === 0) return <PageLoader />;
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -135,6 +125,13 @@ export function GiftsPage() {
                             PDF
                         </button>
                     </div>
+                    <button 
+                        onClick={() => fetchGifts(true)} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                     <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
                         <HiOutlinePlus className="w-4 h-4" />
                         Record Gift
@@ -210,6 +207,30 @@ export function GiftsPage() {
                             <option value="Cash">Cash</option>
                             <option value="Other">Other</option>
                         </select>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!giftToDelete}
+                onClose={() => setGiftToDelete(null)}
+                title="Hapus Catatan Hadiah"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus catatan hadiah dari <b>{giftToDelete?.guest_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setGiftToDelete(null)} className="btn-ghost">Batal</button>
+                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus</button>
                     </div>
                 </div>
             </Modal>

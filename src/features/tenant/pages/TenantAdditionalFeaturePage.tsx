@@ -10,9 +10,10 @@ import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 
+import { useTenantFeatureStore } from '../store/tenantFeatureStore';
+
 export function TenantAdditionalFeaturePage() {
-    const [features, setFeatures] = useState<TenantActiveFeature[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { features, loading, fetchFeatures, updateLocalFeature } = useTenantFeatureStore();
     const [savingId, setSavingId] = useState<string | null>(null);
     const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -22,24 +23,8 @@ export function TenantAdditionalFeaturePage() {
         fetchFeatures();
     }, []);
 
-    const fetchFeatures = async () => {
-        setLoading(true);
-        try {
-            const res = await additionalFeatureApi.getTenantFeatures();
-            if (res.success) {
-                // For tenant, we only show features that are active
-                const activeFeatures = res.data?.filter(f => f.active && f.mst_active) || [];
-                setFeatures(activeFeatures);
-            }
-        } catch (error) {
-            toast.error('Failed to load additional features');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleSaveInput = (featureId: string, value: string) => {
-        setFeatures(prev => prev.map(f => f.additional_feature_id === featureId ? { ...f, input_tenant_data: value } : f));
+        updateLocalFeature(featureId, value);
     };
 
     const handleSaveAll = async () => {
@@ -211,7 +196,7 @@ export function TenantAdditionalFeaturePage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Fitur tambahan kustom untuk undangan Anda</p>
                 </div>
                 <button 
-                    onClick={() => fetchFeatures()} 
+                    onClick={() => fetchFeatures(true)} 
                     className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                     title="Refresh Data"
                 >

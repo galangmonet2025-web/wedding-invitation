@@ -353,7 +353,7 @@ export function GuestPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
-                        onClick={() => fetchGuests()} 
+                        onClick={() => fetchGuests(true)} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title={t('common.refresh')}
                     >
@@ -584,18 +584,34 @@ export function GuestPage() {
             <Modal
                 isOpen={showDeleteConfirm}
                 onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
-                title={t('common.delete')}
-                size="sm"
-                footer={
-                    <>
-                        <button onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} className="btn-ghost">{t('common.cancel')}</button>
-                        <button onClick={handleDeleteConfirm} className="btn-danger">{t('common.delete')}</button>
-                    </>
-                }
+                title={t('guests.delete_confirm_title') || "Hapus Tamu"}
             >
-                <p className="text-gray-600 dark:text-gray-300">
-                    {t('guests.delete_confirm')}
-                </p>
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>{t('guests.delete_confirm')}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button 
+                            onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} 
+                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                        >
+                            {t('common.cancel')}
+                        </button>
+                        <button 
+                            onClick={handleDeleteConfirm} 
+                            className="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition-colors"
+                        >
+                            {t('common.delete')}
+                        </button>
+                    </div>
+                </div>
             </Modal>
 
             <GoogleContactModal 

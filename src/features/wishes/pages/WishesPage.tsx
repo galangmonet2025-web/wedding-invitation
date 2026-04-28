@@ -7,29 +7,17 @@ import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineHeart, HiOutlineRefresh } from 'react-icons/hi';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
+import { useWishStore } from '../store/wishStore';
+
 export function WishesPage() {
-    const [wishes, setWishes] = useState<Wish[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { wishes, loading, fetchWishes, addWish, deleteWish: deleteWishInStore } = useWishStore();
     const [showAddModal, setShowAddModal] = useState(false);
+    const [wishToDelete, setWishToDelete] = useState<Wish | null>(null);
     const [form, setForm] = useState({ guest_name: '', message: '' });
 
     useEffect(() => {
         fetchWishes();
     }, []);
-
-    const fetchWishes = async () => {
-        try {
-            const response = await wishApi.getWishes();
-            if (response.success) {
-                setWishes(response.data);
-            }
-        } catch {
-            toast.error('Failed to load wishes');
-            setWishes([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleCreate = async () => {
         if (!form.guest_name || !form.message) {
@@ -40,20 +28,22 @@ export function WishesPage() {
             const response = await wishApi.createWish(form);
             if (response.success) {
                 toast.success('Wish added!');
+                addWish(response.data); // Optimistic update
                 setShowAddModal(false);
                 setForm({ guest_name: '', message: '' });
-                fetchWishes();
             }
         } catch {
             toast.error('Failed to add wish');
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async () => {
+        if (!wishToDelete) return;
         try {
-            await wishApi.deleteWish(id);
+            await wishApi.deleteWish(wishToDelete.id);
             toast.success('Wish removed');
-            setWishes((w) => w.filter((wish) => wish.id !== id));
+            deleteWishInStore(wishToDelete.id); // Optimistic update
+            setWishToDelete(null);
         } catch {
             toast.error('Failed to delete');
         }
@@ -73,7 +63,7 @@ export function WishesPage() {
         exportToPdf(wishes, exportColumns, 'Data_Ucapan_Pernikahan', 'Data Ucapan & Doa Pernikahan');
     };
 
-    if (loading) return <PageLoader />;
+    if (loading && wishes.length === 0) return <PageLoader />;
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -84,7 +74,7 @@ export function WishesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
-                        onClick={() => fetchWishes()} 
+                        onClick={() => fetchWishes(true)} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title="Refresh Data"
                     >
@@ -125,7 +115,7 @@ export function WishesPage() {
                                 </div>
                             </div>
                             <button
-                                onClick={() => handleDelete(wish.id)}
+                                onClick={() => setWishToDelete(wish)}
                                 className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 transition-all"
                             >
                                 <HiOutlineTrash className="w-4 h-4" />
@@ -177,6 +167,30 @@ export function WishesPage() {
                             className="input-field min-h-[120px] resize-none"
                             placeholder="Write a heartfelt message..."
                         />
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!wishToDelete}
+                onClose={() => setWishToDelete(null)}
+                title="Hapus Ucapan"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus ucapan dari <b>{wishToDelete?.guest_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setWishToDelete(null)} className="btn-ghost">Batal</button>
+                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus</button>
                     </div>
                 </div>
             </Modal>

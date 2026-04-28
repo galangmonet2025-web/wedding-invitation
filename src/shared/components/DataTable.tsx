@@ -49,7 +49,7 @@ export function DataTable<T extends Record<string, any>>({
         }
     };
 
-    if (loading) {
+    if (loading && data.length === 0) {
         return (
             <div className="card p-0 overflow-hidden">
                 <div className="animate-pulse">

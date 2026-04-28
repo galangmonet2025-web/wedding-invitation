@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 interface AdditionalFeatureState {
     features: MstAdditionalFeature[];
     loading: boolean;
+    hasLoaded: boolean;
     lastFetched: number | null;
     fetchFeatures: (force?: boolean) => Promise<void>;
     addFeature: (feature: MstAdditionalFeature) => void;
@@ -16,14 +17,14 @@ interface AdditionalFeatureState {
 export const useAdditionalFeatureStore = create<AdditionalFeatureState>((set, get) => ({
     features: [],
     loading: false,
+    hasLoaded: false,
     lastFetched: null,
 
     fetchFeatures: async (force = false) => {
-        const { lastFetched, loading } = get();
+        const { lastFetched, loading, hasLoaded } = get();
         const now = Date.now();
         
-        // Cache for 5 minutes unless forced
-        if (!force && lastFetched && (now - lastFetched < 5 * 60 * 1000)) {
+        if (!force && hasLoaded && lastFetched && (now - lastFetched < 5 * 60 * 1000)) {
             return;
         }
 
@@ -35,7 +36,8 @@ export const useAdditionalFeatureStore = create<AdditionalFeatureState>((set, ge
             if (res.success) {
                 set({ 
                     features: res.data || [], 
-                    lastFetched: now 
+                    lastFetched: now,
+                    hasLoaded: true 
                 });
             }
         } catch (error) {

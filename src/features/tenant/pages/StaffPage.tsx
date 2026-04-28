@@ -1,31 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { staffApi } from '@/core/api/endpoints';
-import { HiOutlineUserAdd, HiOutlineTrash, HiOutlineUserGroup } from 'react-icons/hi';
+import { Modal } from '@/shared/components/Modal';
+import { HiOutlineUserAdd, HiOutlineTrash, HiOutlineUserGroup, HiOutlineRefresh } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import { useStaffStore } from '../store/staffStore';
 
 export function StaffPage() {
     const { user } = useAuthStore();
-    const [staffs, setStaffs] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { staffs, loading: isLoading, fetchStaffs, addStaff, deleteStaff: deleteStaffInStore } = useStaffStore();
 
     // Form state
     const [isCreating, setIsCreating] = useState(false);
+    const [staffToDelete, setStaffToDelete] = useState<{ id: string, username: string } | null>(null);
     const [formData, setFormData] = useState({ username: '', password: '' });
-
-    const fetchStaffs = async () => {
-        try {
-            setIsLoading(true);
-            const res = await staffApi.getStaffs();
-            if (res.success && res.data) {
-                setStaffs(res.data);
-            }
-        } catch (error) {
-            toast.error('Failed to load staff accounts');
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     useEffect(() => {
         fetchStaffs();
@@ -38,8 +26,8 @@ export function StaffPage() {
             const res = await staffApi.createStaff(formData);
             if (res.success) {
                 toast.success('Staff account created successfully');
+                addStaff(res.data); // Optimistic update
                 setFormData({ username: '', password: '' });
-                fetchStaffs();
             } else {
                 toast.error(res.message || 'Failed to create staff');
             }
@@ -50,13 +38,14 @@ export function StaffPage() {
         }
     };
 
-    const handleDelete = async (id: string, username: string) => {
-        if (!window.confirm(`Are you sure you want to delete staff account "${username}"?`)) return;
+    const handleDelete = async () => {
+        if (!staffToDelete) return;
         try {
-            const res = await staffApi.deleteStaff(id);
+            const res = await staffApi.deleteStaff(staffToDelete.id);
             if (res.success) {
                 toast.success('Staff deleted successfully');
-                fetchStaffs();
+                deleteStaffInStore(staffToDelete.id); // Optimistic update
+                setStaffToDelete(null);
             } else {
                 toast.error(res.message || 'Failed to delete staff');
             }
@@ -81,6 +70,13 @@ export function StaffPage() {
                         Manage receptionist accounts for scanning QR codes at the venue.
                     </p>
                 </div>
+                <button 
+                    onClick={() => fetchStaffs(true)} 
+                    className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                    title="Refresh Data"
+                >
+                    <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -155,10 +151,13 @@ export function StaffPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                                    {isLoading ? (
+                                    {isLoading && staffs.length === 0 ? (
                                         <tr>
                                             <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                                                Loading...
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+                                                    Loading...
+                                                </div>
                                             </td>
                                         </tr>
                                     ) : staffs.length === 0 ? (
@@ -185,7 +184,7 @@ export function StaffPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <button
-                                                        onClick={() => handleDelete(staff.id, staff.username)}
+                                                        onClick={() => setStaffToDelete({ id: staff.id, username: staff.username })}
                                                         className="text-red-500 hover:text-red-700 transition-colors p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                                                         title="Delete Staff"
                                                     >
@@ -202,6 +201,30 @@ export function StaffPage() {
                 </div>
 
             </div>
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!staffToDelete}
+                onClose={() => setStaffToDelete(null)}
+                title="Hapus Akun Staff"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus akun staff <b>{staffToDelete?.username}</b>? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setStaffToDelete(null)} className="btn-ghost">Batal</button>
+                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus</button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

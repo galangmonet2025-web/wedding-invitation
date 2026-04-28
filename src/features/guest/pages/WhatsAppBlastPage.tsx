@@ -6,6 +6,7 @@ import {
     HiOutlineCheckCircle,
     HiOutlineClock,
     HiOutlineSave,
+    HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -70,14 +71,23 @@ const formatPhoneForWhatsApp = (phone: any) => {
     return cleaned;
 };
 
+import { useInvitationContentStore } from '@/features/invitation/store/invitationContentStore';
+
 export function WhatsAppBlastPage() {
-    const { guests, loading, fetchGuests, updateGuest, updateBlastStatus, setFilters } = useGuestStore();
+    const { guests, loading: guestsLoading, fetchGuests, updateGuest, updateBlastStatus, setFilters } = useGuestStore();
+    const { content: invitationContent, loading: contentLoading, fetchContent, updateContent } = useInvitationContentStore();
     const { t } = useTranslation();
     const { tenant } = useAuthStore();
     const editorRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-    const [invitationContent, setInvitationContent] = useState<InvitationContent | null>(null);
+
+    const loading = guestsLoading || contentLoading;
+
+    // We store the Markdown version for logic, but editor displays HTML
+    const [templateMarkdown] = useState(
+        `Halo {{nama}},\n\nKami mengundang Anda untuk hadir di acara pernikahan kami.\n\nDetail undangan dapat dilihat pada link berikut:\n{{link}}\n\nTerima kasih.`
+    );
 
     // Sub-component for editable row to prevent full-list re-renders
     const GuestRow = ({ guest, onSend, onUpdate }: {
@@ -148,38 +158,20 @@ export function WhatsAppBlastPage() {
         );
     };
 
-    // We store the Markdown version for logic, but editor displays HTML
-    const [templateMarkdown, setTemplateMarkdown] = useState(
-        `Halo {{nama}},\n\nKami mengundang Anda untuk hadir di acara pernikahan kami.\n\nDetail undangan dapat dilihat pada link berikut:\n{{link}}\n\nTerima kasih.`
-    );
-
     useEffect(() => {
         setFilters({ limit: 1000, page: 1 });
         fetchGuests();
-        loadTemplate();
-    }, [fetchGuests, setFilters]);
+        fetchContent();
+    }, [fetchGuests, setFilters, fetchContent]);
 
-    const loadTemplate = async () => {
-        try {
-            const res = await invitationContentApi.getContent();
-            if (res.success && res.data) {
-                setInvitationContent(res.data);
-                if (res.data.wa_blast_template) {
-                    setTemplateMarkdown(res.data.wa_blast_template);
-                    if (editorRef.current) {
-                        editorRef.current.innerHTML = whatsAppToHtml(res.data.wa_blast_template);
-                    }
-                } else {
-                    // Initialize with default if empty
-                    if (editorRef.current) {
-                        editorRef.current.innerHTML = whatsAppToHtml(templateMarkdown);
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Failed to load template:', err);
+    // Update editor when invitationContent is loaded
+    useEffect(() => {
+        if (invitationContent?.wa_blast_template && editorRef.current && !editorRef.current.innerHTML) {
+            editorRef.current.innerHTML = whatsAppToHtml(invitationContent.wa_blast_template);
+        } else if (!invitationContent?.wa_blast_template && editorRef.current && !editorRef.current.innerHTML) {
+            editorRef.current.innerHTML = whatsAppToHtml(templateMarkdown);
         }
-    };
+    }, [invitationContent]);
 
     const handleSaveTemplate = async () => {
         setIsSavingTemplate(true);
@@ -187,9 +179,8 @@ export function WhatsAppBlastPage() {
         const markdown = htmlToWhatsApp(currentHtml);
 
         try {
-            const res = await invitationContentApi.updateContent({ wa_blast_template: markdown });
-            if (res.success) {
-                setTemplateMarkdown(markdown);
+            const success = await updateContent({ wa_blast_template: markdown });
+            if (success) {
                 toast.success(t('whatsapp_blast.save_success'));
             } else {
                 toast.error(t('whatsapp_blast.save_error'));
@@ -302,6 +293,15 @@ export function WhatsAppBlastPage() {
                 <div>
                     <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.title')}</h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm">{t('whatsapp_blast.description')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => { fetchGuests(true); fetchContent(true); }} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                 </div>
             </div>
 
@@ -471,9 +471,14 @@ export function WhatsAppBlastPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                    {loading ? (
+                                    {loading && filteredGuests.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Memuat data...</td>
+                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+                                                    Memuat data...
+                                                </div>
+                                            </td>
                                         </tr>
                                     ) : filteredGuests.length === 0 ? (
                                         <tr>

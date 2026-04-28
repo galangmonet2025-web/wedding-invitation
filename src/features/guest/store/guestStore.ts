@@ -12,9 +12,11 @@ interface GuestState {
     filters: GuestFilters;
     selectedIds: string[];
 
+    hasLoaded: boolean;
+
     setFilters: (filters: Partial<GuestFilters>) => void;
     setSelectedIds: (ids: string[]) => void;
-    fetchGuests: () => Promise<void>;
+    fetchGuests: (force?: boolean) => Promise<void>;
     createGuest: (data: CreateGuestRequest) => Promise<boolean>;
     updateGuest: (data: UpdateGuestRequest, silent?: boolean) => Promise<boolean>;
     deleteGuest: (id: string) => Promise<boolean>;
@@ -28,6 +30,7 @@ export const useGuestStore = create<GuestState>((set, get) => ({
     total: 0,
     totalPages: 0,
     loading: false,
+    hasLoaded: false,
     filters: {
         search: '',
         status: '',
@@ -37,8 +40,16 @@ export const useGuestStore = create<GuestState>((set, get) => ({
     },
     selectedIds: [],
 
-    setFilters: (newFilters: Partial<GuestFilters>) =>
+    setFilters: (newFilters: Partial<GuestFilters>) => {
+        const oldFilters = get().filters;
+        const isFilterChanged = 
+            (newFilters.status !== undefined && newFilters.status !== oldFilters.status) ||
+            (newFilters.category !== undefined && newFilters.category !== oldFilters.category) ||
+            (newFilters.limit !== undefined && newFilters.limit !== oldFilters.limit);
+
         set((state) => ({
+            // If critical filters change, mark as not loaded to force re-fetch
+            hasLoaded: isFilterChanged ? false : state.hasLoaded,
             filters: { 
                 ...state.filters, 
                 ...newFilters,
@@ -46,11 +57,14 @@ export const useGuestStore = create<GuestState>((set, get) => ({
                 status: newFilters.status !== undefined ? (newFilters.status || '') : state.filters.status,
                 category: newFilters.category !== undefined ? (newFilters.category || '') : state.filters.category,
             },
-        })),
+        }));
+    },
 
     setSelectedIds: (ids: string[]) => set({ selectedIds: ids }),
 
-    fetchGuests: async () => {
+    fetchGuests: async (force = false) => {
+        if (get().hasLoaded && !force) return;
+
         set({ loading: true });
         try {
             const response = await guestApi.getGuests(get().filters);
@@ -59,6 +73,7 @@ export const useGuestStore = create<GuestState>((set, get) => ({
                     guests: response.data.items,
                     total: response.data.total,
                     totalPages: response.data.total_pages,
+                    hasLoaded: true
                 });
             }
         } catch {
@@ -89,6 +104,7 @@ export const useGuestStore = create<GuestState>((set, get) => ({
                 guests: paged,
                 total: filtered.length,
                 totalPages: Math.ceil(filtered.length / limit),
+                hasLoaded: true
             });
         } finally {
             set({ loading: false });
@@ -100,7 +116,17 @@ export const useGuestStore = create<GuestState>((set, get) => ({
             const response = await guestApi.createGuest(data);
             if (response.success) {
                 toast.success('Guest added successfully');
-                get().fetchGuests();
+                // Optimistic update: Add to local state if filters match (simplified: always add if no status/category filter)
+                const currentFilters = get().filters;
+                if (!currentFilters.status || currentFilters.status === data.status) {
+                    set(state => ({
+                        guests: [response.data, ...state.guests],
+                        total: state.total + 1
+                    }));
+                } else {
+                    // Force re-fetch on next access if it doesn't fit current view but we want to be sure
+                    set({ hasLoaded: false });
+                }
                 return true;
             }
             toast.error(response.message);
@@ -116,15 +142,13 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         try {
             const response = await guestApi.updateGuest(data);
             if (response.success) {
-                if (!silent) {
-                    toast.success('Guest updated successfully');
-                    get().fetchGuests();
-                } else {
-                    // Update local state directly for silent mode
-                    set(state => ({
-                        guests: state.guests.map(g => g.id === data.id ? { ...g, ...data } : g)
-                    }));
-                }
+                if (!silent) toast.success('Guest updated successfully');
+                
+                // Direct state update
+                set(state => ({
+                    guests: state.guests.map(g => g.id === data.id ? { ...g, ...data } : g)
+                }));
+                
                 return true;
             }
             if (!silent) toast.error(response.message);
@@ -142,7 +166,11 @@ export const useGuestStore = create<GuestState>((set, get) => ({
             const response = await guestApi.deleteGuest(id);
             if (response.success) {
                 toast.success('Guest deleted');
-                get().fetchGuests();
+                // Direct state update
+                set(state => ({
+                    guests: state.guests.filter(g => g.id !== id),
+                    total: state.total - 1
+                }));
                 return true;
             }
             toast.error(response.message);
@@ -160,8 +188,12 @@ export const useGuestStore = create<GuestState>((set, get) => ({
             const response = await guestApi.bulkDeleteGuests(selectedIds);
             if (response.success) {
                 toast.success(`${selectedIds.length} guests deleted`);
-                set({ selectedIds: [] });
-                get().fetchGuests();
+                // Direct state update
+                set(state => ({
+                    guests: state.guests.filter(g => !selectedIds.includes(g.id)),
+                    total: state.total - selectedIds.length,
+                    selectedIds: []
+                }));
                 return true;
             }
             toast.error(response.message);
@@ -216,7 +248,7 @@ export const useGuestStore = create<GuestState>((set, get) => ({
             }
 
             if (successCount > 0) {
-                get().fetchGuests();
+                get().fetchGuests(true);
             }
             
             return { successCount, failedItems };
@@ -230,29 +262,24 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         
         // Optimistic update
         const originalGuests = get().guests;
-        if (silent) {
-            set(state => ({
-                guests: state.guests.map(g => 
-                    g.id === id ? { ...g, flag_sudah_kirim_undangan_via_whatsapp: sent } : g
-                )
-            }));
-        }
+        set(state => ({
+            guests: state.guests.map(g => 
+                g.id === id ? { ...g, flag_sudah_kirim_undangan_via_whatsapp: sent } : g
+            )
+        }));
 
         try {
             const response = await guestApi.updateGuestBlastStatus(id, sent);
             if (response.success) {
-                if (!silent) {
-                    toast.success('Status blast diperbarui');
-                    get().fetchGuests();
-                }
+                if (!silent) toast.success('Status blast diperbarui');
                 return true;
             }
-            // Rollback on failure if silent
-            if (silent) set({ guests: originalGuests });
+            // Rollback on failure
+            set({ guests: originalGuests });
             if (!silent) toast.error(response.message);
             return false;
         } catch {
-            if (silent) set({ guests: originalGuests });
+            set({ guests: originalGuests });
             if (!silent) toast.error('Gagal memperbarui status blast');
             return false;
         } finally {

@@ -22,6 +22,7 @@ export function AdditionalFeaturePage() {
     const { features, loading, fetchFeatures, addFeature, updateFeature, removeFeature } = useAdditionalFeatureStore();
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [featureToDelete, setFeatureToDelete] = useState<MstAdditionalFeature | null>(null);
     
     const initialForm: Partial<MstAdditionalFeature> = {
         feature_name: '',
@@ -66,19 +67,19 @@ export function AdditionalFeaturePage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (confirm('Yakin ingin menghapus fitur ini? Semua data terkait di tenant akan ikut terhapus!')) {
-            try {
-                const res = await additionalFeatureApi.deleteMstFeature(id);
-                if (res.success) {
-                    toast.success('Fitur berhasil dihapus');
-                    removeFeature(id);
-                } else {
-                    toast.error(res.message);
-                }
-            } catch {
-                toast.error('Gagal menghapus fitur');
+    const handleDelete = async () => {
+        if (!featureToDelete) return;
+        try {
+            const res = await additionalFeatureApi.deleteMstFeature(featureToDelete.id);
+            if (res.success) {
+                toast.success('Fitur berhasil dihapus');
+                removeFeature(featureToDelete.id);
+                setFeatureToDelete(null);
+            } else {
+                toast.error(res.message);
             }
+        } catch {
+            toast.error('Gagal menghapus fitur');
         }
     };
 
@@ -149,7 +150,7 @@ export function AdditionalFeaturePage() {
                         <HiOutlinePencil className="w-4 h-4" />
                     </button>
                     <button
-                        onClick={() => handleDelete(f.id)}
+                        onClick={() => setFeatureToDelete(f)}
                         className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
                         title="Delete"
                     >
@@ -285,6 +286,31 @@ export function AdditionalFeaturePage() {
                         <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                             Fitur Aktif
                         </label>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!featureToDelete}
+                onClose={() => setFeatureToDelete(null)}
+                title="Hapus Fitur Tambahan"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
+                                <p>Apakah Anda yakin ingin menghapus fitur <b>{featureToDelete?.feature_name}</b>?</p>
+                                <p className="mt-2 text-xs opacity-80">Semua data terkait fitur ini di seluruh tenant akan ikut terhapus permanen.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setFeatureToDelete(null)} className="btn-ghost">Batal</button>
+                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus Permanen</button>
                     </div>
                 </div>
             </Modal>
