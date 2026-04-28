@@ -81,6 +81,8 @@ export interface ActivityLog {
     id: string;
     tenant_id: string;
     user_id: string;
+    username?: string;
+    role?: string;
     action: string;
     created_at: string;
 }

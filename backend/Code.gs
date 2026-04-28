@@ -1505,9 +1505,31 @@ var ActivityLogService = {
     } else {
       logs = DB.getAll('ActivityLogs');
     }
+
+    // Get all users to join data
+    var users = DB.getAll('Users');
+    var userMap = {};
+    users.forEach(function(u) {
+      userMap[u.id] = { username: u.username, role: u.role };
+    });
+
+    // Join username and role to each log
+    var enrichedLogs = logs.map(function(log) {
+      var user = userMap[log.user_id] || { username: 'System', role: '' };
+      return {
+        id: log.id,
+        tenant_id: log.tenant_id,
+        user_id: log.user_id,
+        username: user.username,
+        role: user.role,
+        action: log.action,
+        created_at: log.created_at
+      };
+    });
+
     // Sort by created_at descending
-    logs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-    return ResponseHelper.success(logs, 'Activity logs retrieved');
+    enrichedLogs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+    return ResponseHelper.success(enrichedLogs, 'Activity logs retrieved');
   }
 };
 

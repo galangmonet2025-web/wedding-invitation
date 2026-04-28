@@ -121,9 +121,20 @@ export function ActivityPage() {
                                             <p className="text-sm font-medium text-gray-800 dark:text-white">
                                                 {formatAction(log.action)}
                                             </p>
-                                            <p className="text-xs text-gray-400">
-                                                User: {log.user_id}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                                    {log.username || 'System'}
+                                                </span>
+                                                {log.role && (
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                                        log.role === 'superadmin' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30' :
+                                                        log.role === 'tenant_admin' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30' :
+                                                        'bg-gray-100 text-gray-600 dark:bg-gray-700'
+                                                    }`}>
+                                                        {log.role}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <span className="text-xs text-gray-400 whitespace-nowrap">{formatTime(log.created_at)}</span>
                                     </div>
