@@ -686,7 +686,7 @@ export function InvitationContentPage() {
                                                 {timelineItems.map((item, idx) => (
                                                     <div key={idx} className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 relative group space-y-3">
                                                         <button
-                                                            onClick={() => setTimelineItems(prev => prev.filter((_, i) => i !== idx))}
+                                                            onClick={() => setTimelineItems(timelineItems.filter((_, i) => i !== idx))}
                                                             className="absolute top-3 right-3 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-900 rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                                                             title="Remove story"
                                                         >
@@ -721,7 +721,7 @@ export function InvitationContentPage() {
                                                     </div>
                                                 ))}
                                                 <button
-                                                    onClick={() => setTimelineItems(prev => [...prev, { tanggal: '', judul: '', deskripsi: '' }])}
+                                                    onClick={() => setTimelineItems([...timelineItems, { tanggal: '', judul: '', deskripsi: '' }])}
                                                     className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 hover:text-gold-500 hover:border-gold-300 dark:hover:border-gold-700 hover:bg-gold-50 dark:hover:bg-gold-900/10 transition-colors flex items-center justify-center gap-2"
                                                 >
                                                     <HiOutlinePlus className="w-4 h-4" />
