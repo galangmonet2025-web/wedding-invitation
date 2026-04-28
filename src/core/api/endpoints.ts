@@ -64,17 +64,17 @@ export const authApi = {
 
 export const dashboardApi = {
     getTenantDashboard: async (): Promise<ApiResponse<TenantDashboard>> => {
-        const res = await apiClient.post('', { action: 'getDashboard' });
+        const res = await apiClient.post('', { action: 'getDashboard' }, { skipLoader: true } as any);
         return res.data;
     },
 
     getGlobalDashboard: async (): Promise<ApiResponse<GlobalDashboard>> => {
-        const res = await apiClient.post('', { action: 'getGlobalDashboard' });
+        const res = await apiClient.post('', { action: 'getGlobalDashboard' }, { skipLoader: true } as any);
         return res.data;
     },
 
     getPendingActions: async (): Promise<ApiResponse<{ incomplete_tenants: any[] }>> => {
-        const res = await apiClient.post('', { action: 'getPendingActions' });
+        const res = await apiClient.post('', { action: 'getPendingActions' }, { skipLoader: true } as any);
         return res.data;
     },
 };
@@ -399,7 +399,7 @@ export const reviewApi = {
     },
 
     getTenantReview: async (): Promise<ApiResponse<ReviewAndRating | null>> => {
-        const res = await apiClient.post('', { action: 'getReviewByTenant' });
+        const res = await apiClient.post('', { action: 'getReviewByTenant' }, { skipLoader: true } as any);
         return res.data;
     },
 };

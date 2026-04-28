@@ -68,6 +68,7 @@ export function DashboardLayout() {
     const handleLogout = () => {
         logout();
         sessionStorage.removeItem('review_fill_later');
+        sessionStorage.removeItem('review_checked_this_session');
         navigate('/login');
     };
 

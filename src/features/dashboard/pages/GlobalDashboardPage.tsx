@@ -37,9 +37,16 @@ import { useTenantStore } from '@/features/admin/store/tenantStore';
 
 const COLORS = ['#C6A769', '#10B981', '#6366F1'];
 
+import { useDashboardStore } from '../store/dashboardStore';
+
 export function GlobalDashboardPage() {
-    const [dashboard, setDashboard] = useState<GlobalDashboard | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { 
+        globalDashboard: dashboard, 
+        loading, 
+        fetchGlobalDashboard,
+        hasLoadedGlobal 
+    } = useDashboardStore();
+
     const [pendingTenants, setPendingTenants] = useState<any[]>([]);
     const { themes, fetchThemes } = useThemeStore();
     const { updateTenant: updateTenantInStore, fetchTenants } = useTenantStore();
@@ -63,19 +70,14 @@ export function GlobalDashboardPage() {
         fetchThemes(); // Background fetch if not loaded
     }, []);
 
-    const fetchDashboard = async () => {
-        try {
-            const response = await dashboardApi.getGlobalDashboard();
-            if (response.success && response.data) {
-                setDashboard(response.data);
-            } else {
-                setDashboard(null);
-            }
-        } catch {
-            setDashboard(null);
-            toast.error('Failed to load global dashboard');
-        } finally {
-            setLoading(false);
+    const fetchDashboard = async (force = false) => {
+        if (force) {
+            toast.loading('Refreshing dashboard...', { id: 'refresh-global' });
+        }
+        const success = await fetchGlobalDashboard(force);
+        if (force) {
+            if (success) toast.success('Dashboard updated!', { id: 'refresh-global' });
+            else toast.error('Failed to refresh dashboard', { id: 'refresh-global' });
         }
     };
 
@@ -141,7 +143,6 @@ export function GlobalDashboardPage() {
         }
     };
 
-    if (loading) return <PageLoader />;
 
     // Helper for empty state detection
     const isEmpty = !dashboard || (dashboard.total_tenants === 0 && dashboard.total_guests_system === 0);
@@ -165,10 +166,32 @@ export function GlobalDashboardPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div>
-                <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Global Dashboard</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Platform-wide statistics and insights</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Global Dashboard</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Platform-wide statistics and insights</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => fetchDashboard(true)}
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
             </div>
+
+            {!dashboard && loading ? (
+                <div className="min-h-[400px] flex items-center justify-center">
+                    <div className="w-10 h-10 border-4 border-gold-500/20 border-t-gold-500 rounded-full animate-spin" />
+                </div>
+            ) : !dashboard ? (
+                <div className="card text-center py-12">
+                    <p className="text-gray-500">No dashboard data available.</p>
+                </div>
+            ) : (
+                <>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
@@ -467,6 +490,8 @@ export function GlobalDashboardPage() {
                     onClose={() => setLightboxUrl(null)} 
                 />
             )}
+            </>
+        )}
         </div>
     );
 }

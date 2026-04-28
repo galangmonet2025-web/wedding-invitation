@@ -34,9 +34,17 @@ import {
 
 const PIE_COLORS = ['#10B981', '#EF4444', '#F59E0B'];
 
+import { useDashboardStore } from '../store/dashboardStore';
+import { HiOutlineRefresh } from 'react-icons/hi';
+
 export function DashboardPage() {
-    const [dashboard, setDashboard] = useState<TenantDashboard | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { 
+        tenantDashboard: dashboard, 
+        loading, 
+        fetchTenantDashboard, 
+        hasLoadedTenant 
+    } = useDashboardStore();
+    
     const { tenant } = useAuthStore();
     const { t } = useTranslation();
 
@@ -52,40 +60,20 @@ export function DashboardPage() {
         checkReviewStatus();
     }, [tenant?.id]);
 
-    const fetchDashboard = async () => {
-        try {
-            const response = await dashboardApi.getTenantDashboard();
-            if (response.success) {
-                setDashboard(response.data);
-            } else {
-                toast.error(response.message);
-            }
-        } catch {
-            toast.error('Failed to load dashboard');
-            setDashboard({
-                total_guests: 0,
-                total_confirmed: 0,
-                total_declined: 0,
-                total_pending: 0,
-                total_wishes: 0,
-                total_gifts: 0,
-                total_nominal: 0,
-                guest_growth: [],
-                rsvp_breakdown: [
-                    { name: 'Confirmed', value: 0 },
-                    { name: 'Declined', value: 0 },
-                    { name: 'Pending', value: 0 },
-                ],
-            });
-        } finally {
-            setLoading(false);
+    const fetchDashboard = async (force = false) => {
+        if (force) {
+            toast.loading('Refreshing dashboard...', { id: 'refresh-dashboard' });
+        }
+        const success = await fetchTenantDashboard(force);
+        if (force) {
+            if (success) toast.success('Dashboard updated!', { id: 'refresh-dashboard' });
+            else toast.error('Failed to refresh dashboard', { id: 'refresh-dashboard' });
         }
     };
 
     const checkReviewStatus = async () => {
         if (!tenant?.wedding_date) return;
 
-        // Parse YYYY-MM-DD manually to avoid UTC issues
         const dateParts = tenant.wedding_date.split('-');
         if (dateParts.length !== 3) return;
         
@@ -103,18 +91,25 @@ export function DashboardPage() {
         
         const passed = today >= dayAfterWedding;
         setIsHPlusOnePassed(passed);
+
+        // Only check API once per session for the auto-modal
+        const hasChecked = sessionStorage.getItem('review_checked_this_session');
         
         if (passed) {
             try {
-                const res = await reviewApi.getTenantReview();
-                if (res.success) {
-                    if (res.data) {
-                        setHasSubmittedReview(true);
-                    } else {
-                        // Not reviewed yet, check if they clicked "Fill Later" in this session
-                        const fillLater = sessionStorage.getItem('review_fill_later');
-                        if (!fillLater) {
-                            setShowReviewModal(true);
+                // If we haven't checked the API this session, do it now
+                if (!hasChecked) {
+                    const res = await reviewApi.getTenantReview();
+                    sessionStorage.setItem('review_checked_this_session', 'true');
+                    
+                    if (res.success) {
+                        if (res.data) {
+                            setHasSubmittedReview(true);
+                        } else {
+                            const fillLater = sessionStorage.getItem('review_fill_later');
+                            if (!fillLater) {
+                                setShowReviewModal(true);
+                            }
                         }
                     }
                 }
@@ -152,9 +147,6 @@ export function DashboardPage() {
         setShowReviewModal(false);
     };
 
-    if (loading) return <PageLoader />;
-    if (!dashboard) return null;
-
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
     };
@@ -171,9 +163,27 @@ export function DashboardPage() {
                         {tenant ? `${t('dashboard.wedding_date')}: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : t('dashboard.overview')}
                     </p>
                 </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => fetchDashboard(true)}
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                 </div>
             </div>
 
+            {!dashboard && loading ? (
+                <div className="min-h-[400px] flex items-center justify-center">
+                    <div className="w-10 h-10 border-4 border-gold-500/20 border-t-gold-500 rounded-full animate-spin" />
+                </div>
+            ) : !dashboard ? (
+                <div className="card text-center py-12">
+                    <p className="text-gray-500">No dashboard data available.</p>
+                </div>
+            ) : (
+                <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <StatCard
@@ -392,6 +402,8 @@ export function DashboardPage() {
                     </div>
                 </div>
             </Modal>
+                </>
+            )}
         </div>
     );
 }
