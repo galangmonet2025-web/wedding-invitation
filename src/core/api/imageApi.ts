@@ -36,12 +36,12 @@ export const imageApi = {
     /**
      * Delete an image from Google Drive and the Images sheet.
      */
-    deleteImage: async (imageId: string): Promise<ApiResponse<null>> => {
+    deleteImage: async (imageId: string, config: any = {}): Promise<ApiResponse<null>> => {
         try {
             const response = await apiClient.post<any, { data: ApiResponse<null> }>('', {
                 action: 'deleteImage',
                 id: imageId
-            });
+            }, config);
             return response.data;
         } catch (error: any) {
             console.error('API Error (deleteImage):', error);

@@ -148,3 +148,10 @@
 .animate-shake {
   animation: shake 0.45s ease-in-out;
 }
+
+/* Lightbox Open States */
+.lightbox-open #root {
+  filter: blur(4px);
+  pointer-events: none !important;
+  user-select: none !important;
+}

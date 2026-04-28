@@ -271,8 +271,8 @@ export const invitationContentApi = {
         return res.data;
     },
 
-    updateContent: async (data: Partial<InvitationContent>): Promise<ApiResponse<InvitationContent>> => {
-        const res = await apiClient.post('', { action: 'updateInvitationContent', ...data });
+    updateContent: async (data: Partial<InvitationContent>, config: any = {}): Promise<ApiResponse<InvitationContent>> => {
+        const res = await apiClient.post('', { action: 'updateInvitationContent', ...data }, config);
         return res.data;
     },
 };

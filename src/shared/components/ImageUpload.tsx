@@ -4,7 +4,9 @@ import { HiOutlineUpload, HiOutlineTrash, HiOutlinePhotograph } from 'react-icon
 import toast from 'react-hot-toast';
 import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage } from './ProxyImage';
+import { Modal } from './Modal';
 import { useBackgroundTaskStore } from '../store/backgroundTaskStore';
+import { setCachedImage } from './ProxyImage';
 import type { ImageRecord } from '@/types';
 
 interface ImageUploadProps {
@@ -19,6 +21,8 @@ interface ImageUploadProps {
     allowMultiple?: boolean;
     maxFiles?: number;
 }
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function ImageUpload({
     imageType,
@@ -113,8 +117,10 @@ export function ImageUpload({
 
         let successCount = 0;
         let failCount = 0;
+        let failedFiles: string[] = [];
 
         for (let i = 0; i < total; i++) {
+            if (i > 0) await sleep(1000); // Beri jeda 1 detik antar upload agar lebih stabil
             const file = filesArray[i];
             setUploadProgress({ current: i + 1, total });
 
@@ -122,24 +128,26 @@ export function ImageUpload({
             if (!file.type.startsWith('image/')) {
                 toast.error(`File "${file.name}" bukan gambar yang valid.`);
                 failCount++;
+                failedFiles.push(file.name);
                 updateTask(taskId, { 
                     failCount, 
+                    failedFiles,
                     progress: Math.round(((successCount + failCount) / total) * 100) 
                 });
                 continue;
             }
 
-            if (file.size > 5 * 1024 * 1024) {
-                toast.error(`Ukuran "${file.name}" terlalu besar (Max 5MB).`);
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error(`Ukuran "${file.name}" terlalu besar (Max 10MB).`);
                 failCount++;
+                failedFiles.push(file.name);
                 updateTask(taskId, { 
                     failCount, 
+                    failedFiles,
                     progress: Math.round(((successCount + failCount) / total) * 100) 
                 });
                 continue;
             }
-
-            // No toast.loading here, using background task indicator instead
 
             try {
                 // Compress image
@@ -156,24 +164,50 @@ export function ImageUpload({
                 };
                 const dims = await getDimensions();
 
-                // Convert to Base64
-                const base64Data = await convertToBase64(compressedFile);
+                // Convert to Data URL (for local cache and API)
+                const dataUrl = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(compressedFile);
+                });
+                const base64Data = dataUrl.split(',')[1];
 
-                // No toast updates
+                // Upload via API with Retry Logic
+                let response = null;
+                let retries = 0;
+                const maxRetries = 2;
 
-                // Upload via API - use skipLoader if background
-                const response = await imageApi.uploadImage({
-                    image_type: imageType,
-                    file_name: file.name.replace(/\.[^/.]+$/, "") + ".webp",
-                    base64_data: base64Data,
-                    mime_type: 'image/webp',
-                    width: dims.w,
-                    height: dims.h,
-                    size_kb: Math.round(compressedFile.size / 1024)
-                }, { skipLoader: true } as any);
+                while (retries <= maxRetries) {
+                    try {
+                        response = await imageApi.uploadImage({
+                            image_type: imageType,
+                            file_name: file.name.replace(/\.[^/.]+$/, "") + ".webp",
+                            base64_data: base64Data,
+                            mime_type: 'image/webp',
+                            width: dims.w,
+                            height: dims.h,
+                            size_kb: Math.round(compressedFile.size / 1024)
+                        }, { skipLoader: true } as any);
 
-                if (response.success && response.data) {
+                        if (response.success) break;
+                        
+                        retries++;
+                        if (retries <= maxRetries) await sleep(1000 * retries); // Exponential backoff
+                    } catch (err) {
+                        retries++;
+                        if (retries > maxRetries) throw err;
+                        await sleep(1000 * retries);
+                    }
+                }
+
+                if (response && response.success && response.data) {
                     successCount++;
+
+                    // Cache the FULL Data URL locally so ProxyImage can show it instantly
+                    if (response.data.cdn_url) {
+                        setCachedImage(response.data.cdn_url, dataUrl);
+                    }
 
                     const newRecord: ImageRecord = {
                         id: response.data.id,
@@ -191,21 +225,30 @@ export function ImageUpload({
                     onUploadSuccess(newRecord);
                 } else {
                     failCount++;
+                    failedFiles.push(file.name);
                 }
 
             } catch (error: any) {
                 failCount++;
+                failedFiles.push(file.name);
                 console.error('Upload Error:', error);
             }
 
             // Update background task status
             const isFinished = (successCount + failCount) === total;
+            let details = isFinished ? `Selesai: ${successCount} berhasil, ${failCount} gagal` : undefined;
+            
+            if (isFinished && failCount > 0) {
+                details += ` (Gagal: ${failedFiles.join(', ')})`;
+            }
+
             updateTask(taskId, {
                 successCount,
                 failCount,
+                failedFiles,
                 progress: Math.round(((successCount + failCount) / total) * 100),
                 status: isFinished ? (failCount === 0 ? 'success' : 'error') : 'running',
-                details: isFinished ? `Selesai: ${successCount} berhasil, ${failCount} gagal` : undefined
+                details
             });
         }
 
@@ -214,25 +257,24 @@ export function ImageUpload({
 
     };
 
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const handleDelete = async () => {
         if (!currentImage?.id) return;
-
-        if (!confirm('Apakah Yakin ingin menghapus gambar ini?')) return;
-
         setDeleting(true);
-        const toastId = toast.loading('Menghapus gambar...');
+        setShowDeleteModal(false);
 
         try {
-            const response = await imageApi.deleteImage(currentImage.id);
+            const response = await imageApi.deleteImage(currentImage.id, { skipLoader: true } as any);
             if (response.success) {
-                toast.success('Gambar berhasil dihapus!', { id: toastId });
+                toast.success('Gambar berhasil dihapus!');
                 onDeleteSuccess(currentImage.id);
             } else {
-                toast.error(response.message || 'Gagal menghapus gambar', { id: toastId });
+                toast.error(response.message || 'Gagal menghapus gambar');
             }
         } catch (error: any) {
             console.error('Delete Error:', error);
-            toast.error(error.message || 'Terjadi kesalahan saat menghapus gambar', { id: toastId });
+            toast.error(error.message || 'Terjadi kesalahan saat menghapus gambar');
         } finally {
             setDeleting(false);
         }
@@ -275,48 +317,57 @@ export function ImageUpload({
                 </div>
                 {currentImage && (
                     <button
-                        onClick={handleDelete}
+                        onClick={() => setShowDeleteModal(true)}
                         disabled={deleting}
                         className="text-xs flex items-center gap-1 text-red-600 hover:text-red-700 font-medium bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-md transition-colors"
                     >
-                        {deleting ? (
-                            <div className="w-3 h-3 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
-                        ) : (
-                            <HiOutlineTrash className="w-3.5 h-3.5" />
-                        )}
+                        <HiOutlineTrash className="w-3.5 h-3.5" />
                         Hapus Gambar
                     </button>
                 )}
             </div>
 
             {currentImage ? (
-                <div
-                    className={`relative w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 ${aspectClass} group`}
-                >
-                    <ProxyImage
-                        src={currentImage.cdn_url || currentImage.drive_url}
-                        alt={title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                    />
+                <div className="space-y-1.5 animate-fade-in">
+                    <div
+                        className={`relative w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 ${aspectClass} group`}
+                    >
+                        <ProxyImage
+                            src={currentImage.cdn_url || currentImage.drive_url}
+                            alt={title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                        />
 
-                    {/* Dark gradient for text info at the bottom */}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-3 px-3 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <p className="text-white text-[11px] font-medium truncate leading-tight">{currentImage.file_name}</p>
-                        <p className="text-white/80 text-[9px] leading-tight">{currentImage.width}x{currentImage.height} • {currentImage.size_kb} KB</p>
-                    </div>
-
-                    {/* Clickable Overlay for Lightbox */}
-                    {onClick && (
-                        <div
-                            className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-0"
-                            onClick={() => onClick(currentImage)}
-                        >
-                            <div className="bg-white/90 dark:bg-black/50 p-2 rounded-full backdrop-blur-sm shadow-sm">
-                                <HiOutlinePhotograph className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-                            </div>
+                        {/* Dark gradient for text info at the bottom */}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-3 px-3 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <p className="text-white text-[11px] font-medium truncate leading-tight">{currentImage.file_name}</p>
+                            <p className="text-white/80 text-[9px] leading-tight">{currentImage.width}x{currentImage.height} • {currentImage.size_kb} KB</p>
                         </div>
-                    )}
+
+                        {/* Clickable Overlay for Lightbox */}
+                        {onClick && (
+                            <div
+                                className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-0"
+                                onClick={() => onClick(currentImage)}
+                            >
+                                <div className="bg-white/90 dark:bg-black/50 p-2 rounded-full backdrop-blur-sm shadow-sm">
+                                    <HiOutlinePhotograph className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Deleting Overlay */}
+                        {deleting && (
+                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20 backdrop-blur-[1px] animate-fade-in">
+                                <div className="w-8 h-8 border-[3px] border-white/20 border-t-red-500 rounded-full animate-spin mb-2" />
+                                <span className="text-[10px] text-white font-medium">Menghapus...</span>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate text-center px-1 font-medium italic">
+                        {currentImage.file_name}
+                    </p>
                 </div>
             ) : (
                 <label
@@ -374,6 +425,38 @@ export function ImageUpload({
                     />
                 </label>
             )}
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                title="Hapus Gambar"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus gambar <b>{currentImage?.file_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setShowDeleteModal(false)} className="btn-ghost" disabled={deleting}>Batal</button>
+                        <button 
+                            onClick={handleDelete} 
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={deleting}
+                        >
+                            {deleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

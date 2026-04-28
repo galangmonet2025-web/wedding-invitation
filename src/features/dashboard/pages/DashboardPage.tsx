@@ -171,16 +171,7 @@ export function DashboardPage() {
                         {tenant ? `${t('dashboard.wedding_date')}: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : t('dashboard.overview')}
                     </p>
                 </div>
-                {tenant?.domain_slug && (
-                    <a
-                        href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary text-sm flex items-center gap-2"
-                    >
-                        💌 {t('dashboard.view_invitation')}
-                    </a>
-                )}
+                </div>
             </div>
 
             {/* Stats Grid */}

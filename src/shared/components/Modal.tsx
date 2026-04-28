@@ -10,6 +10,7 @@ interface ModalProps {
     children: React.ReactNode;
     size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
     footer?: React.ReactNode;
+    onConfirm?: () => void;
 }
 
 const sizeClasses = {
@@ -20,24 +21,30 @@ const sizeClasses = {
     '2xl': 'max-w-6xl',
 };
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', footer }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', footer, onConfirm }: ModalProps) {
     const overlayRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            } else if (e.key === 'Enter' && onConfirm) {
+                // Prevent Enter from triggering other things if modal is open
+                e.preventDefault();
+                onConfirm();
+            }
         };
 
         if (isOpen) {
-            document.addEventListener('keydown', handleEscape);
+            document.addEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'hidden';
         }
 
         return () => {
-            document.removeEventListener('keydown', handleEscape);
+            document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = '';
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, onConfirm]);
 
     if (!isOpen) return null;
 

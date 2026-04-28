@@ -21,7 +21,7 @@ const getCachedImage = (key: string): string | null => {
 };
 
 // Helper to set cache
-const setCachedImage = (key: string, base64Src: string) => {
+export const setCachedImage = (key: string, base64Src: string) => {
     memoryImageCache.set(key, base64Src);
     try {
         localStorage.setItem(`img_cache_${key}`, base64Src);
@@ -62,19 +62,35 @@ export function ProxyImage({ src, ...props }: ProxyImageProps) {
             }
 
             setLoading(true);
-            // Fetch proxy raw data URI
-            fetch(src)
-                .then(res => res.text())
-                .then(data => {
-                    if (data.startsWith('data:image') && isMounted) {
-                        setCachedImage(src, data);
-                        setImgSrc(data);
+            
+            const fetchWithRetry = async (url: string, retries = 3): Promise<void> => {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    
+                    const data = await res.text();
+                    if (data.startsWith('data:image')) {
+                        if (isMounted) {
+                            setCachedImage(url, data);
+                            setImgSrc(data);
+                            setLoading(false);
+                        }
+                    } else {
+                        // If it's not a data URL, it might be an error message from GAS
+                        throw new Error("Invalid image data received");
                     }
-                })
-                .catch(err => console.error("Failed to load proxied image:", err))
-                .finally(() => {
-                    if (isMounted) setLoading(false);
-                });
+                } catch (err) {
+                    if (retries > 0 && isMounted) {
+                        console.warn(`Retrying image load (${retries} left): ${url}`);
+                        setTimeout(() => fetchWithRetry(url, retries - 1), 2000); // Wait 2s before retry
+                    } else {
+                        console.error("Failed to load proxied image after retries:", err);
+                        if (isMounted) setLoading(false);
+                    }
+                }
+            };
+
+            fetchWithRetry(src);
         } else {
             setImgSrc(src);
         }

@@ -99,6 +99,14 @@ export function BackgroundTaskModal({ isOpen, onClose }: BackgroundTaskModalProp
                                                 {task.details && (
                                                     <p className="text-[10px] text-gray-400 italic mt-1">{task.details}</p>
                                                 )}
+                                                {task.failedFiles && task.failedFiles.length > 0 && (
+                                                    <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/10 rounded border border-red-100 dark:border-red-900/30">
+                                                        <p className="text-[9px] font-bold text-red-600 dark:text-red-400 uppercase mb-1">Daftar Gagal:</p>
+                                                        <ul className="text-[9px] text-red-500 space-y-0.5">
+                                                            {task.failedFiles.map((f, idx) => <li key={idx}>• {f}</li>)}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-4 py-4">

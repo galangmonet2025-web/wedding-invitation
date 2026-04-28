@@ -26,6 +26,7 @@ import {
     HiOutlineChatAlt2,
     HiOutlinePuzzle,
     HiOutlineKey,
+    HiOutlineExternalLink,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
@@ -236,6 +237,20 @@ export function DashboardLayout() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Open Invitation Shortcut */}
+                            {tenant?.domain_slug && (
+                                <a
+                                    href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-gold-500 text-gray-500 hover:text-gold-600 transition-all flex items-center gap-2 group shadow-sm"
+                                    title={t('topbar.open_invitation', 'Buka Undangan')}
+                                >
+                                    <HiOutlineExternalLink className="w-5 h-5" />
+                                    <span className="hidden md:inline text-[11px] font-bold uppercase tracking-wider">{t('topbar.open_invitation', 'Buka Undangan')}</span>
+                                </a>
+                            )}
+
                             {/* Background Tasks Indicator */}
                             <BackgroundTaskIndicator />
 

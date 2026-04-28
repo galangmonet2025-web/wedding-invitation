@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { invitationContentApi, tenantApi, themeApi } from '@/core/api/endpoints';
+import { useEffect, useState, useMemo } from 'react';
+import { tenantApi } from '@/core/api/endpoints';
+import { useInvitationContentStore } from '../store/invitationContentStore';
 import { PageLoader } from '@/shared/components/Loading';
 import type { InvitationContent, Theme } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +24,8 @@ import {
     HiOutlineChevronLeft,
     HiOutlineChevronRight,
     HiOutlineChevronDown,
-    HiOutlineX
+    HiOutlineX,
+    HiOutlineRefresh
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -35,6 +37,7 @@ import { imageApi } from '@/core/api/imageApi';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import type { ImageRecord } from '@/types';
 import { useThemeStore } from '@/features/admin/store/themeStore';
+import { Lightbox } from '@/shared/components/Lightbox';
 
 
 export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, isOpen, onToggle }: {
@@ -74,11 +77,23 @@ export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, is
 };
 
 export function InvitationContentPage() {
-    const [content, setContent] = useState<Partial<InvitationContent> | null>(null);
+    const { 
+        content, 
+        images, 
+        loading, 
+        hasLoadedContent, 
+        hasLoadedImages,
+        fetchContent, 
+        fetchImages, 
+        updateContent,
+        setContent,
+        deleteImage,
+        addImage,
+        removeImageLocally
+    } = useInvitationContentStore();
+
     const { themes, fetchThemes } = useThemeStore();
     const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
-    const [timelineItems, setTimelineItems] = useState<{ tanggal: string; judul: string; deskripsi: string }[]>([]);
-    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { tenant } = useAuthStore();
     const [iframeKey, setIframeKey] = useState(0);
@@ -89,6 +104,24 @@ export function InvitationContentPage() {
 
     const [isDirty, setIsDirty] = useState(false);
     const isUploadingGallery = tasks.some(t => t.status === 'running' && t.id.startsWith('upload-gallery'));
+
+    // Compute timelineItems from content.timeline_kisah
+    const timelineItems = useMemo(() => {
+        try {
+            if (content?.timeline_kisah) {
+                const parsed = JSON.parse(content.timeline_kisah);
+                return Array.isArray(parsed) ? parsed : [];
+            }
+        } catch (e) {
+            console.error("Failed to parse timeline JSON:", e);
+        }
+        return [];
+    }, [content?.timeline_kisah]);
+
+    const setTimelineItems = (items: any[]) => {
+        setContent({ ...content, timeline_kisah: JSON.stringify(items) });
+        setIsDirty(true);
+    };
 
 
     const steps = [
@@ -108,13 +141,14 @@ export function InvitationContentPage() {
     };
 
     // Images State
-    const [images, setImages] = useState<ImageRecord[]>([]);
     const [lightboxImageIndex, setLightboxImageIndex] = useState<number | null>(null);
 
     const openLightbox = (image: ImageRecord) => {
         const idx = images.findIndex(img => img.id === image.id);
         if (idx !== -1) setLightboxImageIndex(idx);
     };
+
+    const closeLightbox = () => setLightboxImageIndex(null);
 
     const handleNextImage = () => {
         if (lightboxImageIndex !== null) {
@@ -132,180 +166,21 @@ export function InvitationContentPage() {
     const [showTutorialModal, setShowTutorialModal] = useState(false);
 
     useEffect(() => {
-        fetchContent();
-    }, []);
+        fetchThemes();
+        fetchContent(false, tenant);
+        fetchImages();
+        
+        if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
+    }, [tenant]);
 
-    // Helpers to normalize data from GAS backend
-    // GAS returns "null" string for empty cells, and dates/times as ISO timestamps
-    const sanitizeValue = (val: any): string => {
-        if (val === null || val === undefined || val === 'null') return '';
-        return String(val);
-    };
 
-    const parseApiDate = (val: any): string => {
-        if (!val || val === 'null') return '';
-        const str = String(val);
-        // Already in YYYY-MM-DD format
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-        // ISO timestamp like "+020521-02-01T17:00:00.000Z" or "2022-05-21T..."
-        try {
-            const d = new Date(str);
-            if (!isNaN(d.getTime())) {
-                const yyyy = d.getFullYear();
-                if (yyyy > 9999 || yyyy < 1900) return ''; // Invalid year
-                return `${yyyy}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            }
-        } catch { /* fall through */ }
-        return '';
-    };
-
-    const parseApiTime = (val: any): string => {
-        if (!val || val === 'null') return '';
-        const str = String(val);
-        // Already in HH:mm format
-        if (/^\d{2}:\d{2}$/.test(str)) return str;
-        // ISO timestamp like "1899-12-30T00:18:48.000Z" — extract UTC time as HH:mm
-        try {
-            const d = new Date(str);
-            if (!isNaN(d.getTime())) {
-                return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
-            }
-        } catch { /* fall through */ }
-        return '';
-    };
-
-    const fetchContent = async () => {
-        const defaultOpeningText = "Kepada Yth\nBapak/Ibu/Saudara/i :";
-        const defaultValues: Partial<InvitationContent> = {
-            tanggal_akad: tenant?.wedding_date || '',
-            flag_lokasi_akad_dan_resepsi_berbeda: false,
-            akad_map: '',
-            nama_lokasi_akad: '',
-            keterangan_lokasi_akad: '',
-            resepsi_map: '',
-            nama_lokasi_resepsi: '',
-            keterangan_lokasi_resepsi: '',
-            flag_tampilkan_nama_orang_tua: true,
-            nama_bapak_laki_laki: '',
-            nama_ibu_laki_laki: '',
-            nama_bapak_perempuan: '',
-            nama_ibu_perempuan: '',
-            flag_tampilkan_sosial_media_mempelai: false,
-            account_media_sosial_laki_laki: '',
-            account_media_sosial_perempuan: '',
-            is_fitur_tamu_spesial: 'false',
-            flag_pakai_live_streaming: 'false',
-            link_live_streaming: '',
-            platform_live_streaming: '',
-            flag_pakai_timeline_kisah: 'false',
-            timeline_kisah: '',
-            tampilkan_amplop_online: true,
-            nama_bank_1: '',
-            nama_rekening_bank_1: '',
-            nomor_rekening_bank_1: '',
-            nama_bank_2: '',
-            nama_rekening_bank_2: '',
-            nomor_rekening_bank_2: '',
-            custom_kalimat_1: '',
-            custom_kalimat_2: '',
-            custom_kalimat_3: '',
-            custom_kalimat_4: '',
-            flag_kirim_hadiah_offline: false,
-            map_kirim_hadiah_offline: '',
-            nama_lokasi_kirim_hadiah_offline: '',
-            alamat_lokasi_kirim_hadiah_offline: '',
-            flag_pakai_kalimat_pembuka_custom: false,
-            kalimat_pembuka_undangan: defaultOpeningText,
-            flag_pakai_kalimat_penutup_custom: false,
-            kalimat_penutup_undangan: '',
-            link_backsound_music: '',
-            bride_name: tenant?.bride_name || '',
-            groom_name: tenant?.groom_name || '',
-            wedding_date: tenant?.wedding_date || '',
-        };
-
-        try {
-            fetchThemes(); // Background fetch if not loaded
-            const [contentRes, imagesRes] = await Promise.all([
-                invitationContentApi.getContent(),
-                imageApi.getTenantImages()
-            ]);
-
-            if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
-
-            if (imagesRes.success && imagesRes.data) {
-                setImages(imagesRes.data);
-            }
-
-            if (contentRes.success && contentRes.data) {
-                const response = contentRes;
-                // Merge default values with backend data so no fields are completely undefined.
-                const currentData = { ...defaultValues, ...response.data };
-
-                // Sanitize null strings (GAS returns "null" for empty cells)
-                for (const key of Object.keys(currentData) as Array<keyof typeof currentData>) {
-                    const v = currentData[key];
-                    if (typeof v === 'string' && v === 'null') {
-                        (currentData as any)[key] = '';
-                    }
-                }
-
-                // Convert date fields from ISO to YYYY-MM-DD for <input type="date">
-                currentData.wedding_date = parseApiDate(currentData.wedding_date) || tenant?.wedding_date || '';
-                currentData.tanggal_akad = parseApiDate(currentData.tanggal_akad) || tenant?.wedding_date || '';
-
-                // Convert time fields from ISO to HH:mm for <input type="time">
-                currentData.jam_awal_akad = parseApiTime(currentData.jam_awal_akad);
-                currentData.jam_akhir_akad = parseApiTime(currentData.jam_akhir_akad);
-                currentData.jam_awal_resepsi = parseApiTime(currentData.jam_awal_resepsi);
-                currentData.jam_akhir_resepsi = parseApiTime(currentData.jam_akhir_resepsi);
-
-                // Sanitize text fields that might be null/undefined
-                currentData.keterangan_lokasi_resepsi = sanitizeValue(currentData.keterangan_lokasi_resepsi);
-                currentData.keterangan_lokasi_akad = sanitizeValue(currentData.keterangan_lokasi_akad);
-
-                // Ensure default opening text is applied if no custom text is set
-                if (!getBool(currentData.flag_pakai_kalimat_pembuka_custom) && !currentData.kalimat_pembuka_undangan) {
-                    currentData.kalimat_pembuka_undangan = defaultOpeningText;
-                }
-
-                setContent(currentData);
-                parseTimeline(currentData.timeline_kisah);
-            } else {
-                // Initialize with default empty values if backend returns null completely
-                setContent(defaultValues);
-            }
-        } catch (err) {
-            console.error('Fetch content error:', err);
-            toast.error(t('invitation_content.load_error', 'Failed to load invitation content settings'));
-            // Ensure content is set to defaults even after error
-            setContent(prev => prev ?? defaultValues);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const parseTimeline = (jsonString: any) => {
-        try {
-            if (jsonString) {
-                const parsed = JSON.parse(jsonString);
-                if (Array.isArray(parsed)) {
-                    setTimelineItems(parsed as { tanggal: string; judul: string; deskripsi: string }[]);
-                }
-            }
-        } catch (e) {
-            console.error("Failed to parse timeline JSON:", e, jsonString);
-        }
-    };
 
     const handleSave = async () => {
         if (!content || !tenant) return;
+        setSaving(false); // No global loading needed since we use isDirty and saving state in button
         setSaving(true);
         try {
-            // Update the string value before saving
-            const payload = { ...content, timeline_kisah: JSON.stringify(timelineItems) };
-
-            const contentRes = await invitationContentApi.updateContent(payload);
+            const success = await updateContent(content);
 
             // Save theme selection if changed
             if (selectedThemeId !== tenant.theme_id) {
@@ -313,20 +188,15 @@ export function InvitationContentPage() {
                     id: tenant.id,
                     theme_id: selectedThemeId || undefined
                 });
-                // We mutate tenant locally so it doesn't trigger another save loop if clicked again
                 tenant.theme_id = selectedThemeId || undefined;
             }
 
-            if (contentRes.success) {
+            if (success) {
                 toast.success(t('invitation_content.save_success'));
                 setIsDirty(false);
-                // Don't overwrite content state with response.data — the backend
-                // may not return all fields (e.g. tenant-injected wedding_date,
-                // time fields, resepsi location). The state already has the
-                // correct data that was just saved.
-                setIframeKey(prev => prev + 1); // Force iframe reload
+                setIframeKey(prev => prev + 1);
             } else {
-                toast.error(contentRes.message || 'Failed to save settings');
+                toast.error('Failed to save settings');
             }
         } catch (error: any) {
             console.error('Save error:', error);
@@ -337,31 +207,16 @@ export function InvitationContentPage() {
     };
 
     const updateField = (field: keyof InvitationContent, value: any) => {
-        setContent(prev => prev ? { ...prev, [field]: value } : null);
+        setContent({ ...content, [field]: value });
         setIsDirty(true);
-    };
-
-    const handleImmediateSave = async (field: keyof InvitationContent, value: any) => {
-        if (!content || !tenant) return;
-        const newContent = { ...content, [field]: value };
-        setContent(newContent);
-
-        try {
-            const payload = { ...newContent, timeline_kisah: JSON.stringify(timelineItems) };
-            const res = await invitationContentApi.updateContent(payload);
-            if (res.success) {
-                toast.success('QRIS berhasil tersimpan ke sistem database undangan!');
-                setIframeKey(prev => prev + 1);
-            }
-        } catch(e) {
-            console.error("Gagal menyimpan otomatis", e);
-        }
     };
 
     // Safe boolean parsing since DB might return 'TRUE' or boolean true
     const getBool = (val: any) => String(val).toLowerCase() === 'true';
 
-    if (loading || !content) return <PageLoader />;
+    const isInitialLoading = !hasLoadedContent || !content;
+    if (loading && isInitialLoading) return <PageLoader />;
+    if (!content) return <PageLoader />;
 
     return (
         <div className="space-y-6 animate-fade-in w-full max-w-[1600px] mx-auto pb-20">
@@ -371,17 +226,17 @@ export function InvitationContentPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('invitation_content.description')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {tenant?.domain_slug && (
-                        <a
-                            href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-secondary flex items-center justify-center gap-2 px-6"
-                        >
-                            <HiOutlineExternalLink className="w-5 h-5" />
-                            {t('invitation_content.open_wedding')}
-                        </a>
-                    )}
+                    <button
+                        onClick={async () => {
+                            toast.loading('Refreshing data...', { id: 'refresh-data' });
+                            await Promise.all([fetchContent(true), fetchImages(true)]);
+                            toast.success('Data refreshed!', { id: 'refresh-data' });
+                        }}
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                     <button
                         onClick={handleSave}
                         disabled={saving || isUploadingGallery}
@@ -703,8 +558,8 @@ export function InvitationContentPage() {
                                                                     imageType="qris_1"
                                                                     title="Upload QRIS 1"
                                                                     currentImageUrl={content.gambar_qris_rekening_1}
-                                                                    onUploadSuccess={(url) => handleImmediateSave('gambar_qris_rekening_1', url)}
-                                                                    onDeleteSuccess={() => handleImmediateSave('gambar_qris_rekening_1', '')}
+                                                                    onUploadSuccess={(url) => updateContent({ gambar_qris_rekening_1: url })}
+                                                                    onDeleteSuccess={async () => await updateContent({ gambar_qris_rekening_1: '' })}
                                                                 />
                                                             </div>
                                                         )}
@@ -750,8 +605,8 @@ export function InvitationContentPage() {
                                                                             imageType="qris_2"
                                                                             title="Upload QRIS 2"
                                                                             currentImageUrl={content.gambar_qris_rekening_2}
-                                                                            onUploadSuccess={(url) => handleImmediateSave('gambar_qris_rekening_2', url)}
-                                                                            onDeleteSuccess={() => handleImmediateSave('gambar_qris_rekening_2', '')}
+                                                                            onUploadSuccess={(url) => updateContent({ gambar_qris_rekening_2: url })}
+                                                                            onDeleteSuccess={async () => await updateContent({ gambar_qris_rekening_2: '' })}
                                                                         />
                                                                     </div>
                                                                 )}
@@ -950,8 +805,8 @@ export function InvitationContentPage() {
                                                                     description=""
                                                                     aspectRatio="square"
                                                                     currentImage={currentImg}
-                                                                    onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.image_type !== type), img])}
-                                                                    onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                                                    onUploadSuccess={addImage}
+                                                                    onDeleteSuccess={removeImageLocally}
                                                                     onClick={openLightbox}
                                                                 />
                                                             </div>
@@ -979,7 +834,7 @@ export function InvitationContentPage() {
                                                                             title={`Gallery`}
                                                                             currentImage={img}
                                                                             onUploadSuccess={() => { }}
-                                                                            onDeleteSuccess={(id) => setImages(prev => prev.filter(i => i.id !== id))}
+                                                                            onDeleteSuccess={removeImageLocally}
                                                                             onClick={openLightbox}
                                                                             aspectRatio="square"
                                                                         />
@@ -995,7 +850,7 @@ export function InvitationContentPage() {
                                                                             title="Tambah Foto Album"
                                                                             allowMultiple={true}
                                                                             maxFiles={remainingCount}
-                                                                            onUploadSuccess={(img) => setImages(prev => [...prev.filter(i => i.id !== img.id), img])}
+                                                                            onUploadSuccess={addImage}
                                                                             onDeleteSuccess={() => { }}
                                                                             aspectRatio="square"
                                                                         />
@@ -1235,49 +1090,18 @@ export function InvitationContentPage() {
             )}
 
             {/* LIGHTBOX MODAL */}
-            {lightboxImageIndex !== null && images[lightboxImageIndex] && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in p-4 lg:p-12">
-                    {/* Close Button */}
-                    <button
-                        onClick={() => setLightboxImageIndex(null)}
-                        className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-white/20 rounded-full transition-colors z-10"
-                    >
-                        <HiOutlineX className="w-6 h-6" />
-                    </button>
-
-                    {/* Navigation - Prev */}
-                    {images.length > 1 && (
-                        <button
-                            onClick={handlePrevImage}
-                            className="absolute left-2 lg:left-8 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-white/20 rounded-full transition-colors z-10"
-                        >
-                            <HiOutlineChevronLeft className="w-6 h-6 lg:w-8 lg:h-8" />
-                        </button>
-                    )}
-
-                    {/* Navigation - Next */}
-                    {images.length > 1 && (
-                        <button
-                            onClick={handleNextImage}
-                            className="absolute right-2 lg:right-8 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-white/20 rounded-full transition-colors z-10"
-                        >
-                            <HiOutlineChevronRight className="w-6 h-6 lg:w-8 lg:h-8" />
-                        </button>
-                    )}
-
-                    {/* Main Image */}
-                    <div className="w-full max-w-5xl max-h-full flex flex-col items-center justify-center pointer-events-none">
-                        <ProxyImage
-                            src={images[lightboxImageIndex].cdn_url || images[lightboxImageIndex].drive_url}
-                            alt={images[lightboxImageIndex].file_name}
-                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl pointer-events-auto"
-                        />
-                        <p className="text-white/60 text-xs lg:text-sm mt-4 font-medium px-4 text-center">
-                            {images[lightboxImageIndex].file_name}
-                            <span className="opacity-50 ml-2">({images[lightboxImageIndex].width}x{images[lightboxImageIndex].height} - {images[lightboxImageIndex].size_kb} KB)</span>
-                        </p>
-                    </div>
-                </div>
+            {lightboxImageIndex !== null && (
+                <Lightbox
+                    images={images.map(img => ({ 
+                        url: img.cdn_url || img.drive_url,
+                        file_name: img.file_name,
+                        width: img.width,
+                        height: img.height,
+                        size_kb: img.size_kb
+                    }))}
+                    initialIndex={lightboxImageIndex}
+                    onClose={closeLightbox}
+                />
             )}
 
         </div>

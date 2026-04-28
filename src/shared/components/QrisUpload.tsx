@@ -10,6 +10,7 @@ import getCroppedImg from '../utils/cropImage';
 import { detectQRCodeBounds } from '../utils/detectQRCode';
 import { ProxyImage } from './ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
+import { Modal } from './Modal';
 
 interface QrisUploadProps {
     imageType: string;
@@ -178,11 +179,14 @@ export function QrisUpload({
         setShowDeleteModal(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         setDeleting(true);
-        onDeleteSuccess();
-        setDeleting(false);
         setShowDeleteModal(false);
+        try {
+            await onDeleteSuccess();
+        } finally {
+            setDeleting(false);
+        }
     };
 
     // Drag and drop handlers
@@ -239,12 +243,16 @@ export function QrisUpload({
                             className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-xs z-10"
                             title="Hapus gambar"
                         >
-                            {deleting ? (
-                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
-                            )}
+                            <HiOutlineTrash className="w-3.5 h-3.5" />
                         </button>
+
+                        {/* Deleting Overlay */}
+                        {deleting && (
+                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20 backdrop-blur-[1px] animate-fade-in">
+                                <div className="w-8 h-8 border-[3px] border-white/20 border-t-red-500 rounded-full animate-spin mb-2" />
+                                <span className="text-[10px] text-white font-medium">Menghapus...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -464,33 +472,36 @@ export function QrisUpload({
             )}
 
             {/* Modal Konfirmasi Hapus */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-700">
-                        <div className="w-14 h-14 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <HiOutlineTrash className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Hapus QRIS?</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 px-2">
-                            Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin menghapus gambar QRIS ini?
-                        </p>
-                        <div className="flex gap-3 justify-center w-full">
-                            <button
-                                onClick={() => setShowDeleteModal(false)}
-                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-xl transition-colors"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
-                            >
-                                Ya, Hapus
-                            </button>
+            <Modal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Hapus QRIS"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus gambar QRIS ini? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
                         </div>
                     </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setShowDeleteModal(false)} className="btn-ghost" disabled={deleting}>Batal</button>
+                        <button 
+                            onClick={confirmDelete} 
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={deleting}
+                        >
+                            {deleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Ya, Hapus
+                        </button>
+                    </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 }

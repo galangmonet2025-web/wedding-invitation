@@ -11,6 +11,7 @@ export interface BackgroundTask {
     failCount: number;
     total: number;
     details?: string;
+    failedFiles?: string[];
     timestamp: string;
 }
 
