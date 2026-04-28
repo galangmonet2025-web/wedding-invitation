@@ -348,7 +348,6 @@ export function ThemeEditorPage() {
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
-                backgroundColor: null,
                 scale: 1,
             });
 
@@ -614,7 +613,6 @@ export function ThemeEditorPage() {
                 flag_lokasi_akad_dan_resepsi_berbeda: true,
                 flag_tampilkan_nama_orang_tua: true,
                 flag_tampilkan_sosial_media_mempelai: true,
-                is_link_umum_and_not_for_spesific_guest: true,
                 is_fitur_gallery: galleryImgs.length > 0,
                 galleries: galleryImgs.length > 0 ? galleryImgs : [
                     { url: dummies[0], caption: 'Prewedding 1' },

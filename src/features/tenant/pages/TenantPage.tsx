@@ -58,10 +58,10 @@ export function TenantPage() {
         'premium': 3
     };
 
-    const fetchTenants = async () => {
+    const fetchTenants = async (force = false) => {
         try {
             fetchThemes(); // Background fetch if not loaded
-            await fetchTenantsFromStore();
+            await fetchTenantsFromStore(force);
         } catch (error) {
             toast.error('Failed to load tenants');
         } finally {
