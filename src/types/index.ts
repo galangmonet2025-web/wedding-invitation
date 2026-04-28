@@ -388,6 +388,7 @@ export interface MstAdditionalFeature {
     input_data_type: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
     output_data_type: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
     active: boolean;
+    price: number;
     created_at: string;
 }
 

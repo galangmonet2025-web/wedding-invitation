@@ -2048,6 +2048,7 @@ var AdditionalFeatureService = {
       input_data_type: sanitized.input_data_type || '',
       output_data_type: sanitized.output_data_type || '',
       active: payload.active !== false ? 'TRUE' : 'FALSE',
+      price: Number(payload.price) || 0,
       created_at: new Date().toISOString()
     };
 
@@ -2064,6 +2065,7 @@ var AdditionalFeatureService = {
     if (payload.input_data_type !== undefined) updates.input_data_type = Validator.sanitizeObject({t: payload.input_data_type}).t;
     if (payload.output_data_type !== undefined) updates.output_data_type = Validator.sanitizeObject({t: payload.output_data_type}).t;
     if (payload.active !== undefined) updates.active = payload.active ? 'TRUE' : 'FALSE';
+    if (payload.price !== undefined) updates.price = Number(payload.price) || 0;
 
     var success = DB.update('MstAdditionalFeature', payload.id, updates);
     if (!success) return ResponseHelper.error('Feature not found', 404);
@@ -2107,7 +2109,8 @@ var AdditionalFeatureService = {
         input_tenant_data: active ? active.input_tenant_data : '',
         output_data: active ? active.output_data : '',
         active: active ? (active.active === true || active.active === 'true' || active.active === 'TRUE') : false,
-        mst_active: (mst.active === true || mst.active === 'true' || mst.active === 'TRUE')
+        mst_active: (mst.active === true || mst.active === 'true' || mst.active === 'TRUE'),
+        price: Number(mst.price) || 0
       };
     });
 

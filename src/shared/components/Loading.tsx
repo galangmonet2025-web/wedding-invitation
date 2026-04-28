@@ -4,7 +4,7 @@ interface LoadingOverlayProps {
 
 export function LoadingOverlay({ message = 'Loading...' }: LoadingOverlayProps) {
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <div className="glass-card p-8 flex flex-col items-center gap-4">
                 <div className="relative">
                     <div className="w-12 h-12 rounded-full border-4 border-gold-200 dark:border-gold-800 border-t-gold-500 animate-spin" />

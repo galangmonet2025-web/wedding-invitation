@@ -30,6 +30,7 @@ export function AdditionalFeaturePage() {
         input_data_type: 'empty',
         output_data_type: 'empty',
         active: true,
+        price: 0,
     };
     const [form, setForm] = useState<Partial<MstAdditionalFeature>>(initialForm);
 
@@ -93,6 +94,7 @@ export function AdditionalFeaturePage() {
         { header: 'Tipe Input', key: 'input_data_type', render: (f: MstAdditionalFeature) => getTypeLabel(f.input_data_type) },
         { header: 'Tipe Output', key: 'output_data_type', render: (f: MstAdditionalFeature) => getTypeLabel(f.output_data_type) },
         { header: 'Status', key: 'active', render: (f: MstAdditionalFeature) => f.active ? 'Aktif' : 'Nonaktif' },
+        { header: 'Harga', key: 'price', render: (f: MstAdditionalFeature) => `Rp. ${f.price?.toLocaleString('id-ID')}` },
     ];
 
     const handleExportExcel = () => {
@@ -136,6 +138,11 @@ export function AdditionalFeaturePage() {
                     {f.active ? 'Aktif' : 'Nonaktif'}
                 </span>
             ),
+        },
+        {
+            key: 'price',
+            header: 'Harga',
+            render: (f) => <span className="font-medium text-emerald-600 dark:text-emerald-400">Rp. {f.price?.toLocaleString('id-ID')}</span>,
         },
         {
             key: 'actions',
@@ -224,6 +231,25 @@ export function AdditionalFeaturePage() {
                             onChange={(e) => setForm({ ...form, feature_name: e.target.value })} 
                             className="input-field" 
                         />
+                    </div>
+                    
+                    <div>
+                        <label className="label-field">Harga (Rp.) *</label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">Rp.</span>
+                            <input 
+                                type="text" 
+                                value={form.price ? form.price.toLocaleString('id-ID') : ''} 
+                                onChange={(e) => {
+                                    // Remove any non-digit characters except for comma/dot if needed, but here we just want digits
+                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                    const numValue = parseInt(rawValue) || 0;
+                                    setForm({ ...form, price: numValue });
+                                }} 
+                                className="input-field pl-10" 
+                                placeholder="0"
+                            />
+                        </div>
                     </div>
                     
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
