@@ -146,6 +146,8 @@ export function GuestPage() {
         { header: t('common.category'), key: 'category' },
         { header: t('common.status'), key: 'status' },
         { header: t('guests.num_guests'), key: 'number_of_guests' },
+        { header: 'Status Ucapan', key: 'flag_sudah_isi_ucapan' },
+        { header: 'Status Hadiah', key: 'flag_sudah_kirim_hadiah' },
     ];
 
     const handleExportExcel = () => {
@@ -221,6 +223,24 @@ export function GuestPage() {
             render: (g: Guest) => statusBadge(g.status),
         },
         { key: 'number_of_guests', header: t('guests.num_guests') },
+        {
+            key: 'flag_sudah_isi_ucapan',
+            header: 'Ucapan',
+            render: (g: Guest) => g.flag_sudah_isi_ucapan ? (
+                <span className="badge-success text-[10px]">✅ Sudah</span>
+            ) : (
+                <span className="badge-secondary text-[10px]">⏳ Belum</span>
+            ),
+        },
+        {
+            key: 'flag_sudah_kirim_hadiah',
+            header: 'Hadiah',
+            render: (g: Guest) => g.flag_sudah_kirim_hadiah ? (
+                <span className="badge-success text-[10px]">✅ Sudah</span>
+            ) : (
+                <span className="badge-secondary text-[10px]">⏳ Belum</span>
+            ),
+        },
         {
             key: 'actions',
             header: t('common.actions'),

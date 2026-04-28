@@ -138,7 +138,10 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                 { tag: '{{guest_name}}', desc: 'Nama Tamu Undangan', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{guest_name}}</span>' },
                 { tag: '{{nama_tamu}}', desc: 'Alias Nama Tamu', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{nama_tamu}}</span>' },
                 { tag: '{{kode_undangan}}', desc: 'Kode Unik Undangan', value: 'GUEST-001', type: 'String', code: '<p>Kode: {{kode_undangan}}</p>' },
-                { tag: '{{is_sudah_isi_konfirmasi_kehadiran}}', desc: 'Tamu sudah RSVP (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if is_sudah_isi_konfirmasi_kehadiran}}\n  <p>Terima kasih sudah konfirmasi!</p>\n{{/if}}' },
+                { tag: '{{is_sudah_isi_konfirmasi_kehadiran}}', desc: 'Tamu sudah RSVP (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if is_sudah_isi_konfirmasi_kehadiran}}\n  <!-- Sembunyikan form RSVP -->\n{{/if}}' },
+                { tag: '{{is_sudah_isi_ucapan}}', desc: 'Tamu sudah isi ucapan (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#unless is_sudah_isi_ucapan}}\n  <!-- Tampilkan form ucapan -->\n{{/unless}}' },
+                { tag: '{{is_sudah_kirim_hadiah}}', desc: 'Tamu sudah konfirmasi hadiah (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#unless is_sudah_kirim_hadiah}}\n  <!-- Tampilkan form konfirmasi hadiah -->\n{{/unless}}' },
+                { tag: '{{flag_sudah_kirim_undangan_via_whatsapp}}', desc: 'Undangan sudah dikirim via WA (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if flag_sudah_kirim_undangan_via_whatsapp}}\n  <span>Terkirim</span>\n{{/if}}' },
                 { tag: '{{flag_konfirmasi_kehadiran_dari_tamu}}', desc: 'Tamu konfirmasi HADIR (Boolean)', value: 'true', type: 'Boolean Logic', code: '{{#if flag_konfirmasi_kehadiran_dari_tamu}}\n  <p>Kami tunggu kehadiran Anda!</p>\n{{/if}}' },
                 { tag: '{{#if is_link_umum_and_not_for_spesific_guest}}', desc: 'Bukan link tamu spesifik', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_link_umum_and_not_for_spesific_guest}}\n  <!-- Input Nama Tamu Manual -->\n{{/if}}' },
                 { tag: '{{#each wishes}}', desc: 'Loop Data Ucapan & Doa', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each wishes}}\n  <p>{{this.guest_name}}: {{this.guest_message}}</p>\n{{/each}}' },
@@ -326,6 +329,14 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                                         <li>Tombol Trigger: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="btn-submit-ucapan"</code></li>
                                         <li>Container Alert: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="alert-submit-ucapan"</code></li>
                                         <li>Input Field: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="wish-name"</code>, <code className="bg-gray-200 dark:bg-gray-900 px-1">id="wish-message"</code></li>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="font-bold text-sm text-blue-600 dark:text-blue-400 mb-2">3. Konfirmasi Pengiriman Hadiah</div>
+                                    <div className="text-xs space-y-1">
+                                        <li>Tombol Trigger: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="btn-submit-hadiah"</code></li>
+                                        <li>Container Alert: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="alert-submit-hadiah"</code></li>
+                                        <li>Input Field: <code className="bg-gray-200 dark:bg-gray-900 px-1">id="gift-name"</code>, <code className="bg-gray-200 dark:bg-gray-900 px-1">id="gift-amount"</code>, <code className="bg-gray-200 dark:bg-gray-900 px-1">id="gift-bank"</code></li>
                                     </div>
                                 </div>
                             </div>

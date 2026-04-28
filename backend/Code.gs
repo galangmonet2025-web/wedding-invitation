@@ -71,7 +71,7 @@ function handleRequest(e, method) {
     }
 
     // Public endpoints (no auth required)
-    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug'];
+    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug'];
     if (publicActions.indexOf(action) !== -1) {
       return routeAction(action, payload, null);
     }
@@ -252,6 +252,8 @@ function routeAction(action, payload, auth) {
       return PublicService.submitRSVP(payload);
     case 'submitPublicWish':
       return PublicService.submitWish(payload);
+    case 'submitPublicGift':
+      return PublicService.submitGift(payload);
     case 'checkPublicGuest':
       return PublicService.checkGuest(payload);
 
@@ -1026,6 +1028,8 @@ var GuestService = {
       number_of_guests: parseInt(sanitized.number_of_guests) || 1,
       checkin_status: 'not_checked_in',
       flag_sudah_kirim_undangan_via_whatsapp: 'FALSE',
+      flag_sudah_isi_ucapan: 'FALSE',
+      flag_sudah_kirim_hadiah: 'FALSE',
       created_at: new Date().toISOString()
     };
 
@@ -1135,6 +1139,8 @@ var GuestService = {
           number_of_guests: guestData.pax || 1,
           checkin_status: 'checked_in',
           flag_sudah_kirim_undangan_via_whatsapp: 'FALSE',
+          flag_sudah_isi_ucapan: 'FALSE',
+          flag_sudah_kirim_hadiah: 'FALSE',
           created_at: new Date().toISOString()
         };
         
@@ -1195,6 +1201,8 @@ var GuestService = {
         number_of_guests: parseInt(g.number_of_guests) || 1,
         checkin_status: 'not_checked_in',
         flag_sudah_kirim_undangan_via_whatsapp: 'FALSE',
+        flag_sudah_isi_ucapan: 'FALSE',
+        flag_sudah_kirim_hadiah: 'FALSE',
         created_at: new Date().toISOString()
       };
       DB.insert('Guests', guest);
@@ -1737,7 +1745,47 @@ var PublicService = {
     };
 
     DB.insert('Wishes', wish);
+
+    // Auto-flag guest if invitation_code is provided
+    if (sanitized.invitation_code) {
+      var guests = DB.getByTenant('Guests', tenant.id);
+      var guest = guests.find(function(g) { return g.invitation_code === sanitized.invitation_code; });
+      if (guest) {
+        DB.update('Guests', guest.id, { flag_sudah_isi_ucapan: 'TRUE' });
+      }
+    }
+
     return ResponseHelper.success(wish, 'Wish submitted successfully');
+  },
+
+  submitPublicGift: function(payload) {
+    Validator.required(payload, ['slug', 'guest_name', 'amount', 'bank_name']);
+    var sanitized = Validator.sanitizeObject(payload);
+
+    var tenant = DB.findOne('Tenants', 'domain_slug', sanitized.slug);
+    if (!tenant) return ResponseHelper.error('Invitation not found', 404);
+
+    var gift = {
+      id: DB.generateId(),
+      tenant_id: tenant.id,
+      guest_name: sanitized.guest_name,
+      amount: parseFloat(sanitized.amount) || 0,
+      bank_name: sanitized.bank_name,
+      created_at: new Date().toISOString()
+    };
+
+    DB.insert('Gifts', gift);
+
+    // Auto-flag guest if invitation_code is provided
+    if (sanitized.invitation_code) {
+      var guests = DB.getByTenant('Guests', tenant.id);
+      var guest = guests.find(function(g) { return g.invitation_code === sanitized.invitation_code; });
+      if (guest) {
+        DB.update('Guests', guest.id, { flag_sudah_kirim_hadiah: 'TRUE' });
+      }
+    }
+
+    return ResponseHelper.success(gift, 'Gift confirmation submitted successfully');
   }
 };
 
@@ -1842,8 +1890,13 @@ var ImageService = {
     var tenantId = PermissionService.getTenantId(auth);
     Validator.required(payload, ['id']);
     
+    // Try find by ID first, then by drive_file_id if the input looks like a Drive ID
     var existingImage = DB.findOne('Images', 'id', payload.id);
-    if (!existingImage || existingImage.tenant_id !== tenantId) {
+    if (!existingImage) {
+      existingImage = DB.findOne('Images', 'drive_file_id', payload.id);
+    }
+    
+    if (!existingImage || (auth.role !== 'superadmin' && existingImage.tenant_id !== tenantId)) {
       return ResponseHelper.error('Image not found or unauthorized', 404);
     }
 
@@ -2251,7 +2304,7 @@ function setupSpreadsheet() {
     'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'flag_draft', 'image_types', 'created_at'],
     'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
     'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
-    'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at'],
+    'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
     'Wishes': ['id', 'tenant_id', 'guest_name', 'message', 'created_at'],
     'Gifts': ['id', 'tenant_id', 'guest_name', 'amount', 'bank_name', 'created_at'],
     'ActivityLogs': ['id', 'tenant_id', 'user_id', 'action', 'created_at'],

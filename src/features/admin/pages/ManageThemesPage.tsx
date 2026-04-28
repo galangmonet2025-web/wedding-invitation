@@ -7,26 +7,13 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { PREMIUM_THEME_PAYLOAD } from '../utils/premiumThemePayload';
+import { useThemeStore } from '../store/themeStore';
 
 export function ManageThemesPage() {
     const navigate = useNavigate();
-    const [themes, setThemes] = useState<Theme[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { themes, loading, fetchThemes, deleteTheme } = useThemeStore();
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [guideTab, setGuideTab] = useState<'guide' | 'variables' | 'logic'>('guide');
-
-    const fetchThemes = async () => {
-        setLoading(true);
-        try {
-            const res = await themeApi.getThemes();
-            if (res.success) setThemes(res.data);
-            else toast.error(res.message);
-        } catch {
-            toast.error('Failed to load themes');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     useEffect(() => {
         fetchThemes();
@@ -34,17 +21,7 @@ export function ManageThemesPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this theme?')) return;
-        try {
-            const res = await themeApi.deleteTheme(id);
-            if (res.success) {
-                toast.success('Theme deleted');
-                fetchThemes();
-            } else {
-                toast.error(res.message);
-            }
-        } catch {
-            toast.error('Failed to delete theme');
-        }
+        await deleteTheme(id);
     };
 
     const handleInjectPremiumTheme = async () => {
@@ -54,7 +31,7 @@ export function ManageThemesPage() {
             const res = await themeApi.createTheme(PREMIUM_THEME_PAYLOAD as any);
             if(res.success) {
                 toast.success('Tema Premium Emas berhasil dimasukkan ke Spreadsheet/GAS!', { id: 'inject-theme' });
-                fetchThemes();
+                fetchThemes(true); // Force refresh after injection
             } else {
                 toast.error(res.message || 'Failed to inject theme', { id: 'inject-theme' });
             }
@@ -136,7 +113,7 @@ export function ManageThemesPage() {
                 </div>
                 <div className="flex gap-2">
                     <button 
-                        onClick={() => fetchThemes()} 
+                        onClick={() => fetchThemes(true)} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title="Refresh Data"
                     >

@@ -34,6 +34,7 @@ import { QrisUpload } from '@/shared/components/QrisUpload';
 import { imageApi } from '@/core/api/imageApi';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import type { ImageRecord } from '@/types';
+import { useThemeStore } from '@/features/admin/store/themeStore';
 
 
 export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, isOpen, onToggle }: {
@@ -74,7 +75,7 @@ export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, is
 
 export function InvitationContentPage() {
     const [content, setContent] = useState<Partial<InvitationContent> | null>(null);
-    const [themes, setThemes] = useState<Theme[]>([]);
+    const { themes, fetchThemes } = useThemeStore();
     const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
     const [timelineItems, setTimelineItems] = useState<{ tanggal: string; judul: string; deskripsi: string }[]>([]);
     const [loading, setLoading] = useState(true);
@@ -224,16 +225,13 @@ export function InvitationContentPage() {
         };
 
         try {
-            const [contentRes, themesRes, imagesRes] = await Promise.all([
+            fetchThemes(); // Background fetch if not loaded
+            const [contentRes, imagesRes] = await Promise.all([
                 invitationContentApi.getContent(),
-                themeApi.getThemes(),
                 imageApi.getTenantImages()
             ]);
 
-            if (themesRes.success) {
-                setThemes(themesRes.data);
-                if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
-            }
+            if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
 
             if (imagesRes.success && imagesRes.data) {
                 setImages(imagesRes.data);
@@ -277,8 +275,8 @@ export function InvitationContentPage() {
                 // Initialize with default empty values if backend returns null completely
                 setContent(defaultValues);
             }
-        } catch (error: any) {
-            console.error('Failed to fetch invitation content:', error);
+        } catch (err) {
+            console.error('Fetch content error:', err);
             toast.error(t('invitation_content.load_error', 'Failed to load invitation content settings'));
             // Ensure content is set to defaults even after error
             setContent(prev => prev ?? defaultValues);

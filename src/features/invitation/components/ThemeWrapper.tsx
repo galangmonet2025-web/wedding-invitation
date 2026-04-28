@@ -12,6 +12,7 @@ interface ThemeWrapperProps {
     onShowMenu: () => void;
     onSubmitRSVP: (data: { status: string; guests: number; code: string }) => Promise<{ success: boolean; message: string; calendarUrl?: string }>;
     onSubmitWish: (data: { name: string; message: string }) => Promise<{ success: boolean; message: string }>;
+    onSubmitGift?: (data: { name: string; amount: number; bank: string }) => Promise<{ success: boolean; message: string }>;
     onOpenLightbox: (index: number, images: string[]) => void;
     weddingDate?: string;
     children?: React.ReactNode;
@@ -29,6 +30,7 @@ export function ThemeWrapper({
     onShowMenu,
     onSubmitRSVP,
     onSubmitWish,
+    onSubmitGift,
     onOpenLightbox,
     weddingDate,
     children
@@ -237,6 +239,48 @@ export function ThemeWrapper({
                 btn.disabled = false;
             }
         }
+
+        // --- SUBMIT GIFT (Hadiah) ---
+        if (target.closest('#btn-submit-hadiah') && onSubmitGift) {
+            e.preventDefault();
+            const btn = target.closest('#btn-submit-hadiah') as HTMLButtonElement;
+            if (btn.disabled) return;
+
+            const container = containerRef.current;
+            const alertEl = container?.querySelector('#alert-submit-hadiah');
+            const name = (container?.querySelector('#gift-name') as HTMLInputElement)?.value || '';
+            const amountStr = (container?.querySelector('#gift-amount') as HTMLInputElement)?.value || '0';
+            const amount = parseInt(amountStr.replace(/\D/g, ''), 10) || 0;
+            const bank = (container?.querySelector('#gift-bank') as HTMLInputElement)?.value || '';
+
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
+
+            if (alertEl) alertEl.innerHTML = '';
+
+            const res = await onSubmitGift({ name, amount, bank });
+
+            btn.innerHTML = originalText;
+            
+            if (alertEl) {
+                alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
+                alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
+            }
+
+            if (res.success) {
+                btn.disabled = true;
+                const activeName = container?.querySelector('#gift-name') as HTMLInputElement;
+                const activeAmount = container?.querySelector('#gift-amount') as HTMLInputElement;
+                const activeBank = container?.querySelector('#gift-bank') as HTMLInputElement;
+                if (activeName) activeName.value = '';
+                if (activeAmount) activeAmount.value = '';
+                if (activeBank) activeBank.value = '';
+            } else {
+                btn.disabled = false;
+            }
+        }
+
         if (target.closest('#btn-open-invitation')) {
             setIsOpened(true);
             setIsPlaying(true);

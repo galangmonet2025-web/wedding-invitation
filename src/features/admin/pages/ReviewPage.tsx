@@ -3,42 +3,33 @@ import { reviewApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
 import type { ReviewAndRating } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlineChatAlt2, HiOutlineExternalLink, HiOutlineStar, HiSave } from 'react-icons/hi';
+import { HiOutlineChatAlt2, HiOutlineExternalLink, HiOutlineStar, HiSave, HiOutlineRefresh } from 'react-icons/hi';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
+import { useReviewStore } from '../store/reviewStore';
+
 export function ReviewPage() {
-    const [reviews, setReviews] = useState<ReviewAndRating[]>([]);
+    const { reviews, loading, fetchReviews, updateReviewLocal } = useReviewStore();
     const [originalReviews, setOriginalReviews] = useState<Record<string, ReviewAndRating>>({});
-    const [loading, setLoading] = useState(true);
     const [savingIds, setSavingIds] = useState<string[]>([]);
 
     useEffect(() => {
         fetchReviews();
     }, []);
 
-    const fetchReviews = async () => {
-        try {
-            const res = await reviewApi.getReviews();
-            if (res.success) {
-                const data = res.data || [];
-                setReviews(data);
-                
-                // Keep track of original values to detect changes
-                const originals: Record<string, ReviewAndRating> = {};
-                data.forEach(r => {
-                    originals[r.id] = { ...r };
-                });
-                setOriginalReviews(originals);
-            }
-        } catch {
-            toast.error('Gagal memuat review');
-        } finally {
-            setLoading(false);
+    // Sync original values when reviews data changes from store (e.g. after fetch)
+    useEffect(() => {
+        if (reviews.length > 0 && Object.keys(originalReviews).length === 0) {
+            const originals: Record<string, ReviewAndRating> = {};
+            reviews.forEach(r => {
+                originals[r.id] = { ...r };
+            });
+            setOriginalReviews(originals);
         }
-    };
+    }, [reviews]);
 
     const handleLocalChange = (id: string, field: keyof ReviewAndRating, value: any) => {
-        setReviews(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+        updateReviewLocal(id, { [field]: value });
     };
 
     const handleSaveRow = async (review: ReviewAndRating) => {
@@ -110,6 +101,13 @@ export function ReviewPage() {
                             PDF
                         </button>
                     </div>
+                    <button 
+                        onClick={() => fetchReviews(true)} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                 </div>
             </div>
 

@@ -376,12 +376,19 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 slug: slug!,
                 guest_name: name.trim(),
                 message: message.trim(),
+                invitation_code: data?.guest?.invitation_code,
             });
             if (res.success && res.data) {
                 const newWish = res.data;
                 setWishes((prev) => [newWish, ...prev]);
                 setWishName('');
                 setWishMessage('');
+                if (data && data.guest) {
+                    setData({
+                        ...data,
+                        guest: { ...data.guest, flag_sudah_isi_ucapan: true }
+                    });
+                }
                 return { success: true, message: 'Ucapan berhasil terkirim!', data: newWish };
             }
             return { success: false, message: res.message || 'Gagal mengirim ucapan' };
@@ -389,6 +396,36 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             return { success: false, message: 'Terjadi kesalahan sistem' };
         } finally {
             setWishLoading(false);
+        }
+    };
+
+    const handleGift = async (manualData?: { name: string; amount: number; bank: string }) => {
+        const name = manualData?.name || '';
+        const amount = manualData?.amount || 0;
+        const bank = manualData?.bank || '';
+
+        if (!name.trim() || !bank.trim() || amount <= 0) return { success: false, message: 'Data hadiah tidak valid' };
+
+        try {
+            const res = await publicApi.submitGift({
+                slug: slug!,
+                guest_name: name.trim(),
+                amount,
+                bank_name: bank.trim(),
+                invitation_code: data?.guest?.invitation_code,
+            });
+            if (res.success) {
+                if (data && data.guest) {
+                    setData({
+                        ...data,
+                        guest: { ...data.guest, flag_sudah_kirim_hadiah: true }
+                    });
+                }
+                return { success: true, message: 'Konfirmasi hadiah berhasil terkirim!' };
+            }
+            return { success: false, message: res.message || 'Gagal mengirim konfirmasi hadiah' };
+        } catch {
+            return { success: false, message: 'Terjadi kesalahan sistem' };
         }
     };
 
@@ -629,6 +666,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         kode_undangan: data?.guest?.invitation_code || '',
         is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
         flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
+        flag_sudah_isi_ucapan: data?.guest?.flag_sudah_isi_ucapan,
+        is_sudah_isi_ucapan: getBool(data?.guest?.flag_sudah_isi_ucapan),
+        flag_sudah_kirim_hadiah: data?.guest?.flag_sudah_kirim_hadiah,
+        is_sudah_kirim_hadiah: getBool(data?.guest?.flag_sudah_kirim_hadiah),
         kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
         kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
         quote: activeContent.custom_kalimat_1 || '',
@@ -753,6 +794,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 onShowMenu={() => setShowMenuModal(true)}
                 onSubmitRSVP={(data) => handleRSVP(undefined, data)}
                 onSubmitWish={(data) => handleWish(undefined, data)}
+                onSubmitGift={(data) => handleGift(data)}
                 onOpenLightbox={openLightbox}
             >
                 {guestQrModal}

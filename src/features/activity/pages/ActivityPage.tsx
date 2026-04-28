@@ -3,6 +3,7 @@ import { activityApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
 import type { ActivityLog } from '@/types';
 import toast from 'react-hot-toast';
+import { useActivityStore } from '../store/activityStore';
 import {
     HiOutlineLogin,
     HiOutlineUserAdd,
@@ -30,25 +31,22 @@ const actionColors: Record<string, string> = {
 };
 
 export function ActivityPage() {
-    const [logs, setLogs] = useState<ActivityLog[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { logs, fetchLogs: fetchStoreLogs, isLoading: storeLoading } = useActivityStore();
+    const [loading, setLoading] = useState(logs.length === 0);
 
     useEffect(() => {
-        fetchLogs();
+        const load = async () => {
+            if (logs.length === 0) setLoading(true);
+            await fetchStoreLogs();
+            setLoading(false);
+        };
+        load();
     }, []);
 
-    const fetchLogs = async () => {
-        try {
-            const response = await activityApi.getActivityLogs();
-            if (response.success) {
-                setLogs(response.data);
-            }
-        } catch {
-            toast.error('Failed to load activity logs');
-            setLogs([]);
-        } finally {
-            setLoading(false);
-        }
+    const fetchLogs = async (force = true) => {
+        if (force) setLoading(true);
+        await fetchStoreLogs(force);
+        setLoading(false);
     };
 
     const formatAction = (action: string) => {

@@ -2,27 +2,36 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { AiThemeModal } from '../components/AiThemeModal';
+import { SimulationModal } from '../components/SimulationModal';
 import { parseTemplate } from '@/utils/templateParser';
 import Editor from '@monaco-editor/react';
+import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage, fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
 import html2canvas from 'html2canvas';
-import { imageApi } from '@/core/api/imageApi';
+import { useThemeStore } from '../store/themeStore';
+import { useTenantStore } from '../store/tenantStore';
+import { usePreviewStore } from '../store/previewStore';
 
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
     const isNew = !id || id === 'new';
+    const isNewTheme = isNew;
     const copiedTheme: Theme | null = location.state?.copiedTheme || null;
+    const { themes, addTheme, updateTheme, fetchThemes } = useThemeStore();
+    const { tenants: allTenants, fetchTenants } = useTenantStore();
+    const previewStore = usePreviewStore();
 
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [isSimulationModalOpen, setIsSimulationModalOpen] = useState(false);
     const [showDataBinding, setShowDataBinding] = useState(true);
     const [showCover, setShowCover] = useState(true);
     const [isFocusMode, setIsFocusMode] = useState(false);
@@ -31,11 +40,18 @@ export function ThemeEditorPage() {
         return saved !== 'false';
     });
     const [isCapturing, setIsCapturing] = useState(false);
+    const [isPreviewUpdating, setIsPreviewUpdating] = useState(false);
+    const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [isPreviewDragging, setIsPreviewDragging] = useState(false);
+    const [pendingPreviewFile, setPendingPreviewFile] = useState<File | null>(null);
+    const [pendingPreviewBase64, setPendingPreviewBase64] = useState<string | null>(null);
+    const [initialPreviewImage, setInitialPreviewImage] = useState('');
 
 
     // Form and Editor State
     const [name, setName] = useState('');
     const [planType, setPlanType] = useState<PlanType>('basic');
+    const [styleCategory, setStyleCategory] = useState('Lainnya');
     const [previewImage, setPreviewImage] = useState('');
     const [htmlCode, setHtmlCode] = useState('<!-- Tambahkan tombol dengan id="btn-open-invitation" di cover -->\n<div class="wedding-theme">\n  <h1>{{bride_name}} & {{groom_name}}</h1>\n  <button id="btn-open-invitation">Buka Undangan</button>\n</div>');
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
@@ -47,6 +63,14 @@ export function ThemeEditorPage() {
     const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
     const [activeTabPanel, setActiveTabPanel] = useState<'editor' | 'settings'>('editor');
     const [guideActiveTab, setGuideActiveTab] = useState<'guide' | 'variables' | 'logic'>('guide');
+    const [mockGuestData, setMockGuestData] = useState({
+        nama_tamu: 'Nama Tamu Undangan',
+        kode_tamu: 'GUEST-001',
+        is_sudah_isi_ucapan: false,
+        is_sudah_kirim_hadiah: false,
+        is_sudah_isi_konfirmasi_kehadiran: false,
+        is_link_umum: false,
+    });
 
     // Refs for code to keep updatePreview stable
     const htmlCodeRef = useRef(htmlCode);
@@ -161,12 +185,11 @@ export function ThemeEditorPage() {
     // Preview iframe
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    // Tenants for preview selector
-    const [allTenants, setAllTenants] = useState<Tenant[]>([]);
-    const [selectedPreviewTenantId, setSelectedPreviewTenantId] = useState<string>('');
-    const [previewContent, setPreviewContent] = useState<Partial<InvitationContent>>({});
-    const [previewImages, setPreviewImages] = useState<ImageRecord[]>([]);
-    const [previewImagesB64, setPreviewImagesB64] = useState<Record<string, string>>({});
+    // Preview state initialized from cache if available
+    const [selectedPreviewTenantId, setSelectedPreviewTenantId] = useState<string>(previewStore.lastSelectedTenantId);
+    const [previewContent, setPreviewContent] = useState<Partial<InvitationContent>>(previewStore.lastPreviewContent || {});
+    const [previewImages, setPreviewImages] = useState<ImageRecord[]>(previewStore.lastPreviewImages || []);
+    const [previewImagesB64, setPreviewImagesB64] = useState<Record<string, string>>(previewStore.lastPreviewImagesB64 || {});
     const [loadingPreview, setLoadingPreview] = useState(false);
 
     // One real tenant for preview context (derived from selection)
@@ -174,27 +197,40 @@ export function ThemeEditorPage() {
 
     const loadData = async () => {
         try {
-            // Load all tenants for the preview selector
-            const tenantRes = await tenantApi.getTenants();
-            if (tenantRes.success && tenantRes.data.length > 0) {
-                setAllTenants(tenantRes.data);
-                setSelectedPreviewTenantId(tenantRes.data[0].id);
-                setPreviewTenant(tenantRes.data[0]);
-            }
+            // Background fetch tenants if not loaded
+            fetchTenants();
 
-            if (!isNew) {
-                const res = await themeApi.getThemes();
-                if (res.success) {
-                    const theme = res.data.find(t => t.id === id);
-                    if (theme) {
-                        setName(theme.name);
-                        setPlanType(theme.plan_type);
-                        setPreviewImage(theme.preview_image || '');
-                        setHtmlCode(theme.html_template || '');
-                        setCssCode(theme.css_template || '');
-                        setJsCode(theme.js_template || '');
-                        setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
-                        setImageTypes(theme.image_types || []);
+            if (!isNewTheme) {
+                // Ensure themes are loaded
+                await fetchThemes();
+                const theme = themes.find(t => t.id === id);
+                
+                if (theme) {
+                    setName(theme.name);
+                    setPlanType(theme.plan_type);
+                    setStyleCategory(theme.style_category || 'Lainnya');
+                    setPreviewImage(theme.preview_image || '');
+                    setInitialPreviewImage(theme.preview_image || '');
+                    setHtmlCode(theme.html_template || '');
+                    setCssCode(theme.css_template || '');
+                    setJsCode(theme.js_template || '');
+                    setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
+                    setImageTypes(theme.image_types || []);
+                } else {
+                    // Try one more time by forcing fetch
+                    await fetchThemes(true);
+                    const refetchedTheme = useThemeStore.getState().themes.find(t => t.id === id);
+                    if (refetchedTheme) {
+                        setName(refetchedTheme.name);
+                        setPlanType(refetchedTheme.plan_type);
+                        setStyleCategory(refetchedTheme.style_category || 'Lainnya');
+                        setPreviewImage(refetchedTheme.preview_image || '');
+                        setInitialPreviewImage(refetchedTheme.preview_image || '');
+                        setHtmlCode(refetchedTheme.html_template || '');
+                        setCssCode(refetchedTheme.css_template || '');
+                        setJsCode(refetchedTheme.js_template || '');
+                        setFlagDraft(refetchedTheme.flag_draft !== false && refetchedTheme.flag_draft !== 'false');
+                        setImageTypes(refetchedTheme.image_types || []);
                     } else {
                         toast.error('Theme not found');
                         navigate('/private/themes');
@@ -204,6 +240,7 @@ export function ThemeEditorPage() {
                 // Pre-fill from copied theme
                 setName(`${copiedTheme.name} (Copy)`);
                 setPlanType(copiedTheme.plan_type);
+                setStyleCategory(copiedTheme.style_category || 'Lainnya');
                 setPreviewImage(copiedTheme.preview_image || '');
                 setHtmlCode(copiedTheme.html_template || '');
                 setCssCode(copiedTheme.css_template || '');
@@ -222,12 +259,28 @@ export function ThemeEditorPage() {
         loadData();
     }, [id]);
 
+    // Handle tenant selection from store once loaded
+    useEffect(() => {
+        if (allTenants.length > 0 && !selectedPreviewTenantId) {
+            setSelectedPreviewTenantId(allTenants[0].id);
+            setPreviewTenant(allTenants[0]);
+        } else if (allTenants.length > 0 && selectedPreviewTenantId) {
+            const t = allTenants.find(x => x.id === selectedPreviewTenantId);
+            if (t) setPreviewTenant(t);
+        }
+    }, [allTenants, selectedPreviewTenantId]);
+
     useEffect(() => {
         localStorage.setItem('theme-editor-show-preview', String(showPreview));
     }, [showPreview]);
 
     // When the selected preview tenant changes, fetch their real content + images
-    const loadTenantPreviewData = useCallback(async (tenantId: string) => {
+    const loadTenantPreviewData = useCallback(async (tenantId: string, force = false) => {
+        // If already showing this tenant and have content, skip loading unless force
+        if (!force && previewStore.lastSelectedTenantId === tenantId && previewStore.lastPreviewContent) {
+            return;
+        }
+
         const tenant = allTenants.find(t => t.id === tenantId);
         if (!tenant) return;
         setPreviewTenant(tenant);
@@ -235,8 +288,9 @@ export function ThemeEditorPage() {
         try {
             const res = await publicApi.getInvitation(tenant.domain_slug);
             if (res.success) {
-                setPreviewContent(res.data.content || {});
+                const content = res.data.content || {};
                 const imgs: ImageRecord[] = res.data.images || [];
+                setPreviewContent(content);
                 setPreviewImages(imgs);
 
                 // Pre-convert all proxy images to base64 for faster preview
@@ -251,13 +305,21 @@ export function ThemeEditorPage() {
                     }
                 }));
                 setPreviewImagesB64(b64map);
+                
+                // Save to store for next time
+                previewStore.setPreviewData({
+                    content,
+                    images: imgs,
+                    imagesB64: b64map,
+                    tenantId
+                });
             }
         } catch (e) {
             console.error('Failed to load tenant preview data:', e);
         } finally {
             setLoadingPreview(false);
         }
-    }, [allTenants]);
+    }, [allTenants, previewStore]);
 
     useEffect(() => {
         if (selectedPreviewTenantId && allTenants.length > 0) {
@@ -286,51 +348,106 @@ export function ThemeEditorPage() {
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
-                scale: 1, // Skala 1 cukup untuk teaser
-                logging: false,
-                width: iframeDoc.documentElement.clientWidth || 1200,
-                height: Math.min(iframeDoc.documentElement.scrollHeight, 1600), // Batas tinggi agar tidak terlalu panjang
-                windowWidth: iframeDoc.documentElement.clientWidth || 1200,
-                windowHeight: iframeDoc.documentElement.clientHeight || 800
+                backgroundColor: null,
+                scale: 1,
             });
 
             const base64Full = canvas.toDataURL('image/jpeg', 0.8);
             const base64 = base64Full.split(',')[1];
 
-            const res = await imageApi.uploadImage({
-                image_type: 'theme_preview',
-                file_name: `preview-${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.jpg`,
-                base64_data: base64,
-                mime_type: 'image/jpeg'
-            });
-
-            if (res.success) {
-                setPreviewImage(res.data.cdn_url);
-                toast.success('Screenshot berhasil dijadikan pratinjau!', { id: loadingToast });
-            } else {
-                toast.error(res.message, { id: loadingToast });
-            }
+            // Local only - do not upload yet
+            setPreviewImage(base64Full);
+            setPendingPreviewBase64(base64);
+            setPendingPreviewFile(null); // Clear file if screenshot is used
+            
+            toast.success('Screenshot berhasil diambil! Klik Simpan untuk memperbarui database.');
         } catch (error: any) {
             console.error('Screenshot error:', error);
-            toast.error('Gagal mengambil screenshot: ' + error.message, { id: loadingToast });
+            toast.error('Gagal mengambil screenshot: ' + error.message);
         } finally {
             setIsCapturing(false);
         }
     };
 
+    const processImageFile = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            toast.error('File harus berupa gambar');
+            return;
+        }
+
+        // Local only - do not upload yet
+        const localUrl = URL.createObjectURL(file);
+        setPreviewImage(localUrl);
+        setPendingPreviewFile(file);
+        setPendingPreviewBase64(null); // Clear base64 if file is used
+        
+        toast.success('Gambar terpilih! Klik Simpan untuk mengunggah ke database.');
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) processImageFile(file);
+                break;
+            }
+        }
+    };
+
+    const extractDriveId = (url: string) => {
+        if (!url) return null;
+        const match = url.match(/[?&]id=([^&]+)/);
+        return match ? match[1] : null;
+    };
+
     const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
 
-        // Final safety check: if preview image is still empty, no longer auto-fills from hero
-        // as we now prefer screenshots.
-        // We leave it empty if the user hasn't clicked screenshot yet.
-
         setSaving(true);
+        const loadingToast = toast.loading('Menyimpan tema...');
+        
         try {
+            let finalPreviewUrl = previewImage;
+
+            // Handle pending upload if any
+            if (pendingPreviewFile || pendingPreviewBase64) {
+                let base64 = pendingPreviewBase64;
+                let mimeType = 'image/jpeg';
+                let fileName = `preview-${name.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'theme'}-${Date.now()}.jpg`;
+
+                if (pendingPreviewFile) {
+                    const reader = new FileReader();
+                    const readerPromise = new Promise<string>((resolve) => {
+                        reader.onload = (e) => resolve((e.target?.result as string).split(',')[1]);
+                    });
+                    reader.readAsDataURL(pendingPreviewFile);
+                    base64 = await readerPromise;
+                    mimeType = pendingPreviewFile.type;
+                    fileName = `preview-${name.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'theme'}-${Date.now()}.${pendingPreviewFile.name.split('.').pop()}`;
+                }
+
+                if (base64) {
+                    const uploadRes = await imageApi.uploadImage({
+                        image_type: 'theme_preview',
+                        file_name: fileName,
+                        base64_data: base64,
+                        mime_type: mimeType
+                    });
+
+                    if (uploadRes.success) {
+                        finalPreviewUrl = uploadRes.data.cdn_url;
+                    } else {
+                        throw new Error('Gagal mengunggah gambar pratinjau: ' + uploadRes.message);
+                    }
+                }
+            }
+
             const payload = {
                 name,
                 plan_type: planType,
-                preview_image: previewImage,
+                style_category: styleCategory,
+                preview_image: finalPreviewUrl,
                 html_template: htmlCode,
                 css_template: cssCode,
                 js_template: jsCode,
@@ -341,32 +458,71 @@ export function ThemeEditorPage() {
             if (isNew) {
                 const res = await themeApi.createTheme(payload);
                 if (res.success) {
-                    toast.success('Theme created successfully');
+                    toast.success('Theme created successfully', { id: loadingToast });
+                    addTheme(res.data); // Update local cache
                     setFlagDraft(isDraft);
+                    setInitialPreviewImage(finalPreviewUrl);
                     navigate(`/private/themes/editor/${res.data.id}`, { replace: true });
                 } else {
-                    toast.error(res.message);
+                    toast.error(res.message, { id: loadingToast });
                 }
             } else {
                 const res = await themeApi.updateTheme({ id: id!, ...payload });
                 if (res.success) {
-                    toast.success('Theme saved successfully');
+                    // Check if we need to delete old image
+                    if (initialPreviewImage && initialPreviewImage !== finalPreviewUrl) {
+                        const oldId = extractDriveId(initialPreviewImage);
+                        if (oldId) {
+                            try {
+                                await imageApi.deleteImage(oldId);
+                            } catch (e) {
+                                console.error('Failed to delete old preview image:', e);
+                            }
+                        }
+                    }
+
+                    toast.success('Theme saved successfully', { id: loadingToast });
+                    updateTheme(id!, payload); // Update local cache
                     setFlagDraft(isDraft);
+                    
+                    // Update initial state to new URL
+                    setInitialPreviewImage(finalPreviewUrl);
+                    
+                    // Clear pending states after successful save
+                    setPendingPreviewFile(null);
+                    setPendingPreviewBase64(null);
+                    setPreviewImage(finalPreviewUrl);
                 }
-                else toast.error(res.message);
+                else toast.error(res.message, { id: loadingToast });
             }
-        } catch (err) {
-            toast.error('Gagal menyimpan tema');
+        } catch (error: any) {
+            toast.error(error.message || 'Gagal menyimpan tema', { id: loadingToast });
         } finally {
             setSaving(false);
         }
     };
 
-    const updatePreview = useCallback(() => {
-        if (!iframeRef.current) return;
+    const updatePreview = useCallback((force = false) => {
+        if (!iframeRef.current || isPreviewUpdating) return;
 
-        const doc = iframeRef.current.contentWindow?.document;
-        if (!doc) return;
+        // Clear any pending update
+        if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
+
+        setIsPreviewUpdating(true); // Mark as updating immediately to disable buttons
+
+        // Set timer for debounced update
+        updateTimerRef.current = setTimeout(() => {
+            if (!iframeRef.current) {
+                setIsPreviewUpdating(false);
+                return;
+            }
+            const doc = iframeRef.current.contentWindow?.document;
+            if (!doc) {
+                setIsPreviewUpdating(false);
+                return;
+            }
+
+            try {
 
         // Dummy tenant data mapped just like in InvitationPage
         const t = previewTenant || { bride_name: 'Fiona', groom_name: 'Galang', wedding_date: '2026-10-20' };
@@ -415,11 +571,16 @@ export function ThemeEditorPage() {
                 nama_ibu_perempuan: c.nama_ibu_perempuan || 'Ibu Ani',
                 ig_laki_laki: c.account_media_sosial_laki_laki || 'galang',
                 ig_perempuan: c.account_media_sosial_perempuan || 'fiona',
-                guest_name: 'Bpk/Ibu/Sdr/i (Tamu undangan)',
-                nama_tamu: 'Bpk/Ibu/Sdr/i (Tamu undangan)',
-                kode_undangan: 'GUEST-001',
-                is_sudah_isi_konfirmasi_kehadiran: false,
-                flag_konfirmasi_kehadiran_dari_tamu: true,
+                guest_name: mockGuestData.nama_tamu,
+                nama_tamu: mockGuestData.nama_tamu,
+                kode_undangan: mockGuestData.kode_tamu,
+                is_sudah_isi_ucapan: mockGuestData.is_sudah_isi_ucapan,
+                is_sudah_kirim_hadiah: mockGuestData.is_sudah_kirim_hadiah,
+                is_sudah_isi_konfirmasi_kehadiran: mockGuestData.is_sudah_isi_konfirmasi_kehadiran,
+                flag_konfirmasi_kehadiran_dari_tamu: mockGuestData.is_sudah_isi_konfirmasi_kehadiran,
+                is_link_umum_and_not_for_spesific_guest: mockGuestData.is_link_umum,
+                flag_sudah_isi_ucapan: mockGuestData.is_sudah_isi_ucapan,
+                flag_sudah_kirim_hadiah: mockGuestData.is_sudah_kirim_hadiah,
                 kalimat_pembuka: c.kalimat_pembuka_undangan || 'Dengan memohon rahmat dan ridho Allah SWT...',
                 kalimat_penutup: c.kalimat_penutup_undangan || 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
                 quote: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
@@ -572,9 +733,9 @@ export function ThemeEditorPage() {
                         }
 
                         // Mock Submission Handlers for Preview
-                        if (target.closest('#btn-submit-kehadiran')) {
+                        if (e.target.closest('#btn-submit-kehadiran')) {
                             e.preventDefault();
-                            const btn = target.closest('#btn-submit-kehadiran');
+                            const btn = e.target.closest('#btn-submit-kehadiran');
                             if (btn.disabled) return;
                             
                             const originalText = btn.innerHTML;
@@ -592,9 +753,9 @@ export function ThemeEditorPage() {
                             }, 1000);
                         }
 
-                        if (target.closest('#btn-submit-ucapan')) {
+                        if (e.target.closest('#btn-submit-ucapan')) {
                             e.preventDefault();
-                            const btn = target.closest('#btn-submit-ucapan');
+                            const btn = e.target.closest('#btn-submit-ucapan');
                             if (btn.disabled) return;
 
                             const originalText = btn.innerHTML;
@@ -610,10 +771,10 @@ export function ThemeEditorPage() {
                                     alertBox.innerHTML = '<i class="ri-checkbox-circle-line"></i> Simulasi: Ucapan Berhasil Terkirim!';
                                 }
                                 // Clear inputs in simulation
-                                const name = document.getElementById('wish-name');
-                                const msg = document.getElementById('wish-message');
-                                if (name) name.value = '';
-                                if (msg) msg.value = '';
+                                const nameInput = document.getElementById('wish-name');
+                                const msgInput = document.getElementById('wish-message');
+                                if (nameInput) nameInput.value = '';
+                                if (msgInput) msgInput.value = '';
                             }, 1000);
                         }
                     });
@@ -651,10 +812,23 @@ export function ThemeEditorPage() {
             </html>
         `;
 
-        doc.open();
-        doc.write(iframeContent);
-        doc.close();
-    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes]);
+                doc.open();
+                doc.write(iframeContent);
+                doc.close();
+            } catch (err) {
+                console.error('Preview update error:', err);
+            } finally {
+                setIsPreviewUpdating(false);
+            }
+        }, 300); // 300ms debounce
+    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes, mockGuestData]);
+
+    // Clean up timer on unmount
+    useEffect(() => {
+        return () => {
+            if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
+        };
+    }, []);
 
     // Auto-update preview when data finishing loading (initial load or tenant switch)
     useEffect(() => {
@@ -823,7 +997,7 @@ export function ThemeEditorPage() {
                                 className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTabPanel === 'settings' ? 'border-gold-500 text-gold-600 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                                 onClick={() => setActiveTabPanel('settings')}
                             >
-                                <span className="flex justify-center items-center gap-2">⚙️ Pengaturan</span>
+                                <span className="flex justify-center items-center gap-2">⚙️ Setup</span>
                             </button>
                             <button
                                 className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700`}
@@ -870,8 +1044,23 @@ export function ThemeEditorPage() {
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Gaya (Style)</label>
+                                    <select
+                                        value={styleCategory}
+                                        onChange={e => setStyleCategory(e.target.value)}
+                                        className="input-field"
+                                    >
+                                        <option value="Minimalist">Minimalist</option>
+                                        <option value="Elegant">Elegant</option>
+                                        <option value="Nature">Nature</option>
+                                        <option value="Romantic">Romantic</option>
+                                        <option value="Cultural">Cultural</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">URL Gambar Pratinjau</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Pratinjau Tema</label>
                                         <button
                                             type="button"
                                             disabled={isCapturing}
@@ -885,30 +1074,72 @@ export function ThemeEditorPage() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <i className="ri-camera-lens-line"></i> Ambil Screenshot Preview
+                                                    <i className="ri-camera-lens-line"></i> Auto Screenshot
                                                 </>
                                             )}
                                         </button>
                                     </div>
-                                    <input
-                                        type="text"
-                                        value={previewImage}
-                                        onChange={e => setPreviewImage(e.target.value)}
-                                        className="input-field"
-                                        placeholder="https://..."
-                                    />
-                                    {previewImage && (
-                                        <div className="mt-3 relative group w-max">
-                                            <ProxyImage
-                                                src={previewImage}
-                                                alt="Preview"
-                                                className="h-32 w-48 rounded-xl object-cover border-2 border-gray-100 dark:border-gray-700 shadow-lg transition-transform group-hover:scale-105"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
-                                                <span className="text-[10px] text-white font-bold uppercase tracking-widest">Preview Mode</span>
+                                    
+                                    <div 
+                                        className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${isPreviewDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'}`}
+                                        onDragOver={(e) => { e.preventDefault(); setIsPreviewDragging(true); }}
+                                        onDragLeave={() => setIsPreviewDragging(false)}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsPreviewDragging(false);
+                                            const file = e.dataTransfer.files[0];
+                                            if (file) processImageFile(file);
+                                        }}
+                                        onPaste={handlePaste}
+                                    >
+                                        {previewImage ? (
+                                            <div className="relative group">
+                                                <ProxyImage
+                                                    src={previewImage}
+                                                    alt="Preview"
+                                                    className="w-full h-48 rounded-xl object-cover border border-gray-100 dark:border-gray-700 shadow-sm"
+                                                />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2">
+                                                    <p className="text-white text-xs font-bold uppercase">Ganti Gambar</p>
+                                                    <p className="text-gray-300 text-[10px]">Upload / Paste / Drop</p>
+                                                </div>
+                                                <button 
+                                                    onClick={() => setPreviewImage('')}
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
+                                                >
+                                                    <HiOutlineX className="w-4 h-4" />
+                                                </button>
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 text-gray-400 group-hover:text-gold-500 transition-colors">
+                                                    <i className="ri-image-add-line text-2xl"></i>
+                                                </div>
+                                                <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik untuk upload gambar pratinjau</p>
+                                                <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop / Paste (Ctrl+V)</p>
+                                                <input 
+                                                    type="file" 
+                                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) processImageFile(file);
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-2">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Atau Input URL Manual</label>
+                                        <input
+                                            type="text"
+                                            value={previewImage}
+                                            onChange={e => setPreviewImage(e.target.value)}
+                                            className="input-field mt-1 h-8 text-xs"
+                                            placeholder="https://..."
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>
@@ -1023,35 +1254,46 @@ export function ThemeEditorPage() {
                 {/* Right Panel (Live Preview) */}
                 {showPreview && (
                     <div className="w-full lg:w-1/2 flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
-                        <div className="flex-none px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
-                            <div className="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                <HiOutlineEye className="w-4 h-4" /> Live Preview
+                        <div className="flex-none px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex flex-wrap justify-between items-center bg-white dark:bg-gray-800 gap-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <HiOutlineEye className="w-4 h-4 text-gold-500" />
+                                <span className="hidden sm:inline">Live Preview</span>
                                 <button
                                     onClick={() => updatePreview()}
-                                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom"
+                                    disabled={loading || loadingPreview || isPreviewUpdating}
+                                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom disabled:opacity-30 disabled:cursor-not-allowed"
                                     title="Refresh Preview (CTRL+S)"
                                 >
-                                    <HiOutlineRefresh className="w-4 h-4" />
+                                    <HiOutlineRefresh className={`w-4 h-4 ${(loading || loadingPreview || isPreviewUpdating) ? 'animate-spin' : ''}`} />
                                 </button>
-                                <span className="text-[10px] text-gray-400 font-normal hidden sm:inline-block">Press <kbd className="font-sans px-1 bg-gray-100 border rounded">Ctrl+S</kbd> to update</span>
+                                <button
+                                    onClick={() => setIsSimulationModalOpen(true)}
+                                    className="p-1.5 hover:bg-gold-50 dark:hover:bg-gold-900/20 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom border border-gold-100 dark:border-gold-800/50"
+                                    title="Simulation Data (Tester)"
+                                >
+                                    <span className="text-lg leading-none">🧪</span>
+                                </button>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan Halaman Cover Depan">
-                                    <span className={`text-xs font-medium ${!showCover ? 'text-gray-500' : 'text-gold-600'}`}>Halaman Cover</span>
-                                    <div className="relative inline-flex items-center">
-                                        <input type="checkbox" className="sr-only peer" checked={showCover} onChange={() => setShowCover(!showCover)} />
-                                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
-                                    </div>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer tooltip tooltip-left" title="Tampilkan injeksi data asli vs tag {{variabel}}">
-                                    <span className={`text-xs font-medium ${!showDataBinding ? 'text-gray-500' : 'text-gold-600'}`}>Data Binding</span>
-                                    <div className="relative inline-flex items-center">
-                                        <input type="checkbox" className="sr-only peer" checked={showDataBinding} onChange={() => setShowDataBinding(!showDataBinding)} />
-                                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
-                                    </div>
-                                </label>
-                                <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
-                                    <span className="text-xs text-gray-500 whitespace-nowrap">Data Tenant:</span>
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 pr-3 border-r border-gray-100 dark:border-gray-700">
+                                    <label className="flex items-center gap-1.5 cursor-pointer tooltip tooltip-bottom" title="Tampilkan Halaman Cover Depan">
+                                        <div className="relative inline-flex items-center">
+                                            <input type="checkbox" className="sr-only peer" checked={showCover} onChange={() => setShowCover(!showCover)} />
+                                            <div className="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                        </div>
+                                        <span className={`text-[10px] font-bold uppercase tracking-tighter ${!showCover ? 'text-gray-400' : 'text-gold-600'}`}>Cover</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer tooltip tooltip-bottom" title="Tampilkan data asli vs tag variabel">
+                                        <div className="relative inline-flex items-center">
+                                            <input type="checkbox" className="sr-only peer" checked={showDataBinding} onChange={() => setShowDataBinding(!showDataBinding)} />
+                                            <div className="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                        </div>
+                                        <span className={`text-[10px] font-bold uppercase tracking-tighter ${!showDataBinding ? 'text-gray-400' : 'text-gold-600'}`}>Data</span>
+                                    </label>
+                                </div>
+                                
+                                <div className="flex items-center gap-1.5">
                                     <select
                                         value={selectedPreviewTenantId}
                                         onChange={e => setSelectedPreviewTenantId(e.target.value)}
@@ -1066,7 +1308,7 @@ export function ThemeEditorPage() {
                                         ))}
                                     </select>
                                     <button
-                                        onClick={() => selectedPreviewTenantId && loadTenantPreviewData(selectedPreviewTenantId)}
+                                        onClick={() => selectedPreviewTenantId && loadTenantPreviewData(selectedPreviewTenantId, true)}
                                         className="text-gray-400 hover:text-gold-500 transition-colors"
                                         title="Reload data tenant"
                                         disabled={loadingPreview}
@@ -1105,6 +1347,14 @@ export function ThemeEditorPage() {
                 isOpen={isAiModalOpen}
                 onClose={() => setIsAiModalOpen(false)}
                 onTriggerUpload={() => fileInputRef.current?.click()}
+            />
+
+            {/* Simulation Modal */}
+            <SimulationModal 
+                isOpen={isSimulationModalOpen}
+                onClose={() => setIsSimulationModalOpen(false)}
+                mockGuestData={mockGuestData}
+                onDataChange={setMockGuestData}
             />
         </div>
     );

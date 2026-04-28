@@ -12,10 +12,12 @@ import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
+import { useThemeStore } from '@/features/admin/store/themeStore';
+import { useTenantStore } from '@/features/admin/store/tenantStore';
 
 export function TenantPage() {
-    const [tenants, setTenants] = useState<Tenant[]>([]);
-    const [themes, setThemes] = useState<Theme[]>([]);
+    const { tenants, fetchTenants: fetchTenantsFromStore, addTenant, updateTenant: updateTenantInStore, tenantFeaturesCache, setTenantFeatures } = useTenantStore();
+    const { themes, fetchThemes } = useThemeStore();
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -23,7 +25,7 @@ export function TenantPage() {
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
-    const [tenantFeatures, setTenantFeatures] = useState<TenantActiveFeature[]>([]);
+    const [tenantFeatures, setTenantFeaturesLocal] = useState<TenantActiveFeature[]>([]);
     const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
     const { tasks } = useBackgroundTaskStore();
@@ -58,29 +60,10 @@ export function TenantPage() {
 
     const fetchTenants = async () => {
         try {
-            const [localTenantsRes, globalTenantsRes, themesRes] = await Promise.all([
-                tenantApi.getTenants(),
-                auth.role === 'superadmin' ? tenantApi.getTenants() : Promise.resolve({ success: false, data: [] }),
-                themeApi.getThemes()
-            ]);
-
-            let finalTenants: Tenant[] = [];
-            if (auth.role === 'superadmin' && globalTenantsRes.success) {
-                finalTenants = globalTenantsRes.data || [];
-            } else if (localTenantsRes.success) {
-                finalTenants = localTenantsRes.data || [];
-            }
-
-            // In local usage, DB sometimes returns non-arrays
-            setTenants(Array.isArray(finalTenants) ? finalTenants : []);
-
-            if (themesRes.success && Array.isArray(themesRes.data)) {
-                setThemes(themesRes.data);
-            }
+            fetchThemes(); // Background fetch if not loaded
+            await fetchTenantsFromStore();
         } catch (error) {
-            toast.error('Failed to load tenants or themes');
-            setTenants([]);
-            setThemes([]);
+            toast.error('Failed to load tenants');
         } finally {
             setLoading(false);
         }
@@ -110,8 +93,8 @@ export function TenantPage() {
             const response = await tenantApi.createTenant(form);
             if (response.success) {
                 toast.success('Tenant created successfully');
+                addTenant(response.data); // Update local cache
                 setShowAddModal(false);
-                fetchTenants();
                 resetForm();
             } else {
                 toast.error(response.message);
@@ -153,16 +136,17 @@ export function TenantPage() {
                             // Let me just import imageApi at the top. Wait, I will add the import below.
                             await Promise.all(imagesToDelete.map(id => imageApi.deleteImage(id).catch(() => {})));
                         }
+                        // Update cache with new feature data
+                        setTenantFeatures(selectedTenant.id, tenantFeatures);
                     } catch (err) {
                         console.error('Error saving features', err);
                         toast.error('Gagal menyimpan beberapa fitur tambahan');
                     }
                 }
-
                 toast.success('Tenant updated');
+                updateTenantInStore(selectedTenant.id, updates); // Update local cache
                 setShowEditModal(false);
                 setImagesToDelete([]);
-                fetchTenants();
             }
         } catch {
             toast.error('Failed to update tenant');
@@ -210,7 +194,7 @@ export function TenantPage() {
     };
 
     const handleFeatureUpdateLocal = (featureId: string, updates: Partial<TenantActiveFeature>) => {
-        setTenantFeatures(prev => prev.map(f => f.additional_feature_id === featureId ? { ...f, ...updates } : f));
+        setTenantFeaturesLocal(prev => prev.map(f => f.additional_feature_id === featureId ? { ...f, ...updates } : f));
     };
 
 
@@ -343,12 +327,21 @@ export function TenantPage() {
                                 setSelectedTenant(t);
                                 setEditForm(t);
                                 setShowEditModal(true);
-                                // Fetch tenant features
-                                try {
-                                    const res = await additionalFeatureApi.getTenantFeatures(t.id);
-                                    if (res.success) setTenantFeatures(res.data || []);
-                                } catch {
-                                    toast.error('Failed to load tenant features');
+                                
+                                // Check cache first
+                                if (tenantFeaturesCache[t.id]) {
+                                    setTenantFeaturesLocal(tenantFeaturesCache[t.id]);
+                                } else {
+                                    setTenantFeaturesLocal([]); // Clear old data
+                                    try {
+                                        const res = await additionalFeatureApi.getTenantFeatures(t.id);
+                                        if (res.success) {
+                                            setTenantFeatures(t.id, res.data || []);
+                                            setTenantFeaturesLocal(res.data || []);
+                                        }
+                                    } catch {
+                                        toast.error('Failed to load tenant features');
+                                    }
                                 }
                             }}
                             disabled={isDeletingRow}
@@ -393,7 +386,7 @@ export function TenantPage() {
                         </button>
                     </div>
                     <button 
-                        onClick={() => fetchTenants()} 
+                        onClick={() => fetchTenants(true)} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title="Refresh Data"
                     >

@@ -11,7 +11,11 @@ import {
     HiOutlineShare,
     HiOutlineDesktopComputer,
     HiOutlineDeviceMobile,
-    HiOutlineExternalLink
+    HiOutlineExternalLink,
+    HiOutlineUpload,
+    HiOutlineTrash,
+    HiOutlinePhotograph,
+    HiOutlineX
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
@@ -19,12 +23,23 @@ import { ImageUpload } from '@/shared/components/ImageUpload';
 import { imageApi } from '@/core/api/imageApi';
 import { ImageRecord } from '@/types';
 import { HiOutlineClipboardCopy, HiOutlineInformationCircle } from 'react-icons/hi';
+import imageCompression from 'browser-image-compression';
+import { ProxyImage } from '@/shared/components/ProxyImage';
+import { useWebsiteConfigStore } from '../store/websiteConfigStore';
 
 type MainTab = 'general' | 'branding' | 'code';
 type CodeTab = 'html' | 'css' | 'js';
 type PreviewDevice = 'desktop' | 'mobile';
 
 export function WebsiteConfigPage() {
+    const { 
+        config: storeConfig, 
+        fetchConfig: fetchStoreConfig, 
+        updateLocalConfig,
+        setConfig: setStoreConfig,
+        isLoading: storeLoading
+    } = useWebsiteConfigStore();
+
     const [config, setConfig] = useState<WebsiteConfig>({
         site_name: '',
         site_url: '',
@@ -42,7 +57,8 @@ export function WebsiteConfigPage() {
         primary_color: '#C6A769',
         accent_color: '#1A1A2E'
     });
-    const [loading, setLoading] = useState(true);
+
+    const [loading, setLoading] = useState(!storeConfig);
     const [saving, setSaving] = useState(false);
     const [activeMainTab, setActiveMainTab] = useState<MainTab>('general');
     const [activeCodeTab, setActiveCodeTab] = useState<CodeTab>('html');
@@ -53,6 +69,9 @@ export function WebsiteConfigPage() {
     });
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [logoImage, setLogoImage] = useState<ImageRecord | null>(null);
+    const [initialLogoUrl, setInitialLogoUrl] = useState('');
+    const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+    const [previewLogoUrl, setPreviewLogoUrl] = useState('');
     const [showVariableRef, setShowVariableRef] = useState(true);
     const editorRef = useRef<any>(null);
     
@@ -62,27 +81,16 @@ export function WebsiteConfigPage() {
         localStorage.setItem('website-config-show-preview', String(showPreview));
     }, [showPreview]);
 
-    const fetchConfig = async () => {
-        setLoading(true);
+    const fetchConfig = async (force = false) => {
+        if (force) setLoading(true);
         try {
-            const [configRes, imagesRes] = await Promise.all([
-                websiteConfigApi.getConfig(),
-                imageApi.getTenantImages()
-            ]);
-
-            if (configRes.success) {
-                setConfig(configRes.data);
-                
-                // Find correct image record matching the saved logo URL
-                if (configRes.data.site_logo && imagesRes.success) {
-                    const found = imagesRes.data.find(img => 
-                        img.cdn_url === configRes.data.site_logo || 
-                        img.drive_url === configRes.data.site_logo
-                    );
-                    if (found) setLogoImage(found);
-                }
-            } else {
-                toast.error(configRes.message);
+            await fetchStoreConfig(force);
+            const currentConfig = useWebsiteConfigStore.getState().config;
+            
+            if (currentConfig) {
+                setConfig(currentConfig);
+                setInitialLogoUrl(currentConfig.site_logo || '');
+                setPreviewLogoUrl(currentConfig.site_logo || '');
             }
         } catch (err) {
             toast.error('Failed to load configuration');
@@ -91,7 +99,14 @@ export function WebsiteConfigPage() {
         }
     };
 
+    // Initial load from store if available
     useEffect(() => {
+        if (storeConfig) {
+            setConfig(storeConfig);
+            setInitialLogoUrl(storeConfig.site_logo || '');
+            setPreviewLogoUrl(storeConfig.site_logo || '');
+            setLoading(false);
+        }
         fetchConfig();
     }, []);
 
@@ -176,17 +191,107 @@ export function WebsiteConfigPage() {
         setConfig(prev => ({ ...prev, [fieldMap[type]]: value || '' }));
     };
 
+    const extractDriveId = (url: string) => {
+        if (!url) return null;
+        const match = url.match(/[?&]id=([^&]+)/);
+        return match ? match[1] : null;
+    };
+
+    const processLogoFile = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            toast.error('File harus berupa gambar');
+            return;
+        }
+
+        // Local only preview
+        const localUrl = URL.createObjectURL(file);
+        setPreviewLogoUrl(localUrl);
+        setPendingLogoFile(file);
+        setConfig(prev => ({ ...prev, site_logo: localUrl }));
+        
+        toast.success('Logo terpilih! Klik Simpan untuk memperbarui website.');
+    };
+
     const handleSave = async () => {
         setSaving(true);
+        const loadingToast = toast.loading('Menyimpan konfigurasi...');
+        
         try {
-            const res = await websiteConfigApi.updateConfig(config);
-            if (res.success) {
-                toast.success('Configuration saved successfully');
-            } else {
-                toast.error(res.message);
+            let finalLogoUrl = config.site_logo;
+
+            // Handle pending upload if any
+            if (pendingLogoFile) {
+                // Compress image like in ImageUpload.tsx
+                const options = {
+                    maxSizeMB: 0.2,
+                    maxWidthOrHeight: 800,
+                    useWebWorker: true,
+                    fileType: 'image/webp'
+                };
+                const compressedFile = await imageCompression(pendingLogoFile, options);
+                
+                // Get dimensions
+                const getDimensions = (): Promise<{ w: number, h: number }> => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => resolve({ w: img.width, h: img.height });
+                        img.src = URL.createObjectURL(compressedFile);
+                    });
+                };
+                const dims = await getDimensions();
+
+                // Convert to Base64
+                const reader = new FileReader();
+                const readerPromise = new Promise<string>((resolve) => {
+                    reader.onload = (e) => resolve((e.target?.result as string).split(',')[1]);
+                });
+                reader.readAsDataURL(compressedFile);
+                const base64 = await readerPromise;
+
+                const uploadRes = await imageApi.uploadImage({
+                    image_type: 'site_logo',
+                    file_name: `site-logo-${Date.now()}.webp`,
+                    base64_data: base64,
+                    mime_type: 'image/webp',
+                    width: dims.w,
+                    height: dims.h,
+                    size_kb: Math.round(compressedFile.size / 1024)
+                });
+
+                if (uploadRes.success) {
+                    finalLogoUrl = uploadRes.data.cdn_url;
+                } else {
+                    throw new Error('Gagal mengunggah logo: ' + uploadRes.message);
+                }
             }
-        } catch (err) {
-            toast.error('Failed to save configuration');
+
+            // Check if we need to delete old logo
+            if (initialLogoUrl && initialLogoUrl !== finalLogoUrl) {
+                const oldId = extractDriveId(initialLogoUrl);
+                if (oldId) {
+                    try {
+                        await imageApi.deleteImage(oldId);
+                    } catch (e) {
+                        console.error('Failed to delete old logo:', e);
+                    }
+                }
+            }
+
+            const finalConfig = { ...config, site_logo: finalLogoUrl };
+            const res = await websiteConfigApi.updateConfig(finalConfig);
+            
+            if (res.success) {
+                toast.success('Configuration saved successfully', { id: loadingToast });
+                setStoreConfig(finalConfig);
+                setInitialLogoUrl(finalLogoUrl);
+                setPreviewLogoUrl(finalLogoUrl);
+                setPendingLogoFile(null);
+                setConfig(finalConfig);
+            } else {
+                toast.error(res.message, { id: loadingToast });
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to save configuration', { id: loadingToast });
         } finally {
             setSaving(false);
         }
@@ -558,21 +663,68 @@ export function WebsiteConfigPage() {
                                                     </div>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <ImageUpload
-                                                        imageType="site_logo"
-                                                        title="Site Logo"
-                                                        description="Recommended: PNG or WebP with transparent background"
-                                                        currentImage={logoImage}
-                                                        onUploadSuccess={(img) => {
-                                                            setLogoImage(img);
-                                                            setConfig(prev => ({ ...prev, site_logo: img.cdn_url || img.drive_url }));
-                                                        }}
-                                                        onDeleteSuccess={() => {
-                                                            setLogoImage(null);
-                                                            setConfig(prev => ({ ...prev, site_logo: '' }));
-                                                        }}
-                                                        aspectRatio="auto"
-                                                    />
+                                                    <div className="flex justify-between items-end mb-1">
+                                                        <label className="label-field">Site Logo</label>
+                                                        {config.site_logo && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setPreviewLogoUrl('');
+                                                                    setPendingLogoFile(null);
+                                                                    setConfig(prev => ({ ...prev, site_logo: '' }));
+                                                                }}
+                                                                className="text-xs flex items-center gap-1 text-red-600 hover:text-red-700 font-medium bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-md transition-colors"
+                                                            >
+                                                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                                                Hapus Logo
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="relative group border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden hover:border-gold-400 transition-all min-h-[140px] flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+                                                        {config.site_logo ? (
+                                                            <div className="w-full h-full relative p-4 flex items-center justify-center">
+                                                                <ProxyImage 
+                                                                    src={config.site_logo} 
+                                                                    alt="Logo Preview" 
+                                                                    className="max-h-32 object-contain"
+                                                                />
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 cursor-pointer">
+                                                                    <p className="text-white text-xs font-bold uppercase">Ganti Logo</p>
+                                                                    <p className="text-gray-300 text-[10px]">Upload / Drop Gambar</p>
+                                                                    <input 
+                                                                        type="file" 
+                                                                        className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                                        accept="image/*"
+                                                                        onChange={(e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) processLogoFile(file);
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                                                                <div className="p-3 bg-gold-50 dark:bg-gold-900/20 rounded-full text-gold-500 mb-2">
+                                                                    <HiOutlineUpload className="w-6 h-6" />
+                                                                </div>
+                                                                <p className="mb-0.5 text-xs text-gray-600 dark:text-gray-300">
+                                                                    <span className="font-semibold text-gold-600 dark:text-gold-400">Pilih logo website</span>
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                                                    PNG, WebP atau JPEG (Max 5MB)
+                                                                </p>
+                                                                <input 
+                                                                    type="file" 
+                                                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                                    accept="image/*"
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) processLogoFile(file);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="label-field">Tagline</label>

@@ -55,6 +55,8 @@ export interface Guest {
     number_of_guests: number;
     checkin_status: CheckinStatus;
     flag_sudah_kirim_undangan_via_whatsapp?: boolean | string;
+    flag_sudah_isi_ucapan?: boolean | string;
+    flag_sudah_kirim_hadiah?: boolean | string;
     created_at: string;
 }
 
@@ -90,6 +92,7 @@ export interface Theme {
     css_template?: string;
     js_template?: string;
     plan_type: 'basic' | 'pro' | 'premium';
+    style_category?: string;
     preview_image?: string;
     flag_draft?: boolean | string;
     image_types?: string[];

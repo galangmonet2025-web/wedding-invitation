@@ -16,9 +16,10 @@ const DATA_TYPES = [
     { value: 'boolean', label: 'Pilihan (Selesai/Belum selesai)' },
 ];
 
+import { useAdditionalFeatureStore } from '../store/additionalFeatureStore';
+
 export function AdditionalFeaturePage() {
-    const [features, setFeatures] = useState<MstAdditionalFeature[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { features, loading, fetchFeatures, addFeature, updateFeature, removeFeature } = useAdditionalFeatureStore();
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     
@@ -35,20 +36,6 @@ export function AdditionalFeaturePage() {
         fetchFeatures();
     }, []);
 
-    const fetchFeatures = async () => {
-        setLoading(true);
-        try {
-            const res = await additionalFeatureApi.getMstFeatures();
-            if (res.success) {
-                setFeatures(res.data || []);
-            }
-        } catch (error) {
-            toast.error('Failed to load additional features');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleSave = async () => {
         if (!form.feature_name) {
             toast.error('Nama fitur wajib diisi');
@@ -60,6 +47,7 @@ export function AdditionalFeaturePage() {
                 const res = await additionalFeatureApi.updateMstFeature(form);
                 if (res.success) {
                     toast.success('Fitur berhasil diupdate');
+                    updateFeature(form.id, form);
                 } else {
                     toast.error(res.message);
                 }
@@ -67,12 +55,12 @@ export function AdditionalFeaturePage() {
                 const res = await additionalFeatureApi.createMstFeature(form);
                 if (res.success) {
                     toast.success('Fitur berhasil ditambahkan');
+                    addFeature(res.data);
                 } else {
                     toast.error(res.message);
                 }
             }
             setShowModal(false);
-            fetchFeatures();
         } catch {
             toast.error('Gagal menyimpan fitur');
         }
@@ -84,7 +72,7 @@ export function AdditionalFeaturePage() {
                 const res = await additionalFeatureApi.deleteMstFeature(id);
                 if (res.success) {
                     toast.success('Fitur berhasil dihapus');
-                    fetchFeatures();
+                    removeFeature(id);
                 } else {
                     toast.error(res.message);
                 }
@@ -191,7 +179,7 @@ export function AdditionalFeaturePage() {
                         </button>
                     </div>
                     <button 
-                        onClick={() => fetchFeatures()} 
+                        onClick={() => fetchFeatures(true)} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title="Refresh Data"
                     >

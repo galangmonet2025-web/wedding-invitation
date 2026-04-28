@@ -12,7 +12,7 @@ const SUPER_PROMPT = `Buatkan saya kode untuk sebuah website SPA (Single Page Ap
 Output HANYA boleh berupa 3 file terpisah: index.html, style.css, dan script.js. Tidak perlu penjelasan panjang, langsung berikan kodenya.
 
 ### ATURAN INTEGRASI DATA (SANGAT PENTING - BACA BAIK-BAIK)
-Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB menggunakan data dummy yang indah agar saya bisa preview desainnya, TAPI kamu WAJIB menambahkan atribut data-var, data-img, data-bg, data-loop, data-if, atau data-menu-label secara ketat sesuai daftar di bawah ini.
+Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB menggunakan data dummy yang indah agar saya bisa preview desainnya, TAPI kamu WAJIB menambahkan atribut data-var, data-img, data-bg, data-loop, data-if, data-menu-label, atau data-is-sudah secara ketat sesuai daftar di bawah ini.
 
 1. TEKS BIASA (Gunakan data-var="..." pada elemen HTML):
    - Cover & Intro: data-var="guest_name" (Nama Tamu), data-var="kalimat_pembuka", data-var="quote"
@@ -62,7 +62,11 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    - Parent: data-loop="wishes"
    - Teks anak pertama: data-var="this.guest_initial", data-var="this.name", data-var="this.guest_comment_time", data-var="this.message"
 
-5. NAVIGASI & MENU (PENTING):
+5. KONDISI STATUS TAMU (Gunakan data-if="..." untuk menyembunyikan form jika sudah mengisi):
+   - Tamu sudah isi ucapan: data-if="is_sudah_isi_ucapan"
+   - Tamu sudah kirim hadiah: data-if="is_sudah_kirim_hadiah"
+
+6. NAVIGASI & MENU (PENTING):
     Untuk mengaktifkan fitur navigasi, tambahkan attribut data-menu-label="Nama Menu" pada section-section ini
     - section Mempelai ->  data-menu-label="Mempelai"
     - section Waktu & tempat -> data-menu-label="Waktu & tempat"
@@ -88,6 +92,9 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    - Form Ucapan: id="wish-name", id="wish-message"
    - Tombol Submit Ucapan: id="btn-submit-ucapan"
    - Alert Ucapan: id="alert-submit-ucapan"
+   - Form Konfirmasi Hadiah: id="gift-name", id="gift-amount", id="gift-bank"
+   - Tombol Submit Hadiah: id="btn-submit-hadiah"
+   - Alert Hadiah: id="alert-submit-hadiah"
    - Lightbox Gallery: Setiap tag <img> di dalam galeri WAJIB memiliki class="lightbox-injection" agar bisa diklik.
 
 Semua ID ini harus akurat. Gunakan desain terbaikmu yang paling premium dan mewah. Pastikan bagian Gift benar-benar mematuhi seluruh data-if yang saya berikan.`;

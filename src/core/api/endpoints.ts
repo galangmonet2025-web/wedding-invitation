@@ -319,8 +319,13 @@ export const publicApi = {
         return res.data;
     },
 
-    submitWish: async (data: { slug: string; guest_name: string; message: string }) => {
+    submitWish: async (data: { slug: string; guest_name: string; message: string; invitation_code?: string }) => {
         const res = await publicClient.post('', JSON.stringify({ action: 'submitPublicWish', ...data }));
+        return res.data;
+    },
+
+    submitGift: async (data: { slug: string; guest_name: string; amount: number; bank_name: string; invitation_code?: string }) => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'submitPublicGift', ...data }));
         return res.data;
     },
 

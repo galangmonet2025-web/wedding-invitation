@@ -32,6 +32,8 @@ import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 import type { Tenant, Theme, TenantActiveFeature, PlanType, TenantStatus } from '@/types';
 import { HiOutlinePencil, HiOutlineSave, HiOutlineRefresh, HiOutlineExclamationCircle } from 'react-icons/hi';
+import { useThemeStore } from '@/features/admin/store/themeStore';
+import { useTenantStore } from '@/features/admin/store/tenantStore';
 
 const COLORS = ['#C6A769', '#10B981', '#6366F1'];
 
@@ -39,7 +41,8 @@ export function GlobalDashboardPage() {
     const [dashboard, setDashboard] = useState<GlobalDashboard | null>(null);
     const [loading, setLoading] = useState(true);
     const [pendingTenants, setPendingTenants] = useState<any[]>([]);
-    const [themes, setThemes] = useState<Theme[]>([]);
+    const { themes, fetchThemes } = useThemeStore();
+    const { updateTenant: updateTenantInStore, fetchTenants } = useTenantStore();
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
@@ -57,7 +60,7 @@ export function GlobalDashboardPage() {
     useEffect(() => {
         fetchDashboard();
         fetchPendingActions();
-        fetchThemes();
+        fetchThemes(); // Background fetch if not loaded
     }, []);
 
     const fetchDashboard = async () => {
@@ -85,14 +88,6 @@ export function GlobalDashboardPage() {
         } catch {}
     };
 
-    const fetchThemes = async () => {
-        try {
-            const res = await themeApi.getThemes();
-            if (res.success) {
-                setThemes(res.data || []);
-            }
-        } catch {}
-    };
 
     const handleOpenEditModal = async (item: any) => {
         setSelectedTenant(item);
@@ -136,6 +131,7 @@ export function GlobalDashboardPage() {
                 }
 
                 toast.success('Tenant updated');
+                updateTenantInStore(selectedTenant.id, updates); // Update global cache
                 setShowEditModal(false);
                 setImagesToDelete([]);
                 fetchPendingActions(); // Refresh the list
