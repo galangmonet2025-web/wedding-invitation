@@ -8,7 +8,7 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
-    size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+    size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
     footer?: React.ReactNode;
     onConfirm?: () => void;
 }
@@ -19,6 +19,7 @@ const sizeClasses = {
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
     '2xl': 'max-w-6xl',
+    full: 'max-w-full',
 };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md', footer, onConfirm }: ModalProps) {
@@ -65,7 +66,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer, o
             {/* Modal */}
             <div
                 className={`relative ${sizeClasses[size]} w-full bg-white dark:bg-gray-900 rounded-3xl shadow-2xl 
-                animate-slide-up border border-gray-100 dark:border-gray-800 flex flex-col my-auto sm:my-8 max-h-[90vh]`}
+                animate-slide-up border border-gray-100 dark:border-gray-800 flex flex-col ${size === 'full' ? 'h-full m-0' : 'my-auto sm:my-8 max-h-[90vh]'} `}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
