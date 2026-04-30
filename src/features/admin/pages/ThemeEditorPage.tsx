@@ -84,102 +84,123 @@ export function ThemeEditorPage() {
     // AI Theme Upload Handler
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const convertHtmlToHandlebars = (html: string): string => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Convert data-var
+        doc.querySelectorAll('[data-var]').forEach(el => {
+            const varName = el.getAttribute('data-var');
+            el.removeAttribute('data-var');
+            if (el.tagName === 'A' && (!el.getAttribute('href') || el.getAttribute('href') === '#' || el.getAttribute('href') === '')) {
+                el.setAttribute('href', `{{${varName}}}`);
+            } else {
+                el.innerHTML = `{{${varName}}}`;
+            }
+        });
+
+        // Convert data-img
+        doc.querySelectorAll('[data-img]').forEach(el => {
+            const varName = el.getAttribute('data-img');
+            el.removeAttribute('data-img');
+            el.setAttribute('src', `{{${varName}}}`);
+        });
+
+        // Convert data-bg
+        doc.querySelectorAll('[data-bg]').forEach(el => {
+            const varName = el.getAttribute('data-bg');
+            el.removeAttribute('data-bg');
+            (el as HTMLElement).style.backgroundImage = `url('{{${varName}}}')`;
+        });
+
+        // Convert data-loop (Reverse order to handle nesting)
+        const loopNodes = Array.from(doc.querySelectorAll('[data-loop]'));
+        for (let i = loopNodes.length - 1; i >= 0; i--) {
+            const el = loopNodes[i];
+            const loopVar = el.getAttribute('data-loop');
+            el.removeAttribute('data-loop');
+            if (el.children.length > 0) {
+                const template = el.children[0].outerHTML;
+                el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
+            } else {
+                const template = el.innerHTML;
+                el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
+            }
+        }
+
+        // Convert data-if (Reverse order to handle nesting)
+        const ifNodes = Array.from(doc.querySelectorAll('[data-if]'));
+        for (let i = ifNodes.length - 1; i >= 0; i--) {
+            const el = ifNodes[i];
+            const condition = el.getAttribute('data-if');
+            el.removeAttribute('data-if');
+            const content = el.outerHTML;
+            el.outerHTML = `\n{{#if ${condition}}}\n${content}\n{{/if}}\n`;
+        }
+
+        let resultHtml = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
+        return resultHtml.trim();
+    };
+
+    const processRawCode = (codes: { html?: string; css?: string; js?: string }) => {
+        let processedCount = 0;
+        let lastType = '';
+
+        if (codes.css) {
+            setCssCode(codes.css);
+            processedCount++;
+            lastType = 'css';
+        }
+        if (codes.js) {
+            let cleanJs = codes.js.replace(/<script[^>]*>/gi, '').replace(/<\/script>/gi, '');
+            setJsCode(cleanJs);
+            processedCount++;
+            lastType = 'js';
+        }
+        if (codes.html) {
+            try {
+                const resultHtml = convertHtmlToHandlebars(codes.html);
+                setHtmlCode(resultHtml);
+                processedCount++;
+                lastType = 'html';
+            } catch (err) {
+                console.error("Error parsing HTML:", err);
+                toast.error("Gagal memproses kode HTML");
+            }
+        }
+
+        if (processedCount > 0) {
+            toast.success("Kode AI berhasil diterapkan!");
+            setActiveTabPanel('editor');
+            if (codes.html) setActiveTab('html');
+            else if (codes.css) setActiveTab('css');
+            else if (codes.js) setActiveTab('js');
+        }
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        let uploadedHtml = false;
-        let uploadedCss = false;
-        let uploadedJs = false;
+        let rawHtml = '';
+        let rawCss = '';
+        let rawJs = '';
 
         for (const file of files) {
             const text = await file.text();
             const ext = file.name.split('.').pop()?.toLowerCase();
 
             if (ext === 'css') {
-                setCssCode(text);
-                uploadedCss = true;
+                rawCss = text;
             } else if (ext === 'js') {
-                let cleanJs = text.replace(/<script[^>]*>/gi, '').replace(/<\/script>/gi, '');
-                setJsCode(cleanJs);
-                uploadedJs = true;
+                rawJs = text;
             } else if (ext === 'html') {
-                try {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(text, 'text/html');
-
-                    // Convert data-var
-                    doc.querySelectorAll('[data-var]').forEach(el => {
-                        const varName = el.getAttribute('data-var');
-                        el.removeAttribute('data-var');
-                        if (el.tagName === 'A' && (!el.getAttribute('href') || el.getAttribute('href') === '#' || el.getAttribute('href') === '')) {
-                            el.setAttribute('href', `{{${varName}}}`);
-                        } else {
-                            el.innerHTML = `{{${varName}}}`;
-                        }
-                    });
-
-                    // Convert data-img
-                    doc.querySelectorAll('[data-img]').forEach(el => {
-                        const varName = el.getAttribute('data-img');
-                        el.removeAttribute('data-img');
-                        el.setAttribute('src', `{{${varName}}}`);
-                    });
-
-                    // Convert data-bg
-                    doc.querySelectorAll('[data-bg]').forEach(el => {
-                        const varName = el.getAttribute('data-bg');
-                        el.removeAttribute('data-bg');
-                        (el as HTMLElement).style.backgroundImage = `url('{{${varName}}}')`;
-                    });
-
-                    // Convert data-loop
-                    doc.querySelectorAll('[data-loop]').forEach(el => {
-                        const loopVar = el.getAttribute('data-loop');
-                        el.removeAttribute('data-loop');
-                        if (el.children.length > 0) {
-                            const template = el.children[0].outerHTML;
-                            el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
-                        } else {
-                            const template = el.innerHTML;
-                            el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
-                        }
-                    });
-
-                    // Convert data-if
-                    doc.querySelectorAll('[data-if]').forEach(el => {
-                        const condition = el.getAttribute('data-if');
-                        el.removeAttribute('data-if');
-                        const content = el.outerHTML;
-                        el.outerHTML = `\n{{#if ${condition}}}\n${content}\n{{/if}}\n`;
-                    });
-
-                    let resultHtml = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
-                    resultHtml = resultHtml.trim();
-
-                    setHtmlCode(resultHtml);
-                    uploadedHtml = true;
-                } catch (err) {
-                    console.error("Error parsing HTML:", err);
-                    toast.error("Gagal memproses file HTML");
-                }
+                rawHtml = text;
             }
         }
 
+        processRawCode({ html: rawHtml, css: rawCss, js: rawJs });
         e.target.value = '';
-
-        const uploadedTypes = [];
-        if (uploadedHtml) uploadedTypes.push('HTML');
-        if (uploadedCss) uploadedTypes.push('CSS');
-        if (uploadedJs) uploadedTypes.push('JS');
-
-        if (uploadedTypes.length > 0) {
-            toast.success(`Berhasil mengunggah dan memproses ${uploadedTypes.join(', ')}!`);
-            setActiveTabPanel('editor');
-            if (uploadedHtml) setActiveTab('html');
-            else if (uploadedCss) setActiveTab('css');
-            else setActiveTab('js');
-        }
     };
 
     // Preview iframe
@@ -675,6 +696,13 @@ export function ThemeEditorPage() {
                 countdown_jam: 5,
                 countdown_menit: 30,
                 countdown_detik: 45,
+
+                // Website Config Branding
+                site_name: 'GalangMonet2025',
+                site_url: 'https://galangmonet2025.com',
+                site_logo: 'https://galangmonet2025.com/logo.png',
+                tagline: 'Solusi Undangan Digital Modern',
+                site_description: 'Platform pembuatan undangan digital terbaik dengan fitur lengkap dan desain premium.',
             };
 
             // Inject dynamic image type variables (real base64 or dummy fallback)
@@ -797,6 +825,32 @@ export function ThemeEditorPage() {
                     document.addEventListener('submit', function(e) {
                         e.preventDefault();
                     });
+
+                    // Image Auto-Retry Logic (Fixed for failed QRIS/Gallery)
+                    window.addEventListener('error', function(e) {
+                        if (e.target.tagName === 'IMG') {
+                            const img = e.target;
+                            const retryCount = parseInt(img.dataset.retryCount || '0');
+                            const maxRetries = 10;
+                            
+                            if (retryCount < maxRetries) {
+                                // Add a subtle loading effect or placeholder if needed
+                                img.style.opacity = '0.5';
+                                
+                                setTimeout(() => {
+                                    img.dataset.retryCount = retryCount + 1;
+                                    const baseSrc = img.src.split('?')[0];
+                                    // Use cache-busting to force reload from server
+                                    img.src = baseSrc + '?retry=' + Date.now();
+                                    img.style.opacity = '1';
+                                    console.log('[Preview] Retrying image load (' + (retryCount + 1) + '/' + maxRetries + '):', baseSrc);
+                                }, 2000); // Retry every 2 seconds
+                            } else {
+                                console.error('[Preview] Image failed after ' + maxRetries + ' retries:', img.src);
+                                img.style.border = '2px dashed red'; // Visual cue for failed images in editor
+                            }
+                        }
+                    }, true);
 
                     ${!showCover ? `
                     // Auto-open invitation to bypass cover
@@ -1345,6 +1399,7 @@ export function ThemeEditorPage() {
                 isOpen={isAiModalOpen}
                 onClose={() => setIsAiModalOpen(false)}
                 onTriggerUpload={() => fileInputRef.current?.click()}
+                onApplyCode={processRawCode}
             />
 
             {/* Simulation Modal */}

@@ -138,11 +138,11 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                 { tag: '{{guest_name}}', desc: 'Nama Tamu Undangan', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{guest_name}}</span>' },
                 { tag: '{{nama_tamu}}', desc: 'Alias Nama Tamu', value: 'Bpk. Ridwan (Contoh)', type: 'String', code: '<span>Kepada Yth. {{nama_tamu}}</span>' },
                 { tag: '{{kode_undangan}}', desc: 'Kode Unik Undangan', value: 'GUEST-001', type: 'String', code: '<p>Kode: {{kode_undangan}}</p>' },
-                { tag: '{{is_sudah_isi_konfirmasi_kehadiran}}', desc: 'Tamu sudah RSVP (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if is_sudah_isi_konfirmasi_kehadiran}}\n  <!-- Sembunyikan form RSVP -->\n{{/if}}' },
-                { tag: '{{is_sudah_isi_ucapan}}', desc: 'Tamu sudah isi ucapan (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#unless is_sudah_isi_ucapan}}\n  <!-- Tampilkan form ucapan -->\n{{/unless}}' },
-                { tag: '{{is_sudah_kirim_hadiah}}', desc: 'Tamu sudah konfirmasi hadiah (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#unless is_sudah_kirim_hadiah}}\n  <!-- Tampilkan form konfirmasi hadiah -->\n{{/unless}}' },
-                { tag: '{{flag_sudah_kirim_undangan_via_whatsapp}}', desc: 'Undangan sudah dikirim via WA (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if flag_sudah_kirim_undangan_via_whatsapp}}\n  <span>Terkirim</span>\n{{/if}}' },
-                { tag: '{{flag_konfirmasi_kehadiran_dari_tamu}}', desc: 'Tamu konfirmasi HADIR (Boolean)', value: 'true', type: 'Boolean Logic', code: '{{#if flag_konfirmasi_kehadiran_dari_tamu}}\n  <p>Kami tunggu kehadiran Anda!</p>\n{{/if}}' },
+                { tag: '{{#if is_sudah_isi_konfirmasi_kehadiran}}', desc: 'Tamu sudah RSVP (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if is_sudah_isi_konfirmasi_kehadiran}}\n  <!-- Sembunyikan form RSVP -->\n{{/if}}' },
+                { tag: '{{#if is_sudah_isi_ucapan}}', desc: 'Tamu sudah isi ucapan (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#unless is_sudah_isi_ucapan}}\n  <!-- Tampilkan form ucapan -->\n{{/unless}}' },
+                { tag: '{{#if is_sudah_kirim_hadiah}}', desc: 'Tamu sudah konfirmasi hadiah (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#unless is_sudah_kirim_hadiah}}\n  <!-- Tampilkan form konfirmasi hadiah -->\n{{/unless}}' },
+                { tag: '{{#if flag_sudah_kirim_undangan_via_whatsapp}}', desc: 'Undangan sudah dikirim via WA (Boolean)', value: 'false', type: 'Boolean Logic', code: '{{#if flag_sudah_kirim_undangan_via_whatsapp}}\n  <span>Terkirim</span>\n{{/if}}' },
+                { tag: '{{#if flag_konfirmasi_kehadiran_dari_tamu}}', desc: 'Tamu konfirmasi HADIR (Boolean)', value: 'true', type: 'Boolean Logic', code: '{{#if flag_konfirmasi_kehadiran_dari_tamu}}\n  <p>Kami tunggu kehadiran Anda!</p>\n{{/if}}' },
                 { tag: '{{#if is_link_umum_and_not_for_spesific_guest}}', desc: 'Bukan link tamu spesifik', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_link_umum_and_not_for_spesific_guest}}\n  <!-- Input Nama Tamu Manual -->\n{{/if}}' },
                 { tag: '{{#each wishes}}', desc: 'Loop Data Ucapan & Doa', value: '(Block Logic)', type: 'Looping Logic', code: '{{#each wishes}}\n  <p>{{this.guest_name}}: {{this.guest_message}}</p>\n{{/each}}' },
                 { tag: '{{this.guest_name}}', desc: 'Nama Pengucap (Dalam wishes)', value: 'Bpk. Ridwan', type: 'String', code: '<span>{{this.guest_name}}</span>' },
@@ -176,6 +176,16 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                 { tag: '{{#if flag_tampilkan_nama_orang_tua}}', desc: 'Tampilkan Nama Orang Tua', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_nama_orang_tua}}\n  <!-- Nama Ortu -->\n{{/if}}' },
                 { tag: '{{#if flag_tampilkan_sosial_media_mempelai}}', desc: 'Tampilkan Sosmed Mempelai', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_sosial_media_mempelai}}\n  <!-- Ikon Sosmed -->\n{{/if}}' },
                 { tag: '{{#if is_fitur_live_streaming}}', desc: 'Fitur Live Streaming Aktif', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_fitur_live_streaming}}\n  <!-- Tombol Live -->\n{{/if}}' },
+            ]
+        },
+        {
+            title: '🌐 Konfigurasi Website (Branding)',
+            vars: [
+                { tag: '{{site_name}}', desc: 'Nama Website / Brand', value: 'GalangMonet2025', type: 'String', code: '<span>Powered by {{site_name}}</span>' },
+                { tag: '{{site_url}}', desc: 'URL Utama Website', value: 'https://galangmonet2025.com', type: 'URL String', code: '<a href="{{site_url}}">Kunjungi Kami</a>' },
+                { tag: '{{site_logo}}', desc: 'URL Logo Website', value: 'https://galangmonet2025.com/logo.png', type: 'URL String', code: '<img src="{{site_logo}}" alt="Logo" />' },
+                { tag: '{{tagline}}', desc: 'Tagline Website', value: 'Solusi Undangan Digital Modern', type: 'String', code: '<p>{{tagline}}</p>' },
+                { tag: '{{site_description}}', desc: 'Deskripsi SEO Website', value: 'Platform pembuatan undangan digital terbaik...', type: 'String', code: '<meta name="description" content="{{site_description}}">' },
             ]
         },
     ];
