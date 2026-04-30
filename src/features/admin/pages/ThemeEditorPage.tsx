@@ -482,7 +482,8 @@ export function ThemeEditorPage() {
                     addTheme(res.data); // Update local cache
                     setFlagDraft(isDraft);
                     setInitialPreviewImage(finalPreviewUrl);
-                    navigate(`/private/themes/editor/${res.data.id}`, { replace: true });
+                    // Redirect back to theme management list on new theme creation
+                    navigate('/private/themes');
                 } else {
                     toast.error(res.message, { id: loadingToast });
                 }
@@ -706,9 +707,11 @@ export function ThemeEditorPage() {
             };
 
             // Inject dynamic image type variables (real base64 or dummy fallback)
-            imageTypes.forEach((key, index) => {
-                mockData[key] = imgs[key] || dummies[index % dummies.length];
-            });
+            if (Array.isArray(imageTypes)) {
+                imageTypes.forEach((key, index) => {
+                    mockData[key] = imgs[key] || dummies[index % dummies.length];
+                });
+            }
 
             activeBacksound = mockData.link_backsound_music || '';
             finalHtml = parseTemplate(htmlCodeRef.current, mockData);
@@ -1206,7 +1209,7 @@ export function ThemeEditorPage() {
                                                     e.preventDefault();
                                                     const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
                                                     if (val && !imageTypes.includes(val)) {
-                                                        setImageTypes([...imageTypes, val]);
+                                                        setImageTypes([...(Array.isArray(imageTypes) ? imageTypes : []), val]);
                                                         setNewImageType('');
                                                     }
                                                 }
@@ -1226,13 +1229,13 @@ export function ThemeEditorPage() {
                                         >Tambah</button>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        {imageTypes.map(it => (
+                                        {Array.isArray(imageTypes) && imageTypes.map(it => (
                                             <span key={it} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-100 text-gold-800 border border-gold-200">
                                                 {it}
                                                 <button onClick={() => setImageTypes(imageTypes.filter(i => i !== it))} className="text-gold-600 hover:text-gold-900">&times;</button>
                                             </span>
                                         ))}
-                                        {imageTypes.length === 0 && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
+                                        {(!Array.isArray(imageTypes) || imageTypes.length === 0) && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
                                     </div>
                                 </div>
                             </div>
