@@ -74,8 +74,11 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         {
             title: '🤵 Data Pengantin',
             vars: [
-                { tag: '{{bride_name}}', desc: 'Nama Wanita', value: t.bride_name, type: 'String', code: '<h1>{{bride_name}}</h1>' },
-                { tag: '{{groom_name}}', desc: 'Nama Pria', value: t.groom_name, type: 'String', code: '<h1>{{groom_name}}</h1>' },
+                { tag: '{{bride_name}}', desc: 'Nama Lengkap Wanita', value: t.bride_name, type: 'String', code: '<h1>{{bride_name}}</h1>' },
+                { tag: '{{bride_nickname}}', desc: 'Nama Panggilan Wanita', value: t.bride_nickname || 'Fiona', type: 'String', code: '<span>{{bride_nickname}}</span>' },
+                { tag: '{{groom_name}}', desc: 'Nama Lengkap Pria', value: t.groom_name, type: 'String', code: '<h1>{{groom_name}}</h1>' },
+                { tag: '{{groom_nickname}}', desc: 'Nama Panggilan Pria', value: t.groom_nickname || 'Galang', type: 'String', code: '<span>{{groom_nickname}}</span>' },
+                { tag: '{{religion}}', desc: 'Agama', value: t.religion || 'Islam', type: 'String', code: '<span>{{religion}}</span>' },
                 { tag: '{{nama_bapak_laki_laki}}', desc: 'Nama Ayah Mempelai Pria', value: 'Bpk. Ahmad', type: 'String', code: '<span>{{nama_bapak_laki_laki}}</span>' },
                 { tag: '{{nama_ibu_laki_laki}}', desc: 'Nama Ibu Mempelai Pria', value: 'Ibu Siti', type: 'String', code: '<span>{{nama_ibu_laki_laki}}</span>' },
                 { tag: '{{nama_bapak_perempuan}}', desc: 'Nama Ayah Mempelai Wanita', value: 'Bpk. Budi', type: 'String', code: '<span>{{nama_bapak_perempuan}}</span>' },

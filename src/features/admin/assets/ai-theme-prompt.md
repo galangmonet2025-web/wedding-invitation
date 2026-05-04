@@ -7,7 +7,9 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
 
 1. TEKS BIASA (Gunakan data-var="..." pada elemen HTML):
    - Cover & Intro: data-var="guest_name" (Nama Tamu), data-var="nama_tamu" (Alias Nama Tamu), data-var="kode_undangan", data-var="kalimat_pembuka", data-var="quote"
-   - Nama Mempelai: data-var="groom_name", data-var="bride_name"
+   - Nama Mempelai Lengkap: data-var="groom_name", data-var="bride_name"
+   - Nama Panggilan: data-var="groom_nickname", data-var="bride_nickname"
+   - Agama: data-var="religion"
    - Orang Tua Pria: data-var="nama_bapak_laki_laki", data-var="nama_ibu_laki_laki"
    - Orang Tua Wanita: data-var="nama_bapak_perempuan", data-var="nama_ibu_perempuan"
    - Sosial Media (Instagram): data-var="ig_laki_laki", data-var="ig_perempuan"

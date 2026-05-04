@@ -24,7 +24,10 @@ export type TenantStatus = 'active' | 'suspended';
 export interface Tenant {
     id: string;
     bride_name: string;
+    bride_nickname?: string;
     groom_name: string;
+    groom_nickname?: string;
+    religion?: string;
     wedding_date: string;
     domain_slug: string;
     plan_type: PlanType;
@@ -133,7 +136,10 @@ export interface LoginRequest {
 
 export interface RegisterTenantRequest {
     bride_name: string;
+    bride_nickname?: string;
     groom_name: string;
+    groom_nickname?: string;
+    religion?: string;
     wedding_date: string;
     domain_slug: string;
     username: string;
@@ -306,7 +312,10 @@ export interface InvitationContent {
 
     // Tenant info injected from Backend
     bride_name?: string;
+    bride_nickname?: string;
     groom_name?: string;
+    groom_nickname?: string;
+    religion?: string;
     wedding_date?: string;
     tanggal_akad?: string;
 

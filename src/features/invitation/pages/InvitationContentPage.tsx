@@ -300,12 +300,32 @@ export function InvitationContentPage() {
                                             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Data Mempelai Utama</p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div>
-                                                    <label className="label-field">Nama Laki-laki (Groom)</label>
+                                                    <label className="label-field">Nama Lengkap Laki-laki (Groom)</label>
                                                     <input type="text" value={content.groom_name || ''} onChange={(e) => updateField('groom_name', e.target.value)} className="input-field" placeholder="e.g. Romeo" />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Nama Perempuan (Bride)</label>
+                                                    <label className="label-field">Nama Lengkap Perempuan (Bride)</label>
                                                     <input type="text" value={content.bride_name || ''} onChange={(e) => updateField('bride_name', e.target.value)} className="input-field" placeholder="e.g. Juliet" />
+                                                </div>
+                                                <div>
+                                                    <label className="label-field">Nama Panggilan Laki-laki</label>
+                                                    <input type="text" value={content.groom_nickname || ''} onChange={(e) => updateField('groom_nickname', e.target.value)} className="input-field" placeholder="e.g. Romi" />
+                                                </div>
+                                                <div>
+                                                    <label className="label-field">Nama Panggilan Perempuan</label>
+                                                    <input type="text" value={content.bride_nickname || ''} onChange={(e) => updateField('bride_nickname', e.target.value)} className="input-field" placeholder="e.g. Juli" />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="label-field">Agama</label>
+                                                    <select value={content.religion || ''} onChange={(e) => updateField('religion', e.target.value)} className="input-field">
+                                                        <option value="" disabled>Pilih Agama</option>
+                                                        <option value="Islam">Islam</option>
+                                                        <option value="Kristen Protestan">Kristen Protestan</option>
+                                                        <option value="Katolik">Katolik</option>
+                                                        <option value="Hindu">Hindu</option>
+                                                        <option value="Buddha">Buddha</option>
+                                                        <option value="Konghucu">Konghucu</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                         </div>

@@ -544,7 +544,10 @@ var AuthService = {
     var tenant = {
       id: tenantId,
       bride_name: sanitized.bride_name,
+      bride_nickname: sanitized.bride_nickname || '',
       groom_name: sanitized.groom_name,
+      groom_nickname: sanitized.groom_nickname || '',
+      religion: sanitized.religion || '',
       wedding_date: sanitized.wedding_date,
       domain_slug: sanitized.domain_slug,
       plan_type: 'basic',
@@ -1552,7 +1555,10 @@ var InvitationContentService = {
     // Always inject tenant info
     if (tenant) {
       content.bride_name = tenant.bride_name;
+      content.bride_nickname = tenant.bride_nickname;
       content.groom_name = tenant.groom_name;
+      content.groom_nickname = tenant.groom_nickname;
+      content.religion = tenant.religion;
       content.wedding_date = tenant.wedding_date;
       // Only set tanggal_akad from tenant if not already set in InvitationContent
       if (!content.tanggal_akad) {
@@ -1576,8 +1582,17 @@ var InvitationContentService = {
     if (sanitized.bride_name !== undefined) {
       tenantUpdates.bride_name = sanitized.bride_name;
     }
+    if (sanitized.bride_nickname !== undefined) {
+      tenantUpdates.bride_nickname = sanitized.bride_nickname;
+    }
     if (sanitized.groom_name !== undefined) {
       tenantUpdates.groom_name = sanitized.groom_name;
+    }
+    if (sanitized.groom_nickname !== undefined) {
+      tenantUpdates.groom_nickname = sanitized.groom_nickname;
+    }
+    if (sanitized.religion !== undefined) {
+      tenantUpdates.religion = sanitized.religion;
     }
     if (sanitized.wedding_date !== undefined) {
       tenantUpdates.wedding_date = sanitized.wedding_date;
@@ -1592,7 +1607,10 @@ var InvitationContentService = {
     
     // Remove tenant columns from InvitationContent payload before saving
     delete sanitized.bride_name;
+    delete sanitized.bride_nickname;
     delete sanitized.groom_name;
+    delete sanitized.groom_nickname;
+    delete sanitized.religion;
     delete sanitized.wedding_date;
 
     var existing = DB.findOne('InvitationContent', 'tenant_id', tenantId);
@@ -1679,7 +1697,10 @@ var PublicService = {
     return ResponseHelper.success({
       tenant: {
         bride_name: tenant.bride_name,
+        bride_nickname: tenant.bride_nickname,
         groom_name: tenant.groom_name,
+        groom_nickname: tenant.groom_nickname,
+        religion: tenant.religion,
         wedding_date: tenant.wedding_date,
         domain_slug: tenant.domain_slug,
         theme_id: tenant.theme_id

@@ -11,12 +11,17 @@ import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 export function RegisterPage() {
     const [form, setForm] = useState({
         bride_name: '',
+        bride_nickname: '',
         groom_name: '',
+        groom_nickname: '',
+        religion: '',
         wedding_date: '',
         domain_slug: '',
         username: '',
         password: '',
     });
+    const [isAutoGroomNickname, setIsAutoGroomNickname] = useState(true);
+    const [isAutoBrideNickname, setIsAutoBrideNickname] = useState(true);
     const [loading, setLoading] = useState(false);
     const [isAutoSlug, setIsAutoSlug] = useState(true);
     const [isCheckingSlug, setIsCheckingSlug] = useState(false);
@@ -25,25 +30,38 @@ export function RegisterPage() {
     const navigate = useNavigate();
     const { t } = useTranslation();
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setForm((prev) => ({ ...prev, [name]: value }));
+        setForm((prev) => {
+            const next = { ...prev, [name]: value };
+            if (name === 'groom_name' && isAutoGroomNickname) {
+                next.groom_nickname = getFirstName(value);
+            }
+            if (name === 'bride_name' && isAutoBrideNickname) {
+                next.bride_nickname = getFirstName(value);
+            }
+            return next;
+        });
+
+        if (name === 'groom_nickname') setIsAutoGroomNickname(false);
+        if (name === 'bride_nickname') setIsAutoBrideNickname(false);
+    };
+
+    const prefixes = ['muhammad', 'mohammad', 'moh', 'ahmad', 'achmad', 'made', 'nyoman', 'ketut', 'wayan', 'gede', 'putu', 'agus', 'abdul', 'siti', 'sri', 'cut', 'ni', 'luh', 'maria', 'anastasia', 'nur', 'ade'];
+
+    const getFirstName = (fullName: string) => {
+        if (!fullName.trim()) return '';
+        const parts = fullName.trim().toLowerCase().split(/\s+/);
+        let name = parts[0];
+        if (parts.length > 1 && prefixes.includes(parts[0])) {
+            name = parts[1];
+        }
+        return name.charAt(0).toUpperCase() + name.slice(1);
     };
 
     const generateSmartSlug = useCallback((groom: string, bride: string) => {
-        const prefixes = ['muhammad', 'mohammad', 'moh', 'ahmad', 'achmad', 'made', 'nyoman', 'ketut', 'wayan', 'gede', 'putu', 'agus', 'abdul', 'siti', 'sri', 'cut', 'ni', 'luh', 'maria', 'anastasia', 'nur', 'ade'];
-
-        const getFirstName = (fullName: string) => {
-            if (!fullName.trim()) return '';
-            const parts = fullName.trim().toLowerCase().split(/\s+/);
-            if (parts.length > 1 && prefixes.includes(parts[0])) {
-                return parts[1];
-            }
-            return parts[0];
-        };
-
-        const g = getFirstName(groom);
-        const b = getFirstName(bride);
+        const g = getFirstName(groom).toLowerCase();
+        const b = getFirstName(bride).toLowerCase();
 
         if (!g && !b) return '';
         if (!g) return b;
@@ -189,7 +207,7 @@ export function RegisterPage() {
                         <div className="grid grid-cols-2 gap-4">
 
                             <div>
-                                <label htmlFor="groom_name" className="label-field">{t('auth.groom_name')}</label>
+                                <label htmlFor="groom_name" className="label-field">{t('auth.groom_name')} Lengkap</label>
                                 <input
                                     id="groom_name"
                                     name="groom_name"
@@ -197,11 +215,11 @@ export function RegisterPage() {
                                     value={form.groom_name}
                                     onChange={handleChange}
                                     className="input-field"
-                                    placeholder="Groom"
+                                    placeholder="Groom Full Name"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="bride_name" className="label-field">{t('auth.bride_name')}</label>
+                                <label htmlFor="bride_name" className="label-field">{t('auth.bride_name')} Lengkap</label>
                                 <input
                                     id="bride_name"
                                     name="bride_name"
@@ -209,8 +227,50 @@ export function RegisterPage() {
                                     value={form.bride_name}
                                     onChange={handleChange}
                                     className="input-field"
-                                    placeholder="Bride"
+                                    placeholder="Bride Full Name"
                                 />
+                            </div>
+                            <div>
+                                <label htmlFor="groom_nickname" className="label-field">Panggilan Pria</label>
+                                <input
+                                    id="groom_nickname"
+                                    name="groom_nickname"
+                                    type="text"
+                                    value={form.groom_nickname}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    placeholder="Groom Nickname"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="bride_nickname" className="label-field">Panggilan Wanita</label>
+                                <input
+                                    id="bride_nickname"
+                                    name="bride_nickname"
+                                    type="text"
+                                    value={form.bride_nickname}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    placeholder="Bride Nickname"
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <label htmlFor="religion" className="label-field">Agama</label>
+                                <select
+                                    id="religion"
+                                    name="religion"
+                                    value={form.religion}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                >
+                                    <option value="" disabled>Pilih Agama</option>
+                                    <option value="Islam">Islam</option>
+                                    <option value="Kristen Protestan">Kristen Protestan</option>
+                                    <option value="Katolik">Katolik</option>
+                                    <option value="Hindu">Hindu</option>
+                                    <option value="Buddha">Buddha</option>
+                                    <option value="Konghucu">Konghucu</option>
+                                </select>
                             </div>
 
                         </div>

@@ -574,7 +574,10 @@ export function ThemeEditorPage() {
 
             const mockData: Record<string, any> = {
                 bride_name: t.bride_name || 'Fiona',
+                bride_nickname: t.bride_nickname || 'Fiona',
                 groom_name: t.groom_name || 'Galang',
+                groom_nickname: t.groom_nickname || 'Galang',
+                religion: t.religion || 'Islam',
                 wedding_date: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
                 tanggal_akad: c.tanggal_akad ? new Date(c.tanggal_akad).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Minggu, 9 Agustus 2026',
                 jam_akad: `${c.jam_awal_akad || '08:00'} - ${c.jam_akhir_akad || 'Selesai'}`,
