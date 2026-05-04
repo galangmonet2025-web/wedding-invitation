@@ -205,6 +205,28 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         return () => observer.disconnect();
     }, [isOpened, sections]);
 
+    // Live Preview Message Listener
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'invitation-preview-update') {
+                const { content, images: newImages } = event.data;
+                console.log("Live Preview Update Received:", { content, newImages });
+                
+                setData(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        content: { ...prev.content, ...content },
+                        images: newImages || prev.images
+                    };
+                });
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
     }, [slug, previewData]);
@@ -642,9 +664,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     // Build replacements dictionary as a context object
     const dataContext: Record<string, any> = useMemo(() => ({
-        bride_name: tenant.bride_name,
-        groom_name: tenant.groom_name,
-        wedding_date: formatDate(tenant.wedding_date),
+        bride_name: activeContent.bride_name || tenant.bride_name,
+        groom_name: activeContent.groom_name || tenant.groom_name,
+        bride_nickname: activeContent.bride_nickname || '',
+        groom_nickname: activeContent.groom_nickname || '',
+        religion: activeContent.religion || '',
+        wedding_date: formatDate(activeContent.wedding_date || tenant.wedding_date),
         tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
         jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
         nama_lokasi_akad: activeContent.nama_lokasi_akad || '',

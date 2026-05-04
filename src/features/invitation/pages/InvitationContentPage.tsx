@@ -1,6 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useBlocker } from 'react-router-dom';
 import { tenantApi } from '@/core/api/endpoints';
 import { useInvitationContentStore } from '../store/invitationContentStore';
+import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { InvitationContent, Theme } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -101,6 +103,7 @@ export function InvitationContentPage() {
     const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set(['mempelai', 'acara', 'hadiah', 'teks', 'cerita']));
     const [currentStep, setCurrentStep] = useState(1);
     const { tasks } = useBackgroundTaskStore();
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const [isDirty, setIsDirty] = useState(false);
     const isUploadingGallery = tasks.some(t => t.status === 'running' && t.id.startsWith('upload-gallery'));
@@ -122,6 +125,32 @@ export function InvitationContentPage() {
         setContent({ ...content, timeline_kisah: JSON.stringify(items) });
         setIsDirty(true);
     };
+
+    // Navigation Blocker (internal routing)
+    const blocker = useBlocker(isDirty);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+    useEffect(() => {
+        if (blocker.state === 'blocked') {
+            setShowConfirmModal(true);
+        } else {
+            setShowConfirmModal(false);
+        }
+    }, [blocker.state]);
+
+
+
+    // Browser Blocker (refresh/tab close)
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
 
 
     const steps = [
@@ -172,6 +201,40 @@ export function InvitationContentPage() {
         
         if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
     }, [tenant]);
+
+    // Live Preview Synchronization
+    useEffect(() => {
+        // Disable on mobile/tablet (less than 1024px) to save performance
+        const isMobile = window.innerWidth < 1024;
+        if (isMobile || !iframeRef.current || !content) return;
+
+        const syncPreview = () => {
+            if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage({
+                    type: 'invitation-preview-update',
+                    content: content,
+                    images: images
+                }, '*');
+            }
+        };
+
+        // Trigger on debounce (2 seconds after last change)
+        const timeout = setTimeout(syncPreview, 2000);
+
+        // Also trigger immediately when user leaves any input field
+        const handleBlur = (e: FocusEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+                syncPreview();
+            }
+        };
+
+        window.addEventListener('blur', handleBlur, true);
+
+        return () => {
+            clearTimeout(timeout);
+            window.removeEventListener('blur', handleBlur, true);
+        };
+    }, [content, images]);
 
 
 
@@ -1087,6 +1150,7 @@ export function InvitationContentPage() {
                                 <iframe
                                     style={{ zoom: '0.8' }}
                                     key={iframeKey}
+                                    ref={iframeRef}
                                     src={`${window.location.origin}${import.meta.env.BASE_URL}#/${tenant.domain_slug}`}
                                     className="w-full h-full border-none pointer-events-auto"
                                     title="Invitation Preview"
@@ -1124,6 +1188,36 @@ export function InvitationContentPage() {
                 />
             )}
 
+            {/* MODAL KONFIRMASI NAVIGASI (UNSAVED CHANGES) */}
+            {blocker.state === 'blocked' && (
+                <Modal
+                    isOpen={blocker.state === 'blocked'}
+                    onClose={() => blocker.reset?.()}
+                    title="Perubahan Belum Disimpan"
+                >
+                    <div className="space-y-6">
+                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
+                            <div className="flex gap-3 text-amber-800 dark:text-amber-400">
+                                <HiOutlineSave className="w-5 h-5 shrink-0 mt-0.5" />
+                                <div className="text-sm">
+                                    <p className="font-semibold text-base mb-1">Konfirmasi Meninggalkan Halaman</p>
+                                    <p>Anda memiliki beberapa perubahan data yang belum disimpan. Jika Anda meninggalkan halaman ini sekarang, perubahan tersebut akan hilang.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3">
+                            <button onClick={() => blocker.reset?.()} className="btn-ghost">Batal, Tetap di Sini</button>
+                            <button 
+                                onClick={() => blocker.proceed?.()} 
+                                className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-6 rounded-lg font-semibold transition-colors"
+                            >
+                                Ya, Pergi & Buang Perubahan
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }
