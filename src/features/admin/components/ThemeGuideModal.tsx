@@ -33,7 +33,10 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
 
     const t = previewTenant || {
         bride_name: 'Fiona',
+        bride_nickname: 'Fiona',
         groom_name: 'Galang',
+        groom_nickname: 'Galang',
+        religion: 'Islam',
         wedding_date: new Date().toISOString()
     } as any;
 

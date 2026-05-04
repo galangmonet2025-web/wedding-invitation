@@ -546,7 +546,14 @@ export function ThemeEditorPage() {
             try {
 
         // Dummy tenant data mapped just like in InvitationPage
-        const t = previewTenant || { bride_name: 'Fiona', groom_name: 'Galang', wedding_date: '2026-10-20' };
+        const t = previewTenant || { 
+            bride_name: 'Fiona', 
+            bride_nickname: 'Fiona',
+            groom_name: 'Galang', 
+            groom_nickname: 'Galang',
+            religion: 'Islam',
+            wedding_date: '2026-10-20' 
+        };
 
         let finalHtml = htmlCodeRef.current;
         let activeBacksound = '';
