@@ -634,7 +634,7 @@ export function WebsiteConfigPage() {
                                                                 {group.title === 'Loops (Arrays)' && (
                                                                     <div className="mt-2 pl-2 border-l border-white/5 space-y-1">
                                                                         <p className="text-[8px] text-gray-500 font-mono">Properties inside loops:</p>
-                                                                        <p className="text-[8px] text-gray-400 font-mono italic">features: feature_name</p>
+                                                                        <p className="text-[8px] text-gray-400 font-mono italic">features: feature_name, description, price</p>
                                                                         <p className="text-[8px] text-gray-400 font-mono italic">reviews: bride_name, groom_name, rate_star, comment, alamat</p>
                                                                     </div>
                                                                 )}

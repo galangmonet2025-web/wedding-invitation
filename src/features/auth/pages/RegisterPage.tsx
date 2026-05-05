@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
@@ -19,6 +19,8 @@ export function RegisterPage() {
         domain_slug: '',
         username: '',
         password: '',
+        plan_type: 'basic',
+        guest_limit: 100,
     });
     const [isAutoGroomNickname, setIsAutoGroomNickname] = useState(true);
     const [isAutoBrideNickname, setIsAutoBrideNickname] = useState(true);
@@ -28,7 +30,16 @@ export function RegisterPage() {
     const [slugStatus, setSlugStatus] = useState({ message: '', isConflict: false });
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { t } = useTranslation();
+
+    // Set plan_type from URL if exists
+    useEffect(() => {
+        const planFromUrl = searchParams.get('plan_type');
+        if (planFromUrl && ['basic', 'pro', 'premium'].includes(planFromUrl.toLowerCase())) {
+            setForm(prev => ({ ...prev, plan_type: planFromUrl.toLowerCase() }));
+        }
+    }, [searchParams]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -124,7 +135,11 @@ export function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (Object.values(form).some((v) => !v.trim())) {
+        // Required fields check (excluding nicknames which are auto-generated and hidden)
+        const requiredFields = ['groom_name', 'bride_name', 'religion', 'wedding_date', 'domain_slug', 'username', 'password', 'plan_type'];
+        const missingField = requiredFields.find(field => !String((form as any)[field] || '').trim());
+        
+        if (missingField) {
             toast.error(t('auth.fill_all_fields', 'Please fill in all fields'));
             return;
         }
@@ -207,7 +222,7 @@ export function RegisterPage() {
                         <div className="grid grid-cols-2 gap-4">
 
                             <div>
-                                <label htmlFor="groom_name" className="label-field">{t('auth.groom_name')} Lengkap</label>
+                                <label htmlFor="groom_name" className="label-field">{t('auth.groom_name')}</label>
                                 <input
                                     id="groom_name"
                                     name="groom_name"
@@ -219,7 +234,7 @@ export function RegisterPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="bride_name" className="label-field">{t('auth.bride_name')} Lengkap</label>
+                                <label htmlFor="bride_name" className="label-field">{t('auth.bride_name')}</label>
                                 <input
                                     id="bride_name"
                                     name="bride_name"
@@ -231,30 +246,6 @@ export function RegisterPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="groom_nickname" className="label-field">Panggilan Pria</label>
-                                <input
-                                    id="groom_nickname"
-                                    name="groom_nickname"
-                                    type="text"
-                                    value={form.groom_nickname}
-                                    onChange={handleChange}
-                                    className="input-field"
-                                    placeholder="Groom Nickname"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="bride_nickname" className="label-field">Panggilan Wanita</label>
-                                <input
-                                    id="bride_nickname"
-                                    name="bride_nickname"
-                                    type="text"
-                                    value={form.bride_nickname}
-                                    onChange={handleChange}
-                                    className="input-field"
-                                    placeholder="Bride Nickname"
-                                />
-                            </div>
-                            <div className="col-span-2">
                                 <label htmlFor="religion" className="label-field">Agama</label>
                                 <select
                                     id="religion"
@@ -272,6 +263,21 @@ export function RegisterPage() {
                                     <option value="Konghucu">Konghucu</option>
                                 </select>
                             </div>
+                            <div>
+                                <label htmlFor="plan_type" className="label-field">Tipe Plan</label>
+                                <select
+                                    id="plan_type"
+                                    name="plan_type"
+                                    value={form.plan_type}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                >
+                                    <option value="basic">Basic (100 Tamu)</option>
+                                    <option value="pro">Pro (500 Tamu)</option>
+                                    <option value="premium">Premium (1000 Tamu)</option>
+                                </select>
+                            </div>
+                            
 
                         </div>
 

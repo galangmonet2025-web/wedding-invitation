@@ -550,8 +550,8 @@ var AuthService = {
       religion: sanitized.religion || '',
       wedding_date: sanitized.wedding_date,
       domain_slug: sanitized.domain_slug,
-      plan_type: 'basic',
-      guest_limit: 100,
+      plan_type: sanitized.plan_type || 'basic',
+      guest_limit: sanitized.plan_type === 'premium' ? 1000 : (sanitized.plan_type === 'pro' ? 500 : 100),
       created_at: now,
       status_account: 'active',
       payment_deadline: deadline,
@@ -2065,6 +2065,7 @@ var AdditionalFeatureService = {
     var feature = {
       id: DB.generateId(),
       feature_name: sanitized.feature_name,
+      description: sanitized.description || '',
       is_required_tenant_input: payload.is_required_tenant_input ? 'TRUE' : 'FALSE',
       input_data_type: sanitized.input_data_type || '',
       output_data_type: sanitized.output_data_type || '',
@@ -2082,6 +2083,7 @@ var AdditionalFeatureService = {
     
     var updates = {};
     if (payload.feature_name !== undefined) updates.feature_name = Validator.sanitizeObject({n: payload.feature_name}).n;
+    if (payload.description !== undefined) updates.description = Validator.sanitizeObject({d: payload.description}).d;
     if (payload.is_required_tenant_input !== undefined) updates.is_required_tenant_input = payload.is_required_tenant_input ? 'TRUE' : 'FALSE';
     if (payload.input_data_type !== undefined) updates.input_data_type = Validator.sanitizeObject({t: payload.input_data_type}).t;
     if (payload.output_data_type !== undefined) updates.output_data_type = Validator.sanitizeObject({t: payload.output_data_type}).t;
@@ -2124,6 +2126,7 @@ var AdditionalFeatureService = {
         tenant_id: targetTenantId,
         additional_feature_id: mst.id,
         feature_name: mst.feature_name,
+        description: mst.description || '',
         is_required_tenant_input: (mst.is_required_tenant_input === true || mst.is_required_tenant_input === 'true' || mst.is_required_tenant_input === 'TRUE'),
         input_data_type: mst.input_data_type,
         output_data_type: mst.output_data_type,
@@ -2378,7 +2381,9 @@ function setupSpreadsheet() {
       'contact_email', 'contact_whatsapp', 'tagline', 'site_description', 
       'site_code_html', 'site_code_css', 'site_code_js', 'primary_color', 'accent_color'
     ],
-    'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at']
+    'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at'],
+    'MstAdditionalFeature': ['id', 'feature_name', 'description', 'is_required_tenant_input', 'input_data_type', 'output_data_type', 'active', 'price', 'created_at'],
+    'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active']
   };
 
   for (var name in sheets) {

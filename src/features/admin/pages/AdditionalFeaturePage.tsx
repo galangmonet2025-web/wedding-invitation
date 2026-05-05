@@ -26,6 +26,7 @@ export function AdditionalFeaturePage() {
     
     const initialForm: Partial<MstAdditionalFeature> = {
         feature_name: '',
+        description: '',
         is_required_tenant_input: false,
         input_data_type: 'empty',
         output_data_type: 'empty',
@@ -90,6 +91,7 @@ export function AdditionalFeaturePage() {
 
     const exportColumns = [
         { header: 'Nama Fitur', key: 'feature_name' },
+        { header: 'Deskripsi', key: 'description' },
         { header: 'Perlu Input Tenant?', key: 'is_required_tenant_input', render: (f: MstAdditionalFeature) => f.is_required_tenant_input ? 'Ya' : 'Tidak' },
         { header: 'Tipe Input', key: 'input_data_type', render: (f: MstAdditionalFeature) => getTypeLabel(f.input_data_type) },
         { header: 'Tipe Output', key: 'output_data_type', render: (f: MstAdditionalFeature) => getTypeLabel(f.output_data_type) },
@@ -109,7 +111,12 @@ export function AdditionalFeaturePage() {
         {
             key: 'feature_name',
             header: 'Nama Fitur',
-            render: (f) => <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>,
+            render: (f) => (
+                <div className="flex flex-col">
+                    <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>
+                    {f.description && <span className="text-[10px] text-gray-400 line-clamp-1">{f.description}</span>}
+                </div>
+            ),
         },
         {
             key: 'tenant_input',
@@ -230,6 +237,16 @@ export function AdditionalFeaturePage() {
                             value={form.feature_name || ''} 
                             onChange={(e) => setForm({ ...form, feature_name: e.target.value })} 
                             className="input-field" 
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="label-field">Deskripsi</label>
+                        <textarea 
+                            value={form.description || ''} 
+                            onChange={(e) => setForm({ ...form, description: e.target.value })} 
+                            className="input-field min-h-[80px]" 
+                            placeholder="Keterangan singkat fitur ini..."
                         />
                     </div>
                     

@@ -218,6 +218,9 @@ export function TenantAdditionalFeaturePage() {
                         <div key={feature.id} className="card p-6 border border-gray-100 dark:border-gray-800">
                             <div className="mb-4">
                                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{feature.feature_name}</h3>
+                                {feature.description && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{feature.description}</p>
+                                )}
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-800">
                                 <div className="space-y-2 lg:pr-8">

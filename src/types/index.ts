@@ -393,6 +393,7 @@ export interface InvitationContent {
 export interface MstAdditionalFeature {
     id: string;
     feature_name: string;
+    description?: string;
     is_required_tenant_input: boolean;
     input_data_type: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
     output_data_type: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
@@ -408,6 +409,7 @@ export interface TenantActiveFeature {
     
     // MstData Joined
     feature_name?: string;
+    description?: string;
     is_required_tenant_input?: boolean;
     input_data_type?: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
     output_data_type?: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
@@ -439,6 +441,8 @@ export interface WebsiteConfig {
     site_code_js: string;
     primary_color: string;
     accent_color: string;
+    features?: MstAdditionalFeature[];
+    reviews?: ReviewAndRating[];
 }
 
 // =============================================
