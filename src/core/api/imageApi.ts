@@ -21,11 +21,11 @@ export const imageApi = {
     /**
      * Get all images for the logged-in tenant.
      */
-    getTenantImages: async (): Promise<ApiResponse<ImageRecord[]>> => {
+    getTenantImages: async (config: any = {}): Promise<ApiResponse<ImageRecord[]>> => {
         try {
             const response = await apiClient.post<any, { data: ApiResponse<ImageRecord[]> }>('', {
                 action: 'getTenantImages'
-            });
+            }, config);
             return response.data;
         } catch (error: any) {
             console.error('API Error (getTenantImages):', error);

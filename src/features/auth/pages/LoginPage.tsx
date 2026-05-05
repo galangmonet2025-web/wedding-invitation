@@ -92,9 +92,9 @@ export function LoginPage() {
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
                 </div>
                 <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
-                    <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl">
-                        <HiOutlineHeart className="w-10 h-10" />
-                    </div>
+                    <Link to="/home" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group">
+                        <HiOutlineHeart className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
+                    </Link>
                     <h1 className="text-4xl font-display font-bold mb-4 text-center">Wedding SaaS Platform</h1>
                     <p className="text-lg text-white/80 text-center max-w-md leading-relaxed">
                         Kelola berbagai acara pernikahan dengan elegan. Sistem manajemen undangan pernikahan digital yang lengkap.
@@ -126,14 +126,14 @@ export function LoginPage() {
                 
                 <div className="w-full max-w-md">
                     {/* Mobile Logo */}
-                    <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
+                    <Link to="/home" className="lg:hidden flex items-center justify-center gap-3 mb-8 group">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold group-hover:scale-105 transition-transform duration-300">
                             <HiOutlineHeart className="w-6 h-6 text-white" />
                         </div>
-                        <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">
+                        <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white group-hover:text-gold-600 transition-colors duration-300">
                             Wedding<span className="text-gradient-gold">SaaS</span>
                         </h1>
-                    </div>
+                    </Link>
 
                     <div className="mb-8">
                         <h2 className="text-3xl font-display font-bold text-gray-800 dark:text-white mb-2">{t('auth.welcome_back')}</h2>

@@ -6,6 +6,7 @@ import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
 
 export function LandingPage() {
     const [config, setConfig] = useState<WebsiteConfig | null>(null);
+    const [codeImages, setCodeImages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [resolvedData, setResolvedData] = useState<Record<string, any>>({});
 
@@ -15,7 +16,7 @@ export function LandingPage() {
     useEffect(() => {
         if (!config) return;
 
-        const prepareData = async () => {
+            const prepareData = async () => {
             const data: Record<string, any> = { ...config };
             
             // Resolve site_logo if it's a proxy URL
@@ -33,17 +34,74 @@ export function LandingPage() {
                 data.site_logo = 'https://placehold.co/200x200?text=No+Logo+Uploaded';
             }
 
+            // Inject Custom Code Images
+            if (codeImages && codeImages.length > 0) {
+                console.log("Processing code images in landing page:", codeImages.length);
+                // Use Promise.all to resolve all proxies in parallel
+                await Promise.all(codeImages.map(async (img, index) => {
+                    const varName = img.file_name.replace('.webp', '');
+                    let url = img.cdn_url || img.drive_url;
+
+                    // If it's a proxy URL, resolve it to base64 for better compatibility
+                    if (url && (url.includes('action=imageProxy') || url.includes('drive.google.com'))) {
+                        try {
+                            url = await fetchProxyImageBase64(url);
+                        } catch (e) {
+                            console.error(`Failed to resolve image proxy for ${varName}:`, e);
+                        }
+                    }
+
+                    data[varName] = url;
+                    data[`IMAGE_${index + 1}`] = url;
+                    // Also try original index (1-based) if it exists in the record
+                    if (img.image_type === 'website_custom_code') {
+                        // Backend might not have indices, so we rely on current list order
+                    }
+                }));
+            }
+
             setResolvedData(data);
         };
 
         prepareData();
-    }, [config]);
+    }, [config, codeImages]);
 
     const fetchConfig = async () => {
         try {
             const res = await publicApi.getWebsiteConfig();
             if (res.success) {
-                setConfig(res.data);
+                let configData = res.data;
+                
+                // Extract Asset Metadata from HTML if present
+                const START_MARKER = '<!-- ASSET_METADATA_START -->';
+                const END_MARKER = '<!-- ASSET_METADATA_END -->';
+                const html = configData.site_code_html || '';
+                const startIdx = html.indexOf(START_MARKER);
+                const endIdx = html.indexOf(END_MARKER);
+
+                if (startIdx !== -1 && endIdx !== -1) {
+                    try {
+                        const block = html.substring(startIdx, endIdx + END_MARKER.length);
+                        const jsonMatch = block.match(/<script[^>]* id="asset-metadata"[^>]*>([\s\S]*?)<\/script>/);
+                        if (jsonMatch) {
+                            const metadata = JSON.parse(jsonMatch[1]);
+                            console.log("Extracted asset metadata from HTML:", metadata.length);
+                            setCodeImages(metadata);
+                        }
+                        // Clean the HTML from metadata markers for rendering
+                        configData = {
+                            ...configData,
+                            site_code_html: html.replace(block, '').trim()
+                        };
+                    } catch (e) {
+                        console.error("Failed to parse asset metadata from HTML:", e);
+                    }
+                }
+
+                setConfig(configData);
+                if (res.data.images && (!configData.images || configData.images.length === 0)) {
+                    setCodeImages(res.data.images);
+                }
             }
         } catch (err) {
             console.error('Failed to load website config:', err);
@@ -61,6 +119,9 @@ export function LandingPage() {
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'PREVIEW_CONFIG_UPDATE') {
                 setConfig(event.data.config);
+                if (event.data.codeImages) {
+                    setCodeImages(event.data.codeImages);
+                }
             }
         };
 

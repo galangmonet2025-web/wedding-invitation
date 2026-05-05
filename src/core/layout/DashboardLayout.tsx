@@ -239,7 +239,7 @@ export function DashboardLayout() {
 
                         <div className="flex items-center gap-3">
                             {/* Open Invitation Shortcut */}
-                            {tenant?.domain_slug && (
+                            {tenant?.domain_slug && !isSuperAdmin && (
                                 <a
                                     href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
                                     target="_blank"

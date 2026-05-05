@@ -20,6 +20,7 @@ import {
 import toast from 'react-hot-toast';
 import Editor from '@monaco-editor/react';
 import { ImageUpload } from '@/shared/components/ImageUpload';
+import { Lightbox } from '@/shared/components/Lightbox';
 import { imageApi } from '@/core/api/imageApi';
 import { ImageRecord } from '@/types';
 import { HiOutlineClipboardCopy, HiOutlineInformationCircle } from 'react-icons/hi';
@@ -73,6 +74,12 @@ export function WebsiteConfigPage() {
     const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
     const [previewLogoUrl, setPreviewLogoUrl] = useState('');
     const [showVariableRef, setShowVariableRef] = useState(true);
+    const [activeSiderTab, setActiveSiderTab] = useState<'variables' | 'images'>('variables');
+    const [codeImages, setCodeImages] = useState<ImageRecord[]>([]);
+    const [loadingImages, setLoadingImages] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const editorRef = useRef<any>(null);
     
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -80,6 +87,24 @@ export function WebsiteConfigPage() {
     useEffect(() => {
         localStorage.setItem('website-config-show-preview', String(showPreview));
     }, [showPreview]);
+
+    const fetchCodeImages = async () => {
+        setLoadingImages(true);
+        try {
+            const res = await imageApi.getTenantImages({ skipLoader: true });
+            if (res.success) {
+                // Filter images for custom code
+                const filtered = res.data.filter(img => img.image_type === 'website_custom_code');
+                // Sort by creation date (newest first)
+                filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                setCodeImages(filtered);
+            }
+        } catch (err) {
+            console.error('Failed to fetch code images:', err);
+        } finally {
+            setLoadingImages(false);
+        }
+    };
 
     const fetchConfig = async (force = false) => {
         if (force) setLoading(true);
@@ -92,11 +117,26 @@ export function WebsiteConfigPage() {
                 setInitialLogoUrl(currentConfig.site_logo || '');
                 setPreviewLogoUrl(currentConfig.site_logo || '');
             }
+            
+            // Also fetch code images
+            await fetchCodeImages();
         } catch (err) {
             toast.error('Failed to load configuration');
         } finally {
             setLoading(false);
         }
+    };
+
+    const addCodeImage = (image: ImageRecord) => {
+        setCodeImages(prev => {
+            const newArr = [...prev, image];
+            newArr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            return newArr;
+        });
+    };
+
+    const removeCodeImage = (imageId: string) => {
+        setCodeImages(prev => prev.filter(img => img.id !== imageId));
     };
 
     // Initial load from store if available
@@ -114,10 +154,11 @@ export function WebsiteConfigPage() {
         if (iframeRef.current?.contentWindow) {
             iframeRef.current.contentWindow.postMessage({
                 type: 'PREVIEW_CONFIG_UPDATE',
-                config: config
+                config: config,
+                codeImages: codeImages
             }, '*');
         }
-    }, [config]);
+    }, [config, codeImages]);
 
     // Synchronize code changes to live preview iframe
     useEffect(() => {
@@ -278,15 +319,45 @@ export function WebsiteConfigPage() {
             }
 
             const finalConfig = { ...config, site_logo: finalLogoUrl };
-            const res = await websiteConfigApi.updateConfig(finalConfig);
+
+            // Inject Asset Metadata for public page synchronization
+            const assetMetadata = JSON.stringify(codeImages.map(img => ({
+                file_name: img.file_name,
+                cdn_url: img.cdn_url,
+                drive_url: img.drive_url
+            })));
+            
+            // Marker for the metadata block
+            const START_MARKER = '<!-- ASSET_METADATA_START -->';
+            const END_MARKER = '<!-- ASSET_METADATA_END -->';
+            const metadataBlock = `${START_MARKER}<script type="application/json" id="asset-metadata">${assetMetadata}</script>${END_MARKER}`;
+            
+            let finalHtml = finalConfig.site_code_html;
+            const markerIndex = finalHtml.indexOf(START_MARKER);
+            
+            if (markerIndex !== -1) {
+                const before = finalHtml.substring(0, markerIndex);
+                const afterIndex = finalHtml.indexOf(END_MARKER);
+                const after = afterIndex !== -1 ? finalHtml.substring(afterIndex + END_MARKER.length) : '';
+                finalHtml = before + metadataBlock + after;
+            } else {
+                finalHtml = finalHtml + '\n' + metadataBlock;
+            }
+
+            const finalConfigWithMetadata = { 
+                ...finalConfig, 
+                site_code_html: finalHtml 
+            };
+
+            const res = await websiteConfigApi.updateConfig(finalConfigWithMetadata);
             
             if (res.success) {
                 toast.success('Configuration saved successfully', { id: loadingToast });
-                setStoreConfig(finalConfig);
+                setStoreConfig(finalConfigWithMetadata);
                 setInitialLogoUrl(finalLogoUrl);
                 setPreviewLogoUrl(finalLogoUrl);
                 setPendingLogoFile(null);
-                setConfig(finalConfig);
+                setConfig(finalConfigWithMetadata);
             } else {
                 toast.error(res.message, { id: loadingToast });
             }
@@ -513,48 +584,171 @@ export function WebsiteConfigPage() {
                                     />
                                 </div>
 
-                                {/* Variable Reference Sider */}
-                                {showVariableRef && (
-                                    <div className="w-64 bg-[#181825] border-l border-white/5 flex flex-col animate-slide-in-right z-30 shadow-2xl">
+                                 {/* Reference Sider (Variables & Assets) */}
+                                 {showVariableRef && (
+                                    <div className="w-72 bg-[#181825] border-l border-white/5 flex flex-col animate-slide-in-right z-30 shadow-2xl">
                                         <div className="p-3 border-b border-white/5 flex items-center justify-between">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                <HiOutlineInformationCircle className="w-3.5 h-3.5" />
-                                                Variables
-                                            </span>
+                                            <div className="flex gap-4">
+                                                <button 
+                                                    onClick={() => setActiveSiderTab('variables')}
+                                                    className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 transition-colors ${activeSiderTab === 'variables' ? 'text-gold-500' : 'text-gray-500 hover:text-gray-300'}`}
+                                                >
+                                                    <HiOutlineInformationCircle className="w-3.5 h-3.5" />
+                                                    Variables
+                                                </button>
+                                                <button 
+                                                    onClick={() => setActiveSiderTab('images')}
+                                                    className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 transition-colors ${activeSiderTab === 'images' ? 'text-gold-500' : 'text-gray-500 hover:text-gray-300'}`}
+                                                >
+                                                    <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                                    Assets
+                                                </button>
+                                            </div>
                                             <button onClick={() => setShowVariableRef(false)} className="text-gray-500 hover:text-white text-xs">Close</button>
                                         </div>
+                                        
                                         <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
-                                            {[
-                                                { title: 'Identity', vars: ['site_name', 'tagline', 'site_logo', 'site_url'] },
-                                                { title: 'Branding', vars: ['primary_color', 'accent_color'] },
-                                                { title: 'Contact', vars: ['contact_email', 'contact_whatsapp'] },
-                                                { title: 'Socials', vars: ['site_instagram', 'site_tiktok', 'site_youtube'] },
-                                                { title: 'Loops (Arrays)', vars: ['features', 'reviews'] }
-                                            ].map(group => (
-                                                <div key={group.title}>
-                                                    <p className="text-[9px] font-bold text-gray-600 uppercase mb-2">{group.title}</p>
-                                                    <div className="space-y-1.5">
-                                                        {group.vars.map(v => (
-                                                            <button 
-                                                                key={v}
-                                                                onClick={() => insertVariable(v)}
-                                                                title={`Click to insert {{${v}}}`}
-                                                                className="w-full text-left p-2 rounded bg-white/5 hover:bg-white/10 group flex items-center justify-between transition-colors"
-                                                            >
-                                                                <code className="text-[10px] text-gold-400 font-mono">{"{{"}{v}{"}}"}</code>
-                                                                <HiOutlineClipboardCopy className="w-3 h-3 text-gray-600 group-hover:text-gold-500" />
-                                                            </button>
-                                                        ))}
-                                                        {group.title === 'Loops (Arrays)' && (
-                                                            <div className="mt-2 pl-2 border-l border-white/5 space-y-1">
-                                                                <p className="text-[8px] text-gray-500 font-mono">Properties inside loops:</p>
-                                                                <p className="text-[8px] text-gray-400 font-mono italic">features: feature_name</p>
-                                                                <p className="text-[8px] text-gray-400 font-mono italic">reviews: bride_name, groom_name, rate_star, comment, alamat</p>
+                                            {activeSiderTab === 'variables' ? (
+                                                <>
+                                                    {[
+                                                        { title: 'Identity', vars: ['site_name', 'tagline', 'site_logo', 'site_url'] },
+                                                        { title: 'Branding', vars: ['primary_color', 'accent_color'] },
+                                                        { title: 'Contact', vars: ['contact_email', 'contact_whatsapp'] },
+                                                        { title: 'Socials', vars: ['site_instagram', 'site_tiktok', 'site_youtube'] },
+                                                        { title: 'Loops (Arrays)', vars: ['features', 'reviews'] }
+                                                    ].map(group => (
+                                                        <div key={group.title}>
+                                                            <p className="text-[9px] font-bold text-gray-600 uppercase mb-2">{group.title}</p>
+                                                            <div className="space-y-1.5">
+                                                                {group.vars.map(v => (
+                                                                    <button 
+                                                                        key={v}
+                                                                        onClick={() => insertVariable(v)}
+                                                                        title={`Click to insert {{${v}}}`}
+                                                                        className="w-full text-left p-2 rounded bg-white/5 hover:bg-white/10 group flex items-center justify-between transition-colors"
+                                                                    >
+                                                                        <code className="text-[10px] text-gold-400 font-mono">{"{{"}{v}{"}}"}</code>
+                                                                        <HiOutlineClipboardCopy className="w-3 h-3 text-gray-600 group-hover:text-gold-500" />
+                                                                    </button>
+                                                                ))}
+                                                                {group.title === 'Loops (Arrays)' && (
+                                                                    <div className="mt-2 pl-2 border-l border-white/5 space-y-1">
+                                                                        <p className="text-[8px] text-gray-500 font-mono">Properties inside loops:</p>
+                                                                        <p className="text-[8px] text-gray-400 font-mono italic">features: feature_name</p>
+                                                                        <p className="text-[8px] text-gray-400 font-mono italic">reviews: bride_name, groom_name, rate_star, comment, alamat</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            ) : (
+                                                <div className="space-y-6">
+                                                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                                                        <ImageUpload
+                                                            imageType="website_custom_code"
+                                                            title="Add Asset"
+                                                            description="Upload images to use in code"
+                                                            allowMultiple={true}
+                                                            onUploadSuccess={addCodeImage}
+                                                            onDeleteSuccess={() => {}}
+                                                            aspectRatio="square"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-3">
+                                                        <p className="text-[9px] font-bold text-gray-600 uppercase">Uploaded Assets</p>
+                                                        {loadingImages ? (
+                                                            <div className="flex justify-center py-4">
+                                                                <div className="w-4 h-4 border-2 border-gold-500 border-t-transparent rounded-full animate-spin"></div>
+                                                            </div>
+                                                        ) : codeImages.length === 0 ? (
+                                                            <p className="text-[10px] text-gray-500 italic text-center py-4">No assets uploaded yet.</p>
+                                                        ) : (
+                                                            <div className="grid grid-cols-1 gap-3">
+                                                                {codeImages.map((img, index) => (
+                                                                    <div key={img.id} className="group bg-white/5 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/50 transition-all">
+                                                                        <div 
+                                                                            className="aspect-video relative overflow-hidden bg-black/40 cursor-pointer group/img"
+                                                                        >
+                                                                            <ProxyImage 
+                                                                                src={img.cdn_url || img.drive_url} 
+                                                                                alt={img.file_name}
+                                                                                className="w-full h-full object-contain group-hover/img:scale-110 transition-transform duration-500"
+                                                                            />
+                                                                            <div 
+                                                                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                                                onClick={() => setLightboxIndex(index)}
+                                                                            >
+                                                                                <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                                                    {confirmDeleteId === img.id ? (
+                                                                                        <div className="flex flex-col items-center gap-2 px-2 text-center animate-fade-in">
+                                                                                            <p className="text-[10px] text-white font-bold leading-tight">Hapus asset ini?</p>
+                                                                                            <div className="flex gap-2">
+                                                                                                <button 
+                                                                                                    onClick={() => setConfirmDeleteId(null)}
+                                                                                                    className="px-2 py-1 bg-gray-600 text-white rounded text-[9px] font-bold uppercase"
+                                                                                                >
+                                                                                                    Batal
+                                                                                                </button>
+                                                                                                <button 
+                                                                                                    onClick={async () => {
+                                                                                                        setConfirmDeleteId(null);
+                                                                                                        setDeletingId(img.id);
+                                                                                                        try {
+                                                                                                            await imageApi.deleteImage(img.id, { skipLoader: true });
+                                                                                                            removeCodeImage(img.id);
+                                                                                                            toast.success('Asset deleted');
+                                                                                                        } catch (err) {
+                                                                                                            toast.error('Failed to delete asset');
+                                                                                                        } finally {
+                                                                                                            setDeletingId(null);
+                                                                                                        }
+                                                                                                    }}
+                                                                                                    className="px-2 py-1 bg-red-500 text-white rounded text-[9px] font-bold uppercase"
+                                                                                                >
+                                                                                                    Ya, Hapus
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <button 
+                                                                                                onClick={() => insertVariable(img.file_name.replace('.webp', ''))}
+                                                                                                className="p-1.5 bg-gold-500 text-white rounded-md text-[10px] font-bold uppercase hover:scale-105 transition-transform"
+                                                                                            >
+                                                                                                Insert
+                                                                                            </button>
+                                                                                            <button 
+                                                                                                onClick={() => setConfirmDeleteId(img.id)}
+                                                                                                className="p-1.5 bg-red-500/80 hover:bg-red-500 text-white rounded-md text-[10px] font-bold uppercase hover:scale-105 transition-transform"
+                                                                                            >
+                                                                                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                                                                            </button>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            
+                                                                            {/* Individual Loading Overlay */}
+                                                                            {deletingId === img.id && (
+                                                                                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 z-10 animate-fade-in">
+                                                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                                                    <span className="text-[9px] text-white font-bold uppercase tracking-widest">Menghapus...</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="p-2 flex items-center justify-between">
+                                                                            <code className="text-[10px] text-gold-400 font-mono">{"{{"}{img.file_name.replace('.webp', '')}{"}}"}</code>
+                                                                            <span className="text-[9px] text-gray-500 truncate max-w-[100px]">{img.file_name}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -622,7 +816,8 @@ export function WebsiteConfigPage() {
                                                 if (iframeRef.current?.contentWindow) {
                                                     iframeRef.current.contentWindow.postMessage({
                                                         type: 'PREVIEW_CONFIG_UPDATE',
-                                                        config: config
+                                                        config: config,
+                                                        codeImages: codeImages
                                                     }, '*');
                                                 }
                                             }}
@@ -877,6 +1072,20 @@ export function WebsiteConfigPage() {
                         </div>
                     </div>
                 )}
+            {/* Lightbox */}
+            {lightboxIndex !== null && (
+                <Lightbox 
+                    images={codeImages.map(img => ({
+                        url: img.cdn_url || img.drive_url,
+                        file_name: img.file_name,
+                        width: img.width,
+                        height: img.height,
+                        size_kb: img.size_kb
+                    }))}
+                    initialIndex={lightboxIndex}
+                    onClose={() => setLightboxIndex(null)}
+                />
+            )}
             </div>
         </div>
     );

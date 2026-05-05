@@ -20,6 +20,7 @@ interface ImageUploadProps {
     aspectRatio?: 'video' | 'square' | 'portrait' | 'auto';
     allowMultiple?: boolean;
     maxFiles?: number;
+    onBeforeUpload?: (file: File, index: number) => Promise<{ fileName?: string }>;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -181,13 +182,18 @@ export function ImageUpload({
                 // Upload via API with Retry Logic
                 let response = null;
                 let retries = 0;
-                const maxRetries = 2;
+                const maxRetries = 1; // Reduced retries for faster failure feedback
+
+                const safeFileName = file.name
+                    .replace(/\.[^/.]+$/, "") // Remove extension
+                    .replace(/[^a-z0-9]/gi, '_') // Replace non-alphanumeric with underscore
+                    .toLowerCase() + ".webp";
 
                 while (retries <= maxRetries) {
                     try {
                         response = await imageApi.uploadImage({
                             image_type: imageType,
-                            file_name: file.name.replace(/\.[^/.]+$/, "") + ".webp",
+                            file_name: safeFileName,
                             base64_data: base64Data,
                             mime_type: 'image/webp',
                             width: dims.w,
