@@ -120,22 +120,23 @@ export function TenantPage() {
         try {
             const response = await tenantApi.updateTenant({ id: selectedTenant.id, ...updates });
             if (response.success) {
-                // Save additional features if any
-                if (tenantFeatures.length > 0) {
+                // Save additional features: Only if superadmin activated it OR tenant already purchased it
+                const featuresToSave = tenantFeatures.filter(f => f.active || !!f.id);
+                
+                if (featuresToSave.length > 0) {
                     try {
-                        await Promise.all(tenantFeatures.map(f => 
-                            additionalFeatureApi.updateTenantFeature({
+                        // Execute sequentially to prevent Google Apps Script rate limiting
+                        for (const f of featuresToSave) {
+                            await additionalFeatureApi.updateTenantFeature({
                                 tenant_id: selectedTenant.id,
                                 additional_feature_id: f.additional_feature_id,
                                 active: f.active,
                                 payment_status: f.payment_status,
                                 output_data: f.output_data
-                            })
-                        ));
+                            });
+                        }
                         
                         if (imagesToDelete.length > 0) {
-                            // Using standard fetch/axios if imageApi is not imported, but wait I need imageApi.
-                            // Let me just import imageApi at the top. Wait, I will add the import below.
                             await Promise.all(imagesToDelete.map(id => imageApi.deleteImage(id).catch(() => {})));
                         }
                         // Update cache with new feature data
@@ -613,11 +614,11 @@ export function TenantPage() {
                         </div>
 
                         {/* Tenant Features Section */}
-                        {tenantFeatures.filter(f => !!f.id).length > 0 && (
+                        {tenantFeatures.length > 0 && (
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4 mt-6">
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Additional Features</p>
                                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                    {tenantFeatures.filter(f => !!f.id).map((f) => {
+                                    {tenantFeatures.map((f) => {
                                         const isExpanded = expandedFeatures.has(f.additional_feature_id);
                                         const isPurchased = !!f.id;
                                         

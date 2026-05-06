@@ -38,32 +38,11 @@ export function DashboardLayout() {
     const { isDark, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [hasActiveFeatures, setHasActiveFeatures] = useState(true);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-
     const isSuperAdmin = user?.role === 'superadmin';
     const isImpersonating = !!(user as any)?.is_impersonating;
     // When impersonating, show tenant menus even though role is superadmin
     const showTenantMenu = !isSuperAdmin || isImpersonating;
-
-    useEffect(() => {
-        const checkFeatures = async () => {
-            // Only check for tenants (or when impersonating a tenant)
-            if (showTenantMenu) {
-                try {
-                    const res = await additionalFeatureApi.getTenantFeatures();
-                    if (res.success) {
-                        const activeFeatures = res.data?.filter(f => f.active && f.mst_active) || [];
-                        setHasActiveFeatures(activeFeatures.length > 0);
-                    }
-                } catch {
-                    // Fail safe: keep visible
-                    setHasActiveFeatures(true);
-                }
-            }
-        };
-        checkFeatures();
-    }, [tenant?.id, showTenantMenu]);
 
     const handleLogout = () => {
         logout();
@@ -95,16 +74,7 @@ export function DashboardLayout() {
             { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.activity_log'), roles: ['tenant_admin', 'superadmin'] },
         ];
 
-    const filteredNavItems = navItems.filter((item) => {
-        const isRoleAllowed = item.roles.includes(user?.role || '');
-        
-        // Hide Additional Feature menu for tenants if no active features
-        if (item.to === '/private/additional-features' && showTenantMenu && !hasActiveFeatures) {
-            return false;
-        }
-
-        return isRoleAllowed;
-    });
+    const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
 
     return (
         <div className={`min-h-screen flex ${isDark ? 'dark' : ''}`}>

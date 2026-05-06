@@ -145,8 +145,8 @@ export const tenantApi = {
         return res.data;
     },
 
-    updateTenant: async (data: UpdateTenantRequest): Promise<ApiResponse<Tenant>> => {
-        const res = await apiClient.post('', { action: 'updateTenant', ...data });
+    updateTenant: async (data: UpdateTenantRequest, config: any = {}): Promise<ApiResponse<Tenant>> => {
+        const res = await apiClient.post('', { action: 'updateTenant', ...data }, config);
         return res.data;
     },
 
@@ -372,8 +372,8 @@ export const additionalFeatureApi = {
         return res.data;
     },
     
-    updateTenantFeature: async (data: Partial<TenantActiveFeature>): Promise<ApiResponse<null>> => {
-        const res = await apiClient.post('', { action: 'updateTenantActiveFeature', ...data });
+    updateTenantFeature: async (data: Partial<TenantActiveFeature>, config: any = {}): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateTenantActiveFeature', ...data }, config);
         return res.data;
     }
 };

@@ -1346,12 +1346,10 @@ var DashboardService = {
 
     var tenants = DB.getAll('Tenants');
     var mstFeatures = DB.getAll('MstAdditionalFeature').filter(function(f) { 
-      var isActive = (f.active === true || f.active === 'true' || f.active === 'TRUE');
-      var needsAdminOutput = (f.output_data_type && f.output_data_type !== 'empty');
-      return isActive && needsAdminOutput;
+      return (f.active === true || f.active === 'true' || f.active === 'TRUE');
     });
 
-    if (mstFeatures.length === 0) return ResponseHelper.success({ incomplete_tenants: [] }, 'No features require admin output');
+    if (mstFeatures.length === 0) return ResponseHelper.success({ incomplete_tenants: [] }, 'No active features found');
 
     var tenantFeatures = DB.getAll('TenantActiveFeature');
     var incompleteTenants = [];
@@ -1362,11 +1360,27 @@ var DashboardService = {
       var pending = [];
       mstFeatures.forEach(function(mst) {
         var tf = featuresForTenant.find(function(f) { return f.additional_feature_id === mst.id; });
-        var isActiveForTenant = tf && (tf.active === true || tf.active === 'true' || tf.active === 'TRUE');
-        var hasNoOutput = tf && !tf.output_data;
         
-        if (isActiveForTenant && hasNoOutput) {
-          pending.push(mst.feature_name);
+        var isActiveTenant = tf && (tf.active === true || tf.active === 'true' || tf.active === 'TRUE');
+        var paymentStatusStr = String(tf ? tf.payment_status || '' : '').trim().toLowerCase();
+        
+        var isPurchased = tf && !(
+          !isActiveTenant && 
+          paymentStatusStr === 'menunggu pembayaran' && 
+          !tf.input_tenant_data && 
+          !tf.output_data
+        );
+        
+        var needsAdminOutput = (mst.output_data_type && mst.output_data_type !== 'empty');
+        var hasNoOutput = tf && needsAdminOutput && !tf.output_data;
+        var isPaidButNotActive = tf && paymentStatusStr === 'sudah dibayar' && !isActiveTenant;
+        
+        if (isPurchased) {
+          if (isPaidButNotActive) {
+            pending.push({ name: mst.feature_name, reason: 'sudah dibayar namun belum diaktifkan' });
+          } else if (hasNoOutput) {
+            pending.push({ name: mst.feature_name, reason: 'perlu dilengkapi datanya' });
+          }
         }
       });
 
