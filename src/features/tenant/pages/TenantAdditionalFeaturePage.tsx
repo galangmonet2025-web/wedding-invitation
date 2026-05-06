@@ -4,19 +4,21 @@ import { imageApi } from '@/core/api/imageApi';
 import { PageLoader } from '@/shared/components/Loading';
 import type { TenantActiveFeature } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlineRefresh, HiOutlineSave } from 'react-icons/hi';
+import { HiOutlineRefresh, HiOutlineSave, HiOutlinePlus, HiOutlineInformationCircle, HiOutlineShoppingCart } from 'react-icons/hi';
 import { ImageUpload } from '@/shared/components/ImageUpload';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
+import { Modal } from '@/shared/components/Modal';
 
 import { useTenantFeatureStore } from '../store/tenantFeatureStore';
 
 export function TenantAdditionalFeaturePage() {
-    const { features, loading, fetchFeatures, updateLocalFeature } = useTenantFeatureStore();
+    const { features, availableFeatures, loading, fetchFeatures, updateLocalFeature, purchaseFeature } = useTenantFeatureStore();
     const [savingId, setSavingId] = useState<string | null>(null);
     const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [showAddModal, setShowAddModal] = useState(false);
     const { tasks } = useBackgroundTaskStore();
 
     useEffect(() => {
@@ -195,13 +197,22 @@ export function TenantAdditionalFeaturePage() {
                     <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Additional Features</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Fitur tambahan kustom untuk undangan Anda</p>
                 </div>
-                <button 
-                    onClick={() => fetchFeatures(true)} 
-                    className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                    title="Refresh Data"
-                >
-                    <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setShowAddModal(true)} 
+                        className="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm"
+                    >
+                        <HiOutlinePlus className="w-4 h-4" />
+                        Tambah Fitur
+                    </button>
+                    <button 
+                        onClick={() => fetchFeatures(true)} 
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
             </div>
 
             {features.length === 0 ? (
@@ -216,11 +227,21 @@ export function TenantAdditionalFeaturePage() {
                 <div className="grid gap-6">
                     {features.map((feature) => (
                         <div key={feature.id} className="card p-6 border border-gray-100 dark:border-gray-800">
-                            <div className="mb-4">
-                                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{feature.feature_name}</h3>
-                                {feature.description && (
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{feature.description}</p>
-                                )}
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{feature.feature_name}</h3>
+                                    {feature.description && (
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{feature.description}</p>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${feature.active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
+                                        {feature.active ? 'Aktif' : 'Belum Aktif'}
+                                    </span>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${feature.payment_status === 'Sudah dibayar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'}`}>
+                                        {feature.payment_status}
+                                    </span>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-800">
                                 <div className="space-y-2 lg:pr-8">
@@ -262,6 +283,59 @@ export function TenantAdditionalFeaturePage() {
                     onClose={() => setLightboxUrl(null)}
                 />
             )}
+
+            <Modal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                title="Beli Fitur Tambahan"
+                size="lg"
+            >
+                <div className="space-y-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex gap-3">
+                        <HiOutlineInformationCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                        <div className="text-sm text-blue-800 dark:text-blue-300">
+                            <p className="font-semibold mb-1">Informasi Pembelian</p>
+                            <p>Silakan pilih fitur tambahan yang ingin Anda aktifkan. Setelah melakukan pemesanan, fitur akan muncul di halaman ini dengan status <strong>"Menunggu pembayaran"</strong>. Silakan hubungi admin untuk konfirmasi pembayaran agar fitur dapat diaktifkan.</p>
+                        </div>
+                    </div>
+
+                    {availableFeatures.length === 0 ? (
+                        <div className="py-12 text-center">
+                            <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-2xl">✨</span>
+                            </div>
+                            <h3 className="text-lg font-semibold">Semua Fitur Sudah Dimiliki</h3>
+                            <p className="text-sm text-gray-500 mt-2">Anda telah memiliki semua fitur tambahan yang tersedia saat ini.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {availableFeatures.map(feature => (
+                                <div key={feature.additional_feature_id} className="p-4 border border-gray-100 dark:border-gray-800 rounded-xl hover:border-gold-500 transition-colors group bg-gray-50/50 dark:bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-semibold text-gray-800 dark:text-white group-hover:text-gold-600 transition-colors">{feature.feature_name}</h4>
+                                            <span className="text-gold-600 font-bold text-sm">
+                                                {feature.price > 0 ? `Rp ${feature.price.toLocaleString('id-ID')}` : 'Gratis'}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{feature.description || 'Tidak ada deskripsi'}</p>
+                                    </div>
+                                    <button 
+                                        onClick={async () => {
+                                            const success = await purchaseFeature(feature.additional_feature_id);
+                                            if (success) setShowAddModal(false);
+                                        }}
+                                        className="w-full md:w-auto flex items-center justify-center gap-2 py-2 px-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gold-500 hover:border-gold-500 hover:text-white rounded-lg text-sm font-medium transition-all shadow-sm"
+                                    >
+                                        <HiOutlineShoppingCart className="w-4 h-4" />
+                                        Beli Fitur
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Modal>
         </div>
     );
 }

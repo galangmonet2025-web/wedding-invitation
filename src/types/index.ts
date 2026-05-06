@@ -418,6 +418,7 @@ export interface TenantActiveFeature {
     input_tenant_data: string;
     output_data: string;
     active: boolean;
+    payment_status: 'Menunggu pembayaran' | 'Sudah dibayar';
 }
 
 // =============================================

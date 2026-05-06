@@ -26,6 +26,7 @@ export function TenantPage() {
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
     const [tenantFeatures, setTenantFeaturesLocal] = useState<TenantActiveFeature[]>([]);
+    const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
     const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
     const { tasks } = useBackgroundTaskStore();
@@ -127,6 +128,7 @@ export function TenantPage() {
                                 tenant_id: selectedTenant.id,
                                 additional_feature_id: f.additional_feature_id,
                                 active: f.active,
+                                payment_status: f.payment_status,
                                 output_data: f.output_data
                             })
                         ));
@@ -330,14 +332,19 @@ export function TenantPage() {
                                 
                                 // Check cache first
                                 if (tenantFeaturesCache[t.id]) {
-                                    setTenantFeaturesLocal(tenantFeaturesCache[t.id]);
+                                    const features = tenantFeaturesCache[t.id];
+                                    setTenantFeaturesLocal(features);
+                                    setExpandedFeatures(new Set(features.filter(f => !!f.id).map(f => f.additional_feature_id)));
                                 } else {
                                     setTenantFeaturesLocal([]); // Clear old data
+                                    setExpandedFeatures(new Set());
                                     try {
                                         const res = await additionalFeatureApi.getTenantFeatures(t.id);
                                         if (res.success) {
-                                            setTenantFeatures(t.id, res.data || []);
-                                            setTenantFeaturesLocal(res.data || []);
+                                            const features = res.data || [];
+                                            setTenantFeatures(t.id, features);
+                                            setTenantFeaturesLocal(features);
+                                            setExpandedFeatures(new Set(features.filter(f => !!f.id).map(f => f.additional_feature_id)));
                                         }
                                     } catch {
                                         toast.error('Failed to load tenant features');
@@ -366,6 +373,15 @@ export function TenantPage() {
             },
         },
     ];
+
+    const toggleFeatureExpansion = (id: string) => {
+        setExpandedFeatures(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     if (loading) return <PageLoader />;
 
@@ -486,7 +502,7 @@ export function TenantPage() {
                 isOpen={showEditModal}
                 onClose={() => { setShowEditModal(false); setSelectedTenant(null); }}
                 title={`Manage: ${selectedTenant?.bride_name} & ${selectedTenant?.groom_name}`}
-                size="md"
+                size="2xl"
                 footer={
                     <>
                         <button onClick={() => setShowEditModal(false)} className="btn-ghost">Batal</button>
@@ -597,127 +613,195 @@ export function TenantPage() {
                         </div>
 
                         {/* Tenant Features Section */}
-                        {tenantFeatures.length > 0 && (
+                        {tenantFeatures.filter(f => !!f.id).length > 0 && (
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4 mt-6">
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Additional Features</p>
-                                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                                    {tenantFeatures.map((f) => (
-                                        <div key={f.additional_feature_id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-4">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={f.active} 
-                                                        onChange={(e) => {
-                                                            const isChecked = e.target.checked;
-                                                            const updates: Partial<TenantActiveFeature> = { active: isChecked };
-                                                            if (isChecked && f.output_data_type === 'boolean' && !f.output_data) {
-                                                                updates.output_data = 'FALSE';
-                                                            }
-                                                            handleFeatureUpdateLocal(f.additional_feature_id, updates);
-                                                        }}
-                                                        className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500"
-                                                    />
-                                                    <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>
-                                                </div>
-                                            </div>
-
-                                            {f.active && (
-                                                <div className="pl-8 space-y-4">
-                                                    {/* Tenant Input Readonly */}
-                                                    <div>
-                                                        <p className="text-xs text-gray-500 mb-1">Data dari Tenant</p>
-                                                        {!f.is_required_tenant_input || f.input_data_type === 'empty' ? (
-                                                            <p className="text-sm text-gray-400 italic">Tidak perlu input dari tenant</p>
-                                                        ) : (
-                                                            <>
-                                                                <p className="text-xs text-blue-500 dark:text-blue-400 mb-2 font-medium">Data ini diinput oleh tenant</p>
-                                                                {!f.input_tenant_data ? (
-                                                                    <p className="text-sm text-gray-400 italic">Belum di isi oleh tenant</p>
-                                                                ) : f.input_data_type === 'gambar' ? (
-                                                                    <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
-                                                                        <ProxyImage 
-                                                                            src={f.input_tenant_data} 
-                                                                            alt={f.feature_name} 
-                                                                            className="w-full h-full object-cover cursor-pointer" 
-                                                                            onClick={() => setLightboxUrl(f.input_tenant_data)}
-                                                                        />
-                                                                    </div>
-                                                                ) : f.input_data_type === 'link' ? (
-                                                                    <a href={f.input_tenant_data} target="_blank" rel="noreferrer" className="text-sm text-blue-500 hover:underline">{f.input_tenant_data}</a>
-                                                                ) : f.input_data_type === 'boolean' ? (
-                                                                    <span className="text-sm">{f.input_tenant_data === 'TRUE' || f.input_tenant_data === 'true' ? 'Ya' : 'Tidak'}</span>
-                                                                ) : (
-                                                                    <p className="text-sm text-gray-800 dark:text-gray-200">{f.input_tenant_data}</p>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Admin Result Output */}
-                                                    {f.output_data_type && f.output_data_type !== 'empty' && (
+                                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                    {tenantFeatures.filter(f => !!f.id).map((f) => {
+                                        const isExpanded = expandedFeatures.has(f.additional_feature_id);
+                                        const isPurchased = !!f.id;
+                                        
+                                        return (
+                                            <div 
+                                                key={f.additional_feature_id} 
+                                                className={`border rounded-xl transition-all duration-200 ${
+                                                    isPurchased 
+                                                        ? (f.active ? 'border-amber-200 dark:border-amber-900/50 bg-white dark:bg-gray-900 shadow-sm' : 'border-gray-200 dark:border-gray-700 bg-blue-50/30 dark:bg-blue-900/10') 
+                                                        : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40'
+                                                }`}
+                                            >
+                                                {/* Accordion Header */}
+                                                <div 
+                                                    className="flex items-center justify-between gap-4 p-3 cursor-pointer select-none"
+                                                    onClick={() => toggleFeatureExpansion(f.additional_feature_id)}
+                                                >
+                                                    <div className="flex items-center gap-3 flex-1">
+                                                        <div 
+                                                            className="flex items-center gap-2 dark:bg-gray-800 py-1.5"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={f.active} 
+                                                                onChange={(e) => {
+                                                                    const isChecked = e.target.checked;
+                                                                    const updates: Partial<TenantActiveFeature> = { active: isChecked };
+                                                                    if (isChecked && f.output_data_type === 'boolean' && !f.output_data) {
+                                                                        updates.output_data = 'FALSE';
+                                                                    }
+                                                                    handleFeatureUpdateLocal(f.additional_feature_id, updates);
+                                                                    // Auto expand if activated
+                                                                    if (isChecked && !expandedFeatures.has(f.additional_feature_id)) {
+                                                                        toggleFeatureExpansion(f.additional_feature_id);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
                                                         <div>
-                                                            <p className="text-xs text-gray-500 mb-1">Result / Output Admin</p>
-                                                            {f.output_data_type === 'gambar' ? (
-                                                                <div className="w-32">
-                                                                    {f.output_data ? (
-                                                                        <div className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
-                                                                            <ProxyImage 
-                                                                                src={f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data} 
-                                                                                alt="Result" 
-                                                                                className="w-full h-full object-cover cursor-pointer" 
-                                                                                onClick={() => setLightboxUrl(f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data)}
-                                                                            />
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const [id] = f.output_data.split('|');
-                                                                                    if (id && f.output_data.includes('|')) {
-                                                                                        setImagesToDelete(prev => [...prev, id]);
-                                                                                    }
-                                                                                    handleFeatureUpdateLocal(f.additional_feature_id, { output_data: '' });
-                                                                                }}
-                                                                                className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                                                            >
-                                                                                Hapus
-                                                                            </button>
-                                                                        </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-gray-800 dark:text-white text-sm">{f.feature_name}</span>
+                                                                {!isPurchased && <span className="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0 rounded font-bold">BELUM DIPESAN</span>}
+                                                                {isPurchased && <span className="text-[9px] bg-blue-500 text-white px-1.5 py-0 rounded font-bold">SUDAH DIPESAN</span>}
+                                                            </div>
+                                                            <div className="flex gap-2 mt-1">
+                                                                {isPurchased && (
+                                                                    <>
+                                                                        <span className={`text-[9px] px-1.5 py-0 rounded font-medium ${f.payment_status === 'Sudah dibayar' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                                            {f.payment_status}
+                                                                        </span>
+                                                                        <span className={`text-[9px] px-1.5 py-0 rounded font-medium ${f.active ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                                            {f.active ? 'Aktif' : 'Menunggu Aktivasi'}
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                                {!isPurchased && (
+                                                                    <span className="text-[9px] text-gray-400 italic">Klik untuk detail fitur</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                                    </div>
+                                                </div>
+
+                                                {/* Accordion Content */}
+                                                {isExpanded && (
+                                                    <div className="px-3 pb-3 pt-0 animate-fade-in">
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-gray-100 dark:border-gray-800/50">
+                                                            {/* Payment Status Toggle for Admin */}
+                                                            <div>
+                                                                <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-1 font-bold">Status Pembayaran</p>
+                                                                <select 
+                                                                    value={f.payment_status}
+                                                                    onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { payment_status: e.target.value as any })}
+                                                                    className="select-field text-[11px] py-1 h-8 w-full"
+                                                                >
+                                                                    <option value="Menunggu pembayaran">Menunggu pembayaran</option>
+                                                                    <option value="Sudah dibayar">Sudah dibayar</option>
+                                                                </select>
+                                                            </div>
+
+                                                            {/* Tenant Input Readonly */}
+                                                            <div>
+                                                                <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-1 font-bold">Data dari Tenant</p>
+                                                                <div className="min-h-[32px] flex items-center">
+                                                                    {!f.is_required_tenant_input || f.input_data_type === 'empty' ? (
+                                                                        <p className="text-[11px] text-gray-400 italic">Tidak perlu input</p>
                                                                     ) : (
-                                                                        <ImageUpload
-                                                                            imageType={`feature-out-${f.additional_feature_id}`}
-                                                                            title="Upload Result"
-                                                                            onUploadSuccess={(img) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: `${img.id}|${img.cdn_url || img.drive_url}` })}
-                                                                            onDeleteSuccess={() => {}}
-                                                                            aspectRatio="auto"
-                                                                        />
+                                                                        <>
+                                                                            {!f.input_tenant_data ? (
+                                                                                <p className="text-[11px] text-red-400 italic font-medium">Belum di isi oleh tenant</p>
+                                                                            ) : f.input_data_type === 'gambar' ? (
+                                                                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
+                                                                                    <ProxyImage 
+                                                                                        src={f.input_tenant_data} 
+                                                                                        alt={f.feature_name} 
+                                                                                        className="w-full h-full object-cover cursor-pointer" 
+                                                                                        onClick={() => setLightboxUrl(f.input_tenant_data)}
+                                                                                    />
+                                                                                </div>
+                                                                            ) : f.input_data_type === 'link' ? (
+                                                                                <a href={f.input_tenant_data} target="_blank" rel="noreferrer" className="text-[11px] text-blue-500 hover:underline line-clamp-1">{f.input_tenant_data}</a>
+                                                                            ) : (
+                                                                                <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-2">{f.input_tenant_data}</p>
+                                                                            )}
+                                                                        </>
                                                                     )}
                                                                 </div>
-                                                            ) : f.output_data_type === 'link' || f.output_data_type === 'text' ? (
-                                                                <div className="flex gap-2">
-                                                                    <input
-                                                                        type={f.output_data_type === 'link' ? 'url' : 'text'}
-                                                                        value={f.output_data || ''}
-                                                                        onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: e.target.value })}
-                                                                        className="input-field text-sm flex-1"
-                                                                        placeholder={f.output_data_type === 'link' ? 'https://...' : 'Input text...'}
-                                                                    />
+                                                            </div>
+
+                                                            {/* Admin Result Output */}
+                                                            {f.output_data_type && f.output_data_type !== 'empty' && (
+                                                                <div>
+                                                                    <p className="text-[9px] uppercase tracking-wider text-gold-500 font-bold mb-1">Result Admin</p>
+                                                                    <div className="min-h-[32px] flex items-center">
+                                                                        {f.output_data_type === 'gambar' ? (
+                                                                            <div className="w-full">
+                                                                                {f.output_data ? (
+                                                                                    <div className="relative group w-10 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
+                                                                                        <ProxyImage 
+                                                                                            src={f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data} 
+                                                                                            alt="Result" 
+                                                                                            className="w-full h-full object-cover cursor-pointer" 
+                                                                                            onClick={() => setLightboxUrl(f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data)}
+                                                                                        />
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                const [id] = f.output_data.split('|');
+                                                                                                if (id && f.output_data.includes('|')) {
+                                                                                                    setImagesToDelete(prev => [...prev, id]);
+                                                                                                }
+                                                                                                handleFeatureUpdateLocal(f.additional_feature_id, { output_data: '' });
+                                                                                            }}
+                                                                                            className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                        >
+                                                                                            <HiOutlineTrash className="w-4 h-4" />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <ImageUpload
+                                                                                        imageType={`feature-out-${f.additional_feature_id}`}
+                                                                                        title="Upload"
+                                                                                        onUploadSuccess={(img) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: `${img.id}|${img.cdn_url || img.drive_url}` })}
+                                                                                        onDeleteSuccess={() => {}}
+                                                                                        aspectRatio="auto"
+                                                                                        className="h-8 !p-1 !text-[10px]"
+                                                                                    />
+                                                                                )}
+                                                                            </div>
+                                                                        ) : f.output_data_type === 'link' || f.output_data_type === 'text' ? (
+                                                                            <div className="flex gap-2 w-full">
+                                                                                <input
+                                                                                    type={f.output_data_type === 'link' ? 'url' : 'text'}
+                                                                                    value={f.output_data || ''}
+                                                                                    onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: e.target.value })}
+                                                                                    className="input-field text-[11px] py-1 h-8 flex-1"
+                                                                                    placeholder={f.output_data_type === 'link' ? 'https://...' : 'Input...'}
+                                                                                />
+                                                                            </div>
+                                                                        ) : f.output_data_type === 'boolean' ? (
+                                                                            <div className="flex items-center gap-2">
+                                                                                <input 
+                                                                                    type="checkbox" 
+                                                                                    checked={f.output_data === 'TRUE' || f.output_data === 'true'} 
+                                                                                    onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: e.target.checked ? 'TRUE' : 'FALSE' })}
+                                                                                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-500"
+                                                                                />
+                                                                                <span className="text-[11px]">{f.output_data === 'TRUE' || f.output_data === 'true' ? 'Selesai' : 'Belum'}</span>
+                                                                            </div>
+                                                                        ) : null}
+                                                                    </div>
                                                                 </div>
-                                                            ) : f.output_data_type === 'boolean' ? (
-                                                                <div className="flex items-center gap-3 mt-1">
-                                                                    <input 
-                                                                        type="checkbox" 
-                                                                        checked={f.output_data === 'TRUE' || f.output_data === 'true'} 
-                                                                        onChange={(e) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: e.target.checked ? 'TRUE' : 'FALSE' })}
-                                                                        className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500"
-                                                                    />
-                                                                    <span className="text-sm">{f.output_data === 'TRUE' || f.output_data === 'true' ? 'Selesai' : 'Belum selesai'}</span>
-                                                                </div>
-                                                            ) : null}
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                        
+                                                        
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

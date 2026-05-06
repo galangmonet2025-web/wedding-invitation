@@ -2120,9 +2120,13 @@ var AdditionalFeatureService = {
 
     // Combine them
     var result = mstFeatures.map(function(mst) {
-      var active = tenantFeatures.find(function(tf) { return tf.additional_feature_id === mst.id; });
+      if (!mst.id) return null;
+      var active = tenantFeatures.find(function(tf) { 
+        return tf.additional_feature_id && String(tf.additional_feature_id) === String(mst.id); 
+      });
+      
       return {
-        id: active ? active.id : null,
+        id: (active && active.id) ? active.id : null,
         tenant_id: targetTenantId,
         additional_feature_id: mst.id,
         feature_name: mst.feature_name,
@@ -2134,13 +2138,14 @@ var AdditionalFeatureService = {
         output_data: active ? active.output_data : '',
         active: active ? (active.active === true || active.active === 'true' || active.active === 'TRUE') : false,
         mst_active: (mst.active === true || mst.active === 'true' || mst.active === 'TRUE'),
-        price: Number(mst.price) || 0
+        price: Number(mst.price) || 0,
+        payment_status: (active && active.payment_status) ? active.payment_status : 'Menunggu pembayaran'
       };
-    });
+    }).filter(function(r) { return r !== null; });
 
-    // For tenant_admin, only show features that are active at the master level AND enabled by superadmin
+    // For tenant_admin, only show features that are active at the master level
     if (auth.role !== 'superadmin') {
-      result = result.filter(function(r) { return r.active && r.mst_active; });
+      result = result.filter(function(r) { return r.mst_active; });
     }
 
     return ResponseHelper.success(result, 'Tenant features retrieved');
@@ -2168,6 +2173,8 @@ var AdditionalFeatureService = {
       if (payload.input_tenant_data !== undefined) updates.input_tenant_data = payload.input_tenant_data;
     }
 
+    if (payload.payment_status !== undefined) updates.payment_status = payload.payment_status;
+
     if (existing) {
       DB.update('TenantActiveFeature', existing.id, updates);
     } else {
@@ -2175,10 +2182,11 @@ var AdditionalFeatureService = {
       var newFeature = {
         id: DB.generateId(),
         tenant_id: targetTenantId,
-        additional_feature_id: payload.additional_feature_id,
+        additional_feature_id: String(payload.additional_feature_id),
         input_tenant_data: updates.input_tenant_data || '',
         output_data: updates.output_data || '',
-        active: updates.active || 'FALSE'
+        active: updates.active !== undefined ? (updates.active ? 'TRUE' : 'FALSE') : 'FALSE',
+        payment_status: updates.payment_status || 'Menunggu pembayaran'
       };
       DB.insert('TenantActiveFeature', newFeature);
     }
@@ -2383,7 +2391,7 @@ function setupSpreadsheet() {
     ],
     'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at'],
     'MstAdditionalFeature': ['id', 'feature_name', 'description', 'is_required_tenant_input', 'input_data_type', 'output_data_type', 'active', 'price', 'created_at'],
-    'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active']
+    'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active', 'payment_status']
   };
 
   for (var name in sheets) {
