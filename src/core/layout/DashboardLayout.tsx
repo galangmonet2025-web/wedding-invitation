@@ -28,6 +28,7 @@ import {
     HiOutlineKey,
     HiOutlineExternalLink,
     HiOutlineCreditCard,
+    HiOutlineAdjustments,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
@@ -58,6 +59,7 @@ export function DashboardLayout() {
             { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: t('sidebar.manage_tenants'), roles: ['superadmin'] },
             { to: '/private/themes', icon: HiOutlineColorSwatch, label: t('sidebar.manage_themes'), roles: ['superadmin'] },
             { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['superadmin'] },
+            { to: '/private/plan-config', icon: HiOutlineAdjustments, label: t('sidebar.plan_config', 'Konfigurasi Paket'), roles: ['superadmin'] },
             { to: '/private/transactions', icon: HiOutlineCreditCard, label: 'Monitoring Transaksi', roles: ['superadmin'] },
             { to: '/private/reviews', icon: HiOutlineChatAlt2, label: t('sidebar.review_rating'), roles: ['superadmin'] },
             { to: '/private/website-config', icon: HiOutlineCog, label: t('sidebar.website_config'), roles: ['superadmin'] },

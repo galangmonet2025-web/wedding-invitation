@@ -19,6 +19,7 @@ import { InvitationContentPage } from '@/features/invitation/pages/InvitationCon
 import { ManageThemesPage } from '@/features/admin/pages/ManageThemesPage';
 import { ThemeEditorPage } from '@/features/admin/pages/ThemeEditorPage';
 import { WebsiteConfigPage } from '@/features/admin/pages/WebsiteConfigPage';
+import { PlanConfigPage } from '@/features/admin/pages/PlanConfigPage';
 import { Navigate } from 'react-router-dom';
 import { LandingPage } from '@/features/landing/pages/LandingPage';
 import { AdditionalFeaturePage } from '@/features/admin/pages/AdditionalFeaturePage';
@@ -173,6 +174,14 @@ export const router = createHashRouter([
                                 element: (
                                     <ProtectedRoute allowedRoles={['superadmin']}>
                                         <WebsiteConfigPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'plan-config',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <PlanConfigPage />
                                     </ProtectedRoute>
                                 ),
                             },

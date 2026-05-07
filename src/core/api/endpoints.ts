@@ -27,6 +27,8 @@ import type {
     ReviewAndRating,
     Transaction,
     CreateTransactionRequest,
+    MstPlanType,
+    MstPlanFeature,
 } from '@/types';
 
 // =============================================
@@ -139,6 +141,11 @@ export const guestApi = {
 export const tenantApi = {
     getTenants: async (): Promise<ApiResponse<Tenant[]>> => {
         const res = await apiClient.post('', { action: 'getTenants' });
+        return res.data;
+    },
+
+    getTransactions: async (params?: any, config?: any): Promise<ApiResponse<Transaction[]>> => {
+        const res = await apiClient.post('', { action: 'getTransactions', ...params }, config);
         return res.data;
     },
 
@@ -425,10 +432,8 @@ export const paymentApi = {
         return res.data;
     },
 
-    getTransactions: async (tenantId?: string): Promise<ApiResponse<Transaction[]>> => {
-        const payload: any = { action: 'getTransactions' };
-        if (tenantId) payload.tenant_id = tenantId;
-        const res = await apiClient.post('', payload, { skipLoader: true } as any);
+    getTransactions: async (params?: any, config?: any): Promise<ApiResponse<Transaction[]>> => {
+        const res = await apiClient.post('', { action: 'getTransactions', ...params }, config);
         return res.data;
     },
 
@@ -437,8 +442,38 @@ export const paymentApi = {
         return res.data;
     },
 
-    getPlanTypes: async (): Promise<ApiResponse<any[]>> => {
-        const res = await apiClient.post('', { action: 'getPlanTypes' });
+    getPlanTypes: async (config?: any): Promise<ApiResponse<any[]>> => {
+        const res = await apiClient.post('', { action: 'getPlanTypes' }, config);
+        return res.data;
+    },
+
+    updatePlanType: async (data: any, config?: any): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updatePlanType', ...data }, config);
+        return res.data;
+    },
+
+    getPlanFeatures: async (params?: { plan_id?: string }, config?: any): Promise<ApiResponse<MstPlanFeature[]>> => {
+        const res = await apiClient.post('', { action: 'getPlanFeatures', ...params }, config);
+        return res.data;
+    },
+
+    createPlanFeature: async (data: Partial<MstPlanFeature>, config?: any): Promise<ApiResponse<MstPlanFeature>> => {
+        const res = await apiClient.post('', { action: 'createPlanFeature', ...data }, config);
+        return res.data;
+    },
+
+    updatePlanFeature: async (data: Partial<MstPlanFeature>, config?: any): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updatePlanFeature', ...data }, config);
+        return res.data;
+    },
+
+    deletePlanFeature: async (id: string, config?: any): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deletePlanFeature', id }, config);
+        return res.data;
+    },
+
+    bulkUpdatePlanFeatures: async (updates: { id: string, order_number: number }[], config?: any): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'bulkUpdatePlanFeatures', updates }, config);
         return res.data;
     },
 };

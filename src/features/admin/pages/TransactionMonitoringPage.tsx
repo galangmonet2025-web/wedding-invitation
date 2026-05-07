@@ -1,14 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
-import { paymentApi } from '@/core/api/endpoints';
-import type { Transaction } from '@/types';
+import { useTransactionStore } from '@/features/admin/store/transactionStore';
 import toast from 'react-hot-toast';
 import { getStatusBadge } from '@/utils/midtrans';
+import { PageLoader } from '@/shared/components/Loading';
 import {
     HiOutlineRefresh,
     HiOutlineCreditCard,
     HiOutlineCheckCircle,
     HiOutlineClock,
-    HiOutlineExclamationCircle,
     HiOutlineSearch,
     HiOutlineChartBar,
     HiOutlineCurrencyDollar,
@@ -30,25 +29,14 @@ const TYPE_FILTER_OPTIONS = [
 ];
 
 export function TransactionMonitoringPage() {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { transactions, loading, fetchTransactions } = useTransactionStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
 
-    const fetchAll = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await paymentApi.getTransactions();
-            if (res.success) setTransactions(res.data || []);
-        } catch {
-            toast.error('Gagal memuat data transaksi');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    useEffect(() => { 
+        fetchTransactions(); 
+    }, [fetchTransactions]);
 
     const filtered = transactions.filter(tx => {
         const matchSearch = !search ||
@@ -75,8 +63,10 @@ export function TransactionMonitoringPage() {
         catch { return dateStr; }
     };
 
+    if (loading && !transactions.length) return <PageLoader />;
+
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in pb-20">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -84,7 +74,7 @@ export function TransactionMonitoringPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Semua transaksi pembayaran di platform</p>
                 </div>
                 <button
-                    onClick={fetchAll}
+                    onClick={() => fetchTransactions(true)}
                     className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                     title="Refresh"
                 >
@@ -179,7 +169,7 @@ export function TransactionMonitoringPage() {
                     </span>
                 </div>
 
-                {loading ? (
+                {loading && !transactions.length ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="w-8 h-8 border-3 border-gold-500/20 border-t-gold-500 rounded-full animate-spin" />
                     </div>

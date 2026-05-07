@@ -17,7 +17,8 @@
     RATE_LIMIT_MAX: 30, // max requests per minute
     MIDTRANS_SERVER_KEY: PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY'),
     MIDTRANS_IS_PRODUCTION: false,
-    PLAN_TYPE_SHEET: 'PlanType'
+    PLAN_TYPE_SHEET: 'PlanType',
+    PLAN_FEATURE_SHEET: 'PlanFeature'
   };
 
   // ===========================
@@ -297,6 +298,23 @@
         return PaymentService.getTransactionStatus(auth, payload);
       case 'getPlanTypes':
         return PaymentService.getPlanTypes();
+      case 'updatePlanType':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return PaymentService.updatePlanType(payload);
+      case 'getPlanFeatures':
+        return PaymentService.getPlanFeatures(payload);
+      case 'createPlanFeature':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return PaymentService.createPlanFeature(payload);
+      case 'updatePlanFeature':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return PaymentService.updatePlanFeature(payload);
+      case 'deletePlanFeature':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return PaymentService.deletePlanFeature(payload);
+      case 'bulkUpdatePlanFeatures':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return PaymentService.bulkUpdatePlanFeatures(payload);
       case 'handleMidtransWebhook':
         // Webhook does not require user auth - verified by signature
         return PaymentService.handleWebhook(payload);
@@ -2880,6 +2898,96 @@
     getPlanTypes: function() {
       var plans = DB.getAll(CONFIG.PLAN_TYPE_SHEET);
       return ResponseHelper.success(plans);
+    },
+
+    updatePlanType: function(payload) {
+      Validator.required(payload, ['plan_type', 'guest_limit', 'price']);
+      
+      var sheet = DB.getSheet(CONFIG.PLAN_TYPE_SHEET);
+      var data = sheet.getDataRange().getValues();
+      var headers = data[0];
+      var planTypeCol = headers.indexOf('plan_type');
+      
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][planTypeCol]) === String(payload.plan_type)) {
+          var updates = {
+            guest_limit: parseInt(payload.guest_limit),
+            price: parseInt(payload.price)
+          };
+          
+          for (var key in updates) {
+            var col = headers.indexOf(key);
+            if (col !== -1) {
+              sheet.getRange(i + 1, col + 1).setValue(updates[key]);
+            }
+          }
+          return ResponseHelper.success(null, 'Plan type updated');
+        }
+      }
+      return ResponseHelper.error('Plan type not found', 404);
+    },
+
+    getPlanFeatures: function(payload) {
+      var all = DB.getAll(CONFIG.PLAN_FEATURE_SHEET);
+      if (payload.plan_id) {
+        all = all.filter(function(f) { return String(f.plan_id) === String(payload.plan_id); });
+      }
+      // Sort by order_number
+      all.sort(function(a, b) { return (parseInt(a.order_number) || 0) - (parseInt(b.order_number) || 0); });
+      return ResponseHelper.success(all);
+    },
+
+    createPlanFeature: function(payload) {
+      Validator.required(payload, ['plan_id', 'feature', 'order_number']);
+      var feature = {
+        id: DB.generateId(),
+        plan_id: payload.plan_id,
+        feature: payload.feature,
+        order_number: parseInt(payload.order_number) || 0,
+        active: payload.active !== undefined ? payload.active : true
+      };
+      DB.insert(CONFIG.PLAN_FEATURE_SHEET, feature);
+      return ResponseHelper.success(feature, 'Feature created');
+    },
+
+    updatePlanFeature: function(payload) {
+      Validator.required(payload, ['id']);
+      var id = payload.id;
+      var updates = {};
+      if (payload.feature !== undefined) updates.feature = payload.feature;
+      if (payload.order_number !== undefined) updates.order_number = parseInt(payload.order_number);
+      if (payload.active !== undefined) updates.active = payload.active;
+      if (payload.plan_id !== undefined) updates.plan_id = payload.plan_id;
+
+      var success = DB.update(CONFIG.PLAN_FEATURE_SHEET, id, updates);
+      return success ? ResponseHelper.success(null, 'Feature updated') : ResponseHelper.error('Feature not found', 404);
+    },
+
+    deletePlanFeature: function(payload) {
+      Validator.required(payload, ['id']);
+      var success = DB.deleteRow(CONFIG.PLAN_FEATURE_SHEET, payload.id);
+      return success ? ResponseHelper.success(null, 'Feature deleted') : ResponseHelper.error('Feature not found', 404);
+    },
+
+    bulkUpdatePlanFeatures: function(payload) {
+      Validator.required(payload, ['updates']);
+      var updates = payload.updates; // array of {id, order_number}
+      var sheet = DB.getSheet(CONFIG.PLAN_FEATURE_SHEET);
+      var data = sheet.getDataRange().getValues();
+      var headers = data[0];
+      var idCol = headers.indexOf('id');
+      var orderCol = headers.indexOf('order_number');
+      
+      for (var i = 0; i < updates.length; i++) {
+        var update = updates[i];
+        for (var j = 1; j < data.length; j++) {
+          if (String(data[j][idCol]) === String(update.id)) {
+            sheet.getRange(j + 1, orderCol + 1).setValue(parseInt(update.order_number));
+            break;
+          }
+        }
+      }
+      return ResponseHelper.success(null, 'Features reordered');
     },
 
     handleWebhook: function(payload) {

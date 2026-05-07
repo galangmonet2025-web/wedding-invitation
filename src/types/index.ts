@@ -499,3 +499,17 @@ export interface CreateTransactionRequest {
     item_name: string;
     amount: number;
 }
+
+export interface MstPlanType {
+    plan_type: PlanType;
+    guest_limit: number;
+    price: number;
+}
+
+export interface MstPlanFeature {
+    id: string;
+    plan_id: PlanType;
+    feature: string;
+    order_number: number;
+    active: boolean | string;
+}
