@@ -403,7 +403,7 @@ export interface MstAdditionalFeature {
 }
 
 export interface TenantActiveFeature {
-    id: string;
+    id: string | null;
     tenant_id: string;
     additional_feature_id: string;
     
@@ -414,6 +414,7 @@ export interface TenantActiveFeature {
     input_data_type?: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
     output_data_type?: 'gambar' | 'text' | 'link' | 'boolean' | 'empty' | '';
     mst_active?: boolean;
+    price?: number;
 
     input_tenant_data: string;
     output_data: string;

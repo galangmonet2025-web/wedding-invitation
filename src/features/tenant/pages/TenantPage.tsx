@@ -214,6 +214,18 @@ export function TenantPage() {
         }
     };
 
+    const parseImageUrl = (data: string | null | undefined) => {
+        if (!data) return '';
+        const parts = data.split('|');
+        const url = parts.length > 1 ? parts[1] : parts[0];
+        
+        // If it's just an ID (doesn't start with http), it's probably a Drive ID
+        if (url && !url.startsWith('http')) {
+            return `${import.meta.env.VITE_API_URL}?action=imageProxy&id=${url}`;
+        }
+        return url || '';
+    };
+
     const resetForm = () => {
         setForm({ bride_name: '', groom_name: '', wedding_date: '', domain_slug: '', plan_type: 'basic', admin_username: '', admin_password: '' });
     };
@@ -721,10 +733,10 @@ export function TenantPage() {
                                                                             ) : f.input_data_type === 'gambar' ? (
                                                                                 <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
                                                                                     <ProxyImage 
-                                                                                        src={f.input_tenant_data.includes('|') ? f.input_tenant_data.split('|')[1] : f.input_tenant_data} 
+                                                                                        src={parseImageUrl(f.input_tenant_data)} 
                                                                                         alt={f.feature_name} 
                                                                                         className="w-full h-full object-cover cursor-pointer" 
-                                                                                        onClick={() => setLightboxUrl(f.input_tenant_data.includes('|') ? f.input_tenant_data.split('|')[1] : f.input_tenant_data)}
+                                                                                        onClick={() => setLightboxUrl(parseImageUrl(f.input_tenant_data))}
                                                                                     />
                                                                                 </div>
                                                                             ) : f.input_data_type === 'link' ? (
@@ -740,17 +752,17 @@ export function TenantPage() {
                                                             {/* Admin Result Output */}
                                                             {f.output_data_type && f.output_data_type !== 'empty' && (
                                                                 <div>
-                                                                    <p className="text-[9px] uppercase tracking-wider text-gold-500 font-bold mb-1">Result Admin</p>
+<p className="text-[9px] uppercase tracking-wider text-gold-500 font-bold mb-1">Result Admin</p>
                                                                     <div className="min-h-[32px] flex items-center">
                                                                         {f.output_data_type === 'gambar' ? (
                                                                             <div className="w-full">
                                                                                 {f.output_data ? (
                                                                                     <div className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
                                                                                         <ProxyImage 
-                                                                                            src={f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data} 
+                                                                                            src={parseImageUrl(f.output_data)} 
                                                                                             alt="Result" 
                                                                                             className="w-full h-full object-cover cursor-pointer" 
-                                                                                            onClick={() => setLightboxUrl(f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data)}
+                                                                                            onClick={() => setLightboxUrl(parseImageUrl(f.output_data))}
                                                                                         />
                                                                                         <button
                                                                                             onClick={(e) => {

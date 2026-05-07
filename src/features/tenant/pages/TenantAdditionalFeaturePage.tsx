@@ -83,6 +83,18 @@ export function TenantAdditionalFeaturePage() {
         }
     };
 
+    const parseImageUrl = (data: string | null | undefined) => {
+        if (!data) return '';
+        const parts = data.split('|');
+        const url = parts.length > 1 ? parts[1] : parts[0];
+        
+        // If it's just an ID (doesn't start with http), it's probably a Drive ID
+        if (url && !url.startsWith('http')) {
+            return `${import.meta.env.VITE_API_URL}?action=imageProxy&id=${url}`;
+        }
+        return url || '';
+    };
+
     const renderInput = (feature: TenantActiveFeature) => {
         if (!feature.is_required_tenant_input) {
             return <p className="text-sm text-gray-500 italic">Tidak perlu input</p>;
@@ -95,10 +107,10 @@ export function TenantAdditionalFeaturePage() {
                         {feature.input_tenant_data ? (
                             <div className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
                                 <ProxyImage 
-                                    src={feature.input_tenant_data.includes('|') ? feature.input_tenant_data.split('|')[1] : feature.input_tenant_data} 
+                                    src={parseImageUrl(feature.input_tenant_data)} 
                                     alt={feature.feature_name}
                                     className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                    onClick={() => setLightboxUrl(feature.input_tenant_data?.includes('|') ? feature.input_tenant_data.split('|')[1] : feature.input_tenant_data)}
+                                    onClick={() => setLightboxUrl(parseImageUrl(feature.input_tenant_data))}
                                 />
                                 <button
                                     onClick={(e) => {
@@ -189,10 +201,10 @@ export function TenantAdditionalFeaturePage() {
                 return (
                     <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
                         <ProxyImage 
-                            src={feature.output_data.includes('|') ? feature.output_data.split('|')[1] : feature.output_data} 
+                            src={parseImageUrl(feature.output_data)} 
                             alt={feature.feature_name}
                             className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                            onClick={() => setLightboxUrl(feature.output_data?.includes('|') ? feature.output_data.split('|')[1] : feature.output_data)}
+                            onClick={() => setLightboxUrl(parseImageUrl(feature.output_data))}
                         />
                     </div>
                 );
@@ -253,7 +265,7 @@ export function TenantAdditionalFeaturePage() {
             ) : (
                 <div className="grid gap-6">
                     {features.map((feature) => (
-                        <div key={feature.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200">
+                        <div key={feature.additional_feature_id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200">
                             <div className="p-6 flex flex-col lg:flex-row gap-8">
                                 {/* Left Side: Feature Info */}
                                 <div className="lg:w-1/3 shrink-0 flex flex-col justify-between">
@@ -375,7 +387,7 @@ export function TenantAdditionalFeaturePage() {
                                         <div className="flex items-center gap-2 mb-1">
                                             <h4 className="font-semibold text-gray-800 dark:text-white group-hover:text-gold-600 transition-colors">{feature.feature_name}</h4>
                                             <span className="text-gold-600 font-bold text-sm">
-                                                {feature.price > 0 ? `Rp ${feature.price.toLocaleString('id-ID')}` : 'Gratis'}
+                                                {(feature.price || 0) > 0 ? `Rp ${(feature.price || 0).toLocaleString('id-ID')}` : 'Gratis'}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{feature.description || 'Tidak ada deskripsi'}</p>
@@ -385,7 +397,7 @@ export function TenantAdditionalFeaturePage() {
                                             setPurchaseConfirm({
                                                 id: feature.additional_feature_id,
                                                 name: feature.feature_name,
-                                                price: feature.price,
+                                                price: feature.price || 0,
                                                 description: feature.description
                                             });
                                         }}
