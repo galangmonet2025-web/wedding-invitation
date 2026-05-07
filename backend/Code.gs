@@ -15,16 +15,7 @@
     TOKEN_EXPIRY_HOURS: 24,
     RATE_LIMIT_WINDOW: 60000, // 1 minute
     RATE_LIMIT_MAX: 30, // max requests per minute
-    // ============================================================
-    // MIDTRANS CONFIGURATION
-    // SECURITY TIP: Do not hardcode your Server Key here!
-    // 1. Go to Google Apps Script Settings (Gear Icon)
-    // 2. Scroll to 'Script Properties'
-    // 3. Add 'MIDTRANS_SERVER_KEY' as property name and your key as value
-    // 4. Then uncomment the line below and comment out the hardcoded one
-    // ============================================================
-    // MIDTRANS_SERVER_KEY: PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY'),
-    MIDTRANS_SERVER_KEY: 'REPLACE_WITH_YOUR_MIDTRANS_SERVER_KEY_IN_SCRIPT_PROPERTIES',
+    MIDTRANS_SERVER_KEY: PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY'),
     MIDTRANS_IS_PRODUCTION: false,
     PLAN_TYPE_SHEET: 'PlanType'
   };
@@ -1325,6 +1316,7 @@
       });
 
       return ResponseHelper.success({
+        tenant: DB.findOne('Tenants', 'id', tenantId),
         total_guests: guests.length,
         total_confirmed: confirmed,
         total_declined: declined,
@@ -2474,7 +2466,8 @@
       ],
       'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at'],
       'MstAdditionalFeature': ['id', 'feature_name', 'description', 'is_required_tenant_input', 'input_data_type', 'output_data_type', 'active', 'price', 'created_at'],
-      'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active', 'payment_status']
+      'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active', 'payment_status'],
+      'Transactions': ['id', 'tenant_id', 'item_type', 'item_description', 'item_id', 'amount', 'status', 'snap_token', 'payment_method', 'created_at', 'updated_at']
     };
 
     for (var name in sheets) {
@@ -2816,7 +2809,27 @@
         return new Date(b.created_at) - new Date(a.created_at);
       });
 
-      return ResponseHelper.success(transactions, 'Transactions retrieved');
+      // Enrich with tenant name and slug
+      var tenants = DB.getAll('Tenants');
+      var tenantMap = {};
+      tenants.forEach(function(t) {
+        if (t.id) {
+          tenantMap[String(t.id)] = { 
+            name: (t.bride_name || 'Tenant') + (t.groom_name ? ' & ' + t.groom_name : ''), 
+            slug: t.domain_slug || '' 
+          };
+        }
+      });
+
+      var enriched = transactions.map(function(tx) {
+        var tid = tx.tenant_id ? String(tx.tenant_id) : '';
+        var t = tenantMap[tid] || { name: 'Unknown (' + tid + ')', slug: '' };
+        tx.tenant_name = t.name;
+        tx.domain_slug = t.slug;
+        return tx;
+      });
+
+      return ResponseHelper.success(enriched, 'Transactions retrieved');
     },
 
     getTransactionStatus: function(auth, payload) {

@@ -203,8 +203,7 @@ export function TransactionMonitoringPage() {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <th className="text-left pb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
-                                    <th className="text-left pb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenant</th>
+                                    <th className="text-left pb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenant / Order ID</th>
                                     <th className="text-left pb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Item</th>
                                     <th className="text-left pb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jenis</th>
                                     <th className="text-left pb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
@@ -217,16 +216,35 @@ export function TransactionMonitoringPage() {
                                     const badge = getStatusBadge(tx.status);
                                     return (
                                         <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                            <td className="py-3 pr-4">
-                                                <span className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">{tx.id}</span>
+                                            <td className="py-4 pr-4">
+                                                <div className="flex flex-col gap-1">
+                                                    {tx.domain_slug ? (
+                                                        <a 
+                                                            href={`#/${tx.domain_slug}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="font-bold text-gold-600 hover:text-gold-700 hover:underline text-xs flex items-center gap-1"
+                                                        >
+                                                            {tx.domain_slug}
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                        </a>
+                                                    ) : (
+                                                        <span className="font-bold text-gray-400 text-xs">-</span>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(tx.id);
+                                                            toast.success('Order ID disalin');
+                                                        }}
+                                                        className="text-[10px] font-mono text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-left flex items-center gap-1 group"
+                                                    >
+                                                        {tx.id}
+                                                        <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td className="py-3 pr-4">
-                                                <p className="font-medium text-gray-800 dark:text-white text-xs truncate max-w-[140px]">
-                                                    {tx.tenant_name || tx.tenant_id}
-                                                </p>
-                                            </td>
-                                            <td className="py-3 pr-4">
-                                                <p className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[180px]">{tx.item_description}</p>
+                                                <p className="text-gray-700 dark:text-gray-300 text-xs">{tx.item_description}</p>
                                             </td>
                                             <td className="py-3 pr-4">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${tx.item_type === 'feature' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'}`}>

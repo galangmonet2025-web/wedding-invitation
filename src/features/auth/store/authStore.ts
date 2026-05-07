@@ -9,6 +9,7 @@ interface AuthState {
     isAuthenticated: boolean;
 
     setAuth: (token: string, user: User, tenant: Tenant) => void;
+    setUser: (user: User) => void;
     logout: () => void;
     updateTenant: (tenant: Tenant) => void;
 }
@@ -28,6 +29,8 @@ export const useAuthStore = create<AuthState>()(
                     tenant,
                     isAuthenticated: true,
                 }),
+
+            setUser: (user: User) => set({ user }),
 
             logout: () =>
                 set({

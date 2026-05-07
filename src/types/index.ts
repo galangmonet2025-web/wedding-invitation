@@ -44,6 +44,8 @@ export interface User {
     username: string;
     role: Role;
     tenant_id: string;
+    plan_type?: PlanType;
+    status_payment?: string;
     created_at: string;
 }
 
@@ -167,6 +169,7 @@ export interface ApiResponse<T = unknown> {
 // =============================================
 
 export interface TenantDashboard {
+    tenant?: Tenant;
     total_guests: number;
     total_confirmed: number;
     total_declined: number;
@@ -485,6 +488,7 @@ export interface Transaction {
     status: TransactionStatus;
     snap_token?: string;
     payment_method?: string;
+    domain_slug?: string; // KOLOM BARU
     created_at: string;
     updated_at?: string;
 }
