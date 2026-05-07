@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { additionalFeatureApi } from '@/core/api/endpoints';
+import { additionalFeatureApi, paymentApi } from '@/core/api/endpoints';
 import { imageApi } from '@/core/api/imageApi';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { openSnapPayment } from '@/utils/midtrans';
 import { PageLoader } from '@/shared/components/Loading';
 import type { TenantActiveFeature } from '@/types';
 import toast from 'react-hot-toast';
@@ -433,7 +435,7 @@ export function TenantAdditionalFeaturePage() {
                                     </div>
                                 </div>
                                 {purchaseConfirm?.price && purchaseConfirm.price > 0 ? (
-                                    <p className="mt-4 text-xs text-blue-700 dark:text-blue-300">Setelah konfirmasi, status fitur akan menjadi <b>Menunggu Pembayaran</b>. Fitur dapat digunakan setelah admin memverifikasi pembayaran Anda.</p>
+                                    <p className="mt-4 text-xs text-blue-700 dark:text-blue-300 italic">* Anda akan diarahkan ke pembayaran Midtrans setelah mengklik Konfirmasi.</p>
                                 ) : (
                                     <p className="mt-4 text-xs text-blue-700 dark:text-blue-300">Fitur ini gratis dan akan langsung aktif setelah Anda melakukan konfirmasi.</p>
                                 )}
@@ -445,16 +447,42 @@ export function TenantAdditionalFeaturePage() {
                         <button
                             onClick={async () => {
                                 if (!purchaseConfirm) return;
+                                
+                                // Step 1: Daftarkan fitur ke tenant (Backend)
                                 const success = await purchaseFeature(purchaseConfirm.id);
-                                if (success) {
-                                    setPurchaseConfirm(null);
-                                    setShowAddModal(false);
+                                if (!success) return;
+
+                                // Step 2: Jika berbayar, langsung buka Midtrans
+                                if (purchaseConfirm.price > 0) {
+                                    try {
+                                        const payRes = await paymentApi.createTransaction({
+                                            item_type: 'feature',
+                                            item_id: purchaseConfirm.id,
+                                            item_name: purchaseConfirm.name,
+                                            amount: purchaseConfirm.price,
+                                        });
+
+                                        if (payRes.success && payRes.data?.snap_token) {
+                                            const result = await openSnapPayment(payRes.data.snap_token);
+                                            if (result.status === 'success') {
+                                                toast.success('Pembayaran berhasil!');
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error('Payment error:', err);
+                                        toast.error('Gagal membuka pembayaran, silakan cek menu Pembayaran');
+                                    }
                                 }
+
+                                setPurchaseConfirm(null);
+                                setShowAddModal(false);
+                                
+                                // Step 3: Refresh data dengan delay agar GAS selesai memproses
+                                setTimeout(() => fetchFeatures(), 2000);
                             }}
-                            className="btn-primary py-2 px-6 flex items-center gap-2"
+                            className="btn-primary"
                         >
-                            <HiOutlineShoppingCart className="w-4 h-4" />
-                            Konfirmasi Pembelian
+                            Konfirmasi & Beli
                         </button>
                     </div>
                 </div>

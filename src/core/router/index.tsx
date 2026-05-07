@@ -24,6 +24,8 @@ import { LandingPage } from '@/features/landing/pages/LandingPage';
 import { AdditionalFeaturePage } from '@/features/admin/pages/AdditionalFeaturePage';
 import { TenantAdditionalFeaturePage } from '@/features/tenant/pages/TenantAdditionalFeaturePage';
 import { ReviewPage } from '@/features/admin/pages/ReviewPage';
+import { PaymentPage } from '@/features/payment/pages/PaymentPage';
+import { TransactionMonitoringPage } from '@/features/admin/pages/TransactionMonitoringPage';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 function AdditionalFeatureRouter() {
@@ -219,6 +221,22 @@ export const router = createHashRouter([
                                 element: (
                                     <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
                                         <AdditionalFeatureRouter />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'payments',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['tenant_admin']}>
+                                        <PaymentPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'transactions',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <TransactionMonitoringPage />
                                     </ProtectedRoute>
                                 ),
                             },

@@ -35,5 +35,13 @@
     <div id="modal-root"></div>
     <div id="lightbox-root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Midtrans Snap Payment Gateway -->
+    <!-- Switch to https://app.midtrans.com/snap/snap.js for production -->
+    <!-- Replace data-client-key with your actual Midtrans Client Key -->
+    <script
+      src="https://app.sandbox.midtrans.com/snap/snap.js"
+      data-client-key="%VITE_MIDTRANS_CLIENT_KEY%"
+    ></script>
   </body>
 </html>

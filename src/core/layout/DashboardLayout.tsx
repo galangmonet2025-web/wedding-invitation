@@ -27,6 +27,7 @@ import {
     HiOutlinePuzzle,
     HiOutlineKey,
     HiOutlineExternalLink,
+    HiOutlineCreditCard,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
@@ -57,6 +58,7 @@ export function DashboardLayout() {
             { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: t('sidebar.manage_tenants'), roles: ['superadmin'] },
             { to: '/private/themes', icon: HiOutlineColorSwatch, label: t('sidebar.manage_themes'), roles: ['superadmin'] },
             { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['superadmin'] },
+            { to: '/private/transactions', icon: HiOutlineCreditCard, label: 'Monitoring Transaksi', roles: ['superadmin'] },
             { to: '/private/reviews', icon: HiOutlineChatAlt2, label: t('sidebar.review_rating'), roles: ['superadmin'] },
             { to: '/private/website-config', icon: HiOutlineCog, label: t('sidebar.website_config'), roles: ['superadmin'] },
             { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.system_activity'), roles: ['superadmin'] },
@@ -71,6 +73,7 @@ export function DashboardLayout() {
             { to: '/private/wishes', icon: HiOutlineHeart, label: t('sidebar.wishes'), roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/gifts', icon: HiOutlineGift, label: t('sidebar.gifts'), roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/payments', icon: HiOutlineCreditCard, label: 'Pembayaran', roles: ['tenant_admin'] },
             { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.activity_log'), roles: ['tenant_admin', 'superadmin'] },
         ];
 

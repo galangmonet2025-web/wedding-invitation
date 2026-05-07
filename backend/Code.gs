@@ -15,6 +15,15 @@
     TOKEN_EXPIRY_HOURS: 24,
     RATE_LIMIT_WINDOW: 60000, // 1 minute
     RATE_LIMIT_MAX: 30, // max requests per minute
+    // ============================================================
+    // MIDTRANS CONFIGURATION
+    // Replace with your actual keys from dashboard.midtrans.com
+    // For sandbox: isProduction = false
+    // ============================================================
+    // Use PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY') for security
+    MIDTRANS_SERVER_KEY: 'REPLACE_WITH_YOUR_MIDTRANS_SERVER_KEY',
+    MIDTRANS_IS_PRODUCTION: false,
+    PLAN_TYPE_SHEET: 'PlanType'
   };
 
   // ===========================
@@ -71,7 +80,7 @@
       }
 
       // Public endpoints (no auth required)
-      var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug'];
+      var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug', 'handleMidtransWebhook'];
       if (publicActions.indexOf(action) !== -1) {
         return routeAction(action, payload, null);
       }
@@ -108,6 +117,9 @@
         return ResponseHelper.success(null, 'Logged out successfully');
       case 'changePassword':
         return AuthService.changePassword(auth, payload);
+      case 'getProfile':
+        PermissionService.requireRole(auth, ['tenant_admin']);
+        return AuthService.getProfile(auth);
 
       // Dashboard
       case 'getDashboard':
@@ -278,6 +290,22 @@
         return ReviewService.updateReview(auth, payload);
       case 'getReviewByTenant':
         return ReviewService.getReviewByTenant(auth);
+
+      // Payments (Midtrans)
+      case 'createTransaction':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return PaymentService.createTransaction(auth, payload);
+      case 'getTransactions':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return PaymentService.getTransactions(auth, payload);
+      case 'getTransactionStatus':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return PaymentService.getTransactionStatus(auth, payload);
+      case 'getPlanTypes':
+        return PaymentService.getPlanTypes();
+      case 'handleMidtransWebhook':
+        // Webhook does not require user auth - verified by signature
+        return PaymentService.handleWebhook(payload);
 
       default:
         return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -515,6 +543,8 @@
           username: user.username,
           role: user.role,
           tenant_id: user.tenant_id,
+          plan_type: tenant ? tenant.plan_type : 'basic',
+          status_payment: tenant ? (tenant.status_payment || 'Aktif') : 'Aktif',
           created_at: user.created_at
         },
         tenant: tenant
@@ -621,33 +651,45 @@
           return {
             user_id: 'super-123',
             role: 'superadmin',
-            tenant_id: 'system',
-            expired_at: new Date(Date.now() + 3600000).toISOString()
+            tenant_id: null
           };
         }
-
         var parts = token.split('.');
         if (parts.length !== 2) return null;
-
         var encoded = parts[0];
         var sig = parts[1];
-
-        // Verify signature
-        var expectedSig = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, encoded + CONFIG.TOKEN_SECRET);
-        var expected = expectedSig.map(function(byte) { return ('0' + (byte & 0xFF).toString(16)).slice(-2); }).join('');
-
-        if (sig !== expected) return null;
-
+        var signature = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, encoded + CONFIG.TOKEN_SECRET);
+        var expectedSig = signature.map(function(byte) { return ('0' + (byte & 0xFF).toString(16)).slice(-2); }).join('');
+        if (sig !== expectedSig) return null;
         var json = Utilities.newBlob(Utilities.base64Decode(encoded)).getDataAsString();
         var payload = JSON.parse(json);
-
-        // Check expiration
         if (new Date(payload.expired_at) < new Date()) return null;
-
         return payload;
       } catch (e) {
         return null;
       }
+    },
+
+    getProfile: function(auth) {
+      if (auth.role === 'superadmin') {
+        return ResponseHelper.success({
+          id: auth.user_id,
+          username: 'superadmin',
+          role: 'superadmin'
+        });
+      }
+
+      var tenant = DB.findOne('Tenants', 'id', auth.tenant_id);
+      if (!tenant) return ResponseHelper.error('Tenant not found', 404);
+      
+      return ResponseHelper.success({
+        id: auth.user_id,
+        username: auth.username || 'user',
+        role: auth.role,
+        tenant_id: auth.tenant_id,
+        plan_type: tenant.plan_type,
+        status_payment: tenant.status_payment || 'Aktif'
+      });
     },
 
     checkSlug: function(payload) {
@@ -2156,7 +2198,7 @@
           active: active ? (active.active === true || active.active === 'true' || active.active === 'TRUE') : false,
           mst_active: (mst.active === true || mst.active === 'true' || mst.active === 'TRUE'),
           price: Number(mst.price) || 0,
-          payment_status: (active && active.payment_status) ? active.payment_status : 'Menunggu pembayaran'
+          payment_status: (active && active.payment_status) ? active.payment_status : 'Belum dibeli'
         };
       }).filter(function(r) { return r !== null; });
 
@@ -2617,3 +2659,313 @@
 
     Logger.log('Themes seeded successfully.');
   }
+
+
+  // =====================================================================
+  // PAYMENT SERVICE (Midtrans Integration)
+  // =====================================================================
+
+  var PaymentService = {
+
+    // Helper: get Midtrans API base URL
+    _getApiUrl: function() {
+      return CONFIG.MIDTRANS_IS_PRODUCTION
+        ? 'https://app.midtrans.com/snap/v1'
+        : 'https://app.sandbox.midtrans.com/snap/v1';
+    },
+
+    // Helper: get Midtrans status check URL
+    _getStatusUrl: function(orderId) {
+      var base = CONFIG.MIDTRANS_IS_PRODUCTION
+        ? 'https://api.midtrans.com/v2/'
+        : 'https://api.sandbox.midtrans.com/v2/';
+      return base + orderId + '/status';
+    },
+
+    // Helper: base64 encode for Basic Auth
+    _getAuthHeader: function() {
+      var credentials = Utilities.base64Encode(CONFIG.MIDTRANS_SERVER_KEY + ':');
+      return 'Basic ' + credentials;
+    },
+
+    // Generate order ID
+    _generateOrderId: function() {
+      var ts = new Date().getTime().toString();
+      var rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+      return 'INV-' + ts + '-' + rand;
+    },
+
+    createTransaction: function(auth, payload) {
+      var tenantId = PermissionService.getTenantId(auth);
+      Validator.required(payload, ['item_type', 'item_id', 'item_name', 'amount']);
+
+      var tenant = DB.findOne('Tenants', 'id', tenantId);
+      if (!tenant) return ResponseHelper.error('Tenant not found', 404);
+
+      var amount = parseInt(payload.amount);
+      if (isNaN(amount) || amount <= 0) {
+        return ResponseHelper.error('Invalid amount', 400);
+      }
+
+      var orderId = this._generateOrderId();
+      var now = new Date().toISOString();
+
+      // MEMBUAT DESKRIPSI BERDASARKAN JENIS ITEM
+      var description = "";
+      if (payload.item_type === 'feature') {
+        description = "Pembelian Fitur: " + payload.item_name;
+      } else if (payload.item_type === 'plan') {
+        description = "Upgrade Paket ke: " + payload.item_name;
+      } else {
+        description = payload.item_name;
+      }
+
+      // Construct Midtrans Snap payload
+      var snapPayload = {
+        transaction_details: {
+          order_id: orderId,
+          gross_amount: amount
+        },
+        item_details: [{
+          id: String(payload.item_id),
+          price: amount,
+          quantity: 1,
+          name: String(payload.item_name).substring(0, 50)
+        }],
+        customer_details: {
+          first_name: tenant.bride_name || 'Tenant',
+          last_name: tenant.groom_name || '',
+          email: 'noreply@wedding.com',
+        },
+        callbacks: {
+          finish: ScriptApp.getService().getUrl() + '?action=handleMidtransWebhook'
+        }
+      };
+
+      // Call Midtrans Snap API
+      var snapApiUrl = this._getApiUrl() + '/transactions';
+      var response;
+      try {
+        var httpResponse = UrlFetchApp.fetch(snapApiUrl, {
+          method: 'post',
+          headers: {
+            'Authorization': this._getAuthHeader(),
+            'Content-Type': 'application/json'
+          },
+          payload: JSON.stringify(snapPayload),
+          muteHttpExceptions: true
+        });
+
+        response = JSON.parse(httpResponse.getContentText());
+        if (!response.token) {
+          Logger.log('Midtrans error: ' + JSON.stringify(response));
+          return ResponseHelper.error('Gagal membuat transaksi: ' + (response.error_messages || []).join(', '), 502);
+        }
+      } catch (err) {
+        Logger.log('Midtrans fetch error: ' + err.toString());
+        return ResponseHelper.error('Gagal menghubungi Midtrans: ' + err.message, 502);
+      }
+
+      // Record sesuai dengan urutan kolom baru Anda
+      // id | tenant_id | item_type | item_description | item_id | amount | status | snap_token | payment_method | created_at | updated_at
+      var record = {
+        id: orderId,
+        tenant_id: tenantId,
+        item_type: payload.item_type,
+        item_description: description,
+        item_id: String(payload.item_id),
+        amount: amount,
+        status: 'pending',
+        snap_token: response.token,
+        payment_method: '',
+        created_at: now,
+        updated_at: now
+      };
+      
+      // Gunakan 'Transactions' atau ganti ke 'Transaksi' sesuai nama tab sheet Anda
+      DB.insert('Transactions', record);
+
+      return ResponseHelper.success({
+        snap_token: response.token,
+        order_id: orderId
+      }, 'Transaksi berhasil dibuat');
+    },
+
+    getTransactions: function(auth, payload) {
+      var role = auth.role;
+      var transactions;
+
+      if (role === 'superadmin') {
+        // Superadmin can filter by tenant or get all
+        if (payload.tenant_id) {
+          transactions = DB.getByTenant('Transactions', payload.tenant_id);
+        } else {
+          transactions = DB.getAll('Transactions');
+        }
+      } else {
+        // Tenant only sees own transactions
+        var tenantId = PermissionService.getTenantId(auth);
+        transactions = DB.getByTenant('Transactions', tenantId);
+      }
+
+      // Sort by created_at descending (newest first)
+      transactions.sort(function(a, b) {
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      return ResponseHelper.success(transactions, 'Transactions retrieved');
+    },
+
+    getTransactionStatus: function(auth, payload) {
+      Validator.required(payload, ['order_id']);
+      var tenantId = PermissionService.getTenantId(auth);
+
+      var transaction = DB.findOne('Transactions', 'id', payload.order_id);
+      if (!transaction) return ResponseHelper.error('Transaction not found', 404);
+
+      // Security: tenant can only see own transaction
+      if (auth.role !== 'superadmin' && String(transaction.tenant_id) !== String(tenantId)) {
+        return ResponseHelper.error('Unauthorized', 403);
+      }
+
+      // Check live status from Midtrans
+      try {
+        var statusUrl = this._getStatusUrl(payload.order_id);
+        var httpResponse = UrlFetchApp.fetch(statusUrl, {
+          method: 'get',
+          headers: { 'Authorization': this._getAuthHeader() },
+          muteHttpExceptions: true
+        });
+        var statusData = JSON.parse(httpResponse.getContentText());
+
+        if (statusData.transaction_status && statusData.transaction_status !== transaction.status) {
+          // Update local record if status changed
+          DB.update('Transactions', payload.order_id, {
+            status: statusData.transaction_status,
+            payment_method: statusData.payment_type || '',
+            updated_at: new Date().toISOString()
+          });
+          transaction.status = statusData.transaction_status;
+          transaction.payment_method = statusData.payment_type || '';
+
+          // Trigger activation if settled
+          if (statusData.transaction_status === 'settlement') {
+            this._activateItem(transaction);
+          }
+        }
+      } catch (err) {
+        Logger.log('Status check error: ' + err.toString());
+        // Return cached status if live check fails
+      }
+
+      return ResponseHelper.success(transaction, 'Status retrieved');
+    },
+
+    getPlanTypes: function() {
+      var plans = DB.getAll(CONFIG.PLAN_TYPE_SHEET);
+      return ResponseHelper.success(plans);
+    },
+
+    handleWebhook: function(payload) {
+      // Pengecekan awal untuk Test/Ping dari Midtrans dashboard
+      if (!payload || (!payload.order_id && !payload.id)) {
+        Logger.log('Midtrans Test/Ping received');
+        return ResponseHelper.success(null, 'Ping OK');
+      }
+
+      // Jika data test notifikasi (biasanya tanpa signature lengkap)
+      if (payload.order_id && !payload.signature_key) {
+        Logger.log('Midtrans Test Notification for Order: ' + payload.order_id);
+        return ResponseHelper.success(null, 'Test Notification OK');
+      }
+
+      // Validate required Midtrans webhook fields
+      if (!payload.order_id || !payload.status_code || !payload.gross_amount || !payload.signature_key) {
+        return ResponseHelper.error('Invalid webhook payload', 400);
+      }
+
+      // Verify signature: SHA512(order_id + status_code + gross_amount + server_key)
+      // Pastikan gross_amount diformat dengan benar (tanpa .00 jika ada)
+      var amountStr = payload.gross_amount;
+      if (amountStr.indexOf('.') !== -1) {
+        amountStr = amountStr.split('.')[0];
+      }
+
+      var signatureSource = payload.order_id + payload.status_code + amountStr + CONFIG.MIDTRANS_SERVER_KEY;
+      var expectedSignature = Utilities.computeDigest(
+        Utilities.DigestAlgorithm.SHA_512,
+        signatureSource
+      );
+
+      // Convert byte array to hex string
+      var hexSignature = expectedSignature.map(function(b) {
+        return ('0' + (b & 0xff).toString(16)).slice(-2);
+      }).join('');
+
+      if (hexSignature !== payload.signature_key) {
+        Logger.log('Webhook signature mismatch for order: ' + payload.order_id);
+        return ResponseHelper.error('Invalid signature', 403);
+      }
+
+      // Find transaction
+      var transaction = DB.findOne('Transactions', 'id', payload.order_id);
+      if (!transaction) {
+        Logger.log('Webhook: transaction not found: ' + payload.order_id);
+        return ResponseHelper.success(null, 'OK'); // Respond OK to avoid retries
+      }
+
+      var newStatus = payload.transaction_status;
+      var now = new Date().toISOString();
+
+      // Update transaction status
+      DB.update('Transactions', payload.order_id, {
+        status: newStatus,
+        payment_method: payload.payment_type || '',
+        updated_at: now
+      });
+
+      // Trigger activation if payment settled
+      if (newStatus === 'settlement' || newStatus === 'capture') {
+        this._activateItem(transaction);
+      }
+
+      return ResponseHelper.success(null, 'Webhook processed');
+    },
+
+    // Internal: activate the purchased item after successful payment
+    _activateItem: function(transaction) {
+      var tenantId = String(transaction.tenant_id);
+      var itemType = transaction.item_type;
+      var itemId = String(transaction.item_id);
+
+      try {
+        if (itemType === 'feature') {
+          // Activate the feature: update payment_status and active
+          var features = DB.getAll('TenantActiveFeature');
+          for (var i = 0; i < features.length; i++) {
+            var f = features[i];
+            if (String(f.tenant_id) === tenantId && String(f.additional_feature_id) === itemId) {
+              DB.update('TenantActiveFeature', f.id, {
+                payment_status: 'Sudah dibayar',
+                active: true
+              });
+              Logger.log('Feature activated: ' + itemId + ' for tenant: ' + tenantId);
+              break;
+            }
+          }
+        } else if (itemType === 'plan') {
+          // Update tenant plan payment status
+          var tenant = DB.findOne('Tenants', 'id', tenantId);
+          if (tenant) {
+            DB.update('Tenants', tenantId, {
+              status_payment: 'Sudah dibayar',
+              plan_type: itemId // e.g. 'pro' or 'premium'
+            });
+            Logger.log('Plan activated: ' + itemId + ' for tenant: ' + tenantId);
+          }
+        }
+      } catch (err) {
+        Logger.log('_activateItem error: ' + err.toString());
+      }
+    }
+  };

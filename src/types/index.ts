@@ -466,3 +466,32 @@ export interface ReviewAndRating {
     flag_show_review: boolean | string;
     created_at: string;
 }
+
+// =============================================
+// Payment / Transaction
+// =============================================
+
+export type TransactionStatus = 'pending' | 'settlement' | 'expire' | 'cancel' | 'deny' | 'refund';
+export type TransactionItemType = 'feature' | 'plan';
+
+export interface Transaction {
+    id: string;             // Order ID (INV-xxx)
+    tenant_id: string;
+    tenant_name?: string;   
+    item_type: TransactionItemType;
+    item_id: string;        
+    item_description: string; // KOLOM BARU
+    amount: number;
+    status: TransactionStatus;
+    snap_token?: string;
+    payment_method?: string;
+    created_at: string;
+    updated_at?: string;
+}
+
+export interface CreateTransactionRequest {
+    item_type: TransactionItemType;
+    item_id: string;
+    item_name: string;
+    amount: number;
+}

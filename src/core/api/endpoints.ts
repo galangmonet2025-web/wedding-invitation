@@ -25,6 +25,8 @@ import type {
     MstAdditionalFeature,
     TenantActiveFeature,
     ReviewAndRating,
+    Transaction,
+    CreateTransactionRequest,
 } from '@/types';
 
 // =============================================
@@ -409,6 +411,34 @@ export const reviewApi = {
 
     getTenantReview: async (): Promise<ApiResponse<ReviewAndRating | null>> => {
         const res = await apiClient.post('', { action: 'getReviewByTenant' }, { skipLoader: true } as any);
+        return res.data;
+    },
+};
+
+// =============================================
+// PAYMENT API (Midtrans)
+// =============================================
+
+export const paymentApi = {
+    createTransaction: async (data: CreateTransactionRequest): Promise<ApiResponse<{ snap_token: string; order_id: string }>> => {
+        const res = await apiClient.post('', { action: 'createTransaction', ...data });
+        return res.data;
+    },
+
+    getTransactions: async (tenantId?: string): Promise<ApiResponse<Transaction[]>> => {
+        const payload: any = { action: 'getTransactions' };
+        if (tenantId) payload.tenant_id = tenantId;
+        const res = await apiClient.post('', payload, { skipLoader: true } as any);
+        return res.data;
+    },
+
+    getTransactionStatus: async (orderId: string): Promise<ApiResponse<Transaction>> => {
+        const res = await apiClient.post('', { action: 'getTransactionStatus', order_id: orderId }, { skipLoader: true } as any);
+        return res.data;
+    },
+
+    getPlanTypes: async (): Promise<ApiResponse<any[]>> => {
+        const res = await apiClient.post('', { action: 'getPlanTypes' });
         return res.data;
     },
 };
