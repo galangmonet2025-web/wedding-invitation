@@ -31,7 +31,7 @@ import { ImageUpload } from '@/shared/components/ImageUpload';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 import type { Tenant, Theme, TenantActiveFeature, PlanType, TenantStatus } from '@/types';
-import { HiOutlinePencil, HiOutlineSave, HiOutlineRefresh, HiOutlineExclamationCircle } from 'react-icons/hi';
+import { HiOutlinePencil, HiOutlineSave, HiOutlineRefresh, HiOutlineExclamationCircle, HiOutlineTrash } from 'react-icons/hi';
 import { useThemeStore } from '@/features/admin/store/themeStore';
 import { useTenantStore } from '@/features/admin/store/tenantStore';
 

@@ -21,6 +21,7 @@ interface ImageUploadProps {
     allowMultiple?: boolean;
     maxFiles?: number;
     onBeforeUpload?: (file: File, index: number) => Promise<{ fileName?: string }>;
+    className?: string;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -35,7 +36,8 @@ export function ImageUpload({
     onClick,
     aspectRatio = 'auto',
     allowMultiple = false,
-    maxFiles
+    maxFiles,
+    className = ''
 }: ImageUploadProps) {
     const [uploading, setUploading] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -320,7 +322,7 @@ export function ImageUpload({
     }[aspectRatio];
 
     return (
-        <div className="space-y-3">
+        <div className={`space-y-3 ${className}`}>
             <div className="flex justify-between items-end">
                 <div>
                     <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{title}</h3>

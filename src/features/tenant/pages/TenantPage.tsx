@@ -830,7 +830,7 @@ export function TenantPage() {
                                                         {isPurchased && (
                                                             <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-900/30 flex justify-end">
                                                                 <button 
-                                                                    onClick={() => setFeatureToRemove({ featureId: f.additional_feature_id, featureName: f.feature_name })}
+                                                                    onClick={() => setFeatureToRemove({ featureId: f.additional_feature_id, featureName: f.feature_name || '' })}
                                                                     className="text-[10px] text-red-600 hover:text-red-700 font-medium flex items-center gap-1 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
                                                                 >
                                                                     <HiOutlineTrash className="w-3.5 h-3.5" />
@@ -997,14 +997,14 @@ export function TenantPage() {
                                     setTenantFeaturesLocal(prev => {
                                         const newFeatures = prev.map(f => {
                                             if (f.additional_feature_id === featureToRemove.featureId) {
-                                                return {
-                                                    ...f,
-                                                    id: '',
-                                                    active: false,
-                                                    input_tenant_data: '',
-                                                    output_data: '',
-                                                    payment_status: 'Menunggu pembayaran'
-                                                };
+                                                    return {
+                                                        ...f,
+                                                        id: null,
+                                                        active: false,
+                                                        input_tenant_data: '',
+                                                        output_data: '',
+                                                        payment_status: 'Menunggu pembayaran'
+                                                    } as TenantActiveFeature;
                                             }
                                             return f;
                                         });

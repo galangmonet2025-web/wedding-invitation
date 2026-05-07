@@ -310,7 +310,7 @@ export function TenantAdditionalFeaturePage() {
                                         <div className="flex-1 flex flex-col justify-between">
                                             {renderInput(feature)}
                                             
-                                            {feature.is_required_tenant_input && ['link', 'text', 'boolean'].includes(feature.input_data_type) && (
+                                            {feature.is_required_tenant_input && ['link', 'text', 'boolean'].includes(feature.input_data_type || '') && (
                                                 <div className="mt-6 flex justify-end">
                                                     <button
                                                         onClick={() => handleSaveSingleFeature(feature)}
@@ -396,7 +396,7 @@ export function TenantAdditionalFeaturePage() {
                                         onClick={() => {
                                             setPurchaseConfirm({
                                                 id: feature.additional_feature_id,
-                                                name: feature.feature_name,
+                                                name: feature.feature_name || '',
                                                 price: feature.price || 0,
                                                 description: feature.description
                                             });
