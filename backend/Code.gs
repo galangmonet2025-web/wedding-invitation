@@ -17,10 +17,14 @@
     RATE_LIMIT_MAX: 30, // max requests per minute
     // ============================================================
     // MIDTRANS CONFIGURATION
-    // Replace with your actual keys from dashboard.midtrans.com
-    // For sandbox: isProduction = false
+    // SECURITY TIP: Do not hardcode your Server Key here!
+    // 1. Go to Google Apps Script Settings (Gear Icon)
+    // 2. Scroll to 'Script Properties'
+    // 3. Add 'MIDTRANS_SERVER_KEY' as property name and your key as value
+    // 4. Then uncomment the line below and comment out the hardcoded one
     // ============================================================
-    MIDTRANS_SERVER_KEY: 'REPLACE_WITH_YOUR_MIDTRANS_SERVER_KEY',
+    // MIDTRANS_SERVER_KEY: PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY'),
+    MIDTRANS_SERVER_KEY: 'REPLACE_WITH_YOUR_MIDTRANS_SERVER_KEY_IN_SCRIPT_PROPERTIES',
     MIDTRANS_IS_PRODUCTION: false,
     PLAN_TYPE_SHEET: 'PlanType'
   };

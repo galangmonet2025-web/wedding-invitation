@@ -104,15 +104,24 @@ export function PaymentPage() {
     };
 
     const handlePayPlan = async (plan: any) => {
-        const amount = Number(plan.price);
-        if (!amount || amount <= 0) { toast.error('Paket ini gratis atau tidak valid'); return; }
+        const statusStr = String(user?.status_payment || '').toLowerCase();
+        const isPaid = statusStr === 'aktif' || statusStr === 'active' || statusStr === 'sudah dibayar';
+        const currentPrice = Number(currentPlanDetails?.price || 0);
+        
+        // Jika sudah bayar (upgrade), gunakan selisih. Jika belum (pembelian baru/pindah), gunakan harga penuh.
+        const amount = isPaid ? (Number(plan.price) - currentPrice) : Number(plan.price);
+
+        if (!amount || amount <= 0) { 
+            toast.error(isPaid ? 'Anda sudah memiliki paket ini atau yang lebih tinggi' : 'Paket ini gratis atau tidak valid'); 
+            return; 
+        }
         
         setPayingId(`plan-${plan.plan_type}`);
         try {
             const res = await paymentApi.createTransaction({
                 item_type: 'plan',
                 item_id: plan.plan_type,
-                item_name: `Paket ${plan.plan_type}`,
+                item_name: `Paket ${plan.plan_type}${isPaid ? ' (Upgrade)' : ''}`,
                 amount: amount,
             });
             if (!res.success || !res.data?.snap_token) {
