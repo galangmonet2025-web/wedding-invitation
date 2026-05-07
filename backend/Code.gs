@@ -20,7 +20,6 @@
     // Replace with your actual keys from dashboard.midtrans.com
     // For sandbox: isProduction = false
     // ============================================================
-    // Use PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY') for security
     MIDTRANS_SERVER_KEY: 'REPLACE_WITH_YOUR_MIDTRANS_SERVER_KEY',
     MIDTRANS_IS_PRODUCTION: false,
     PLAN_TYPE_SHEET: 'PlanType'
