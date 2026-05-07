@@ -57,6 +57,8 @@ export function GlobalDashboardPage() {
     const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
     const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, featureId: string, type: 'output' } | null>(null);
+    const [isDeletingImg, setIsDeletingImg] = useState<string | null>(null);
     const [savingId, setSavingId] = useState<string | null>(null);
     const [tooltipState, setTooltipState] = useState<{ visible: boolean; x: number; y: number; item: any | null }>({ visible: false, x: 0, y: 0, item: null });
 
@@ -509,7 +511,7 @@ export function GlobalDashboardPage() {
                                                                                     {!f.input_tenant_data ? (
                                                                                         <p className="text-[11px] text-red-400 italic font-medium">Belum di isi oleh tenant</p>
                                                                                     ) : f.input_data_type === 'gambar' ? (
-                                                                                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
+                                                                                        <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
                                                                                             <ProxyImage
                                                                                                 src={f.input_tenant_data}
                                                                                                 alt={f.feature_name}
@@ -535,7 +537,7 @@ export function GlobalDashboardPage() {
                                                                                 {f.output_data_type === 'gambar' ? (
                                                                                     <div className="w-full">
                                                                                         {f.output_data ? (
-                                                                                            <div className="relative group w-10 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
+                                                                                            <div className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
                                                                                                 <ProxyImage
                                                                                                     src={f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data}
                                                                                                     alt="Result"
@@ -543,26 +545,38 @@ export function GlobalDashboardPage() {
                                                                                                     onClick={() => setLightboxUrl(f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data)}
                                                                                                 />
                                                                                                 <button
-                                                                                                    onClick={() => {
+                                                                                                    onClick={(e) => {
+                                                                                                        e.stopPropagation();
                                                                                                         const [id] = f.output_data.split('|');
-                                                                                                        if (id && f.output_data.includes('|')) {
-                                                                                                            setImagesToDelete(prev => [...prev, id]);
-                                                                                                        }
-                                                                                                        handleFeatureUpdateLocal(f.additional_feature_id, { output_data: '' });
+                                                                                                        setDeleteConfirm({ id, featureId: f.additional_feature_id, type: 'output' });
                                                                                                     }}
-                                                                                                    className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                                    className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
                                                                                                 >
                                                                                                     <HiOutlineTrash className="w-4 h-4" />
                                                                                                 </button>
+                                                                                                {isDeletingImg === f.additional_feature_id && (
+                                                                                                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20 backdrop-blur-[1px] rounded-lg">
+                                                                                                        <div className="w-6 h-6 border-[3px] border-white/20 border-t-red-500 rounded-full animate-spin mb-1" />
+                                                                                                        <span className="text-[10px] text-white font-medium">Menghapus...</span>
+                                                                                                    </div>
+                                                                                                )}
                                                                                             </div>
                                                                                         ) : (
                                                                                             <ImageUpload
                                                                                                 imageType={`feature-out-${f.additional_feature_id}`}
                                                                                                 title="Upload"
-                                                                                                onUploadSuccess={(img) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: `${img.id}|${img.cdn_url || img.drive_url}` })}
+                                                                                                onUploadSuccess={async (img) => {
+                                                                                                    const newVal = `${img.id}|${img.cdn_url || img.drive_url}`;
+                                                                                                    handleFeatureUpdateLocal(f.additional_feature_id, { output_data: newVal });
+                                                                                                    await additionalFeatureApi.updateTenantFeature({
+                                                                                                        tenant_id: selectedTenant!.id,
+                                                                                                        additional_feature_id: f.additional_feature_id,
+                                                                                                        output_data: newVal
+                                                                                                    }, { skipLoader: true } as any);
+                                                                                                }}
                                                                                                 onDeleteSuccess={() => { }}
                                                                                                 aspectRatio="auto"
-                                                                                                className="h-8 !p-1 !text-[10px]"
+                                                                                                className="!p-2 !text-xs min-h-[96px]"
                                                                                             />
                                                                                         )}
                                                                                     </div>
@@ -630,6 +644,57 @@ export function GlobalDashboardPage() {
                     </ul>
                 </div>
             )}
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Hapus Gambar"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost" disabled={!!isDeletingImg}>Batal</button>
+                        <button
+                            onClick={async () => {
+                                if (!deleteConfirm) return;
+                                const { id, featureId } = deleteConfirm;
+                                setDeleteConfirm(null);
+                                setIsDeletingImg(featureId);
+
+                                try {
+                                    await additionalFeatureApi.updateTenantFeature({
+                                        tenant_id: selectedTenant!.id,
+                                        additional_feature_id: featureId,
+                                        output_data: ''
+                                    }, { skipLoader: true } as any);
+
+                                    if (id) {
+                                        await imageApi.deleteImage(id).catch(() => {});
+                                    }
+                                    
+                                    handleFeatureUpdateLocal(featureId, { output_data: '' });
+                                    toast.success('Gambar berhasil dihapus!');
+                                } catch (error) {
+                                    toast.error('Gagal menghapus gambar');
+                                } finally {
+                                    setIsDeletingImg(null);
+                                }
+                            }}
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={!!isDeletingImg}
+                        >
+                            Ya, Hapus
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

@@ -22,6 +22,7 @@ export function TenantPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
@@ -29,6 +30,10 @@ export function TenantPage() {
     const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
     const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, featureId: string, type: 'output' } | null>(null);
+    const [isDeletingImg, setIsDeletingImg] = useState<string | null>(null);
+    const [featureToRemove, setFeatureToRemove] = useState<{ featureId: string, featureName: string } | null>(null);
+    const [isRemovingFeature, setIsRemovingFeature] = useState(false);
     const { tasks } = useBackgroundTaskStore();
 
     const [form, setForm] = useState<CreateTenantRequest & { theme_id?: string }>({
@@ -714,12 +719,12 @@ export function TenantPage() {
                                                                             {!f.input_tenant_data ? (
                                                                                 <p className="text-[11px] text-red-400 italic font-medium">Belum di isi oleh tenant</p>
                                                                             ) : f.input_data_type === 'gambar' ? (
-                                                                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
+                                                                                <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
                                                                                     <ProxyImage 
-                                                                                        src={f.input_tenant_data} 
+                                                                                        src={f.input_tenant_data.includes('|') ? f.input_tenant_data.split('|')[1] : f.input_tenant_data} 
                                                                                         alt={f.feature_name} 
                                                                                         className="w-full h-full object-cover cursor-pointer" 
-                                                                                        onClick={() => setLightboxUrl(f.input_tenant_data)}
+                                                                                        onClick={() => setLightboxUrl(f.input_tenant_data.includes('|') ? f.input_tenant_data.split('|')[1] : f.input_tenant_data)}
                                                                                     />
                                                                                 </div>
                                                                             ) : f.input_data_type === 'link' ? (
@@ -740,7 +745,7 @@ export function TenantPage() {
                                                                         {f.output_data_type === 'gambar' ? (
                                                                             <div className="w-full">
                                                                                 {f.output_data ? (
-                                                                                    <div className="relative group w-10 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
+                                                                                    <div className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-100 shadow-sm">
                                                                                         <ProxyImage 
                                                                                             src={f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data} 
                                                                                             alt="Result" 
@@ -748,26 +753,38 @@ export function TenantPage() {
                                                                                             onClick={() => setLightboxUrl(f.output_data.includes('|') ? f.output_data.split('|')[1] : f.output_data)}
                                                                                         />
                                                                                         <button
-                                                                                            onClick={() => {
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
                                                                                                 const [id] = f.output_data.split('|');
-                                                                                                if (id && f.output_data.includes('|')) {
-                                                                                                    setImagesToDelete(prev => [...prev, id]);
-                                                                                                }
-                                                                                                handleFeatureUpdateLocal(f.additional_feature_id, { output_data: '' });
+                                                                                                setDeleteConfirm({ id, featureId: f.additional_feature_id, type: 'output' });
                                                                                             }}
-                                                                                            className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                            className="absolute top-1 right-1 bg-red-500 text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
                                                                                         >
                                                                                             <HiOutlineTrash className="w-4 h-4" />
                                                                                         </button>
+                                                                                        {isDeletingImg === f.additional_feature_id && (
+                                                                                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20 backdrop-blur-[1px] rounded-lg">
+                                                                                                <div className="w-6 h-6 border-[3px] border-white/20 border-t-red-500 rounded-full animate-spin mb-1" />
+                                                                                                <span className="text-[10px] text-white font-medium">Menghapus...</span>
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                 ) : (
                                                                                     <ImageUpload
                                                                                         imageType={`feature-out-${f.additional_feature_id}`}
                                                                                         title="Upload"
-                                                                                        onUploadSuccess={(img) => handleFeatureUpdateLocal(f.additional_feature_id, { output_data: `${img.id}|${img.cdn_url || img.drive_url}` })}
+                                                                                        onUploadSuccess={async (img) => {
+                                                                                            const newVal = `${img.id}|${img.cdn_url || img.drive_url}`;
+                                                                                            handleFeatureUpdateLocal(f.additional_feature_id, { output_data: newVal });
+                                                                                            await additionalFeatureApi.updateTenantFeature({
+                                                                                                tenant_id: selectedTenant!.id,
+                                                                                                additional_feature_id: f.additional_feature_id,
+                                                                                                output_data: newVal
+                                                                                            }, { skipLoader: true } as any);
+                                                                                        }}
                                                                                         onDeleteSuccess={() => {}}
                                                                                         aspectRatio="auto"
-                                                                                        className="h-8 !p-1 !text-[10px]"
+                                                                                        className="!p-2 !text-xs min-h-[96px]"
                                                                                     />
                                                                                 )}
                                                                             </div>
@@ -797,7 +814,18 @@ export function TenantPage() {
                                                             )}
                                                         </div>
                                                         
-                                                        
+                                                        {/* Hapus Fitur Button */}
+                                                        {isPurchased && (
+                                                            <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-900/30 flex justify-end">
+                                                                <button 
+                                                                    onClick={() => setFeatureToRemove({ featureId: f.additional_feature_id, featureName: f.feature_name })}
+                                                                    className="text-[10px] text-red-600 hover:text-red-700 font-medium flex items-center gap-1 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
+                                                                >
+                                                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                                                    Hapus Fitur dari Tenant Ini
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -878,6 +906,117 @@ export function TenantPage() {
                     onClose={() => setLightboxUrl(null)}
                 />
             )}
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Hapus Gambar"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost" disabled={!!isDeletingImg}>Batal</button>
+                        <button
+                            onClick={async () => {
+                                if (!deleteConfirm) return;
+                                const { id, featureId } = deleteConfirm;
+                                setDeleteConfirm(null);
+                                setIsDeletingImg(featureId);
+
+                                try {
+                                    await additionalFeatureApi.updateTenantFeature({
+                                        tenant_id: selectedTenant!.id,
+                                        additional_feature_id: featureId,
+                                        output_data: ''
+                                    }, { skipLoader: true } as any);
+
+                                    if (id) {
+                                        await imageApi.deleteImage(id).catch(() => {});
+                                    }
+                                    
+                                    handleFeatureUpdateLocal(featureId, { output_data: '' });
+                                    toast.success('Gambar berhasil dihapus!');
+                                } catch (error) {
+                                    toast.error('Gagal menghapus gambar');
+                                } finally {
+                                    setIsDeletingImg(null);
+                                }
+                            }}
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={!!isDeletingImg}
+                        >
+                            Ya, Hapus
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+            <Modal
+                isOpen={!!featureToRemove}
+                onClose={() => setFeatureToRemove(null)}
+                title="Hapus Fitur Tenant"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus Fitur</p>
+                                <p>Apakah Anda yakin ingin menghapus fitur <b>{featureToRemove?.featureName}</b> dari tenant ini?</p>
+                                <p className="mt-2 font-medium text-red-700 dark:text-red-300">Peringatan: Seluruh data dan hasil pengaturan fitur ini untuk tenant ini akan terhapus secara permanen dan tidak dapat dikembalikan.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setFeatureToRemove(null)} className="btn-ghost" disabled={isRemovingFeature}>Batal</button>
+                        <button
+                            onClick={async () => {
+                                if (!featureToRemove || !selectedTenant) return;
+                                setIsRemovingFeature(true);
+                                try {
+                                    await additionalFeatureApi.deleteTenantFeature(selectedTenant.id, featureToRemove.featureId);
+                                    
+                                    setTenantFeaturesLocal(prev => {
+                                        const newFeatures = prev.map(f => {
+                                            if (f.additional_feature_id === featureToRemove.featureId) {
+                                                return {
+                                                    ...f,
+                                                    id: '',
+                                                    active: false,
+                                                    input_tenant_data: '',
+                                                    output_data: '',
+                                                    payment_status: 'Menunggu pembayaran'
+                                                };
+                                            }
+                                            return f;
+                                        });
+                                        setTenantFeatures(selectedTenant.id, newFeatures);
+                                        return newFeatures;
+                                    });
+                                    
+                                    toast.success('Fitur berhasil dihapus dari tenant');
+                                    setFeatureToRemove(null);
+                                } catch (error) {
+                                    toast.error('Gagal menghapus fitur');
+                                } finally {
+                                    setIsRemovingFeature(false);
+                                }
+                            }}
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={isRemovingFeature}
+                        >
+                            {isRemovingFeature && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {isRemovingFeature ? 'Menghapus...' : 'Ya, Hapus Fitur'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

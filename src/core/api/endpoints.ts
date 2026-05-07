@@ -375,6 +375,15 @@ export const additionalFeatureApi = {
     updateTenantFeature: async (data: Partial<TenantActiveFeature>, config: any = {}): Promise<ApiResponse<null>> => {
         const res = await apiClient.post('', { action: 'updateTenantActiveFeature', ...data }, config);
         return res.data;
+    },
+
+    deleteTenantFeature: async (tenantId: string, featureId: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { 
+            action: 'deleteTenantActiveFeature', 
+            tenant_id: tenantId,
+            additional_feature_id: featureId 
+        });
+        return res.data;
     }
 };
 
