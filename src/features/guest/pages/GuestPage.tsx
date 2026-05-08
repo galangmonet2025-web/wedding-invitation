@@ -531,13 +531,14 @@ export function GuestPage() {
                                             <input
                                                 type="text"
                                                 readOnly
-                                                value={`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                                value={window.location.href.split('#')[0].replace(/\/$/, '') + `/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
                                                 className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl py-3 pl-3 pr-20 text-xs text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gold-500/20 transition-all shadow-sm group-hover:border-gold-300"
                                                 onClick={(e) => e.currentTarget.select()}
                                             />
                                             <button
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
+                                                    const link = window.location.href.split('#')[0].replace(/\/$/, '') + `/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`;
+                                                    navigator.clipboard.writeText(link);
                                                     toast.success(t('common.copied'));
                                                 }}
                                                 className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-gold-50 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 hover:bg-gold-100 dark:hover:bg-gold-900/50 rounded-lg text-[11px] font-bold transition-all border border-gold-200 dark:border-gold-800"
@@ -548,7 +549,8 @@ export function GuestPage() {
                                         
                                         <button
                                             onClick={() => {
-                                                window.open(`${window.location.origin}/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`, '_blank');
+                                                const link = window.location.href.split('#')[0].replace(/\/$/, '') + `/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`;
+                                                window.open(link, '_blank');
                                             }}
                                             className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]"
                                         >
@@ -566,7 +568,7 @@ export function GuestPage() {
                                     <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden h-[670px] w-full bg-gray-100 dark:bg-gray-900 shadow-inner relative group flex-shrink-0">
                                         <iframe
                                             style={{ zoom: '0.8' }}
-                                            src={`/wedding-invitation/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                            src={window.location.href.split('#')[0].replace(/\/$/, '') + `/#/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
                                             className="w-full h-full border-none opacity-90 group-hover:opacity-100 transition-opacity"
                                             title="Live Preview"
                                         />

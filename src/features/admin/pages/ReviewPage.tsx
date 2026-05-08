@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { reviewApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
+import { Modal } from '@/shared/components/Modal';
 import type { ReviewAndRating } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlineChatAlt2, HiOutlineExternalLink, HiOutlineStar, HiSave, HiOutlineRefresh } from 'react-icons/hi';
+import { HiOutlineChatAlt2, HiOutlineExternalLink, HiOutlineStar, HiSave, HiOutlineRefresh, HiOutlineTrash } from 'react-icons/hi';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 
 import { useReviewStore } from '../store/reviewStore';
 
 export function ReviewPage() {
-    const { reviews, loading, fetchReviews, updateReviewLocal } = useReviewStore();
+    const { reviews, loading, fetchReviews, updateReviewLocal, deleteReview } = useReviewStore();
     const [originalReviews, setOriginalReviews] = useState<Record<string, ReviewAndRating>>({});
     const [savingIds, setSavingIds] = useState<string[]>([]);
+    const [reviewToDelete, setReviewToDelete] = useState<ReviewAndRating | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchReviews();
@@ -19,14 +22,14 @@ export function ReviewPage() {
 
     // Sync original values when reviews data changes from store (e.g. after fetch)
     useEffect(() => {
-        if (reviews.length > 0 && Object.keys(originalReviews).length === 0) {
+        if (reviews.length > 0) {
             const originals: Record<string, ReviewAndRating> = {};
             reviews.forEach(r => {
                 originals[r.id] = { ...r };
             });
             setOriginalReviews(originals);
         }
-    }, [reviews]);
+    }, [reviews.length]);
 
     const handleLocalChange = (id: string, field: keyof ReviewAndRating, value: any) => {
         updateReviewLocal(id, { [field]: value });
@@ -52,6 +55,17 @@ export function ReviewPage() {
             toast.error('Gagal menyimpan data review');
         } finally {
             setSavingIds(prev => prev.filter(id => id !== review.id));
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!reviewToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteReview(reviewToDelete.id);
+            setReviewToDelete(null);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -111,7 +125,7 @@ export function ReviewPage() {
                 </div>
             </div>
 
-            <div className="card overflow-hidden">
+            <div className="card overflow-hidden p-0">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -121,7 +135,7 @@ export function ReviewPage() {
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Rating</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Comment</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Alamat</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Show</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Show</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Action</th>
                             </tr>
                         </thead>
@@ -137,7 +151,7 @@ export function ReviewPage() {
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
                                                     {review.bride_name} & {review.groom_name}
                                                 </p>
-                                                <p className="text-xs text-gray-400 mt-0.5">{review.plan_type} plan</p>
+                                                <p className="text-xs text-gray-400 mt-0.5 uppercase tracking-wider font-bold">{review.plan_type}</p>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <a 
@@ -175,33 +189,44 @@ export function ReviewPage() {
                                                 />
                                             </td>
                                             <td className="px-6 py-4">
-                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className="sr-only peer" 
-                                                        checked={review.flag_show_review === true || review.flag_show_review === 'TRUE'}
-                                                        onChange={(e) => handleLocalChange(review.id, 'flag_show_review', e.target.checked ? 'TRUE' : 'FALSE')}
-                                                    />
-                                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gold-600"></div>
-                                                </label>
+                                                <div className="flex justify-center">
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="sr-only peer" 
+                                                            checked={review.flag_show_review === true || review.flag_show_review === 'TRUE'}
+                                                            onChange={(e) => handleLocalChange(review.id, 'flag_show_review', e.target.checked ? 'TRUE' : 'FALSE')}
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold-300 dark:peer-focus:ring-gold-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gold-600"></div>
+                                                    </label>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {isSaving ? (
-                                                    <div className="w-5 h-5 border-2 border-gold-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                                                ) : (
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    {isSaving ? (
+                                                        <div className="w-5 h-5 border-2 border-gold-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleSaveRow(review)}
+                                                            disabled={!hasChanges}
+                                                            className={`p-1.5 rounded-lg transition-all ${
+                                                                hasChanges 
+                                                                ? 'bg-gold-100 text-gold-600 hover:bg-gold-200' 
+                                                                : 'text-gray-300 cursor-not-allowed'
+                                                            }`}
+                                                            title="Simpan Perubahan"
+                                                        >
+                                                            <HiSave className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     <button
-                                                        onClick={() => handleSaveRow(review)}
-                                                        disabled={!hasChanges}
-                                                        className={`p-2 rounded-lg transition-all ${
-                                                            hasChanges 
-                                                            ? 'bg-gold-100 text-gold-600 hover:bg-gold-200' 
-                                                            : 'text-gray-300 cursor-not-allowed'
-                                                        }`}
-                                                        title="Simpan Perubahan"
+                                                        onClick={() => setReviewToDelete(review)}
+                                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-all"
+                                                        title="Hapus Review"
                                                     >
-                                                        <HiSave className="w-5 h-5" />
+                                                        <HiOutlineTrash className="w-4 h-4" />
                                                     </button>
-                                                )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -220,6 +245,38 @@ export function ReviewPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!reviewToDelete}
+                onClose={() => setReviewToDelete(null)}
+                title="Hapus Review & Rating"
+            >
+                <div className="space-y-4">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
+                                <p>Apakah Anda yakin ingin menghapus review dari <b>{reviewToDelete?.bride_name} & {reviewToDelete?.groom_name}</b>?</p>
+                                <p className="mt-2 text-xs opacity-80">Data review dan rating ini akan dihapus permanen dan tidak dapat dikembalikan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setReviewToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={isDeleting}>Batal</button>
+                        <button 
+                            onClick={handleDelete} 
+                            className="btn-danger py-1.5 px-6 text-sm flex items-center gap-2"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {isDeleting ? 'Menghapus...' : 'Ya, Hapus Permanen'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

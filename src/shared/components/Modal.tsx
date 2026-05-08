@@ -85,7 +85,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer, o
 
                 {/* Footer */}
                 {footer && (
-                    <div className="px-6 py-5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-4 bg-gray-50/30 dark:bg-gray-800/20 rounded-b-3xl">
+                    <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-4 bg-gray-50/30 dark:bg-gray-800/20 rounded-b-3xl">
                         {footer}
                     </div>
                 )}

@@ -158,17 +158,17 @@ export function AdditionalFeaturePage() {
                 <div className="flex items-center gap-1">
                     <button
                         onClick={() => { setForm(f); setIsEditing(true); setShowModal(true); }}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
-                        title="Edit"
+                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors tooltip tooltip-top"
                     >
                         <HiOutlinePencil className="w-4 h-4" />
+                        <span className="tooltip-text">Edit</span>
                     </button>
                     <button
                         onClick={() => setFeatureToDelete(f)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
-                        title="Delete"
+                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors tooltip tooltip-top"
                     >
                         <HiOutlineTrash className="w-4 h-4" />
+                        <span className="tooltip-text">Hapus</span>
                     </button>
                 </div>
             ),
@@ -195,10 +195,10 @@ export function AdditionalFeaturePage() {
                     </div>
                     <button 
                         onClick={() => fetchFeatures(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                        title="Refresh Data"
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm tooltip tooltip-bottom"
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <span className="tooltip-text">Refresh Data</span>
                     </button>
                     <button 
                         onClick={() => { setForm(initialForm); setIsEditing(false); setShowModal(true); }} 
@@ -339,7 +339,7 @@ export function AdditionalFeaturePage() {
                 onClose={() => setFeatureToDelete(null)}
                 title="Hapus Fitur Tambahan"
             >
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
                         <div className="flex gap-3 text-red-800 dark:text-red-400">
                             <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
@@ -352,8 +352,8 @@ export function AdditionalFeaturePage() {
                     </div>
 
                     <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setFeatureToDelete(null)} className="btn-ghost">Batal</button>
-                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus Permanen</button>
+                        <button onClick={() => setFeatureToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
+                        <button onClick={handleDelete} className="btn-danger py-1.5 px-6 text-sm">Ya, Hapus Permanen</button>
                     </div>
                 </div>
             </Modal>

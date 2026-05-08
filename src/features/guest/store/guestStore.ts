@@ -140,7 +140,7 @@ export const useGuestStore = create<GuestState>((set, get) => ({
     updateGuest: async (data: UpdateGuestRequest, silent = false) => {
         if (!silent) set({ loading: true });
         try {
-            const response = await guestApi.updateGuest(data);
+            const response = await guestApi.updateGuest(data, silent ? { skipLoader: true } : {});
             if (response.success) {
                 if (!silent) toast.success('Guest updated successfully');
                 

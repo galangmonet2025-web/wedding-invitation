@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { themeApi } from '@/core/api/endpoints';
+import { Modal } from '@/shared/components/Modal';
 import { Theme } from '@/types';
 import { DataTable } from '@/shared/components';
 import { HiOutlinePlus, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineInformationCircle, HiOutlineDuplicate, HiOutlineRefresh } from 'react-icons/hi';
@@ -15,13 +16,16 @@ export function ManageThemesPage() {
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [guideTab, setGuideTab] = useState<'guide' | 'variables' | 'logic'>('guide');
 
+    const [themeToDelete, setThemeToDelete] = useState<Theme | null>(null);
+
     useEffect(() => {
         fetchThemes();
     }, []);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this theme?')) return;
-        await deleteTheme(id);
+    const handleDelete = async () => {
+        if (!themeToDelete) return;
+        await deleteTheme(themeToDelete.id);
+        setThemeToDelete(null);
     };
 
     const handleInjectPremiumTheme = async () => {
@@ -87,7 +91,7 @@ export function ManageThemesPage() {
                     <button onClick={() => navigate('/private/themes/editor/new', { state: { copiedTheme: item } })} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Copy Theme">
                         <HiOutlineDuplicate className="w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDelete(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Theme">
+                    <button onClick={() => setThemeToDelete(item)} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Theme">
                         <HiOutlineTrash className="w-5 h-5" />
                     </button>
                 </div>
@@ -104,9 +108,9 @@ export function ManageThemesPage() {
                         <button
                             onClick={() => setIsGuideOpen(true)}
                             className="text-gray-400 hover:text-gold-500 transition-colors tooltip tooltip-right"
-                            title="Panduan Pembuatan Tema"
                         >
                             <HiOutlineInformationCircle className="w-5 h-5" />
+                            <span className="tooltip-text">Panduan Pembuatan Tema</span>
                         </button>
                     </div>
                     <p className="text-sm text-gray-500">Create and modify themes via Advanced Builder</p>
@@ -145,6 +149,31 @@ export function ManageThemesPage() {
                 activeTab={guideTab}
                 onTabChange={setGuideTab}
             />
+
+            {/* Modal Konfirmasi Hapus */}
+            <Modal
+                isOpen={!!themeToDelete}
+                onClose={() => setThemeToDelete(null)}
+                title="Hapus Tema"
+            >
+                <div className="space-y-4">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
+                                <p>Apakah Anda yakin ingin menghapus tema <b>{themeToDelete?.name}</b>?</p>
+                                <p className="mt-2 text-xs opacity-80">Tema ini akan dihapus secara permanen dari sistem dan tidak dapat dikembalikan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setThemeToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
+                        <button onClick={handleDelete} className="btn-danger py-1.5 px-6 text-sm">Ya, Hapus Permanen</button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

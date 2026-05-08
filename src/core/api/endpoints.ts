@@ -98,8 +98,8 @@ export const guestApi = {
         return res.data;
     },
 
-    updateGuest: async (data: UpdateGuestRequest): Promise<ApiResponse<Guest>> => {
-        const res = await apiClient.post('', { action: 'updateGuest', ...data });
+    updateGuest: async (data: UpdateGuestRequest, config: any = {}): Promise<ApiResponse<Guest>> => {
+        const res = await apiClient.post('', { action: 'updateGuest', ...data }, config);
         return res.data;
     },
 
@@ -418,6 +418,10 @@ export const reviewApi = {
 
     getTenantReview: async (): Promise<ApiResponse<ReviewAndRating | null>> => {
         const res = await apiClient.post('', { action: 'getReviewByTenant' }, { skipLoader: true } as any);
+        return res.data;
+    },
+    deleteReview: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteReview', id });
         return res.data;
     },
 };

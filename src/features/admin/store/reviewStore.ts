@@ -10,6 +10,7 @@ interface ReviewState {
     fetchReviews: (force?: boolean) => Promise<void>;
     updateReviewLocal: (id: string, updates: Partial<ReviewAndRating>) => void;
     setReviews: (reviews: ReviewAndRating[]) => void;
+    deleteReview: (id: string) => Promise<boolean>;
 }
 
 export const useReviewStore = create<ReviewState>((set, get) => ({
@@ -51,5 +52,24 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
         }));
     },
 
-    setReviews: (reviews) => set({ reviews })
+    setReviews: (reviews) => set({ reviews }),
+
+    deleteReview: async (id) => {
+        try {
+            const res = await reviewApi.deleteReview(id);
+            if (res.success) {
+                set((state) => ({
+                    reviews: state.reviews.filter((r) => r.id !== id)
+                }));
+                toast.success('Review berhasil dihapus');
+                return true;
+            } else {
+                toast.error(res.message || 'Gagal menghapus review');
+                return false;
+            }
+        } catch (error) {
+            toast.error('Gagal menghapus review');
+            return false;
+        }
+    }
 }));

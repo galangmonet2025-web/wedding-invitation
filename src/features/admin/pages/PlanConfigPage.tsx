@@ -89,30 +89,78 @@ function SortableFeatureItem({ feature, onEdit, onDelete, onToggleActive, isUpda
 
     const isActive = String(feature.active) === 'true';
 
+    // Plan-based accent colors
+    const planId = feature.plan_id;
+    const accentColor = 
+        planId === 'premium' ? 'purple' :
+        planId === 'pro' ? 'blue' :
+        'gold';
+
     return (
         <div 
             ref={setNodeRef} 
             style={style}
-            className={`flex items-center gap-3 p-3 bg-white dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700 rounded-2xl group transition-all ${isDragging ? 'shadow-2xl ring-2 ring-gold-500/50' : 'hover:shadow-md'} ${isUpdating ? 'opacity-50 pointer-events-none ring-1 ring-gold-500/20' : ''}`}
+            className={`flex items-center gap-2 p-2.5 rounded-xl group/feature transition-all duration-300 border shadow-sm ${
+                isDragging ? 'shadow-2xl ring-2 ring-gold-500/50 z-50' : 'hover:shadow-md'
+            } ${
+                isUpdating ? 'opacity-50 pointer-events-none ring-1 ring-gold-500/20' : ''
+            } ${
+                accentColor === 'purple' ? 'bg-purple-50/30 dark:bg-purple-900/10 border-purple-100/50 dark:border-purple-800/20' :
+                accentColor === 'blue' ? 'bg-blue-50/30 dark:bg-blue-900/10 border-blue-100/50 dark:border-blue-800/20' :
+                'bg-gold-50/30 dark:bg-gold-900/10 border-gold-100/50 dark:border-gold-800/20'
+            }`}
         >
             <div 
                 {...attributes} 
                 {...listeners} 
-                className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gold-500 transition-colors"
+                className={`cursor-grab active:cursor-grabbing p-1 transition-colors tooltip tooltip-right ${
+                    accentColor === 'purple' ? 'text-purple-300 hover:text-purple-500' :
+                    accentColor === 'blue' ? 'text-blue-300 hover:text-blue-500' :
+                    'text-gold-300 hover:text-gold-500'
+                }`}
             >
-                <HiOutlineSelector className="w-5 h-5" />
+                <HiOutlineSelector className="w-4 h-4" />
+                <span className="tooltip-text">Geser urutan</span>
             </div>
 
             <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${!isActive ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
+                <p className={`text-xs font-medium truncate transition-colors ${
+                    !isActive ? 'text-gray-400 line-through' : 
+                    accentColor === 'purple' ? 'text-purple-900 dark:text-purple-100' :
+                    accentColor === 'blue' ? 'text-blue-900 dark:text-blue-100' :
+                    'text-gray-700 dark:text-gray-200'
+                }`}>
                     {feature.feature}
                 </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-1 border-r border-gray-200 dark:border-gray-700 pr-1.5 mr-0.5 transition-all duration-300 ${
+                    isUpdating ? 'opacity-0 scale-95' : 'opacity-0 translate-x-2 group-hover/feature:opacity-100 group-hover/feature:translate-x-0'
+                }`}>
+                    <button 
+                        onClick={() => onEdit(feature)}
+                        className={`p-1.5 rounded-lg transition-colors tooltip tooltip-top ${
+                            accentColor === 'purple' ? 'text-purple-500 hover:bg-purple-100' :
+                            accentColor === 'blue' ? 'text-blue-500 hover:bg-blue-100' :
+                            'text-gold-500 hover:bg-gold-100'
+                        }`}
+                    >
+                        <HiOutlinePencil className="w-4 h-4" />
+                        <span className="tooltip-text">Edit</span>
+                    </button>
+                    <button 
+                        onClick={() => onDelete(feature.id)}
+                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors tooltip tooltip-top"
+                    >
+                        <HiOutlineTrash className="w-4 h-4" />
+                        <span className="tooltip-text">Hapus</span>
+                    </button>
+                </div>
+
                 {isUpdating ? (
-                    <div className="flex items-center justify-center w-9 h-5">
-                        <HiOutlineSpin className="w-4 h-4 animate-spin text-gold-500" />
+                    <div className="flex items-center justify-center w-8 h-4">
+                        <HiOutlineSpin className="w-3.5 h-3.5 animate-spin text-gold-500" />
                     </div>
                 ) : (
                     <Switch 
@@ -121,23 +169,6 @@ function SortableFeatureItem({ feature, onEdit, onDelete, onToggleActive, isUpda
                         disabled={isUpdating}
                     />
                 )}
-                
-                <div className={`flex items-center gap-1 border-l border-gray-100 dark:border-gray-700 pl-2 ml-1 transition-opacity ${isUpdating ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`}>
-                    <button 
-                        onClick={() => onEdit(feature)}
-                        className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
-                        title="Edit"
-                    >
-                        <HiOutlinePencil className="w-4 h-4" />
-                    </button>
-                    <button 
-                        onClick={() => onDelete(feature.id)}
-                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                        title="Hapus"
-                    >
-                        <HiOutlineTrash className="w-4 h-4" />
-                    </button>
-                </div>
             </div>
         </div>
     );
@@ -161,6 +192,10 @@ export function PlanConfigPage() {
     // Inline Feature Editing
     const [editingFeatureId, setEditingFeatureId] = useState<string | null>(null);
     const [inlineFeatureValue, setInlineFeatureValue] = useState('');
+
+    // Delete Confirmation
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [featureToDelete, setFeatureToDelete] = useState<string | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -233,9 +268,11 @@ export function PlanConfigPage() {
         }
     };
 
-    const handleDeleteFeature = async (id: string) => {
-        if (!confirm('Hapus fitur ini?')) return;
+    const handleDeleteFeature = async () => {
+        if (!featureToDelete) return;
+        const id = featureToDelete;
         setUpdatingFeatureId(id);
+        setShowDeleteModal(false);
         try {
             const res = await paymentApi.deletePlanFeature(id, { skipLoader: true });
             if (res.success) {
@@ -246,6 +283,7 @@ export function PlanConfigPage() {
             toast.error('Gagal hapus fitur');
         } finally {
             setUpdatingFeatureId(null);
+            setFeatureToDelete(null);
         }
     };
 
@@ -297,9 +335,10 @@ export function PlanConfigPage() {
                 </div>
                 <button
                     onClick={() => fetchData(true)}
-                    className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-2xl transition-all shadow-sm"
+                    className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-2xl transition-all shadow-sm tooltip tooltip-bottom"
                 >
                     <HiOutlineRefresh className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
+                    <span className="tooltip-text">Refresh Data</span>
                 </button>
             </div>
 
@@ -314,54 +353,94 @@ export function PlanConfigPage() {
                     return (
                         <div 
                             key={plan.plan_type}
-                            className={`bg-white dark:bg-wedding-dark-card rounded-[2.5rem] border border-gray-100 dark:border-gray-700 p-8 shadow-sm flex flex-col min-h-[600px] transition-all ${isPlanUpdating ? 'ring-2 ring-gold-500/30 shadow-lg scale-[1.01]' : ''}`}
+                            className={`relative group bg-white dark:bg-wedding-dark-card rounded-3xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm flex flex-col min-h-[500px] transition-all duration-500 hover:shadow-xl hover:border-gold-200/50 dark:hover:border-gold-500/30 ${isPlanUpdating ? 'ring-2 ring-gold-500/30 shadow-lg scale-[1.01]' : ''}`}
                         >
-                            {/* Plan Header */}
-                            <div className="flex items-center justify-between mb-8">
-                                <span className={`px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] ${
-                                    plan.plan_type === 'premium' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                                    plan.plan_type === 'pro' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                                }`}>
-                                    {plan.plan_type}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    {isPlanUpdating && <HiOutlineSpin className="w-4 h-4 animate-spin text-gold-500" />}
-                                    <button 
-                                        onClick={() => {
-                                            setSelectedPlan(plan);
-                                            setPlanForm({ ...plan });
-                                            setShowPlanModal(true);
-                                        }}
-                                        className="p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 text-gray-400 hover:text-gold-500 hover:bg-gold-50 transition-all border border-transparent hover:border-gold-200"
-                                    >
-                                        <HiOutlinePencil className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
+                            {/* Accent Top Line */}
+                            <div className={`absolute top-0 left-8 right-8 h-1 rounded-b-full transition-all duration-500 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 -translate-y-1 ${
+                                plan.plan_type === 'premium' ? 'bg-purple-500 shadow-[0_4px_12px_rgba(168,85,247,0.4)]' :
+                                plan.plan_type === 'pro' ? 'bg-blue-500 shadow-[0_4px_12px_rgba(59,130,246,0.4)]' :
+                                'bg-gray-300 dark:bg-gray-600 shadow-sm'
+                            }`} />
 
                             {/* Price Section */}
-                            <div className="mb-10 p-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-display font-bold text-gray-800 dark:text-white">
-                                        Rp {plan.price.toLocaleString('id-ID')}
+                            <div className={`mb-6 p-5 rounded-2xl border relative overflow-hidden group/price transition-all duration-500 shadow-sm ${
+                                plan.plan_type === 'premium' ? 'bg-gradient-to-br from-purple-500/15 via-purple-50/40 to-white dark:from-purple-500/20 dark:via-gray-800/50 dark:to-gray-900 border-purple-200 dark:border-purple-800/50' :
+                                plan.plan_type === 'pro' ? 'bg-gradient-to-br from-blue-500/15 via-blue-50/40 to-white dark:from-blue-500/20 dark:via-gray-800/50 dark:to-gray-900 border-blue-200 dark:border-blue-800/50' :
+                                'bg-gradient-to-br from-gold-500/15 via-gold-50/40 to-white dark:from-gold-500/20 dark:via-gray-800/50 dark:to-gray-900 border-gold-200 dark:border-gold-800/50'
+                            }`}>
+                                <div className={`absolute top-0 right-0 -mt-3 -mr-3 w-20 h-20 rounded-full blur-2xl transition-all duration-700 ${
+                                    plan.plan_type === 'premium' ? 'bg-purple-500/25 group-hover/price:bg-purple-500/40' :
+                                    plan.plan_type === 'pro' ? 'bg-blue-500/25 group-hover/price:bg-blue-500/40' :
+                                    'bg-gold-500/25 group-hover/price:bg-gold-500/40'
+                                }`} />
+                                
+                                {/* Integrated Header */}
+                                <div className="flex items-center justify-between mb-4 relative z-10">
+                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest shadow-sm ${
+                                        plan.plan_type === 'premium' ? 'bg-purple-500 text-white' :
+                                        plan.plan_type === 'pro' ? 'bg-blue-500 text-white' :
+                                        'bg-gold-500 text-white'
+                                    }`}>
+                                        {plan.plan_type}
                                     </span>
-                                    <span className="text-gray-400 text-sm font-medium">/event</span>
+                                    <div className="flex items-center gap-2">
+                                        {isPlanUpdating && <HiOutlineSpin className="w-3.5 h-3.5 animate-spin text-gold-500" />}
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedPlan(plan);
+                                                setPlanForm({ ...plan });
+                                                setShowPlanModal(true);
+                                            }}
+                                            className="p-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-400 hover:text-gold-500 transition-all shadow-sm border border-gray-100 dark:border-gray-700 tooltip tooltip-top"
+                                        >
+                                            <HiOutlinePencil className="w-4 h-4" />
+                                            <span className="tooltip-text">Edit Paket</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-                                    <span className="text-xs text-gray-400 font-medium">Limit Tamu</span>
-                                    <span className="text-sm font-bold text-gray-700 dark:text-white">
-                                        {plan.guest_limit === 999999 ? 'Unlimited' : `${plan.guest_limit.toLocaleString('id-ID')} Tamu`}
-                                    </span>
+
+                                <div className="flex flex-col gap-0.5 relative z-10">
+                                    <span className={`text-[9px] font-bold uppercase tracking-[0.15em] ${
+                                        plan.plan_type === 'premium' ? 'text-purple-400' :
+                                        plan.plan_type === 'pro' ? 'text-blue-400' :
+                                        'text-gray-400'
+                                    }`}>Harga Layanan</span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-display font-black text-gray-800 dark:text-white tracking-tight">
+                                            Rp {plan.price.toLocaleString('id-ID')}
+                                        </span>
+                                        <span className="text-gray-400 text-[10px] font-medium italic">/event</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-4 pt-4 border-t border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between relative z-10">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Kuota Tamu</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-white">
+                                            {plan.guest_limit === 999999 ? 'Unlimited' : `${plan.guest_limit.toLocaleString('id-ID')} Tamu`}
+                                        </span>
+                                    </div>
+                                    <div className={`p-1.5 rounded-lg transition-colors ${
+                                        plan.plan_type === 'premium' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-500' :
+                                        plan.plan_type === 'pro' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500' :
+                                        'bg-gold-50 dark:bg-gold-900/30 text-gold-500'
+                                    }`}>
+                                        <HiOutlineSelector className="w-4 h-4" />
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Features Section */}
-                            <div className="flex-1 flex flex-col space-y-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-black uppercase tracking-wider text-gray-400">Features</h3>
-                                        {reorderingPlan === plan.plan_type && <HiOutlineSpin className="w-3 h-3 animate-spin text-gold-500" />}
+                            <div className="flex-1 flex flex-col space-y-3">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-1 h-3 rounded-full ${
+                                            plan.plan_type === 'premium' ? 'bg-purple-500' :
+                                            plan.plan_type === 'pro' ? 'bg-blue-500' :
+                                            'bg-gold-500'
+                                        }`} />
+                                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Daftar Fitur</span>
+                                        {reorderingPlan === plan.plan_type && <HiOutlineSpin className="w-2.5 h-2.5 animate-spin text-gold-500" />}
                                     </div>
                                     <button 
                                         disabled={isPlanUpdating}
@@ -369,21 +448,23 @@ export function PlanConfigPage() {
                                             setAddingToPlan(addingToPlan === plan.plan_type ? null : plan.plan_type);
                                             setInlineFeatureValue('');
                                         }}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        className={`group/btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all duration-300 ${
                                             addingToPlan === plan.plan_type 
                                             ? 'bg-gray-100 text-gray-400 dark:bg-gray-800' 
-                                            : 'bg-gold-500 text-white shadow-gold-sm hover:bg-gold-600'
+                                            : 'bg-white dark:bg-gray-800 text-gold-600 dark:text-gold-400 border border-gold-200 dark:border-gold-800 hover:bg-gold-500 hover:text-white hover:border-gold-500 shadow-sm active:scale-95'
                                         }`}
                                     >
-                                        {addingToPlan === plan.plan_type ? <HiOutlineX className="w-4 h-4" /> : <HiOutlinePlus className="w-4 h-4" />}
-                                        {addingToPlan === plan.plan_type ? 'Batal' : 'Tambah'}
+                                        <div className={`transition-transform duration-300 ${addingToPlan === plan.plan_type ? 'rotate-90' : 'group-hover/btn:rotate-180'}`}>
+                                            {addingToPlan === plan.plan_type ? <HiOutlineX className="w-3 h-3" /> : <HiOutlinePlus className="w-3 h-3" />}
+                                        </div>
+                                        <span>{addingToPlan === plan.plan_type ? 'Batal' : 'Tambah Fitur'}</span>
                                     </button>
                                 </div>
 
                                 {/* Add Feature Inline Form */}
                                 {addingToPlan === plan.plan_type && (
-                                    <div className="p-4 bg-gold-50/50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-900/30 rounded-2xl animate-slide-down shadow-inner">
-                                        <div className="flex flex-col gap-3">
+                                    <div className={`p-3 border rounded-xl animate-slide-down shadow-inner transition-all duration-500 ${plan.plan_type === "premium" ? "bg-purple-50/50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-900/30" : plan.plan_type === "pro" ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30" : "bg-gold-50/50 dark:bg-gold-900/10 border-gold-200 dark:border-gold-900/30" }`}>
+                                        <div className="flex flex-col gap-2">
                                             <input 
                                                 autoFocus
                                                 type="text" 
@@ -391,33 +472,26 @@ export function PlanConfigPage() {
                                                 value={inlineFeatureValue}
                                                 onChange={e => setInlineFeatureValue(e.target.value)}
                                                 onKeyDown={e => e.key === 'Enter' && handleAddFeature(plan.plan_type)}
-                                                className="w-full text-sm bg-white dark:bg-gray-900 border-none rounded-xl focus:ring-2 focus:ring-gold-500 shadow-sm px-4 py-2.5"
+                                                className="w-full text-[11px] bg-white dark:bg-gray-900 border-none rounded-lg focus:ring-2 focus:ring-gold-500 shadow-sm px-3 py-1.5"
                                             />
-                                            <div className="flex gap-2">
-                                                <button 
-                                                    onClick={() => {
-                                                        setAddingToPlan(null);
-                                                        setInlineFeatureValue('');
-                                                    }}
-                                                    className="flex-1 px-4 py-2 text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                                                >
-                                                    Batal
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleAddFeature(plan.plan_type)}
-                                                    disabled={!inlineFeatureValue.trim() || updatingPlan === plan.plan_type}
-                                                    className="flex-[2] py-2 bg-gold-500 text-white rounded-xl text-xs font-bold hover:bg-gold-600 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-2"
-                                                >
-                                                    {updatingPlan === plan.plan_type ? <HiOutlineSpin className="w-4 h-4 animate-spin" /> : <HiOutlineCheck className="w-4 h-4" />}
-                                                    Simpan Fitur
-                                                </button>
-                                            </div>
+                                            <button 
+                                                onClick={() => handleAddFeature(plan.plan_type)}
+                                                disabled={!inlineFeatureValue.trim() || updatingPlan === plan.plan_type}
+                                                className={`w-full py-1.5 text-white rounded-lg text-[10px] font-bold disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                                   plan.plan_type === 'premium' ? 'bg-purple-500 hover:bg-purple-600' :
+                                                   plan.plan_type === 'pro' ? 'bg-blue-500 hover:bg-blue-600' :
+                                                   'bg-gold-500 hover:bg-gold-600'
+                                                }`}
+                                            >
+                                                {updatingPlan === plan.plan_type ? <HiOutlineSpin className="w-3.5 h-3.5 animate-spin" /> : <HiOutlineCheck className="w-3.5 h-3.5" />}
+                                                Simpan
+                                            </button>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Features List with DnD */}
-                                <div className="flex-1 space-y-2.5 relative">
+                                <div className="flex-1 space-y-2 relative">
                                     {reorderingPlan === plan.plan_type && (
                                         <div className="absolute inset-0 z-10 bg-white/10 dark:bg-black/10 backdrop-blur-[1px] rounded-xl" />
                                     )}
@@ -432,31 +506,36 @@ export function PlanConfigPage() {
                                         >
                                             {planFeatures.map((f) => (
                                                 editingFeatureId === f.id ? (
-                                                    <div key={f.id} className="p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl animate-fade-in shadow-sm">
-                                                        <div className="flex flex-col gap-3">
-                                                            <div className="relative">
-                                                                <input 
-                                                                    autoFocus
-                                                                    type="text" 
-                                                                    value={inlineFeatureValue}
-                                                                    onChange={e => setInlineFeatureValue(e.target.value)}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') {
-                                                                            handleUpdateFeature(f.id, { feature: inlineFeatureValue });
-                                                                            setEditingFeatureId(null);
-                                                                        }
-                                                                        if (e.key === 'Escape') setEditingFeatureId(null);
-                                                                    }}
-                                                                    className="w-full text-sm bg-white dark:bg-gray-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 shadow-sm px-4 py-2.5"
-                                                                />
-                                                            </div>
+                                                    <div className={`p-3 border rounded-xl animate-slide-down shadow-inner transition-all duration-500 mb-2 ${
+                                                        plan.plan_type === "premium" ? "bg-purple-50/50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-900/30" : 
+                                                        plan.plan_type === "pro" ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30" : 
+                                                        "bg-gold-50/50 dark:bg-gold-900/10 border-gold-200 dark:border-gold-900/30" 
+                                                    }`}>
+                                                        <div className="flex flex-col gap-2">
+                                                            <input 
+                                                                autoFocus
+                                                                type="text" 
+                                                                value={inlineFeatureValue}
+                                                                onChange={e => setInlineFeatureValue(e.target.value)}
+                                                                onKeyDown={e => {
+                                                                    if (e.key === 'Enter') {
+                                                                        handleUpdateFeature(f.id, { feature: inlineFeatureValue });
+                                                                        setEditingFeatureId(null);
+                                                                    }
+                                                                    if (e.key === 'Escape') setEditingFeatureId(null);
+                                                                }}
+                                                                className={`w-full text-[11px] bg-white dark:bg-gray-900 border-none rounded-lg focus:ring-2 shadow-sm px-3 py-1.5 ${
+                                                                    plan.plan_type === 'premium' ? 'focus:ring-purple-500' :
+                                                                    plan.plan_type === 'pro' ? 'focus:ring-blue-500' :
+                                                                    'focus:ring-gold-500'
+                                                                }`}
+                                                            />
                                                             <div className="flex gap-2">
                                                                 <button 
                                                                     onClick={() => setEditingFeatureId(null)}
-                                                                    className="p-2.5 rounded-xl bg-white dark:bg-gray-800 text-gray-400 hover:text-red-500 border border-gray-100 dark:border-gray-700 transition-all shadow-sm"
-                                                                    title="Batal"
+                                                                    className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-red-500 transition-all text-[10px] font-bold"
                                                                 >
-                                                                    <HiOutlineX className="w-5 h-5" />
+                                                                    Batal
                                                                 </button>
                                                                 <button 
                                                                     onClick={() => {
@@ -464,9 +543,13 @@ export function PlanConfigPage() {
                                                                         setEditingFeatureId(null);
                                                                     }}
                                                                     disabled={updatingFeatureId === f.id}
-                                                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-sm flex items-center justify-center gap-2"
+                                                                    className={`flex-1 py-1.5 text-white rounded-lg text-[10px] font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                                                        plan.plan_type === 'premium' ? 'bg-purple-500 hover:bg-purple-600' :
+                                                                        plan.plan_type === 'pro' ? 'bg-blue-500 hover:bg-blue-600' :
+                                                                        'bg-gold-500 hover:bg-gold-600'
+                                                                    }`}
                                                                 >
-                                                                    {updatingFeatureId === f.id ? <HiOutlineSpin className="w-4 h-4 animate-spin" /> : <HiOutlineCheck className="w-4 h-4" />}
+                                                                    {updatingFeatureId === f.id ? <HiOutlineSpin className="w-3.5 h-3.5 animate-spin" /> : <HiOutlineCheck className="w-3.5 h-3.5" />}
                                                                     Update
                                                                 </button>
                                                             </div>
@@ -482,7 +565,10 @@ export function PlanConfigPage() {
                                                             setInlineFeatureValue(feat.feature);
                                                             setAddingToPlan(null);
                                                         }}
-                                                        onDelete={handleDeleteFeature}
+                                                                                                                                                                          onDelete={(id) => {
+                                                             setFeatureToDelete(id);
+                                                             setShowDeleteModal(true);
+                                                         }}
                                                         onToggleActive={(feat) => handleUpdateFeature(feat.id, { active: String(feat.active) === 'false' })}
                                                     />
                                                 )
@@ -511,19 +597,19 @@ export function PlanConfigPage() {
                 onClose={() => setShowPlanModal(false)}
                 title={`Edit Paket: ${selectedPlan?.plan_type?.toUpperCase()}`}
                 footer={
-                    <div className="flex gap-3">
-                        <button onClick={() => setShowPlanModal(false)} className="btn-ghost flex-1">Batal</button>
+                    <div className="flex justify-end gap-3 w-full">
+                        <button onClick={() => setShowPlanModal(false)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
                         <button 
                             onClick={handleSavePlan} 
                             disabled={!!updatingPlan}
-                            className="btn-primary flex-1 flex items-center justify-center gap-2"
+                            className="btn-primary px-6 py-1.5 text-sm flex items-center justify-center gap-2"
                         >
                             {updatingPlan ? <HiOutlineSpin className="w-4 h-4 animate-spin" /> : 'Simpan Perubahan'}
                         </button>
                     </div>
                 }
             >
-                <div className="space-y-6">
+                <div className="space-y-5">
                     <div>
                         <label className="label-field">Limit Tamu</label>
                         <div className="relative">
@@ -555,6 +641,36 @@ export function PlanConfigPage() {
                                 placeholder="0"
                             />
                         </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                title="Hapus Fitur Paket"
+            >
+                <div className="space-y-4">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
+                                <p>Apakah Anda yakin ingin menghapus fitur ini?</p>
+                                <p className="mt-2 text-xs opacity-80">Fitur ini akan dihapus dari paket dan tidak dapat dikembalikan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setShowDeleteModal(false)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
+                        <button 
+                            onClick={handleDeleteFeature} 
+                            className="btn-danger py-1.5 px-6 text-sm"
+                        >
+                            Ya, Hapus Permanen
+                        </button>
                     </div>
                 </div>
             </Modal>

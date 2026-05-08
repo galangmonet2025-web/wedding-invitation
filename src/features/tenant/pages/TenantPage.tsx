@@ -856,14 +856,14 @@ export function TenantPage() {
                 onClose={() => setTenantToDelete(null)}
                 title="Hapus Data Tenant"
             >
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
                         <div className="flex gap-3 text-red-800 dark:text-red-400">
                             <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
                             <div className="text-sm space-y-2">
-                                <p className="font-semibold text-base">Peringatan Penghapusan Permanen!</p>
+                                <p className="font-semibold text-base">Peringatan Penting!</p>
                                 <p>Anda akan menghapus tenant <b>{tenantToDelete?.domain_slug}</b> beserta <b>semua data terkaitnya</b>:</p>
-                                <ul className="list-disc pl-4 space-y-1 opacity-90">
+                                <ul className="list-disc pl-4 space-y-1 opacity-90 text-[11px]">
                                     <li>Data Tenant & Akun Admin</li>
                                     <li>Data Tamu Undangan</li>
                                     <li>Data Ucapan & Hadiah</li>
@@ -871,16 +871,16 @@ export function TenantPage() {
                                     <li>Log Aktivitas</li>
                                     <li><b>Semua File Gambar di Google Drive</b></li>
                                 </ul>
-                                <p className="font-medium pt-2">Tindakan ini tidak dapat dibatalkan!</p>
+                                <p className="font-medium pt-2 text-xs">Tindakan ini tidak dapat dibatalkan!</p>
                             </div>
                         </div>
                     </div>
                     
                     <div className="space-y-2">
-                        <label className="label-field text-red-600 dark:text-red-400">Ketik <b>DELETE</b> untuk mengkonfirmasi:</label>
+                        <label className="label-field text-red-600 dark:text-red-400 text-xs font-bold">Ketik <b>DELETE</b> untuk mengkonfirmasi:</label>
                         <input 
                             type="text" 
-                            className="input-field border-red-300 focus:ring-red-500 focus:border-red-500 dark:border-red-900/50" 
+                            className="input-field border-red-200 focus:ring-red-500 focus:border-transparent dark:border-red-900/30 text-sm py-2" 
                             placeholder="DELETE"
                             value={deleteConfirmText}
                             onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -888,14 +888,14 @@ export function TenantPage() {
                         />
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             type="button"
                             onClick={() => {
                                 setTenantToDelete(null);
                                 setDeleteConfirmText('');
                             }}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gold-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                            className="btn-ghost px-5 py-1.5 text-sm"
                         >
                             Batal
                         </button>
@@ -903,7 +903,7 @@ export function TenantPage() {
                             type="button"
                             onClick={handleDeleteTenantAction}
                             disabled={deleteConfirmText !== 'DELETE'}
-                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
                         >
                             Ya, Hapus Permanen
                         </button>
@@ -923,18 +923,18 @@ export function TenantPage() {
                 onClose={() => setDeleteConfirm(null)}
                 title="Hapus Gambar"
             >
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
                         <div className="flex gap-3 text-red-800 dark:text-red-400">
                             <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
                             <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
                                 <p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost" disabled={!!isDeletingImg}>Batal</button>
+                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={!!isDeletingImg}>Batal</button>
                         <button
                             onClick={async () => {
                                 if (!deleteConfirm) return;
@@ -961,7 +961,7 @@ export function TenantPage() {
                                     setIsDeletingImg(null);
                                 }
                             }}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
                             disabled={!!isDeletingImg}
                         >
                             Ya, Hapus
@@ -974,19 +974,19 @@ export function TenantPage() {
                 onClose={() => setFeatureToRemove(null)}
                 title="Hapus Fitur Tenant"
             >
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
                         <div className="flex gap-3 text-red-800 dark:text-red-400">
                             <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
                             <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus Fitur</p>
+                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
                                 <p>Apakah Anda yakin ingin menghapus fitur <b>{featureToRemove?.featureName}</b> dari tenant ini?</p>
-                                <p className="mt-2 font-medium text-red-700 dark:text-red-300">Peringatan: Seluruh data dan hasil pengaturan fitur ini untuk tenant ini akan terhapus secara permanen dan tidak dapat dikembalikan.</p>
+                                <p className="mt-2 text-xs opacity-80">Seluruh data dan hasil pengaturan fitur ini untuk tenant ini akan terhapus secara permanen.</p>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setFeatureToRemove(null)} className="btn-ghost" disabled={isRemovingFeature}>Batal</button>
+                        <button onClick={() => setFeatureToRemove(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={isRemovingFeature}>Batal</button>
                         <button
                             onClick={async () => {
                                 if (!featureToRemove || !selectedTenant) return;
@@ -1020,7 +1020,7 @@ export function TenantPage() {
                                     setIsRemovingFeature(false);
                                 }
                             }}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
                             disabled={isRemovingFeature}
                         >
                             {isRemovingFeature && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}

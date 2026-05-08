@@ -97,6 +97,8 @@ export function WhatsAppBlastPage() {
     }) => {
         const [localName, setLocalName] = useState(guest.name || '');
         const [localPhone, setLocalPhone] = useState(guest.phone || '');
+        const [isFocused, setIsFocused] = useState(false);
+        const [isUpdating, setIsUpdating] = useState(false);
 
         // Sync local state if guest prop changes from store (e.g. after a fetch)
         useEffect(() => {
@@ -104,53 +106,66 @@ export function WhatsAppBlastPage() {
             setLocalPhone(guest.phone || '');
         }, [guest.name, guest.phone]);
 
-        const handleBlur = () => {
+        const handleBlur = async () => {
+            setIsFocused(false);
             if (localName !== guest.name || localPhone !== guest.phone) {
-                onUpdate(guest.id, { name: localName, phone: localPhone });
+                setIsUpdating(true);
+                try {
+                    await onUpdate(guest.id, { name: localName, phone: localPhone });
+                } finally {
+                    setIsUpdating(false);
+                }
             }
         };
 
         return (
-            <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                <td className="px-4 py-2">
-                    <input
-                        type="text"
-                        value={localName}
-                        onChange={(e) => setLocalName(e.target.value)}
-                        onBlur={handleBlur}
-                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-gold-500/30 rounded py-1 px-2 text-gray-800 dark:text-white font-medium text-sm transition-all"
-                        placeholder={t('common.name')}
-                    />
+            <tr className={`${isFocused ? 'bg-gold-50/50 dark:bg-gold-900/10 ring-1 ring-inset ring-gold-200 dark:ring-gold-900/50' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'} transition-all border-b border-gray-50 dark:border-gray-800 last:border-0 group`}>
+                <td className="px-3 py-1 relative">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={localName}
+                            onChange={(e) => setLocalName(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={handleBlur}
+                            className="w-full bg-transparent border-none focus:ring-0 rounded py-0.5 px-1 text-gray-800 dark:text-white font-medium text-sm transition-all"
+                            placeholder={t('common.name')}
+                        />
+                        {isUpdating && (
+                            <div className="w-3 h-3 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin shrink-0" />
+                        )}
+                    </div>
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-3 py-1">
                     <input
                         type="text"
                         value={localPhone}
                         onChange={(e) => setLocalPhone(e.target.value)}
+                        onFocus={() => setIsFocused(true)}
                         onBlur={handleBlur}
-                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-gold-500/30 rounded py-1 px-2 text-sm text-gray-600 dark:text-gray-400 transition-all"
+                        className="w-full bg-transparent border-none focus:ring-0 rounded py-0.5 px-1 text-xs text-gray-500 dark:text-gray-400 transition-all"
                         placeholder={t('common.phone')}
                     />
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-3 py-1 text-center">
                     {(guest.flag_sudah_kirim_undangan_via_whatsapp === true || guest.flag_sudah_kirim_undangan_via_whatsapp === 'TRUE') ? (
-                        <div className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full text-[10px] font-bold">
+                        <div className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 px-2 py-0.5 rounded text-[10px] font-bold">
                             <HiOutlineCheckCircle className="w-3 h-3" />
                             {t('whatsapp_blast.sent')}
                         </div>
                     ) : (
-                        <div className="inline-flex items-center gap-1 text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-[10px] font-bold">
+                        <div className="inline-flex items-center gap-1 text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-2 py-0.5 rounded text-[10px] font-bold">
                             <HiOutlineClock className="w-3 h-3" />
                             {t('whatsapp_blast.pending')}
                         </div>
                     )}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-3 py-1 text-right">
                     <button
                         onClick={() => onSend({ ...guest, name: localName, phone: localPhone })}
-                        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-2 ml-auto"
+                        className="btn-primary py-1 px-3 text-[11px] flex items-center gap-1.5 ml-auto rounded-md transition-transform active:scale-95"
                     >
-                        <HiOutlineChatAlt2 className="w-4 h-4" />
+                        <HiOutlineChatAlt2 className="w-3.5 h-3.5" />
                         {t('whatsapp_blast.send')}
                     </button>
                 </td>
@@ -260,7 +275,8 @@ export function WhatsAppBlastPage() {
         const markdown = htmlToWhatsApp(editorHtml);
 
         // Generate personalized message
-        const invitationLink = `${window.location.origin}/#/${tenant.domain_slug}?guestid=${guest.invitation_code}`;
+        const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '');
+        const invitationLink = `${baseUrl}/#/${tenant.domain_slug}?guestid=${guest.invitation_code}`;
         let message = markdown
             .replace(/{{nama}}/g, guest.name)
             .replace(/{{link}}/g, invitationLink);
@@ -291,8 +307,8 @@ export function WhatsAppBlastPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.title')}</h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('whatsapp_blast.description')}</p>
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">{t('whatsapp_blast.title')}</h1>
+                    <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">{t('whatsapp_blast.description')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
@@ -311,8 +327,8 @@ export function WhatsAppBlastPage() {
                     <div className="card h-full flex flex-col min-h-[500px]">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <HiOutlineChatAlt2 className="w-5 h-5 text-gold-500" />
-                                <h2 className="font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.template_title')}</h2>
+                                <div className="w-1 h-3.5 bg-gold-500 rounded-full" />
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('whatsapp_blast.template_title')}</h2>
                             </div>
                             <button
                                 onClick={handleSaveTemplate}
@@ -331,35 +347,30 @@ export function WhatsAppBlastPage() {
                         <div className="space-y-4 flex-1 flex flex-col">
                             <div>
                                 {/* Visual Toolbar */}
-                                <div className="flex flex-col gap-2 mb-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                                    {/* Formatting Icons */}
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-700">
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
-                                            className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all font-bold"
+                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all font-bold"
                                             title="Bold"
                                         >
                                             B
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
-                                            className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all italic"
+                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all italic"
                                             title="Italic"
                                         >
                                             I
                                         </button>
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); handleFormat('strikeThrough'); }}
-                                            className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded text-gray-700 dark:text-gray-300 transition-all line-through"
+                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all line-through"
                                             title="Strikethrough"
                                         >
                                             S
                                         </button>
                                     </div>
 
-                                    <div className="h-px bg-gray-100 dark:bg-gray-800 w-full" />
-
-                                    {/* Template Variables */}
                                     <div className="flex flex-wrap gap-1.5">
                                         <button
                                             onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
@@ -441,13 +452,15 @@ export function WhatsAppBlastPage() {
                             </div>
                         </div>
                     </div>
-                </div>
 
                 {/* Guest List Section */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="card h-full flex flex-col min-h-[500px]">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <h2 className="font-bold text-gray-800 dark:text-white">{t('whatsapp_blast.guest_list')}</h2>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1 h-3.5 bg-gold-500 rounded-full" />
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('whatsapp_blast.guest_list')}</h2>
+                            </div>
                             <div className="relative w-full sm:w-64">
                                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
