@@ -338,7 +338,7 @@ export const publicApi = {
         return res.data;
     },
 
-    checkGuest: async (data: { slug: string; phone: string }) => {
+    checkGuest: async (data: { slug: string; name: string }) => {
         const res = await publicClient.post('', JSON.stringify({ action: 'checkPublicGuest', ...data }));
         return res.data;
     },
