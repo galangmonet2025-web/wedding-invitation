@@ -75,7 +75,7 @@
       }
 
       // Public endpoints (no auth required)
-      var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug', 'handleMidtransWebhook'];
+      var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug', 'handleMidtransWebhook', 'getPublicThemes', 'getPublicPlanTypes', 'getPublicPlanFeatures'];
       if (publicActions.indexOf(action) !== -1) {
         return routeAction(action, payload, null);
       }
@@ -318,6 +318,13 @@
       case 'handleMidtransWebhook':
         // Webhook does not require user auth - verified by signature
         return PaymentService.handleWebhook(payload);
+      
+      case 'getPublicThemes':
+        return ThemeService.getThemes(null);
+      case 'getPublicPlanTypes':
+        return PaymentService.getPlanTypes();
+      case 'getPublicPlanFeatures':
+        return PaymentService.getPlanFeatures(payload);
 
       default:
         return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -2041,19 +2048,27 @@
       themes.forEach(function(t) {
         try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
       });
-      // Tenant only sees themes for their plan or lower
-      if (auth.role !== 'superadmin') {
-        var tenantId = PermissionService.getTenantId(auth);
-        var tenant = DB.findOne('Tenants', 'id', tenantId);
-        if (tenant) {
-          var priorities = { basic: 1, pro: 2, premium: 3 };
-          var tenantPriority = priorities[tenant.plan_type] || 1;
-          themes = themes.filter(function(t) {
-            var themePriority = priorities[t.plan_type] || 1;
-            var isDraft = (t.flag_draft === true || t.flag_draft === 'true' || t.flag_draft === 'TRUE');
-            return themePriority <= tenantPriority && !isDraft;
-          });
+      // Tenant only sees themes for their plan or lower. Public sees all non-drafts.
+      if (!auth || auth.role !== 'superadmin') {
+        var tenantPriority = 3; // Default to highest for public/superadmin, but for non-admin we filter.
+        
+        if (auth && auth.role !== 'superadmin') {
+          var tenantId = PermissionService.getTenantId(auth);
+          var tenant = DB.findOne('Tenants', 'id', tenantId);
+          if (tenant) {
+            var priorities = { basic: 1, pro: 2, premium: 3 };
+            tenantPriority = priorities[tenant.plan_type] || 1;
+          }
         }
+
+        var priorities = { basic: 1, pro: 2, premium: 3 };
+        themes = themes.filter(function(t) {
+          var themePriority = priorities[t.plan_type] || 1;
+          var isDraft = (t.flag_draft === true || t.flag_draft === 'true' || t.flag_draft === 'TRUE');
+          // For public view (auth is null), show all non-drafts. 
+          // For tenant_admin, show based on plan priority.
+          return (!auth ? !isDraft : (themePriority <= tenantPriority && !isDraft));
+        });
       }
       return ResponseHelper.success(themes, 'Themes retrieved');
     },

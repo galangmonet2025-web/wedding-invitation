@@ -338,8 +338,23 @@ export const publicApi = {
         return res.data;
     },
 
-    checkGuest: async (data: { slug: string; name: string }) => {
+    checkGuest: async (data: { slug: string; phone: string }) => {
         const res = await publicClient.post('', JSON.stringify({ action: 'checkPublicGuest', ...data }));
+        return res.data;
+    },
+    
+    getPublicThemes: async () => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'getPublicThemes' }));
+        return res.data;
+    },
+    
+    getPublicPlanTypes: async () => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'getPublicPlanTypes' }));
+        return res.data;
+    },
+    
+    getPublicPlanFeatures: async () => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'getPublicPlanFeatures' }));
         return res.data;
     },
 

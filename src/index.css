@@ -168,7 +168,24 @@
 
 @layer utilities {
   .text-gradient-gold {
-    @apply bg-gradient-to-r from-gold-500 to-gold-700 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-gold-500 via-gold-600 to-gold-700 bg-clip-text text-transparent;
+  }
+
+  @keyframes slow-zoom {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.1); }
+  }
+
+  .animate-slow-zoom {
+    animation: slow-zoom 20s linear infinite alternate;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

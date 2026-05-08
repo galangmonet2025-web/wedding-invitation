@@ -22,6 +22,7 @@ import { WebsiteConfigPage } from '@/features/admin/pages/WebsiteConfigPage';
 import { PlanConfigPage } from '@/features/admin/pages/PlanConfigPage';
 import { Navigate } from 'react-router-dom';
 import { LandingPage } from '@/features/landing/pages/LandingPage';
+import { NewLandingPage } from '@/features/landing/pages/NewLandingPage';
 import { AdditionalFeaturePage } from '@/features/admin/pages/AdditionalFeaturePage';
 import { TenantAdditionalFeaturePage } from '@/features/tenant/pages/TenantAdditionalFeaturePage';
 import { ReviewPage } from '@/features/admin/pages/ReviewPage';
@@ -79,6 +80,10 @@ export const router = createHashRouter([
             {
                 path: 'home',
                 element: <LandingPage />,
+            },
+            {
+                path: 'landing-page',
+                element: <NewLandingPage />,
             },
             {
                 path: 'login',
