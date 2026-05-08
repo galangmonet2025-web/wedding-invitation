@@ -7,7 +7,7 @@ export default defineConfig({
         react(),
         tsconfigPaths()
     ],
-    base: '/wedding-invitation/',
+    base: '/',
     server: {
         port: 5173,
         open: true,

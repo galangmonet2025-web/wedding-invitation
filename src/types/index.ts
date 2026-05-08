@@ -446,6 +446,9 @@ export interface WebsiteConfig {
     site_code_js: string;
     primary_color: string;
     accent_color: string;
+    plans?: MstPlanType[];
+    plan_features?: MstPlanFeature[];
+    additional_features?: MstAdditionalFeature[];
     features?: MstAdditionalFeature[];
     reviews?: ReviewAndRating[];
 }

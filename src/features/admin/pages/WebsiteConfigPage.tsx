@@ -615,7 +615,7 @@ export function WebsiteConfigPage() {
                                                         { title: 'Branding', vars: ['primary_color', 'accent_color'] },
                                                         { title: 'Contact', vars: ['contact_email', 'contact_whatsapp'] },
                                                         { title: 'Socials', vars: ['site_instagram', 'site_tiktok', 'site_youtube'] },
-                                                        { title: 'Loops (Arrays)', vars: ['features', 'reviews'] }
+                                                        { title: 'Loops (Arrays)', vars: ['plans', 'plan_features', 'additional_features', 'features', 'reviews'] }
                                                     ].map(group => (
                                                         <div key={group.title}>
                                                             <p className="text-[9px] font-bold text-gray-600 uppercase mb-2">{group.title}</p>
@@ -634,7 +634,9 @@ export function WebsiteConfigPage() {
                                                                 {group.title === 'Loops (Arrays)' && (
                                                                     <div className="mt-2 pl-2 border-l border-white/5 space-y-1">
                                                                         <p className="text-[8px] text-gray-500 font-mono">Properties inside loops:</p>
-                                                                        <p className="text-[8px] text-gray-400 font-mono italic">features: feature_name, description, price</p>
+                                                                        <p className="text-[8px] text-gray-400 font-mono italic">plans: plan_type, guest_limit, price</p>
+                                                                        <p className="text-[8px] text-gray-400 font-mono italic">plan_features: plan_id, feature, order_number</p>
+                                                                        <p className="text-[8px] text-gray-400 font-mono italic">additional_features/features: feature_name, description, price</p>
                                                                         <p className="text-[8px] text-gray-400 font-mono italic">reviews: bride_name, groom_name, rate_star, comment, alamat</p>
                                                                     </div>
                                                                 )}
