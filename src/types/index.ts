@@ -282,6 +282,7 @@ export interface UpdateThemeRequest {
 // =============================================
 
 export interface UploadImageRequest {
+    tenant_id: string;
     image_type: string;
     file_name: string;
     base64_data: string;

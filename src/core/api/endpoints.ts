@@ -259,8 +259,8 @@ export const themeApi = {
         return res.data;
     },
 
-    updateTheme: async (data: UpdateThemeRequest): Promise<ApiResponse<Theme>> => {
-        const res = await apiClient.post('', { action: 'updateTheme', ...data });
+    updateTheme: async (data: UpdateThemeRequest, config: any = {}): Promise<ApiResponse<Theme>> => {
+        const res = await apiClient.post('', { action: 'updateTheme', ...data }, config);
         return res.data;
     },
 
@@ -296,8 +296,8 @@ export const websiteConfigApi = {
         return res.data;
     },
 
-    updateConfig: async (data: Partial<WebsiteConfig>): Promise<ApiResponse<WebsiteConfig>> => {
-        const res = await apiClient.post('', { action: 'updateWebsiteConfig', ...data });
+    updateConfig: async (data: Partial<WebsiteConfig>, config: any = {}): Promise<ApiResponse<WebsiteConfig>> => {
+        const res = await apiClient.post('', { action: 'updateWebsiteConfig', ...data }, config);
         return res.data;
     },
 };

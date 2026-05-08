@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { websiteConfigApi } from '@/core/api/endpoints';
 import { WebsiteConfig } from '@/types';
+import { Modal } from '@/shared/components/Modal';
 import { 
     HiOutlineSave, 
     HiOutlineRefresh, 
@@ -22,6 +23,7 @@ import Editor from '@monaco-editor/react';
 import { ImageUpload } from '@/shared/components/ImageUpload';
 import { Lightbox } from '@/shared/components/Lightbox';
 import { imageApi } from '@/core/api/imageApi';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { ImageRecord } from '@/types';
 import { HiOutlineClipboardCopy, HiOutlineInformationCircle } from 'react-icons/hi';
 import imageCompression from 'browser-image-compression';
@@ -77,9 +79,16 @@ export function WebsiteConfigPage() {
     const [activeSiderTab, setActiveSiderTab] = useState<'variables' | 'images'>('variables');
     const [codeImages, setCodeImages] = useState<ImageRecord[]>([]);
     const [loadingImages, setLoadingImages] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    // Logo Management States
+    const [deletingLogo, setDeletingLogo] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [showDeleteLogoModal, setShowDeleteLogoModal] = useState(false);
+    const [showReplaceLogoModal, setShowReplaceLogoModal] = useState(false);
+    const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
+
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const editorRef = useRef<any>(null);
     
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -139,16 +148,20 @@ export function WebsiteConfigPage() {
         setCodeImages(prev => prev.filter(img => img.id !== imageId));
     };
 
-    // Initial load from store if available
+    // 1. Fetch config once on mount
     useEffect(() => {
-        if (storeConfig) {
+        fetchConfig();
+    }, []);
+
+    // 2. Sync store to local state once data arrives
+    useEffect(() => {
+        if (storeConfig && !config.site_name) {
             setConfig(storeConfig);
             setInitialLogoUrl(storeConfig.site_logo || '');
             setPreviewLogoUrl(storeConfig.site_logo || '');
             setLoading(false);
         }
-        fetchConfig();
-    }, []);
+    }, [storeConfig, config.site_name]);
 
     const updatePreview = useCallback(() => {
         if (iframeRef.current?.contentWindow) {
@@ -244,13 +257,148 @@ export function WebsiteConfigPage() {
             return;
         }
 
-        // Local only preview
-        const localUrl = URL.createObjectURL(file);
-        setPreviewLogoUrl(localUrl);
-        setPendingLogoFile(file);
-        setConfig(prev => ({ ...prev, site_logo: localUrl }));
+        if (config.site_logo) {
+            setPendingReplaceFile(file);
+            setShowReplaceLogoModal(true);
+        } else {
+            uploadLogo(file);
+        }
+    };
+
+    const uploadLogo = async (file: File) => {
+        setUploadingLogo(true);
+        setShowReplaceLogoModal(false);
+        try {
+            // 1. Compress image
+            const options = {
+                maxSizeMB: 0.2,
+                maxWidthOrHeight: 800,
+                useWebWorker: true,
+                fileType: 'image/webp'
+            };
+            const compressedFile = await imageCompression(file, options);
+            
+            // 2. Get dimensions
+            const getDimensions = (): Promise<{ w: number, h: number }> => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve({ w: img.width, h: img.height });
+                    img.src = URL.createObjectURL(compressedFile);
+                });
+            };
+            const dims = await getDimensions();
+
+            // 3. Convert to Base64
+            const reader = new FileReader();
+            const readerPromise = new Promise<string>((resolve) => {
+                reader.onload = (e) => resolve((e.target?.result as string).split(',')[1]);
+            });
+            reader.readAsDataURL(compressedFile);
+            const base64 = await readerPromise;
+
+            // 4. Upload to Drive
+            const tenant = useAuthStore.getState().tenant;
+            const uploadRes = await imageApi.uploadImage({
+                tenant_id: tenant?.id || 'system',
+                image_type: 'site_logo',
+                file_name: `site-logo-${Date.now()}.webp`,
+                base64_data: base64,
+                mime_type: 'image/webp',
+                width: dims.w,
+                height: dims.h,
+                size_kb: Math.round(compressedFile.size / 1024)
+            }, { skipLoader: true } as any);
+
+            if (!uploadRes.success) throw new Error(uploadRes.message);
+
+            const finalLogoUrl = uploadRes.data.cdn_url;
+            const oldLogoUrl = config.site_logo;
+
+            // 5. Partial update to DB
+            const currentConfig = useWebsiteConfigStore.getState().config;
+            if (currentConfig) {
+                const updatedConfig = { 
+                    ...currentConfig, 
+                    site_logo: finalLogoUrl,
+                    tenant_id: tenant?.id || 'system'
+                };
+                await websiteConfigApi.updateConfig(updatedConfig, { skipLoader: true } as any);
+                
+                // 6. Delete old logo if it exists (Cleanup)
+                if (oldLogoUrl) {
+                    const oldId = extractDriveId(oldLogoUrl);
+                    if (oldId) {
+                        try {
+                            await imageApi.deleteImage(oldId, { skipLoader: true } as any);
+                        } catch (e) {
+                            console.error('Failed to delete old logo:', e);
+                        }
+                    }
+                }
+
+                // 7. Update local state & store
+                setStoreConfig(updatedConfig);
+                setInitialLogoUrl(finalLogoUrl);
+                setPreviewLogoUrl(finalLogoUrl);
+                setConfig(prev => ({ ...prev, site_logo: finalLogoUrl }));
+                
+                toast.success('Logo diperbarui!');
+            } else {
+                throw new Error('Gagal mengambil data konfigurasi terbaru');
+            }
+        } catch (err: any) {
+            console.error('Logo upload error:', err);
+            toast.error('Gagal memperbarui logo: ' + (err.message || 'Error tidak diketahui'));
+        } finally {
+            setUploadingLogo(false);
+            setPendingReplaceFile(null);
+        }
+    };
+
+    const handleDeleteLogo = async () => {
+        setDeletingLogo(true);
+        setShowDeleteLogoModal(false);
         
-        toast.success('Logo terpilih! Klik Simpan untuk memperbarui website.');
+        try {
+            const oldLogoUrl = config.site_logo;
+            const tenant = useAuthStore.getState().tenant;
+            const currentConfig = useWebsiteConfigStore.getState().config;
+
+            if (!currentConfig) throw new Error('Config not found');
+
+            // 1. Update Sheet first
+            const updatedConfig = { 
+                ...currentConfig, 
+                site_logo: '',
+                tenant_id: tenant?.id || 'system'
+            };
+            await websiteConfigApi.updateConfig(updatedConfig, { skipLoader: true } as any);
+
+            // 2. Delete from Drive
+            if (oldLogoUrl) {
+                const oldId = extractDriveId(oldLogoUrl);
+                if (oldId) {
+                    try {
+                        await imageApi.deleteImage(oldId, { skipLoader: true } as any);
+                    } catch (e) {
+                        console.error('Failed to delete old logo from Drive:', e);
+                    }
+                }
+            }
+
+            // 3. Update State
+            setStoreConfig(updatedConfig);
+            setInitialLogoUrl('');
+            setPreviewLogoUrl('');
+            setConfig(prev => ({ ...prev, site_logo: '' }));
+
+            toast.success('Logo berhasil dihapus');
+        } catch (err: any) {
+            console.error('Logo delete error:', err);
+            toast.error('Gagal menghapus logo: ' + (err.message || 'Error tidak diketahui'));
+        } finally {
+            setDeletingLogo(false);
+        }
     };
 
     const handleSave = async () => {
@@ -259,52 +407,6 @@ export function WebsiteConfigPage() {
         
         try {
             let finalLogoUrl = config.site_logo;
-
-            // Handle pending upload if any
-            if (pendingLogoFile) {
-                // Compress image like in ImageUpload.tsx
-                const options = {
-                    maxSizeMB: 0.2,
-                    maxWidthOrHeight: 800,
-                    useWebWorker: true,
-                    fileType: 'image/webp'
-                };
-                const compressedFile = await imageCompression(pendingLogoFile, options);
-                
-                // Get dimensions
-                const getDimensions = (): Promise<{ w: number, h: number }> => {
-                    return new Promise((resolve) => {
-                        const img = new Image();
-                        img.onload = () => resolve({ w: img.width, h: img.height });
-                        img.src = URL.createObjectURL(compressedFile);
-                    });
-                };
-                const dims = await getDimensions();
-
-                // Convert to Base64
-                const reader = new FileReader();
-                const readerPromise = new Promise<string>((resolve) => {
-                    reader.onload = (e) => resolve((e.target?.result as string).split(',')[1]);
-                });
-                reader.readAsDataURL(compressedFile);
-                const base64 = await readerPromise;
-
-                const uploadRes = await imageApi.uploadImage({
-                    image_type: 'site_logo',
-                    file_name: `site-logo-${Date.now()}.webp`,
-                    base64_data: base64,
-                    mime_type: 'image/webp',
-                    width: dims.w,
-                    height: dims.h,
-                    size_kb: Math.round(compressedFile.size / 1024)
-                });
-
-                if (uploadRes.success) {
-                    finalLogoUrl = uploadRes.data.cdn_url;
-                } else {
-                    throw new Error('Gagal mengunggah logo: ' + uploadRes.message);
-                }
-            }
 
             // Check if we need to delete old logo
             if (initialLogoUrl && initialLogoUrl !== finalLogoUrl) {
@@ -864,12 +966,9 @@ export function WebsiteConfigPage() {
                                                         <label className="label-field">Site Logo</label>
                                                         {config.site_logo && (
                                                             <button
-                                                                onClick={() => {
-                                                                    setPreviewLogoUrl('');
-                                                                    setPendingLogoFile(null);
-                                                                    setConfig(prev => ({ ...prev, site_logo: '' }));
-                                                                }}
-                                                                className="text-xs flex items-center gap-1 text-red-600 hover:text-red-700 font-medium bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-md transition-colors"
+                                                                disabled={deletingLogo || uploadingLogo}
+                                                                onClick={() => setShowDeleteLogoModal(true)}
+                                                                className="text-xs flex items-center gap-1 text-red-600 hover:text-red-700 font-medium bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50"
                                                             >
                                                                 <HiOutlineTrash className="w-3.5 h-3.5" />
                                                                 Hapus Logo
@@ -878,29 +977,43 @@ export function WebsiteConfigPage() {
                                                     </div>
 
                                                     <div className="relative group border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden hover:border-gold-400 transition-all min-h-[140px] flex items-center justify-center bg-gray-50 dark:bg-gray-800">
-                                                        {config.site_logo ? (
+                                                        {/* Loading Overlay */}
+                                                        {(uploadingLogo || deletingLogo) && (
+                                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/10 dark:bg-black/10 backdrop-blur-[2px] z-20">
+                                                                <div className="w-8 h-8 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin mb-2" />
+                                                                <p className="text-[10px] font-bold text-gold-600 dark:text-gold-400 uppercase tracking-tighter">
+                                                                    {deletingLogo ? 'Menghapus...' : 'Mengunggah...'}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {(config.site_logo || previewLogoUrl) ? (
                                                             <div className="w-full h-full relative p-4 flex items-center justify-center">
                                                                 <ProxyImage 
-                                                                    src={config.site_logo} 
+                                                                    src={previewLogoUrl || config.site_logo} 
                                                                     alt="Logo Preview" 
-                                                                    className="max-h-32 object-contain"
+                                                                    className={`max-h-32 object-contain transition-opacity ${(uploadingLogo || deletingLogo) ? 'opacity-30' : 'opacity-100'}`}
                                                                 />
-                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 cursor-pointer">
-                                                                    <p className="text-white text-xs font-bold uppercase">Ganti Logo</p>
-                                                                    <p className="text-gray-300 text-[10px]">Upload / Drop Gambar</p>
-                                                                    <input 
-                                                                        type="file" 
-                                                                        className="absolute inset-0 opacity-0 cursor-pointer" 
-                                                                        accept="image/*"
-                                                                        onChange={(e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) processLogoFile(file);
-                                                                        }}
-                                                                    />
-                                                                </div>
+                                                                
+                                                                {!uploadingLogo && !deletingLogo && (
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 cursor-pointer">
+                                                                        <p className="text-white text-xs font-bold uppercase">Ganti Logo</p>
+                                                                        <p className="text-gray-300 text-[10px]">Upload / Drop Gambar</p>
+                                                                        <input 
+                                                                            type="file" 
+                                                                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                                            accept="image/*"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) processLogoFile(file);
+                                                                                e.target.value = ''; // Reset to allow re-selection
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ) : (
-                                                            <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                                                            <div className={`flex flex-col items-center justify-center py-8 text-center px-4 transition-opacity ${(uploadingLogo || deletingLogo) ? 'opacity-30' : 'opacity-100'}`}>
                                                                 <div className="p-3 bg-gold-50 dark:bg-gold-900/20 rounded-full text-gold-500 mb-2">
                                                                     <HiOutlineUpload className="w-6 h-6" />
                                                                 </div>
@@ -917,6 +1030,7 @@ export function WebsiteConfigPage() {
                                                                     onChange={(e) => {
                                                                         const file = e.target.files?.[0];
                                                                         if (file) processLogoFile(file);
+                                                                        e.target.value = '';
                                                                     }}
                                                                 />
                                                             </div>
@@ -1088,6 +1202,82 @@ export function WebsiteConfigPage() {
                     onClose={() => setLightboxIndex(null)}
                 />
             )}
+
+            {/* Modal Konfirmasi Hapus Logo */}
+            <Modal
+                isOpen={showDeleteLogoModal}
+                onClose={() => setShowDeleteLogoModal(false)}
+                onConfirm={handleDeleteLogo}
+                title="Hapus Logo Website"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus logo website ini? Logo juga akan dihapus permanen dari Google Drive.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setShowDeleteLogoModal(false)} className="btn-ghost" disabled={deletingLogo}>Batal</button>
+                        <button
+                            onClick={handleDeleteLogo}
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={deletingLogo}
+                        >
+                            {deletingLogo && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {deletingLogo ? 'Menghapus...' : 'Ya, Hapus Logo'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Ganti Logo */}
+            <Modal
+                isOpen={showReplaceLogoModal}
+                onClose={() => {
+                    setShowReplaceLogoModal(false);
+                    setPendingReplaceFile(null);
+                }}
+                onConfirm={() => pendingReplaceFile && uploadLogo(pendingReplaceFile)}
+                title="Ganti Logo Website"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
+                        <div className="flex gap-3 text-amber-800 dark:text-amber-400">
+                            <HiOutlineRefresh className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Ganti Logo</p>
+                                <p>Logo baru akan diunggah dan <b>logo lama akan dihapus permanen</b> dari Google Drive. Lanjutkan?</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button 
+                            onClick={() => {
+                                setShowReplaceLogoModal(false);
+                                setPendingReplaceFile(null);
+                            }} 
+                            className="btn-ghost" 
+                            disabled={uploadingLogo}
+                        >
+                            Batal
+                        </button>
+                        <button
+                            onClick={() => pendingReplaceFile && uploadLogo(pendingReplaceFile)}
+                            className="btn-primary py-2 px-6 flex items-center gap-2"
+                            disabled={uploadingLogo}
+                        >
+                            {uploadingLogo && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {uploadingLogo ? 'Memproses...' : 'Ya, Ganti Logo'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
             </div>
         </div>
     );

@@ -19,6 +19,7 @@ interface QrisUploadProps {
     currentImageUrl?: string | null;
     onUploadSuccess: (cdnUrl: string) => void;
     onDeleteSuccess: () => void;
+    tenantId?: string;
 }
 
 export function QrisUpload({
@@ -27,7 +28,8 @@ export function QrisUpload({
     description,
     currentImageUrl,
     onUploadSuccess,
-    onDeleteSuccess
+    onDeleteSuccess,
+    tenantId
 }: QrisUploadProps) {
     const [uploading, setUploading] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -142,6 +144,7 @@ export function QrisUpload({
                 
                 try {
                     const response = await imageApi.uploadImage({
+                        tenant_id: tenantId || 'system', // Use provided tenantId if any
                         image_type: imageType,
                         file_name: fileToUpload.name,
                         base64_data: base64Data,

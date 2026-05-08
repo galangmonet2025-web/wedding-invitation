@@ -22,6 +22,7 @@ interface ImageUploadProps {
     maxFiles?: number;
     onBeforeUpload?: (file: File, index: number) => Promise<{ fileName?: string }>;
     className?: string;
+    tenantId?: string;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,10 +35,12 @@ export function ImageUpload({
     onUploadSuccess,
     onDeleteSuccess,
     onClick,
+    onBeforeUpload,
     aspectRatio = 'auto',
     allowMultiple = false,
     maxFiles,
-    className = ''
+    className = '',
+    tenantId
 }: ImageUploadProps) {
     const [uploading, setUploading] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -194,6 +197,7 @@ export function ImageUpload({
                 while (retries <= maxRetries) {
                     try {
                         response = await imageApi.uploadImage({
+                            tenant_id: tenantId || 'system', // Use provided tenantId if any
                             image_type: imageType,
                             file_name: safeFileName,
                             base64_data: base64Data,
@@ -263,6 +267,12 @@ export function ImageUpload({
                 status: isFinished ? (failCount === 0 ? 'success' : 'error') : 'running',
                 details
             });
+        }
+
+        if (failCount > 0) {
+            toast.error(`Gagal mengunggah ${failCount} file. Silakan coba lagi.`);
+        } else if (successCount > 0) {
+            toast.success(`Berhasil mengunggah ${successCount} file!`);
         }
 
         setUploading(false);

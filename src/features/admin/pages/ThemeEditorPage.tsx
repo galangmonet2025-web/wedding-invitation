@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
+import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload } from 'react-icons/hi';
+import { Modal } from '@/shared/components/Modal';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { AiThemeModal } from '../components/AiThemeModal';
@@ -15,6 +17,12 @@ import html2canvas from 'html2canvas';
 import { useThemeStore } from '../store/themeStore';
 import { useTenantStore } from '../store/tenantStore';
 import { usePreviewStore } from '../store/previewStore';
+
+const extractDriveId = (url: string) => {
+    if (!url) return null;
+    const match = url.match(/[?&]id=([^&]+)/);
+    return match ? match[1] : null;
+};
 
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
@@ -46,6 +54,13 @@ export function ThemeEditorPage() {
     const [pendingPreviewFile, setPendingPreviewFile] = useState<File | null>(null);
     const [pendingPreviewBase64, setPendingPreviewBase64] = useState<string | null>(null);
     const [initialPreviewImage, setInitialPreviewImage] = useState('');
+    
+    // Logo-like management states for preview image
+    const [uploadingPreview, setUploadingPreview] = useState(false);
+    const [deletingPreview, setDeletingPreview] = useState(false);
+    const [showDeletePreviewModal, setShowDeletePreviewModal] = useState(false);
+    const [showReplacePreviewModal, setShowReplacePreviewModal] = useState(false);
+    const [pendingReplacePreviewFile, setPendingReplacePreviewFile] = useState<File | null>(null);
 
 
     // Form and Editor State
@@ -348,11 +363,11 @@ export function ThemeEditorPage() {
         }
     }, [selectedPreviewTenantId, allTenants]);
 
+
     const handleCaptureScreenshot = async () => {
         if (!iframeRef.current) return;
 
         setIsCapturing(true);
-        const loadingToast = toast.loading('Mengambil screenshot pratinjau...');
 
         try {
             const iframe = iframeRef.current;
@@ -375,12 +390,28 @@ export function ThemeEditorPage() {
             const base64Full = canvas.toDataURL('image/jpeg', 0.8);
             const base64 = base64Full.split(',')[1];
 
-            // Local only - do not upload yet
-            setPreviewImage(base64Full);
-            setPendingPreviewBase64(base64);
-            setPendingPreviewFile(null); // Clear file if screenshot is used
-            
-            toast.success('Screenshot berhasil diambil! Klik Simpan untuk memperbarui database.');
+            // 4. Upload to Drive immediately
+            const uploadRes = await imageApi.uploadImage({
+                tenant_id: 'system',
+                image_type: 'theme_preview',
+                file_name: `preview-${name.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'theme'}-${Date.now()}.jpg`,
+                base64_data: base64,
+                mime_type: 'image/jpeg',
+                width: canvas.width,
+                height: canvas.height,
+                size_kb: Math.round((base64.length * 3) / 4 / 1024)
+            }, { skipLoader: true } as any);
+
+            if (uploadRes.success) {
+                const finalPreviewUrl = uploadRes.data.cdn_url;
+                setPreviewImage(finalPreviewUrl);
+                setInitialPreviewImage(finalPreviewUrl);
+                setPendingPreviewBase64(null);
+                setPendingPreviewFile(null);
+                toast.success('Screenshot berhasil diambil dan disimpan!');
+            } else {
+                throw new Error(uploadRes.message);
+            }
         } catch (error: any) {
             console.error('Screenshot error:', error);
             toast.error('Gagal mengambil screenshot: ' + error.message);
@@ -395,13 +426,151 @@ export function ThemeEditorPage() {
             return;
         }
 
-        // Local only - do not upload yet
-        const localUrl = URL.createObjectURL(file);
-        setPreviewImage(localUrl);
-        setPendingPreviewFile(file);
-        setPendingPreviewBase64(null); // Clear base64 if file is used
+        if (previewImage) {
+            setPendingReplacePreviewFile(file);
+            setShowReplacePreviewModal(true);
+        } else {
+            uploadPreview(file);
+        }
+    };
+
+    const uploadPreview = async (file: File) => {
+        setUploadingPreview(true);
+        setShowReplacePreviewModal(false);
+        try {
+            // 1. Compress image
+            const options = {
+                maxSizeMB: 0.2,
+                maxWidthOrHeight: 800,
+                useWebWorker: true,
+                fileType: 'image/webp'
+            };
+            const compressedFile = await imageCompression(file, options);
+            
+            // 2. Get dimensions
+            const getDimensions = (): Promise<{ w: number, h: number }> => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve({ w: img.width, h: img.height });
+                    img.src = URL.createObjectURL(compressedFile);
+                });
+            };
+            const dims = await getDimensions();
+
+            // 3. Convert to Base64
+            const reader = new FileReader();
+            const readerPromise = new Promise<string>((resolve) => {
+                reader.onload = (e) => resolve((e.target?.result as string).split(',')[1]);
+            });
+            reader.readAsDataURL(compressedFile);
+            const base64 = await readerPromise;
+
+            // 4. Upload to Drive
+            const uploadRes = await imageApi.uploadImage({
+                tenant_id: 'system',
+                image_type: 'theme_preview',
+                file_name: `preview-${name.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'theme'}-${Date.now()}.webp`,
+                base64_data: base64,
+                mime_type: 'image/webp',
+                width: dims.w,
+                height: dims.h,
+                size_kb: Math.round(compressedFile.size / 1024)
+            }, { skipLoader: true } as any);
+
+            if (!uploadRes.success) throw new Error(uploadRes.message);
+
+            const finalPreviewUrl = uploadRes.data.cdn_url;
+            const oldPreviewUrl = previewImage;
+
+            // 5. Update state and backend (if existing theme)
+            if (!isNewTheme) {
+                const currentTheme = themes.find(t => t.id === id);
+                if (currentTheme) {
+                    const payload = {
+                        ...currentTheme,
+                        preview_image: finalPreviewUrl
+                    };
+                    const res = await themeApi.updateTheme(payload, { skipLoader: true } as any);
+                    if (!res.success) throw new Error(res.message);
+                    
+                    updateTheme(id!, payload);
+                }
+            }
+
+            // Cleanup old image if exists
+            if (oldPreviewUrl) {
+                const oldId = extractDriveId(oldPreviewUrl);
+                if (oldId) {
+                    try {
+                        await imageApi.deleteImage(oldId, { skipLoader: true } as any);
+                    } catch (e) {
+                        console.error('Failed to delete old preview image:', e);
+                    }
+                }
+            }
+
+            setPreviewImage(finalPreviewUrl);
+            setInitialPreviewImage(finalPreviewUrl);
+            setPendingPreviewFile(null);
+            setPendingPreviewBase64(null);
+            
+            toast.success('Gambar pratinjau diperbarui!');
+        } catch (err: any) {
+            console.error('Preview upload error:', err);
+            toast.error('Gagal mengunggah pratinjau: ' + (err.message || 'Error tidak diketahui'));
+        } finally {
+            setUploadingPreview(false);
+            setPendingReplacePreviewFile(null);
+        }
+    };
+
+    const handleDeletePreview = async () => {
+        setDeletingPreview(true);
+        setShowDeletePreviewModal(false);
         
-        toast.success('Gambar terpilih! Klik Simpan untuk mengunggah ke database.');
+        try {
+            const oldPreviewUrl = previewImage;
+
+            // 1. Update backend if existing theme
+            if (!isNewTheme) {
+                const currentTheme = themes.find(t => t.id === id);
+                if (currentTheme) {
+                    const payload = {
+                        ...currentTheme,
+                        preview_image: ''
+                    };
+                    const res = await themeApi.updateTheme(payload, { skipLoader: true } as any);
+                    if (!res.success) throw new Error(res.message);
+                    
+                    updateTheme(id!, payload);
+                }
+            }
+
+            // 2. Delete from Drive
+            if (oldPreviewUrl) {
+                const oldId = extractDriveId(oldPreviewUrl);
+                if (oldId) {
+                    try {
+                        await imageApi.deleteImage(oldId, { skipLoader: true } as any);
+                    } catch (e) {
+                        console.error('Failed to delete preview image from Drive:', e);
+                    }
+                }
+            }
+
+            // 3. Update State
+            setPreviewImage('');
+            setInitialPreviewImage('');
+            setPendingPreviewFile(null);
+            setPendingPreviewBase64(null);
+
+            toast.success('Gambar pratinjau berhasil dihapus');
+        } catch (err: any) {
+            console.error('Preview delete error:', err);
+            toast.error('Gagal menghapus gambar: ' + (err.message || 'Error tidak diketahui'));
+        } finally {
+            setDeletingPreview(false);
+        }
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
@@ -413,12 +582,6 @@ export function ThemeEditorPage() {
                 break;
             }
         }
-    };
-
-    const extractDriveId = (url: string) => {
-        if (!url) return null;
-        const match = url.match(/[?&]id=([^&]+)/);
-        return match ? match[1] : null;
     };
 
     const handleSave = async (isDraft: boolean) => {
@@ -449,6 +612,7 @@ export function ThemeEditorPage() {
 
                 if (base64) {
                     const uploadRes = await imageApi.uploadImage({
+                        tenant_id: 'system',
                         image_type: 'theme_preview',
                         file_name: fileName,
                         base64_data: base64,
@@ -1123,89 +1287,125 @@ export function ThemeEditorPage() {
                                         <option value="Lainnya">Lainnya</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Pratinjau Tema</label>
-                                        <button
-                                            type="button"
-                                            disabled={isCapturing}
-                                            onClick={handleCaptureScreenshot}
-                                            className="text-[10px] font-bold text-gold-600 hover:text-gold-700 flex items-center gap-1 uppercase tracking-wider transition-colors hover:scale-105 active:scale-95 disabled:opacity-50"
-                                        >
-                                            {isCapturing ? (
-                                                <>
-                                                    <div className="w-3 h-3 border-2 border-gold-200 border-t-gold-600 rounded-full animate-spin" />
-                                                    Capturing...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="ri-camera-lens-line"></i> Auto Screenshot
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                    
-                                    <div 
-                                        className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${isPreviewDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'}`}
-                                        onDragOver={(e) => { e.preventDefault(); setIsPreviewDragging(true); }}
-                                        onDragLeave={() => setIsPreviewDragging(false)}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            setIsPreviewDragging(false);
-                                            const file = e.dataTransfer.files[0];
-                                            if (file) processImageFile(file);
-                                        }}
-                                        onPaste={handlePaste}
-                                    >
-                                        {previewImage ? (
-                                            <div className="relative group">
-                                                <ProxyImage
-                                                    src={previewImage}
-                                                    alt="Preview"
-                                                    className="w-full h-48 rounded-xl object-cover border border-gray-100 dark:border-gray-700 shadow-sm"
-                                                />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2">
-                                                    <p className="text-white text-xs font-bold uppercase">Ganti Gambar</p>
-                                                    <p className="text-gray-300 text-[10px]">Upload / Paste / Drop</p>
-                                                </div>
-                                                <button 
-                                                    onClick={() => setPreviewImage('')}
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
-                                                >
-                                                    <HiOutlineX className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-8 text-center">
-                                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 text-gray-400 group-hover:text-gold-500 transition-colors">
-                                                    <i className="ri-image-add-line text-2xl"></i>
-                                                </div>
-                                                <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik untuk upload gambar pratinjau</p>
-                                                <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop / Paste (Ctrl+V)</p>
-                                                <input 
-                                                    type="file" 
-                                                    className="absolute inset-0 opacity-0 cursor-pointer" 
-                                                    accept="image/*"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) processImageFile(file);
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    <div className="mt-2">
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Atau Input URL Manual</label>
-                                        <input
-                                            type="text"
-                                            value={previewImage}
-                                            onChange={e => setPreviewImage(e.target.value)}
-                                            className="input-field mt-1 h-8 text-xs"
-                                            placeholder="https://..."
-                                        />
-                                    </div>
-                                </div>
+                                {!isNewTheme && (
+                                    <>
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Pratinjau Tema</label>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={isCapturing || uploadingPreview || deletingPreview}
+                                                        onClick={handleCaptureScreenshot}
+                                                        className="text-[10px] font-bold text-gold-600 hover:text-gold-700 flex items-center gap-1 uppercase tracking-wider transition-colors hover:scale-105 active:scale-95 disabled:opacity-50"
+                                                    >
+                                                        {isCapturing ? (
+                                                            <>
+                                                                <div className="w-3 h-3 border-2 border-gold-200 border-t-gold-600 rounded-full animate-spin" />
+                                                                Capturing...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <i className="ri-camera-lens-line"></i> Auto Screenshot
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    {previewImage && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={isCapturing || uploadingPreview || deletingPreview}
+                                                            onClick={() => setShowDeletePreviewModal(true)}
+                                                            className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1 uppercase tracking-wider transition-colors disabled:opacity-50"
+                                                        >
+                                                            <HiOutlineTrash className="w-3 h-3" /> Hapus
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        
+                                            <div 
+                                                className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${isPreviewDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'} overflow-hidden`}
+                                                onDragOver={(e) => { e.preventDefault(); setIsPreviewDragging(true); }}
+                                                onDragLeave={() => setIsPreviewDragging(false)}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    setIsPreviewDragging(false);
+                                                    const file = e.dataTransfer.files[0];
+                                                    if (file) processImageFile(file);
+                                                }}
+                                                onPaste={handlePaste}
+                                            >
+                                                {/* Loading Overlay */}
+                                                {(uploadingPreview || deletingPreview) && (
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/10 dark:bg-black/10 backdrop-blur-[2px] z-20">
+                                                        <div className="w-8 h-8 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin mb-2" />
+                                                        <p className="text-[10px] font-bold text-gold-600 dark:text-gold-400 uppercase tracking-tighter">
+                                                            {deletingPreview ? 'Menghapus...' : 'Mengunggah...'}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {previewImage ? (
+                                                    <div className="relative group min-h-[120px] flex items-center justify-center">
+                                                        <ProxyImage
+                                                            src={previewImage}
+                                                            alt="Preview"
+                                                            className={`w-full h-48 rounded-xl object-cover border border-gray-100 dark:border-gray-700 shadow-sm transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}
+                                                        />
+                                                        
+                                                        {!uploadingPreview && !deletingPreview && (
+                                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer">
+                                                                <p className="text-white text-xs font-bold uppercase">Ganti Gambar</p>
+                                                                <p className="text-gray-300 text-[10px]">Upload / Paste / Drop</p>
+                                                                <input 
+                                                                    type="file" 
+                                                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                                    accept="image/*"
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) processImageFile(file);
+                                                                        e.target.value = '';
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className={`flex flex-col items-center justify-center py-8 text-center transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}>
+                                                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 text-gray-400 group-hover:text-gold-500 transition-colors">
+                                                            <i className="ri-image-add-line text-2xl"></i>
+                                                        </div>
+                                                        <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik untuk upload gambar pratinjau</p>
+                                                        <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop / Paste (Ctrl+V)</p>
+                                                        <input 
+                                                            type="file" 
+                                                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                            accept="image/*"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) processImageFile(file);
+                                                                e.target.value = '';
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-2">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Atau Input URL Manual</label>
+                                                <input
+                                                    type="text"
+                                                    value={previewImage}
+                                                    onChange={e => setPreviewImage(e.target.value)}
+                                                    className="input-field mt-1 h-8 text-xs"
+                                                    placeholder="https://..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>
                                     <p className="text-xs text-gray-500 mb-2">Tambahkan nama variabel gambar untuk diupload tenant (contoh: <code>hero_cover</code>)</p>
@@ -1422,6 +1622,82 @@ export function ThemeEditorPage() {
                 mockGuestData={mockGuestData}
                 onDataChange={setMockGuestData}
             />
+
+            {/* Modal Konfirmasi Hapus Pratinjau */}
+            <Modal
+                isOpen={showDeletePreviewModal}
+                onClose={() => setShowDeletePreviewModal(false)}
+                onConfirm={handleDeletePreview}
+                title="Hapus Gambar Pratinjau"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p>Apakah Anda yakin ingin menghapus gambar pratinjau tema ini? Gambar juga akan dihapus permanen dari Google Drive.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => setShowDeletePreviewModal(false)} className="btn-ghost" disabled={deletingPreview}>Batal</button>
+                        <button
+                            onClick={handleDeletePreview}
+                            className="btn-danger py-2 px-6 flex items-center gap-2"
+                            disabled={deletingPreview}
+                        >
+                            {deletingPreview && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {deletingPreview ? 'Menghapus...' : 'Ya, Hapus Gambar'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Ganti Pratinjau */}
+            <Modal
+                isOpen={showReplacePreviewModal}
+                onClose={() => {
+                    setShowReplacePreviewModal(false);
+                    setPendingReplacePreviewFile(null);
+                }}
+                onConfirm={() => pendingReplacePreviewFile && uploadPreview(pendingReplacePreviewFile)}
+                title="Ganti Gambar Pratinjau"
+            >
+                <div className="space-y-6">
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
+                        <div className="flex gap-3 text-amber-800 dark:text-amber-400">
+                            <HiOutlineRefresh className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-semibold text-base mb-1">Konfirmasi Ganti Gambar</p>
+                                <p>Gambar baru akan diunggah dan <b>gambar lama akan dihapus permanen</b> dari Google Drive. Lanjutkan?</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <button 
+                            onClick={() => {
+                                setShowReplacePreviewModal(false);
+                                setPendingReplacePreviewFile(null);
+                            }} 
+                            className="btn-ghost" 
+                            disabled={uploadingPreview}
+                        >
+                            Batal
+                        </button>
+                        <button
+                            onClick={() => pendingReplacePreviewFile && uploadPreview(pendingReplacePreviewFile)}
+                            className="btn-primary py-2 px-6 flex items-center gap-2"
+                            disabled={uploadingPreview}
+                        >
+                            {uploadingPreview && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {uploadingPreview ? 'Memproses...' : 'Ya, Ganti Gambar'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

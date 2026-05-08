@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { authApi } from '@/core/api/endpoints';
+import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineHeart, HiOutlineExclamationCircle } from 'react-icons/hi';
 import { LoadingOverlay } from '@/shared/components/Loading';
@@ -16,6 +16,29 @@ export function LoginPage() {
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    
+    // Fetch Global Website Config for Favicon
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
+                const res = await publicApi.getWebsiteConfig(); // Re-using authApi or publicApi
+                if (res.success && res.data.site_logo) {
+                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                    if (!favicon) {
+                        favicon = document.createElement('link');
+                        favicon.rel = 'icon';
+                        document.head.appendChild(favicon);
+                    }
+                    favicon.href = resolvedLogo;
+                }
+            } catch (err) {
+                console.error('Failed to load website config for favicon:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

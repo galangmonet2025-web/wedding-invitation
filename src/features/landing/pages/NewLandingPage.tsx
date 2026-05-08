@@ -50,6 +50,19 @@ export function NewLandingPage() {
                     setConfig(configRes.data);
                     setReviews(configRes.data.reviews || []);
                     setAdditionalFeatures(configRes.data.features || []);
+
+                    // Update Favicon
+                    if (configRes.data.site_logo) {
+                        const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
+                        const resolvedLogo = await fetchProxyImageBase64(configRes.data.site_logo);
+                        let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                        if (!favicon) {
+                            favicon = document.createElement('link');
+                            favicon.rel = 'icon';
+                            document.head.appendChild(favicon);
+                        }
+                        favicon.href = resolvedLogo;
+                    }
                 }
                 if (themesRes.success) setThemes(themesRes.data);
                 if (plansRes.success) setPlanTypes(plansRes.data);

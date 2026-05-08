@@ -19,17 +19,30 @@ apiClient.interceptors.request.use(
         if (!config.skipLoader) {
             useApiStore.getState().incrementLoading();
         }
-        const token = useAuthStore.getState().token;
+        const auth = useAuthStore.getState();
+        const token = auth.token;
+        const tenantId = auth.tenant?.id || (auth.user?.role === 'superadmin' ? 'system' : '');
+
         if (token) {
-            // Send token via params (GET) or body (POST)
-            // Do NOT set Authorization header — it triggers CORS preflight
-            // which Google Apps Script cannot handle
-            if (config.method === 'get') {
-                config.params = { ...config.params, token };
-            } else if (config.data) {
-                // For POST, inject token into the JSON body
-                const data = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
-                config.data = JSON.stringify({ ...data, token });
+            // 1. Inject into Params (always)
+            config.params = { 
+                ...config.params, 
+                token,
+                tenant_id: tenantId 
+            };
+
+            // 2. Inject into Body (POST/PUT)
+            if (config.method?.toLowerCase() !== 'get' && config.data) {
+                try {
+                    const data = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                    config.data = JSON.stringify({ 
+                        ...data, 
+                        token,
+                        tenant_id: data.tenant_id || tenantId
+                    });
+                } catch (e) {
+                    // ignore parsing errors
+                }
             }
         }
         return config;

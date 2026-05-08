@@ -231,6 +231,28 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         if (slug && !previewData) fetchInvitation();
     }, [slug, previewData]);
 
+    // Fetch Global Website Config for Favicon
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await publicApi.getWebsiteConfig();
+                if (res.success && res.data.site_logo) {
+                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                    if (!favicon) {
+                        favicon = document.createElement('link');
+                        favicon.rel = 'icon';
+                        document.head.appendChild(favicon);
+                    }
+                    favicon.href = resolvedLogo;
+                }
+            } catch (err) {
+                console.error('Failed to load website config for favicon:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
+
     // When data loads, resolve all proxy images to base64 for template rendering
     useEffect(() => {
         if (!data?.images || data.images.length === 0) return;

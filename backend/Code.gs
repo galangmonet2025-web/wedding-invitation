@@ -670,7 +670,7 @@
           return {
             user_id: 'super-123',
             role: 'superadmin',
-            tenant_id: null
+            tenant_id: 'system'
           };
         }
         var parts = token.split('.');
@@ -867,7 +867,10 @@
     },
 
     getTenantId: function(auth) {
-      if (!auth || !auth.tenant_id) {
+      if (!auth) throw new Error('Unauthorized');
+      if (!auth.tenant_id) {
+        // Fallback for superadmin to 'system' if tenant context is missing
+        if (auth.role === 'superadmin') return 'system';
         throw new Error('Unauthorized: no tenant context');
       }
       return auth.tenant_id;

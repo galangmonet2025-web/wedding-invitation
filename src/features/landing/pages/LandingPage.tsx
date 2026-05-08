@@ -144,6 +144,17 @@ export function LandingPage() {
             document.head.appendChild(metaDesc);
         }
         metaDesc.setAttribute('content', config.site_description || '');
+        
+        // Update Favicon
+        if (resolvedData.site_logo) {
+            let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+            if (!favicon) {
+                favicon = document.createElement('link');
+                favicon.rel = 'icon';
+                document.head.appendChild(favicon);
+            }
+            favicon.href = resolvedData.site_logo;
+        }
 
         // Inject CSS
         const styleId = 'website-custom-css';

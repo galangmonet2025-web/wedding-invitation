@@ -783,6 +783,7 @@ export function TenantPage() {
                                                                                     </div>
                                                                                 ) : (
                                                                                     <ImageUpload
+                                                                                        tenantId={selectedTenant!.id}
                                                                                         imageType={`feature-out-${f.additional_feature_id}`}
                                                                                         title="Upload"
                                                                                         onUploadSuccess={async (img) => {

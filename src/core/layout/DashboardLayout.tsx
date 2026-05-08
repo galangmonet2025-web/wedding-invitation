@@ -41,6 +41,30 @@ export function DashboardLayout() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    
+    // Fetch Global Website Config for Favicon
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const { publicApi } = await import('@/core/api/endpoints');
+                const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
+                const res = await publicApi.getWebsiteConfig();
+                if (res.success && res.data.site_logo) {
+                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                    if (!favicon) {
+                        favicon = document.createElement('link');
+                        favicon.rel = 'icon';
+                        document.head.appendChild(favicon);
+                    }
+                    favicon.href = resolvedLogo;
+                }
+            } catch (err) {
+                console.error('Failed to load website config for favicon:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
     const isSuperAdmin = user?.role === 'superadmin';
     const isImpersonating = !!(user as any)?.is_impersonating;
     // When impersonating, show tenant menus even though role is superadmin

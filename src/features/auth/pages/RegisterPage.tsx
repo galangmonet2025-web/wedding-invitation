@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { authApi } from '@/core/api/endpoints';
+import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 import { HiOutlineHeart, HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe } from 'react-icons/hi';
 import { LoadingOverlay } from '@/shared/components/Loading';
@@ -32,6 +32,29 @@ export function RegisterPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { t } = useTranslation();
+    
+    // Fetch Global Website Config for Favicon
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
+                const res = await publicApi.getWebsiteConfig();
+                if (res.success && res.data.site_logo) {
+                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                    if (!favicon) {
+                        favicon = document.createElement('link');
+                        favicon.rel = 'icon';
+                        document.head.appendChild(favicon);
+                    }
+                    favicon.href = resolvedLogo;
+                }
+            } catch (err) {
+                console.error('Failed to load website config for favicon:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     // Set plan_type from URL if exists
     useEffect(() => {
