@@ -1,4 +1,5 @@
 {
+  "_comment": "trigger build",
   "rewrites": [
     {
       "source": "/(.*)",
