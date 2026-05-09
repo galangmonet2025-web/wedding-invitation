@@ -42,7 +42,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [isOpened, setIsOpened] = useState(false);
     const [wishes, setWishes] = useState<Wish[]>([]);
     const [showQRModal, setShowQRModal] = useState(false);
-    const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
+    const [resolvedImages, setResolvedImages] = useState<Record<string, string> | null>(null);
 
     const [showGuestForm, setShowGuestForm] = useState(false);
     const [tempGuestData, setTempGuestData] = useState({ name: '', category: 'Tamu' });
@@ -255,19 +255,21 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     // When data loads, resolve all proxy images to base64 for template rendering
     useEffect(() => {
-        if (!data?.images || data.images.length === 0) return;
+        if (!data) return;
 
         const doResolve = async () => {
             const resolved: Record<string, string> = {};
 
-            await Promise.all(data.images!.map(async (img) => {
-                if (!img?.cdn_url) return;
-                try {
-                    const b64 = await fetchProxyImageBase64(img.cdn_url);
-                    resolved[img.image_type] = b64;
-                    resolved[img.cdn_url] = b64; // Also index by URL to support multiple images of the same type (like gallery)
-                } catch { }
-            }));
+            if (data.images && data.images.length > 0) {
+                await Promise.all(data.images!.map(async (img) => {
+                    if (!img?.cdn_url) return;
+                    try {
+                        const b64 = await fetchProxyImageBase64(img.cdn_url);
+                        resolved[img.image_type] = b64;
+                        resolved[img.cdn_url] = b64; // Also index by URL to support multiple images of the same type (like gallery)
+                    } catch { }
+                }));
+            }
 
             setResolvedImages(resolved);
         };
@@ -685,96 +687,99 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const activeTheme = data?.theme;
 
     // Build replacements dictionary as a context object
-    const dataContext: Record<string, any> = useMemo(() => ({
-        bride_name: activeContent.bride_name || tenant.bride_name,
-        groom_name: activeContent.groom_name || tenant.groom_name,
-        bride_nickname: activeContent.bride_nickname || '',
-        groom_nickname: activeContent.groom_nickname || '',
-        religion: activeContent.religion || '',
-        wedding_date: formatDate(activeContent.wedding_date || tenant.wedding_date),
-        tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
-        jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
-        nama_lokasi_akad: activeContent.nama_lokasi_akad || '',
-        keterangan_lokasi_akad: activeContent.keterangan_lokasi_akad || '',
-        akad_map: activeContent.akad_map || '',
-        tanggal_resepsi: formatDate(activeContent.wedding_date || tenant.wedding_date),
-        jam_resepsi: `${activeContent.jam_awal_resepsi || ''} - ${activeContent.jam_akhir_resepsi || 'Selesai'}`,
-        nama_lokasi_resepsi: activeContent.nama_lokasi_resepsi || '',
-        keterangan_lokasi_resepsi: activeContent.keterangan_lokasi_resepsi || '',
-        resepsi_map: activeContent.resepsi_map || '',
-        nama_bapak_laki_laki: activeContent.nama_bapak_laki_laki || '',
-        nama_ibu_laki_laki: activeContent.nama_ibu_laki_laki || '',
-        nama_bapak_perempuan: activeContent.nama_bapak_perempuan || '',
-        nama_ibu_perempuan: activeContent.nama_ibu_perempuan || '',
-        ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
-        ig_perempuan: activeContent.account_media_sosial_perempuan || '',
-        guest_name: data?.guest?.name || 'Tamu Undangan',
-        nama_tamu: data?.guest?.name || 'Tamu Undangan',
-        kode_undangan: data?.guest?.invitation_code || '',
-        is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
-        flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
-        flag_sudah_isi_ucapan: data?.guest?.flag_sudah_isi_ucapan,
-        is_sudah_isi_ucapan: getBool(data?.guest?.flag_sudah_isi_ucapan),
-        flag_sudah_kirim_hadiah: data?.guest?.flag_sudah_kirim_hadiah,
-        is_sudah_kirim_hadiah: getBool(data?.guest?.flag_sudah_kirim_hadiah),
-        kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
-        kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
-        quote: activeContent.custom_kalimat_1 || '',
-        bank_1: activeContent.nama_bank_1 || '',
-        rek_1: activeContent.nomor_rekening_bank_1 || '',
-        nama_rek_1: activeContent.nama_rekening_bank_1 || '',
-        bank_2: activeContent.nama_bank_2 || '',
-        rek_2: activeContent.nomor_rekening_bank_2 || '',
-        nama_rek_2: activeContent.nama_rekening_bank_2 || '',
-        flag_pakai_2_rekening: getBool(activeContent.flag_pakai_2_rekening),
-        flag_pakai_qris_rekening_1: getBool(activeContent.flag_pakai_qris_rekening_1),
-        gambar_qris_rekening_1: resolvedImages['qris_1'] || activeContent.gambar_qris_rekening_1 || '',
-        flag_pakai_qris_rekening_2: getBool(activeContent.flag_pakai_qris_rekening_2),
-        gambar_qris_rekening_2: resolvedImages['qris_2'] || activeContent.gambar_qris_rekening_2 || '',
-        flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
-        timeline_kisah: timeline,
-        tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
-        flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
-        flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
-        flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
-        is_link_umum_and_not_for_spesific_guest: !data?.guest,
+    const dataContext: Record<string, any> = useMemo(() => {
+        const images = resolvedImages || {};
+        return {
+            bride_name: activeContent.bride_name || tenant.bride_name,
+            groom_name: activeContent.groom_name || tenant.groom_name,
+            bride_nickname: activeContent.bride_nickname || '',
+            groom_nickname: activeContent.groom_nickname || '',
+            religion: activeContent.religion || '',
+            wedding_date: formatDate(activeContent.wedding_date || tenant.wedding_date),
+            tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
+            jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
+            nama_lokasi_akad: activeContent.nama_lokasi_akad || '',
+            keterangan_lokasi_akad: activeContent.keterangan_lokasi_akad || '',
+            akad_map: activeContent.akad_map || '',
+            tanggal_resepsi: formatDate(activeContent.wedding_date || tenant.wedding_date),
+            jam_resepsi: `${activeContent.jam_awal_resepsi || ''} - ${activeContent.jam_akhir_resepsi || 'Selesai'}`,
+            nama_lokasi_resepsi: activeContent.nama_lokasi_resepsi || '',
+            keterangan_lokasi_resepsi: activeContent.keterangan_lokasi_resepsi || '',
+            resepsi_map: activeContent.resepsi_map || '',
+            nama_bapak_laki_laki: activeContent.nama_bapak_laki_laki || '',
+            nama_ibu_laki_laki: activeContent.nama_ibu_laki_laki || '',
+            nama_bapak_perempuan: activeContent.nama_bapak_perempuan || '',
+            nama_ibu_perempuan: activeContent.nama_ibu_perempuan || '',
+            ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
+            ig_perempuan: activeContent.account_media_sosial_perempuan || '',
+            guest_name: data?.guest?.name || 'Tamu Undangan',
+            nama_tamu: data?.guest?.name || 'Tamu Undangan',
+            kode_undangan: data?.guest?.invitation_code || '',
+            is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
+            flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
+            flag_sudah_isi_ucapan: data?.guest?.flag_sudah_isi_ucapan,
+            is_sudah_isi_ucapan: getBool(data?.guest?.flag_sudah_isi_ucapan),
+            flag_sudah_kirim_hadiah: data?.guest?.flag_sudah_kirim_hadiah,
+            is_sudah_kirim_hadiah: getBool(data?.guest?.flag_sudah_kirim_hadiah),
+            kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
+            kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
+            quote: activeContent.custom_kalimat_1 || '',
+            bank_1: activeContent.nama_bank_1 || '',
+            rek_1: activeContent.nomor_rekening_bank_1 || '',
+            nama_rek_1: activeContent.nama_rekening_bank_1 || '',
+            bank_2: activeContent.nama_bank_2 || '',
+            rek_2: activeContent.nomor_rekening_bank_2 || '',
+            nama_rek_2: activeContent.nama_rekening_bank_2 || '',
+            flag_pakai_2_rekening: getBool(activeContent.flag_pakai_2_rekening),
+            flag_pakai_qris_rekening_1: getBool(activeContent.flag_pakai_qris_rekening_1),
+            gambar_qris_rekening_1: images['qris_1'] || activeContent.gambar_qris_rekening_1 || '',
+            flag_pakai_qris_rekening_2: getBool(activeContent.flag_pakai_qris_rekening_2),
+            gambar_qris_rekening_2: images['qris_2'] || activeContent.gambar_qris_rekening_2 || '',
+            flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
+            timeline_kisah: timeline,
+            tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
+            flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
+            flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
+            flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
+            is_link_umum_and_not_for_spesific_guest: !data?.guest,
 
-        // Advanced features 
-        has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
-        has_story: getBool(activeContent.is_fitur_cerita),
-        live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
-            url: activeContent.link_live_streaming || '',
-            platform: activeContent.platform_live_streaming || ''
-        } : null,
-        galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
-            .filter(img => img.image_type === 'gallery')
-            .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
-        love_stories: activeContent.love_stories || [],
+            // Advanced features 
+            has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
+            has_story: getBool(activeContent.is_fitur_cerita),
+            live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
+                url: activeContent.link_live_streaming || '',
+                platform: activeContent.platform_live_streaming || ''
+            } : null,
+            galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
+                .filter(img => img.image_type === 'gallery')
+                .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
+            love_stories: activeContent.love_stories || [],
 
-        // Wishes variables
-        wishes: (wishes || []).map(w => ({
-            ...w,
-            guest_message: w.message, // Support both names
-            guest_comment_time: timeAgo(w.created_at || new Date().toISOString()),
-            guest_initial: w.guest_name ? w.guest_name.charAt(0).toUpperCase() : '?'
-        })),
-        has_wishes: wishes && wishes.length > 0,
-        empty_wishes: !wishes || wishes.length === 0,
+            // Wishes variables
+            wishes: (wishes || []).map(w => ({
+                ...w,
+                guest_message: w.message, // Support both names
+                guest_comment_time: timeAgo(w.created_at || new Date().toISOString()),
+                guest_initial: w.guest_name ? w.guest_name.charAt(0).toUpperCase() : '?'
+            })),
+            has_wishes: wishes && wishes.length > 0,
+            empty_wishes: !wishes || wishes.length === 0,
 
-        // === Variabel Foto Standar ===
-        photo_hero_cover: resolvedImages['hero_cover'] || getImageUrl('hero_cover'),
-        photo_groom_photo: resolvedImages['groom_photo'] || getImageUrl('groom_photo'),
-        photo_bride_photo: resolvedImages['bride_photo'] || getImageUrl('bride_photo'),
-        photo_background: resolvedImages['background'] || getImageUrl('background'),
-        photo_closing: resolvedImages['closing'] || getImageUrl('closing'),
-        photo_story_photo: resolvedImages['story_photo'] || getImageUrl('story_photo'),
-        photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
-            .filter(img => img.image_type === 'gallery')
-            .map(img => ({ url: resolvedImages[img.cdn_url] || img.cdn_url || '' })),
+            // === Variabel Foto Standar ===
+            photo_hero_cover: images['hero_cover'] || getImageUrl('hero_cover'),
+            photo_groom_photo: images['groom_photo'] || getImageUrl('groom_photo'),
+            photo_bride_photo: images['bride_photo'] || getImageUrl('bride_photo'),
+            photo_background: images['background'] || getImageUrl('background'),
+            photo_closing: images['closing'] || getImageUrl('closing'),
+            photo_story_photo: images['story_photo'] || getImageUrl('story_photo'),
+            photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
+                .filter(img => img.image_type === 'gallery')
+                .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
 
-        // Dynamic theme image variables - inject resolved base64 or CDN URLs
-        ...resolvedImages
-    }), [tenant, activeContent, data, timeline, wishes, resolvedImages]);
+            // Dynamic theme image variables - inject resolved base64 or CDN URLs
+            ...images
+        };
+    }, [tenant, activeContent, data, timeline, wishes, resolvedImages]);
 
     // Memoize the rendered HTML to prevent re-parsing and re-injecting DOM nodes
     // every second when the countdown state updates.
@@ -803,7 +808,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     }, [activeTheme?.html_template, tenant.wedding_date, dataContext]);
 
     // LOADING - Moved after hooks
-    if (loading) {
+    if (loading || (!previewData && !resolvedImages)) {
         return (
             <div className="inv-page inv-loading">
                 <div className="inv-spinner" />

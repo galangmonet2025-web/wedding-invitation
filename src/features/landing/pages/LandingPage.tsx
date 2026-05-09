@@ -8,7 +8,7 @@ export function LandingPage() {
     const [config, setConfig] = useState<WebsiteConfig | null>(null);
     const [codeImages, setCodeImages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [resolvedData, setResolvedData] = useState<Record<string, any>>({});
+    const [resolvedData, setResolvedData] = useState<Record<string, any> | null>(null);
 
     /**
      * Prepare data for template parsing, resolving proxies if needed
@@ -133,7 +133,7 @@ export function LandingPage() {
      * Dynamic style and script injection
      */
     useEffect(() => {
-        if (!config || Object.keys(resolvedData).length === 0) return;
+        if (!config || !resolvedData) return;
 
         // Update document title and meta
         document.title = config.site_name || 'Wedding Invitation';
@@ -156,15 +156,7 @@ export function LandingPage() {
             favicon.href = resolvedData.site_logo;
         }
 
-        // Inject CSS
-        const styleId = 'website-custom-css';
-        let styleTag = document.getElementById(styleId) as HTMLStyleElement;
-        if (!styleTag) {
-            styleTag = document.createElement('style');
-            styleTag.id = styleId;
-            document.head.appendChild(styleTag);
-        }
-        styleTag.innerHTML = parseTemplate(config.site_code_css || '', resolvedData);
+        // JS execution is handled below
 
         // Handle JS execution
         if (config.site_code_js) {
@@ -187,7 +179,7 @@ export function LandingPage() {
         }
     }, [config, resolvedData]);
 
-    if (loading && !config) {
+    if (loading || !config || !resolvedData) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
                 <div className="flex flex-col items-center gap-3">
@@ -208,9 +200,9 @@ export function LandingPage() {
     }
 
     return (
-        <div 
-            className="website-landing-root"
-            dangerouslySetInnerHTML={{ __html: parseTemplate(config.site_code_html || '', resolvedData) }} 
-        />
+        <div className="website-landing-root">
+            <style dangerouslySetInnerHTML={{ __html: parseTemplate(config.site_code_css || '', resolvedData || {}) }} />
+            <div dangerouslySetInnerHTML={{ __html: parseTemplate(config.site_code_html || '', resolvedData || {}) }} />
+        </div>
     );
 }
