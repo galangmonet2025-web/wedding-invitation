@@ -251,7 +251,13 @@ export function ThemeEditorPage() {
                     setCssCode(theme.css_template || '');
                     setJsCode(theme.js_template || '');
                     setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
-                    setImageTypes(theme.image_types || []);
+                    
+                    // Robust image_types parsing
+                    let imgTypes = theme.image_types || [];
+                    if (typeof imgTypes === 'string') {
+                        try { imgTypes = JSON.parse(imgTypes); } catch { imgTypes = []; }
+                    }
+                    setImageTypes(Array.isArray(imgTypes) ? imgTypes : []);
                 } else {
                     // Try one more time by forcing fetch
                     await fetchThemes(true);
@@ -266,7 +272,13 @@ export function ThemeEditorPage() {
                         setCssCode(refetchedTheme.css_template || '');
                         setJsCode(refetchedTheme.js_template || '');
                         setFlagDraft(refetchedTheme.flag_draft !== false && refetchedTheme.flag_draft !== 'false');
-                        setImageTypes(refetchedTheme.image_types || []);
+                        
+                        // Robust image_types parsing
+                        let imgTypes = refetchedTheme.image_types || [];
+                        if (typeof imgTypes === 'string') {
+                            try { imgTypes = JSON.parse(imgTypes); } catch { imgTypes = []; }
+                        }
+                        setImageTypes(Array.isArray(imgTypes) ? imgTypes : []);
                     } else {
                         toast.error('Theme not found');
                         navigate('/private/themes');
@@ -282,7 +294,13 @@ export function ThemeEditorPage() {
                 setCssCode(copiedTheme.css_template || '');
                 setJsCode(copiedTheme.js_template || '');
                 setFlagDraft(true); // Default copies to draft
-                setImageTypes(copiedTheme.image_types || []);
+                
+                // Robust image_types parsing
+                let imgTypes = copiedTheme.image_types || [];
+                if (typeof imgTypes === 'string') {
+                    try { imgTypes = JSON.parse(imgTypes); } catch { imgTypes = []; }
+                }
+                setImageTypes(Array.isArray(imgTypes) ? imgTypes : []);
             }
         } catch (err) {
             toast.error('Gagal memuat data');

@@ -1221,9 +1221,9 @@
         }
       }
 
-      // Typical check-in flow
-      var allGuests = DB.getAll('Guests');
-      var guest = allGuests.find(function(g) { return g.invitation_code === inviteCode; });
+      // Typical check-in flow - SCOPE TO TENANT ONLY
+      var allGuests = DB.getByTenant('Guests', tenantId);
+      var guest = allGuests.find(function(g) { return String(g.invitation_code).trim() === inviteCode; });
 
       if (!guest) {
         return ResponseHelper.error('Tamu tidak ditemukan atau QR Code tidak valid', 404);

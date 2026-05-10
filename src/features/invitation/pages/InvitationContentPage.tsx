@@ -291,12 +291,12 @@ export function InvitationContentPage() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={async () => {
-                            toast.loading('Refreshing data...', { id: 'refresh-data' });
+                            toast.loading(t('invitation_content.refresh_loading'), { id: 'refresh-data' });
                             await Promise.all([fetchContent(true), fetchImages(true)]);
-                            toast.success('Data refreshed!', { id: 'refresh-data' });
+                            toast.success(t('invitation_content.refresh_success'), { id: 'refresh-data' });
                         }}
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                        title="Refresh Data"
+                        title={t('invitation_content.refresh_tooltip')}
                     >
                         <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
@@ -360,28 +360,28 @@ export function InvitationContentPage() {
                                     <div className="space-y-6">
                                         {/* ================= MEMPELAI UTAMA ================= */}
                                         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
-                                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Data Mempelai Utama</p>
+                                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.main_couple_data')}</p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div>
-                                                    <label className="label-field">Nama Lengkap Laki-laki (Groom)</label>
+                                                    <label className="label-field">{t('invitation_content.groom_full_name')}</label>
                                                     <input type="text" value={content.groom_name || ''} onChange={(e) => updateField('groom_name', e.target.value)} className="input-field" placeholder="e.g. Romeo" />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Nama Lengkap Perempuan (Bride)</label>
+                                                    <label className="label-field">{t('invitation_content.bride_full_name')}</label>
                                                     <input type="text" value={content.bride_name || ''} onChange={(e) => updateField('bride_name', e.target.value)} className="input-field" placeholder="e.g. Juliet" />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Nama Panggilan Laki-laki</label>
+                                                    <label className="label-field">{t('invitation_content.groom_nickname')}</label>
                                                     <input type="text" value={content.groom_nickname || ''} onChange={(e) => updateField('groom_nickname', e.target.value)} className="input-field" placeholder="e.g. Romi" />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Nama Panggilan Perempuan</label>
+                                                    <label className="label-field">{t('invitation_content.bride_nickname')}</label>
                                                     <input type="text" value={content.bride_nickname || ''} onChange={(e) => updateField('bride_nickname', e.target.value)} className="input-field" placeholder="e.g. Juli" />
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="label-field">Agama</label>
+                                                    <label className="label-field">{t('auth.religion_label')}</label>
                                                     <select value={content.religion || ''} onChange={(e) => updateField('religion', e.target.value)} className="input-field">
-                                                        <option value="" disabled>Pilih Agama</option>
+                                                        <option value="" disabled>{t('auth.religion_placeholder')}</option>
                                                         <option value="Islam">Islam</option>
                                                         <option value="Kristen Protestan">Kristen Protestan</option>
                                                         <option value="Katolik">Katolik</option>
@@ -396,7 +396,7 @@ export function InvitationContentPage() {
                                         {/* ================= SOCIAL MEDIA ================= */}
                                         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Social Media Links</p>
+                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.social_media_links')}</p>
                                                 <label className="flex items-center gap-2 cursor-pointer">
                                                     <input
                                                         type="checkbox"
@@ -404,17 +404,17 @@ export function InvitationContentPage() {
                                                         checked={getBool(content.flag_tampilkan_sosial_media_mempelai)}
                                                         onChange={(e) => updateField('flag_tampilkan_sosial_media_mempelai', e.target.checked)}
                                                     />
-                                                    <span className="text-xs font-medium text-gray-500">Tampilkan</span>
+                                                    <span className="text-xs font-medium text-gray-500">{t('invitation_content.show_label')}</span>
                                                 </label>
                                             </div>
                                             {getBool(content.flag_tampilkan_sosial_media_mempelai) && (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                                                     <div>
-                                                        <label className="label-field">Instagram Mempelai Pria</label>
+                                                        <label className="label-field">{t('invitation_content.groom_ig')}</label>
                                                         <input type="text" value={content.account_media_sosial_laki_laki || ''} onChange={(e) => updateField('account_media_sosial_laki_laki', e.target.value)} className="input-field" prefix="@" />
                                                     </div>
                                                     <div>
-                                                        <label className="label-field">Instagram Mempelai Wanita</label>
+                                                        <label className="label-field">{t('invitation_content.bride_ig')}</label>
                                                         <input type="text" value={content.account_media_sosial_perempuan || ''} onChange={(e) => updateField('account_media_sosial_perempuan', e.target.value)} className="input-field" />
                                                     </div>
                                                 </div>
@@ -424,7 +424,7 @@ export function InvitationContentPage() {
                                         {/* ================= PARENTS ================= */}
                                         <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Nama Orang Tua</p>
+                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.parents_name')}</p>
                                                 <label className="flex items-center gap-2 cursor-pointer">
                                                     <input
                                                         type="checkbox"
@@ -432,20 +432,20 @@ export function InvitationContentPage() {
                                                         checked={getBool(content.flag_tampilkan_nama_orang_tua)}
                                                         onChange={(e) => updateField('flag_tampilkan_nama_orang_tua', e.target.checked)}
                                                     />
-                                                    <span className="text-xs font-medium text-gray-500">Tampilkan</span>
+                                                    <span className="text-xs font-medium text-gray-500">{t('invitation_content.show_label')}</span>
                                                 </label>
                                             </div>
                                             {getBool(content.flag_tampilkan_nama_orang_tua) && (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
                                                     <div className="space-y-3">
-                                                        <p className="text-xs font-bold text-gray-400 uppercase">Orang Tua Laki-laki</p>
-                                                        <input type="text" value={content.nama_bapak_laki_laki || ''} onChange={(e) => updateField('nama_bapak_laki_laki', e.target.value)} className="input-field text-sm" placeholder="Nama Ayah" />
-                                                        <input type="text" value={content.nama_ibu_laki_laki || ''} onChange={(e) => updateField('nama_ibu_laki_laki', e.target.value)} className="input-field text-sm" placeholder="Nama Ibu" />
+                                                        <p className="text-xs font-bold text-gray-400 uppercase">{t('invitation_content.groom_parents')}</p>
+                                                        <input type="text" value={content.nama_bapak_laki_laki || ''} onChange={(e) => updateField('nama_bapak_laki_laki', e.target.value)} className="input-field text-sm" placeholder={t('invitation_content.father_name')} />
+                                                        <input type="text" value={content.nama_ibu_laki_laki || ''} onChange={(e) => updateField('nama_ibu_laki_laki', e.target.value)} className="input-field text-sm" placeholder={t('invitation_content.mother_name')} />
                                                     </div>
                                                     <div className="space-y-3">
-                                                        <p className="text-xs font-bold text-gray-400 uppercase">Orang Tua Perempuan</p>
-                                                        <input type="text" value={content.nama_bapak_perempuan || ''} onChange={(e) => updateField('nama_bapak_perempuan', e.target.value)} className="input-field text-sm" placeholder="Nama Ayah" />
-                                                        <input type="text" value={content.nama_ibu_perempuan || ''} onChange={(e) => updateField('nama_ibu_perempuan', e.target.value)} className="input-field text-sm" placeholder="Nama Ibu" />
+                                                        <p className="text-xs font-bold text-gray-400 uppercase">{t('invitation_content.bride_parents')}</p>
+                                                        <input type="text" value={content.nama_bapak_perempuan || ''} onChange={(e) => updateField('nama_bapak_perempuan', e.target.value)} className="input-field text-sm" placeholder={t('invitation_content.father_name')} />
+                                                        <input type="text" value={content.nama_ibu_perempuan || ''} onChange={(e) => updateField('nama_ibu_perempuan', e.target.value)} className="input-field text-sm" placeholder={t('invitation_content.mother_name')} />
                                                     </div>
                                                 </div>
                                             )}
@@ -464,37 +464,37 @@ export function InvitationContentPage() {
                                                     checked={getBool(content.flag_lokasi_akad_dan_resepsi_berbeda)}
                                                     onChange={(e) => updateField('flag_lokasi_akad_dan_resepsi_berbeda', e.target.checked)}
                                                 />
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Akad and Resepsi are at different locations</span>
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.different_location_note')}</span>
                                             </label>
 
                                             {/* Event Dates & Times */}
                                             <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
-                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Wedding Schedule</p>
+                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.wedding_schedule')}</p>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
-                                                        <label className="label-field">Tanggal Akad</label>
+                                                        <label className="label-field">{t('invitation_content.akad_date')}</label>
                                                         <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
                                                     </div>
                                                     <div>
-                                                        <label className="label-field">Tanggal Resepsi</label>
+                                                        <label className="label-field">{t('invitation_content.resepsi_date')}</label>
                                                         <input type="date" value={content.wedding_date || ''} onChange={(e) => updateField('wedding_date', e.target.value)} className="input-field" />
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div className="space-y-3">
-                                                        <label className="label-field mb-0">Waktu Akad</label>
+                                                        <label className="label-field mb-0">{t('invitation_content.akad_time')}</label>
                                                         <div className="flex items-center gap-2">
-                                                            <input type="time" value={content.jam_awal_akad || ''} onChange={(e) => updateField('jam_awal_akad', e.target.value)} className="input-field shadow-none" title="Start Time" />
+                                                            <input type="time" value={content.jam_awal_akad || ''} onChange={(e) => updateField('jam_awal_akad', e.target.value)} className="input-field shadow-none" title={t('invitation_content.start_time')} />
                                                             <span className="text-gray-400">-</span>
-                                                            <input type="time" value={content.jam_akhir_akad || ''} onChange={(e) => updateField('jam_akhir_akad', e.target.value)} className="input-field shadow-none" title="End Time" />
+                                                            <input type="time" value={content.jam_akhir_akad || ''} onChange={(e) => updateField('jam_akhir_akad', e.target.value)} className="input-field shadow-none" title={t('invitation_content.end_time')} />
                                                         </div>
                                                     </div>
                                                     <div className="space-y-3">
-                                                        <label className="label-field mb-0">Waktu Resepsi</label>
+                                                        <label className="label-field mb-0">{t('invitation_content.resepsi_time')}</label>
                                                         <div className="flex items-center gap-2">
-                                                            <input type="time" value={content.jam_awal_resepsi || ''} onChange={(e) => updateField('jam_awal_resepsi', e.target.value)} className="input-field shadow-none" title="Start Time" />
+                                                            <input type="time" value={content.jam_awal_resepsi || ''} onChange={(e) => updateField('jam_awal_resepsi', e.target.value)} className="input-field shadow-none" title={t('invitation_content.start_time')} />
                                                             <span className="text-gray-400">-</span>
-                                                            <input type="time" value={content.jam_akhir_resepsi || ''} onChange={(e) => updateField('jam_akhir_resepsi', e.target.value)} className="input-field shadow-none" title="End Time" />
+                                                            <input type="time" value={content.jam_akhir_resepsi || ''} onChange={(e) => updateField('jam_akhir_resepsi', e.target.value)} className="input-field shadow-none" title={t('invitation_content.end_time')} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -502,26 +502,26 @@ export function InvitationContentPage() {
 
                                             <div className="space-y-4">
                                                 <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
-                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Akad Location</p>
+                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.akad_location')}</p>
                                                     <div>
-                                                        <label className="label-field">Nama Tempat</label>
-                                                        <input type="text" value={content.nama_lokasi_akad || ''} onChange={(e) => updateField('nama_lokasi_akad', e.target.value)} className="input-field" placeholder="Masjid Raya / Hotel Grand..." />
+                                                        <label className="label-field">{t('invitation_content.place_name')}</label>
+                                                        <input type="text" value={content.nama_lokasi_akad || ''} onChange={(e) => updateField('nama_lokasi_akad', e.target.value)} className="input-field" placeholder={t('invitation_content.place_name_placeholder_akad')} />
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div>
-                                                            <label className="label-field">Alamat & Info</label>
-                                                            <textarea value={content.keterangan_lokasi_akad || ''} onChange={(e) => updateField('keterangan_lokasi_akad', e.target.value)} className="input-field min-h-[80px]" placeholder="Jl. Sudirman No 1..." />
+                                                            <label className="label-field">{t('invitation_content.address_info')}</label>
+                                                            <textarea value={content.keterangan_lokasi_akad || ''} onChange={(e) => updateField('keterangan_lokasi_akad', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.address_placeholder_akad')} />
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <label className="label-field mb-0">Link Google Maps</label>
+                                                                <label className="label-field mb-0">{t('invitation_content.maps_link')}</label>
                                                                 <button
                                                                     type="button"
-                                                                    title="Buka Google Maps"
+                                                                    title={t('invitation_content.open_maps')}
                                                                     onClick={() => window.open('https://www.google.com/maps', '_blank')}
                                                                     className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
                                                                 >
-                                                                    <HiOutlineMap className="w-3.5 h-3.5" /> Buka Google Maps
+                                                                    <HiOutlineMap className="w-3.5 h-3.5" /> {t('invitation_content.open_maps')}
                                                                 </button>
                                                             </div>
                                                             <input type="url" value={content.akad_map || ''} onChange={(e) => updateField('akad_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
@@ -530,7 +530,7 @@ export function InvitationContentPage() {
                                                                 onClick={() => setShowTutorialModal(true)}
                                                                 className="mt-2 text-[10px] inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg font-bold transition-all border border-blue-100/50 shadow-sm"
                                                             >
-                                                                <HiOutlineVideoCamera className="w-3.5 h-3.5" /> Cara Ambil Titik Google Maps
+                                                                <HiOutlineVideoCamera className="w-3.5 h-3.5" /> {t('invitation_content.how_to_get_maps')}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -538,26 +538,26 @@ export function InvitationContentPage() {
 
                                                 {getBool(content.flag_lokasi_akad_dan_resepsi_berbeda) && (
                                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
-                                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Resepsi Location</p>
+                                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.resepsi_location')}</p>
                                                         <div>
-                                                            <label className="label-field">Nama Tempat</label>
-                                                            <input type="text" value={content.nama_lokasi_resepsi || ''} onChange={(e) => updateField('nama_lokasi_resepsi', e.target.value)} className="input-field" placeholder="Hotel Mulia..." />
+                                                            <label className="label-field">{t('invitation_content.place_name')}</label>
+                                                            <input type="text" value={content.nama_lokasi_resepsi || ''} onChange={(e) => updateField('nama_lokasi_resepsi', e.target.value)} className="input-field" placeholder={t('invitation_content.place_name_placeholder_resepsi')} />
                                                         </div>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
-                                                                <label className="label-field">Alamat & Info</label>
-                                                                <textarea value={content.keterangan_lokasi_resepsi || ''} onChange={(e) => updateField('keterangan_lokasi_resepsi', e.target.value)} className="input-field min-h-[80px]" placeholder="Jl. Gatot Subroto No 5..." />
+                                                                <label className="label-field">{t('invitation_content.address_info')}</label>
+                                                                <textarea value={content.keterangan_lokasi_resepsi || ''} onChange={(e) => updateField('keterangan_lokasi_resepsi', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.address_placeholder_resepsi')} />
                                                             </div>
                                                             <div>
                                                                 <div className="flex items-center justify-between mb-1">
-                                                                    <label className="label-field mb-0">Link Google Maps</label>
+                                                                    <label className="label-field mb-0">{t('invitation_content.maps_link')}</label>
                                                                     <button
                                                                         type="button"
-                                                                        title="Buka Google Maps"
+                                                                        title={t('invitation_content.open_maps')}
                                                                         onClick={() => window.open('https://www.google.com/maps', '_blank')}
                                                                         className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
                                                                     >
-                                                                        <HiOutlineMap className="w-3.5 h-3.5" /> Buka Google Maps
+                                                                        <HiOutlineMap className="w-3.5 h-3.5" /> {t('invitation_content.open_maps')}
                                                                     </button>
                                                                 </div>
                                                                 <input type="url" value={content.resepsi_map || ''} onChange={(e) => updateField('resepsi_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
@@ -566,7 +566,7 @@ export function InvitationContentPage() {
                                                                     onClick={() => setShowTutorialModal(true)}
                                                                     className="mt-2 text-[10px] inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg font-bold transition-all border border-blue-100/50 shadow-sm"
                                                                 >
-                                                                    <HiOutlineVideoCamera className="w-3.5 h-3.5" /> Cara Ambil Titik Google Maps
+                                                                    <HiOutlineVideoCamera className="w-3.5 h-3.5" /> {t('invitation_content.how_to_get_maps')}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -587,7 +587,7 @@ export function InvitationContentPage() {
                                                     checked={getBool(content.tampilkan_amplop_online)}
                                                     onChange={(e) => updateField('tampilkan_amplop_online', e.target.checked)}
                                                 />
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aktifkan Amplop Digital (Tampilkan Rekening Bank)</span>
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.enable_digital_envelope')}</span>
                                             </label>
 
                                             {getBool(content.tampilkan_amplop_online) && (
@@ -598,7 +598,7 @@ export function InvitationContentPage() {
                                                         checked={getBool(content.flag_pakai_2_rekening)}
                                                         onChange={(e) => updateField('flag_pakai_2_rekening', e.target.checked)}
                                                     />
-                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Gunakan 2 Rekening</span>
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.use_2_accounts')}</span>
                                                 </label>
                                             )}
                                         </div>
@@ -606,21 +606,21 @@ export function InvitationContentPage() {
                                         {getBool(content.tampilkan_amplop_online) && (
                                             <div className={`grid grid-cols-1 ${getBool(content.flag_pakai_2_rekening) ? 'md:grid-cols-2' : ''} gap-6 pt-2`}>
                                                 <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
-                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 1</p>
+                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.bank_account_1')}</p>
                                                     <div>
-                                                        <label className="label-field">Nama Bank / E-wallet</label>
+                                                        <label className="label-field">{t('invitation_content.bank_name')}</label>
                                                         <input type="text" value={content.nama_bank_1 || ''} onChange={(e) => updateField('nama_bank_1', e.target.value)} className="input-field" />
                                                     </div>
                                                     <div>
-                                                        <label className="label-field">Nama Rekening</label>
+                                                        <label className="label-field">{t('invitation_content.account_holder')}</label>
                                                         <input type="text" value={content.nama_rekening_bank_1 || ''} onChange={(e) => updateField('nama_rekening_bank_1', e.target.value)} className="input-field" />
                                                     </div>
                                                     {!getBool(content.flag_pakai_qris_rekening_1) && (
                                                         <div>
-                                                            <label className="label-field">Nomor Rekening</label>
+                                                            <label className="label-field">{t('invitation_content.account_number')}</label>
                                                             <input type="text" value={content.nomor_rekening_bank_1 || ''} onChange={(e) => updateField('nomor_rekening_bank_1', e.target.value)} className="input-field font-mono" />
                                                             <p className="text-[10px] text-gray-500 mt-1 italic leading-tight">
-                                                                * Tidak perlu diisi jika menggunakan QRIS
+                                                                {t('invitation_content.qris_note')}
                                                             </p>
                                                         </div>
                                                     )}
@@ -633,13 +633,13 @@ export function InvitationContentPage() {
                                                                 checked={getBool(content.flag_pakai_qris_rekening_1)}
                                                                 onChange={(e) => updateField('flag_pakai_qris_rekening_1', e.target.checked)}
                                                             />
-                                                            <span className="text-sm text-gray-700 dark:text-gray-300">Pakai QRIS</span>
+                                                            <span className="text-sm text-gray-700 dark:text-gray-300">{t('invitation_content.use_qris')}</span>
                                                         </label>
                                                         {getBool(content.flag_pakai_qris_rekening_1) && (
                                                             <div className="w-full">
                                                                 <QrisUpload
                                                                     imageType="qris_1"
-                                                                    title="Upload QRIS 1"
+                                                                    title={t('invitation_content.upload_qris_1')}
                                                                     currentImageUrl={content.gambar_qris_rekening_1}
                                                                     onUploadSuccess={(url) => updateContent({ gambar_qris_rekening_1: url })}
                                                                     onDeleteSuccess={async () => await updateContent({ gambar_qris_rekening_1: '' })}
@@ -651,23 +651,23 @@ export function InvitationContentPage() {
 
                                                 {getBool(content.flag_pakai_2_rekening) && (
                                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-3">
-                                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bank Account 2</p>
+                                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.bank_account_2')}</p>
                                                         
                                                         <div className="space-y-3 pt-2">
                                                             <div>
-                                                                <label className="label-field">Nama Bank / E-wallet</label>
+                                                                <label className="label-field">{t('invitation_content.bank_name')}</label>
                                                                 <input type="text" value={content.nama_bank_2 || ''} onChange={(e) => updateField('nama_bank_2', e.target.value)} className="input-field" />
                                                             </div>
                                                             <div>
-                                                                <label className="label-field">Nama Rekening</label>
+                                                                <label className="label-field">{t('invitation_content.account_holder')}</label>
                                                                 <input type="text" value={content.nama_rekening_bank_2 || ''} onChange={(e) => updateField('nama_rekening_bank_2', e.target.value)} className="input-field" />
                                                             </div>
                                                             {!getBool(content.flag_pakai_qris_rekening_2) && (
                                                                 <div>
-                                                                    <label className="label-field">Nomor Rekening</label>
+                                                                    <label className="label-field">{t('invitation_content.account_number')}</label>
                                                                     <input type="text" value={content.nomor_rekening_bank_2 || ''} onChange={(e) => updateField('nomor_rekening_bank_2', e.target.value)} className="input-field font-mono" />
                                                                     <p className="text-[10px] text-gray-500 mt-1 italic leading-tight">
-                                                                        * Tidak perlu diisi jika menggunakan QRIS
+                                                                        {t('invitation_content.qris_note')}
                                                                     </p>
                                                                 </div>
                                                             )}
@@ -680,13 +680,13 @@ export function InvitationContentPage() {
                                                                         checked={getBool(content.flag_pakai_qris_rekening_2)}
                                                                         onChange={(e) => updateField('flag_pakai_qris_rekening_2', e.target.checked)}
                                                                     />
-                                                                    <span className="text-sm text-gray-700 dark:text-gray-300">Pakai QRIS</span>
+                                                                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('invitation_content.use_qris')}</span>
                                                                 </label>
                                                                 {getBool(content.flag_pakai_qris_rekening_2) && (
                                                                     <div className="w-full">
                                                                         <QrisUpload
                                                                             imageType="qris_2"
-                                                                            title="Upload QRIS 2"
+                                                                            title={t('invitation_content.upload_qris_2')}
                                                                             currentImageUrl={content.gambar_qris_rekening_2}
                                                                             onUploadSuccess={(url) => updateContent({ gambar_qris_rekening_2: url })}
                                                                             onDeleteSuccess={async () => await updateContent({ gambar_qris_rekening_2: '' })}
@@ -708,28 +708,28 @@ export function InvitationContentPage() {
                                                     checked={getBool(content.flag_kirim_hadiah_offline)}
                                                     onChange={(e) => updateField('flag_kirim_hadiah_offline', e.target.checked)}
                                                 />
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Terima Hadiah Fisik (Offline Gift Delivery)</span>
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.physical_gift')}</span>
                                             </label>
 
                                             {getBool(content.flag_kirim_hadiah_offline) && (
                                                 <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4 animate-fade-in">
-                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Alamat Pengiriman Hadiah</p>
+                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('invitation_content.gift_address_title')}</p>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div>
-                                                            <label className="label-field">Nama Tempat / Penerima</label>
-                                                            <input type="text" value={content.nama_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('nama_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field" placeholder="Rumah Mempelai Wanita / Bpk. Sigit" />
+                                                            <label className="label-field">{t('invitation_content.receiver_name')}</label>
+                                                            <input type="text" value={content.nama_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('nama_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field" placeholder={t('invitation_content.receiver_placeholder')} />
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <label className="label-field mb-0">Link Google Maps (Pilihan)</label>
+                                                                <label className="label-field mb-0">{t('invitation_content.maps_link_optional')}</label>
                                                                 <button
                                                                     type="button"
-                                                                    title="Buka Google Maps"
+                                                                    title={t('invitation_content.open_maps')}
                                                                     onClick={() => window.open('https://www.google.com/maps', '_blank')}
                                                                     className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
                                                                 >
-                                                                    <HiOutlineMap className="w-3.5 h-3.5" /> Buka Google Maps
+                                                                    <HiOutlineMap className="w-3.5 h-3.5" /> {t('invitation_content.open_maps')}
                                                                 </button>
                                                             </div>
                                                             <input type="url" value={content.map_kirim_hadiah_offline || ''} onChange={(e) => updateField('map_kirim_hadiah_offline', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
@@ -738,13 +738,13 @@ export function InvitationContentPage() {
                                                                 onClick={() => setShowTutorialModal(true)}
                                                                 className="mt-2 text-[10px] inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg font-bold transition-all border border-blue-100/50 shadow-sm"
                                                             >
-                                                                <HiOutlineVideoCamera className="w-3.5 h-3.5" /> Cara Ambil Titik Google Maps
+                                                                <HiOutlineVideoCamera className="w-3.5 h-3.5" /> {t('invitation_content.how_to_get_maps')}
                                                             </button>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label className="label-field">Alamat Lengkap (Beserta Kodepos & Detail Patokan)</label>
-                                                        <textarea value={content.alamat_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('alamat_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field min-h-[80px]" placeholder="Jl. Sudirman No. 10 (Samping Warung Pak RT), Kodepos 12345..." />
+                                                        <label className="label-field">{t('invitation_content.full_address_label')}</label>
+                                                        <textarea value={content.alamat_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('alamat_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.full_address_placeholder')} />
                                                     </div>
                                                 </div>
                                             )}
@@ -752,7 +752,7 @@ export function InvitationContentPage() {
                                     </div>
                                 </AccordionItem>
 
-                                <AccordionItem id="cerita" isOpen={openAccordions.has('cerita')} onToggle={toggleAccordion} icon={<HiOutlineHeart className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title="Cerita Cinta / Love Story">
+                                <AccordionItem id="cerita" isOpen={openAccordions.has('cerita')} onToggle={toggleAccordion} icon={<HiOutlineHeart className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title={t('invitation_content.love_story_title')}>
                                     <div className="space-y-4">
                                         <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
                                             <input
@@ -761,7 +761,7 @@ export function InvitationContentPage() {
                                                 checked={getBool(content.flag_pakai_timeline_kisah)}
                                                 onChange={(e) => updateField('flag_pakai_timeline_kisah', e.target.checked)}
                                             />
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Include your love story timeline</span>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.include_love_story')}</span>
                                         </label>
 
                                         {getBool(content.flag_pakai_timeline_kisah) && (
@@ -771,13 +771,13 @@ export function InvitationContentPage() {
                                                         <button
                                                             onClick={() => setTimelineItems(timelineItems.filter((_, i) => i !== idx))}
                                                             className="absolute top-3 right-3 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-900 rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            title="Remove story"
+                                                            title={t('invitation_content.remove_story')}
                                                         >
                                                             <HiOutlineTrash className="w-4 h-4" />
                                                         </button>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
-                                                                <label className="label-field text-xs">Tanggal</label>
+                                                                <label className="label-field text-xs">{t('invitation_content.date')}</label>
                                                                 <input type="date" value={item.tanggal} onChange={(e) => {
                                                                     const newArr = [...timelineItems];
                                                                     newArr[idx].tanggal = e.target.value;
@@ -785,21 +785,21 @@ export function InvitationContentPage() {
                                                                 }} className="input-field text-sm" />
                                                             </div>
                                                             <div>
-                                                                <label className="label-field text-xs">Judul</label>
+                                                                <label className="label-field text-xs">{t('invitation_content.title')}</label>
                                                                 <input type="text" value={item.judul} onChange={(e) => {
                                                                     const newArr = [...timelineItems];
                                                                     newArr[idx].judul = e.target.value;
                                                                     setTimelineItems(newArr);
-                                                                }} className="input-field text-sm" placeholder="First Meet" />
+                                                                }} className="input-field text-sm" placeholder={t('invitation_content.first_meet_placeholder')} />
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <label className="label-field text-xs">Deskripsi</label>
+                                                            <label className="label-field text-xs">{t('invitation_content.description')}</label>
                                                             <textarea value={item.deskripsi} onChange={(e) => {
                                                                 const newArr = [...timelineItems];
                                                                 newArr[idx].deskripsi = e.target.value;
                                                                 setTimelineItems(newArr);
-                                                            }} className="input-field min-h-[60px] text-sm" placeholder="We first met at..." />
+                                                            }} className="input-field min-h-[60px] text-sm" placeholder={t('invitation_content.love_story_placeholder')} />
                                                         </div>
                                                     </div>
                                                 ))}
@@ -808,49 +808,49 @@ export function InvitationContentPage() {
                                                     className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 hover:text-gold-500 hover:border-gold-300 dark:hover:border-gold-700 hover:bg-gold-50 dark:hover:bg-gold-900/10 transition-colors flex items-center justify-center gap-2"
                                                 >
                                                     <HiOutlinePlus className="w-4 h-4" />
-                                                    Add Story Event
+                                                    {t('invitation_content.add_story_event')}
                                                 </button>
                                             </div>
                                         )}
                                     </div>
                                 </AccordionItem>
 
-                                <AccordionItem id="teks" isOpen={openAccordions.has('teks')} onToggle={toggleAccordion} icon={<HiOutlineChatAlt2 className="w-5 h-5" />} iconBg="bg-pink-50 dark:bg-pink-900/20" iconColor="text-pink-600" title="Custom Texts & Opening">
+                                <AccordionItem id="teks" isOpen={openAccordions.has('teks')} onToggle={toggleAccordion} icon={<HiOutlineChatAlt2 className="w-5 h-5" />} iconBg="bg-pink-50 dark:bg-pink-900/20" iconColor="text-pink-600" title={t('invitation_content.custom_text_title')}>
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                                             <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
                                                 <label className="flex items-center gap-3 cursor-pointer">
                                                     <input type="checkbox" className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700" checked={getBool(content.flag_pakai_kalimat_pembuka_custom)} onChange={(e) => updateField('flag_pakai_kalimat_pembuka_custom', e.target.checked)} />
-                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Use Custom Opening Text</span>
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.use_custom_opening')}</span>
                                                 </label>
                                                 {getBool(content.flag_pakai_kalimat_pembuka_custom) && (
-                                                    <textarea value={content.kalimat_pembuka_undangan || ''} onChange={(e) => updateField('kalimat_pembuka_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder="Bismillah... Dengan memohon rahmat Allah..." />
+                                                    <textarea value={content.kalimat_pembuka_undangan || ''} onChange={(e) => updateField('kalimat_pembuka_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.opening_placeholder')} />
                                                 )}
                                             </div>
                                             <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
                                                 <label className="flex items-center gap-3 cursor-pointer">
                                                     <input type="checkbox" className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700" checked={getBool(content.flag_pakai_kalimat_penutup_custom)} onChange={(e) => updateField('flag_pakai_kalimat_penutup_custom', e.target.checked)} />
-                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Use Custom Closing Text</span>
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.use_custom_closing')}</span>
                                                 </label>
                                                 {getBool(content.flag_pakai_kalimat_penutup_custom) && (
-                                                    <textarea value={content.kalimat_penutup_undangan || ''} onChange={(e) => updateField('kalimat_penutup_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder="Merupakan suatu kehormatan..." />
+                                                    <textarea value={content.kalimat_penutup_undangan || ''} onChange={(e) => updateField('kalimat_penutup_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.closing_placeholder')} />
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="label-field">Kutipan (Teks Kustom 1)</label>
-                                                <textarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. And of His signs is that He created for you..." />
+                                                <label className="label-field">{t('invitation_content.quote_label')}</label>
+                                                <textarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.quote_placeholder')} />
                                             </div>
                                             <div>
-                                                <label className="label-field">Teks Sambutan (Teks Kustom 2)</label>
-                                                <textarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. It is a joy and privilege to invite you..." />
+                                                <label className="label-field">{t('invitation_content.welcome_text_label')}</label>
+                                                <textarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.welcome_text_placeholder')} />
                                             </div>
                                             <div>
-                                                <label className="label-field">Protokol / Teks Kesehatan (Teks Kustom 3)</label>
-                                                <textarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Please follow health protocols..." />
+                                                <label className="label-field">{t('invitation_content.protocol_text_label')}</label>
+                                                <textarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.protocol_text_placeholder')} />
                                             </div>
                                             <div>
-                                                <label className="label-field">Teks Tambahan Footer (Teks Kustom 4)</label>
-                                                <textarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field min-h-[80px]" placeholder="e.g. Your presence is the best gift for us." />
+                                                <label className="label-field">{t('invitation_content.footer_text_label')}</label>
+                                                <textarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.footer_text_placeholder')} />
                                             </div>
                                         </div>
                                     </div>
@@ -866,9 +866,9 @@ export function InvitationContentPage() {
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
                                             <HiOutlinePhotograph className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Galeri & Foto Undangan</h2>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.gallery_title')}</h2>
                                     </div>
-                                    <p className="text-sm text-gray-500 mb-6">Upload gambar sesuai kebutuhan variabel tema yang Anda pilih.</p>
+                                    <p className="text-sm text-gray-500 mb-6">{t('invitation_content.gallery_description')}</p>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {(() => {
                                             const activeTheme = themes.find(t => t.id === selectedThemeId);
@@ -898,13 +898,13 @@ export function InvitationContentPage() {
                                                     {typesList.includes('gallery') && (
                                                         <div className="col-span-full mt-6 border-t border-gray-100 dark:border-gray-800 pt-6">
                                                             <div className="flex items-center justify-between mb-4">
-                                                                <h3 className="text-md font-semibold text-gray-800 dark:text-white">Foto Album (Multi Image)</h3>
+                                                                <h3 className="text-md font-semibold text-gray-800 dark:text-white">{t('invitation_content.album_photo')}</h3>
                                                                 {(() => {
                                                                     const maxGallery = tenant?.plan_type === 'premium' ? 15 : tenant?.plan_type === 'pro' ? 10 : 5;
                                                                     const currentCount = images.filter(img => img.image_type === 'gallery').length;
                                                                     return (
                                                                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${currentCount >= maxGallery ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'}`}>
-                                                                            {currentCount} / {maxGallery} Foto (Paket {tenant?.plan_type || 'basic'})
+                                                                            {currentCount} / {maxGallery} {t('invitation_content.photos')} ({t('invitation_content.plan_label')} {tenant?.plan_type || 'basic'})
                                                                         </span>
                                                                     );
                                                                 })()}
@@ -914,7 +914,7 @@ export function InvitationContentPage() {
                                                                     <div key={img.id} className="relative group">
                                                                         <ImageUpload
                                                                             imageType="gallery"
-                                                                            title={`Gallery`}
+                                                                            title={t('invitation_content.gallery_label')}
                                                                             currentImage={img}
                                                                             onUploadSuccess={() => { }}
                                                                             onDeleteSuccess={removeImageLocally}
@@ -930,7 +930,7 @@ export function InvitationContentPage() {
                                                                     return currentCount < maxGallery ? (
                                                                         <ImageUpload
                                                                             imageType="gallery"
-                                                                            title="Tambah Foto Album"
+                                                                            title={t('invitation_content.add_album_photo')}
                                                                             allowMultiple={true}
                                                                             maxFiles={remainingCount}
                                                                             onUploadSuccess={addImage}
@@ -958,12 +958,12 @@ export function InvitationContentPage() {
                                         <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600">
                                             <HiOutlineMusicNote className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Music Background</h2>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.music_background')}</h2>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="label-field">Link Musik Latar (URL YouTube)</label>
+                                        <label className="label-field">{t('invitation_content.music_url_label')}</label>
                                         <input type="text" autoComplete="off" value={content.link_backsound_music || ''} onChange={(e) => updateField('link_backsound_music', e.target.value)} className="input-field" placeholder="https://youtube.com/watch?v=..." />
-                                        <p className="text-[10px] text-gray-400 mt-1">Gunakan link full URL dari YouTube</p>
+                                        <p className="text-[10px] text-gray-400 mt-1">{t('invitation_content.music_url_note')}</p>
                                     </div>
                                 </div>
 
@@ -973,7 +973,7 @@ export function InvitationContentPage() {
                                         <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
                                             <HiOutlineVideoCamera className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Live Streaming</h2>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.live_streaming')}</h2>
                                     </div>
                                     <div className="space-y-4">
                                         <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
@@ -983,17 +983,17 @@ export function InvitationContentPage() {
                                                 checked={getBool(content.flag_pakai_live_streaming)}
                                                 onChange={(e) => updateField('flag_pakai_live_streaming', e.target.checked)}
                                             />
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aktifkan Fitur Live Streaming</span>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.enable_live_streaming')}</span>
                                         </label>
 
                                         {getBool(content.flag_pakai_live_streaming) && (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                                                 <div>
-                                                    <label className="label-field">Platform (misal: YouTube, Zoom)</label>
+                                                    <label className="label-field">{t('invitation_content.streaming_platform')}</label>
                                                     <input type="text" autoComplete="off" value={content.platform_live_streaming || ''} onChange={(e) => updateField('platform_live_streaming', e.target.value)} className="input-field" placeholder="YouTube" />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Link Live Streaming / URL Meeting</label>
+                                                    <label className="label-field">{t('invitation_content.streaming_link')}</label>
                                                     <input type="url" autoComplete="off" value={content.link_live_streaming || ''} onChange={(e) => updateField('link_live_streaming', e.target.value)} className="input-field" placeholder="https://..." />
                                                 </div>
                                             </div>
@@ -1011,7 +1011,7 @@ export function InvitationContentPage() {
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
                                             <HiOutlineColorSwatch className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Pilih Tema Undangan</h2>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.choose_theme_title')}</h2>
                                     </div>
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         {(() => {
@@ -1028,7 +1028,7 @@ export function InvitationContentPage() {
                                             });
 
                                             if (filteredThemes.length === 0) {
-                                                return <p className="text-gray-500 text-sm">Belum ada tema yang tersedia untuk plan {tenant?.plan_type}.</p>;
+                                                return <p className="text-gray-500 text-sm">{t('invitation_content.no_theme_available', { plan: tenant?.plan_type })}</p>;
                                             }
 
                                             return filteredThemes.map(theme => (
@@ -1088,7 +1088,7 @@ export function InvitationContentPage() {
                             className={`btn-secondary flex items-center gap-2 px-6 ${currentStep === 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
                         >
                             <HiOutlineChevronLeft className="w-5 h-5" />
-                            Sebelumnya
+                            {t('common.previous')}
                         </button>
                         <button
                             type="button"
@@ -1101,7 +1101,7 @@ export function InvitationContentPage() {
                         >
                             {currentStep < 4 ? (
                                 <>
-                                    Selanjutnya
+                                    {t('common.next')}
                                     <HiOutlineChevronRight className="w-5 h-5" />
                                 </>
                             ) : (
@@ -1109,12 +1109,12 @@ export function InvitationContentPage() {
                                     {saving || isUploadingGallery ? (
                                         <>
                                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            {isUploadingGallery ? 'Mengupload Foto...' : 'Menyimpan...'}
+                                            {isUploadingGallery ? t('invitation_content.uploading_photos') : t('common.saving')}
                                         </>
                                     ) : (
                                         <>
                                             <HiOutlineSave className="w-5 h-5" />
-                                            Simpan Pengaturan
+                                            {t('invitation_content.save_settings')}
                                         </>
                                     )}
                                 </>
@@ -1157,7 +1157,7 @@ export function InvitationContentPage() {
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 text-sm text-center px-6">
-                                    Domain slug not set. Update tenant settings first.
+                                    {t('invitation_content.preview_not_available')}
                                 </div>
                             )}
                         </div>
@@ -1193,26 +1193,26 @@ export function InvitationContentPage() {
                 <Modal
                     isOpen={blocker.state === 'blocked'}
                     onClose={() => blocker.reset?.()}
-                    title="Perubahan Belum Disimpan"
+                    title={t('common.unsaved_changes')}
                 >
                     <div className="space-y-6">
                         <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
                             <div className="flex gap-3 text-amber-800 dark:text-amber-400">
                                 <HiOutlineSave className="w-5 h-5 shrink-0 mt-0.5" />
                                 <div className="text-sm">
-                                    <p className="font-semibold text-base mb-1">Konfirmasi Meninggalkan Halaman</p>
-                                    <p>Anda memiliki beberapa perubahan data yang belum disimpan. Jika Anda meninggalkan halaman ini sekarang, perubahan tersebut akan hilang.</p>
+                                    <p className="font-semibold text-base mb-1">{t('common.confirm_leave_title')}</p>
+                                    <p>{t('common.confirm_leave_message')}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex items-center justify-end gap-3">
-                            <button onClick={() => blocker.reset?.()} className="btn-ghost">Batal, Tetap di Sini</button>
+                            <button onClick={() => blocker.reset?.()} className="btn-ghost">{t('common.cancel_stay')}</button>
                             <button 
                                 onClick={() => blocker.proceed?.()} 
                                 className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-6 rounded-lg font-semibold transition-colors"
                             >
-                                Ya, Pergi & Buang Perubahan
+                                {t('common.confirm_leave_action')}
                             </button>
                         </div>
                     </div>

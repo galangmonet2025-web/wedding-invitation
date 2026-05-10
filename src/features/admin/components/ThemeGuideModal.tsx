@@ -50,10 +50,12 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
         });
     };
 
-    const imageVariables = imageTypes.map(imgType => ({
+    const safeImageTypes = Array.isArray(imageTypes) ? imageTypes : [];
+
+    const imageVariables = safeImageTypes.map(imgType => ({
         tag: `{{${imgType}}}`,
         desc: `(Dinamis) URL Gambar: ${imgType}`,
-        value: 'https://images.unsplash... (dummy)',
+        value: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop',
         type: 'URL String',
         code: `<img src="{{${imgType}}}" alt="${imgType}" />`
     }));

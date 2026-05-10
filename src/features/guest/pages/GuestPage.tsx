@@ -146,8 +146,8 @@ export function GuestPage() {
         { header: t('common.category'), key: 'category' },
         { header: t('common.status'), key: 'status' },
         { header: t('guests.num_guests'), key: 'number_of_guests' },
-        { header: 'Status Ucapan', key: 'flag_sudah_isi_ucapan' },
-        { header: 'Status Hadiah', key: 'flag_sudah_kirim_hadiah' },
+        { header: t('guests.wish_status'), key: 'flag_sudah_isi_ucapan' },
+        { header: t('guests.gift_status'), key: 'flag_sudah_kirim_hadiah' },
     ];
 
     const handleExportExcel = () => {
@@ -225,20 +225,20 @@ export function GuestPage() {
         { key: 'number_of_guests', header: t('guests.num_guests') },
         {
             key: 'flag_sudah_isi_ucapan',
-            header: 'Ucapan',
+            header: t('dashboard.wishes'),
             render: (g: Guest) => g.flag_sudah_isi_ucapan ? (
-                <span className="badge-success text-[10px]">✅ Sudah</span>
+                <span className="badge-success text-[10px]">✅ {t('guests.status_yes')}</span>
             ) : (
-                <span className="badge-secondary text-[10px]">⏳ Belum</span>
+                <span className="badge-secondary text-[10px]">⏳ {t('guests.status_no')}</span>
             ),
         },
         {
             key: 'flag_sudah_kirim_hadiah',
-            header: 'Hadiah',
+            header: t('dashboard.gifts'),
             render: (g: Guest) => g.flag_sudah_kirim_hadiah ? (
-                <span className="badge-success text-[10px]">✅ Sudah</span>
+                <span className="badge-success text-[10px]">✅ {t('guests.status_yes')}</span>
             ) : (
-                <span className="badge-secondary text-[10px]">⏳ Belum</span>
+                <span className="badge-secondary text-[10px]">⏳ {t('guests.status_no')}</span>
             ),
         },
         {
@@ -573,7 +573,7 @@ export function GuestPage() {
                                             title="Live Preview"
                                         />
                                         <div className="absolute top-3 right-3 bg-black/60 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-md pointer-events-none">
-                                            Live
+                                            {t('guests.live')}
                                         </div>
                                     </div>
                                 </div>
@@ -593,7 +593,7 @@ export function GuestPage() {
                         <div className="flex gap-3 text-red-800 dark:text-red-400">
                             <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
                             <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
+                                <p className="font-semibold text-base mb-1">{t('guests.confirm_delete')}</p>
                                 <p>{t('guests.delete_confirm')}</p>
                             </div>
                         </div>

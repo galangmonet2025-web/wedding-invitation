@@ -45,7 +45,7 @@ export function LoginPage() {
         setErrorMsg(null);
 
         if (!username.trim() || !password.trim()) {
-            setErrorMsg('Harap isi semua kolom terlebih dahulu.');
+            setErrorMsg(t('auth.fill_all_fields'));
             return;
         }
 
@@ -72,9 +72,15 @@ export function LoginPage() {
                 payment_deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                 status_payment: 'Sudah dibayar' as const
             };
+            const targetPath = fakeSuperAdminUser.role === 'superadmin' 
+                ? '/#/private/global-dashboard' 
+                : '/#/private/dashboard';
+            
             setAuth('dummy-superadmin-token', fakeSuperAdminUser, mockTenant);
-            toast.success('Welcome back, Super Admin! 👑');
-            navigate('/private/global-dashboard');
+            toast.success(t('auth.welcome_superadmin'));
+            
+            // Force a full page reload to clear all SPA state/stores for the new session
+            window.location.href = window.location.origin + window.location.pathname + targetPath;
             return;
         }
         // ------------------------------------------------
@@ -84,20 +90,19 @@ export function LoginPage() {
             const response = await authApi.login({ username, password });
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
-                toast.success('Welcome back! 🎉');
-                if (response.data.user.role === 'superadmin') {
-                    navigate('/private/global-dashboard');
-                } else if (response.data.user.role === 'staff') {
-                    navigate('/private/scanner');
-                } else {
-                    navigate('/private/dashboard');
-                }
+                toast.success(t('auth.welcome_back_toast'));
+                const targetPath = response.data.user.role === 'superadmin' 
+                    ? '/#/private/global-dashboard' 
+                    : (response.data.user.role === 'staff' ? '/#/private/scanner' : '/#/private/dashboard');
+                
+                // Force a full page reload to clear all SPA state/stores for the new session
+                window.location.href = window.location.origin + window.location.pathname + targetPath;
             } else {
-                setErrorMsg(response.message || 'Username atau password salah.');
+                setErrorMsg(response.message || t('auth.invalid_credentials'));
             }
         } catch (error: unknown) {
             const msg = (error instanceof Error) ? error.message : null;
-            setErrorMsg(msg || 'Login gagal. Periksa koneksi internet Anda dan coba lagi.');
+            setErrorMsg(msg || t('auth.network_error'));
         } finally {
             setLoading(false);
         }
@@ -118,9 +123,9 @@ export function LoginPage() {
                     <Link to="/home" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group">
                         <HiOutlineHeart className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
                     </Link>
-                    <h1 className="text-4xl font-display font-bold mb-4 text-center">Wedding SaaS Platform</h1>
+                    <h1 className="text-4xl font-display font-bold mb-4 text-center">{t('auth.platform_title')}</h1>
                     <p className="text-lg text-white/80 text-center max-w-md leading-relaxed">
-                        Kelola berbagai acara pernikahan dengan elegan. Sistem manajemen undangan pernikahan digital yang lengkap.
+                        {t('auth.platform_desc')}
                     </p>
                     <div className="mt-12 flex items-center gap-8">
                         <div className="text-center">
@@ -174,7 +179,7 @@ export function LoginPage() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     className="input-field pl-12"
-                                    placeholder={t('auth.username_placeholder', 'Enter your username')}
+                                    placeholder={t('auth.username_field_placeholder')}
                                     autoComplete="username"
                                 />
                             </div>
@@ -191,7 +196,7 @@ export function LoginPage() {
                                     value={password}
                                     onChange={(e) => { setPassword(e.target.value); setErrorMsg(null); }}
                                     className={`input-field pl-12 ${errorMsg ? 'border-red-400 dark:border-red-500 focus:ring-red-400' : ''}`}
-                                    placeholder={t('auth.password_placeholder', 'Enter your password')}
+                                    placeholder={t('auth.password_field_placeholder')}
                                     autoComplete="current-password"
                                 />
                             </div>

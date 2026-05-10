@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { HiX, HiCheckCircle, HiCalendar, HiLocationMarker, HiClock } from 'react-icons/hi';
+import { useTranslation } from 'react-i18next';
 
 interface RSVPSuccessModalProps {
     isOpen: boolean;
@@ -15,6 +16,7 @@ interface RSVPSuccessModalProps {
 }
 
 export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProps) {
+    const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -42,9 +44,9 @@ export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProp
 
                 {/* Content */}
                 <div className="p-8 flex flex-col items-center text-center">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Terima Kasih!</h2>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('modals.rsvp_success.title')}</h2>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">
-                        Konfirmasi kehadiran Anda telah kami terima.
+                        {t('modals.rsvp_success.description')}
                     </p>
 
                     {/* Event Detail Box */}
@@ -52,7 +54,7 @@ export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProp
                         <div className="flex items-start gap-3">
                             <HiCalendar className="w-5 h-5 text-gold-500 mt-0.5 flex-shrink-0" />
                             <div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Acara</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">{t('modals.rsvp_success.event')}</p>
                                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{data.title}</p>
                             </div>
                         </div>
@@ -60,7 +62,7 @@ export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProp
                         <div className="flex items-start gap-3">
                             <HiClock className="w-5 h-5 text-gold-500 mt-0.5 flex-shrink-0" />
                             <div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Waktu</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">{t('modals.rsvp_success.time')}</p>
                                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{data.date}, {data.time}</p>
                             </div>
                         </div>
@@ -68,7 +70,7 @@ export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProp
                         <div className="flex items-start gap-3">
                             <HiLocationMarker className="w-5 h-5 text-gold-500 mt-0.5 flex-shrink-0" />
                             <div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Lokasi</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">{t('modals.rsvp_success.location')}</p>
                                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 line-clamp-2">{data.location}</p>
                             </div>
                         </div>
@@ -82,14 +84,14 @@ export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProp
                         className="w-full mt-8 flex items-center justify-center gap-3 py-4 px-6 bg-white border-2 border-[#4285F4] text-[#4285F4] rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-lg shadow-blue-500/10 active:scale-[0.98]"
                     >
                         <HiCalendar className="w-6 h-6" />
-                        Simpan ke Google Calendar
+                        {t('modals.rsvp_success.save_calendar')}
                     </a>
 
                     <button
                         onClick={onClose}
                         className="mt-6 text-sm text-gray-400 hover:text-gray-600 font-medium transition-all"
                     >
-                        Tutup
+                        {t('common.close')}
                     </button>
                 </div>
             </div>

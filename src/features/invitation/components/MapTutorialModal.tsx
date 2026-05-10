@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineX, HiOutlineDeviceMobile, HiOutlineDesktopComputer, HiOutlineChatAlt } from 'react-icons/hi';
+import { useTranslation } from 'react-i18next';
 
 interface MapTutorialModalProps {
     isOpen: boolean;
@@ -29,6 +30,7 @@ const tutorials = [
 ];
 
 export function MapTutorialModal({ isOpen, onClose }: MapTutorialModalProps) {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('hp');
     const iframeRefs = useRef<{ [key: string]: HTMLIFrameElement | null }>({});
 
@@ -66,8 +68,8 @@ export function MapTutorialModal({ isOpen, onClose }: MapTutorialModalProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-800">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Cara Ambil Titik Google Maps</h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Ikuti panduan video di bawah ini</p>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white">{t('modals.map_tutorial.title')}</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">{t('modals.map_tutorial.subtitle')}</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -121,7 +123,7 @@ export function MapTutorialModal({ isOpen, onClose }: MapTutorialModalProps) {
                 {/* Footer */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-800/40 border-t border-gray-100 dark:border-gray-800">
                     <p className="text-xs text-center text-gray-400 font-medium">
-                        Tips: Pastikan titik koordinat sudah tepat sebelum menyalin link.
+                        {t('modals.map_tutorial.tips')}
                     </p>
                 </div>
             </div>

@@ -141,7 +141,7 @@ export function RegisterPage() {
 
                 // Both taken
                 setSlugStatus({
-                    message: t('auth.slug_conflict_error', 'Kedua kombinasi slug (pria-wanita & wanita-pria) sudah dipakai. Silakan isi slug manual.'),
+                    message: t('auth.slug_conflict_error'),
                     isConflict: true
                 });
                 setIsAutoSlug(false); // Enable manual input
@@ -163,7 +163,7 @@ export function RegisterPage() {
         const missingField = requiredFields.find(field => !String((form as any)[field] || '').trim());
         
         if (missingField) {
-            toast.error(t('auth.fill_all_fields', 'Please fill in all fields'));
+            toast.error(t('auth.fill_all_fields'));
             return;
         }
 
@@ -172,13 +172,13 @@ export function RegisterPage() {
             const response = await authApi.registerTenant(form);
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
-                toast.success(t('auth.register_success', 'Wedding registered successfully! 🎊'));
+                toast.success(t('auth.register_success'));
                 navigate('/private/dashboard');
             } else {
-                toast.error(response.message || t('auth.register_failed', 'Registration failed'));
+                toast.error(response.message || t('auth.register_failed'));
             }
         } catch (error: unknown) {
-            toast.error(t('auth.register_error', 'Registration failed. Please try again.'));
+            toast.error(t('auth.register_error'));
         } finally {
             setLoading(false);
         }
@@ -253,7 +253,7 @@ export function RegisterPage() {
                                     value={form.groom_name}
                                     onChange={handleChange}
                                     className="input-field"
-                                    placeholder="Groom Full Name"
+                                    placeholder={t('auth.groom_name_placeholder')}
                                 />
                             </div>
                             <div>
@@ -265,11 +265,11 @@ export function RegisterPage() {
                                     value={form.bride_name}
                                     onChange={handleChange}
                                     className="input-field"
-                                    placeholder="Bride Full Name"
+                                    placeholder={t('auth.bride_name_placeholder')}
                                 />
                             </div>
                             <div>
-                                <label htmlFor="religion" className="label-field">Agama</label>
+                                <label htmlFor="religion" className="label-field">{t('auth.religion_label')}</label>
                                 <select
                                     id="religion"
                                     name="religion"
@@ -277,17 +277,17 @@ export function RegisterPage() {
                                     onChange={handleChange}
                                     className="input-field"
                                 >
-                                    <option value="" disabled>Pilih Agama</option>
-                                    <option value="Islam">Islam</option>
-                                    <option value="Kristen Protestan">Kristen Protestan</option>
-                                    <option value="Katolik">Katolik</option>
-                                    <option value="Hindu">Hindu</option>
-                                    <option value="Buddha">Buddha</option>
-                                    <option value="Konghucu">Konghucu</option>
+                                    <option value="" disabled>{t('auth.religion_placeholder')}</option>
+                                    <option value="Islam">{t('auth.religions.islam')}</option>
+                                    <option value="Kristen Protestan">{t('auth.religions.protestant')}</option>
+                                    <option value="Katolik">{t('auth.religions.catholic')}</option>
+                                    <option value="Hindu">{t('auth.religions.hindu')}</option>
+                                    <option value="Buddha">{t('auth.religions.buddha')}</option>
+                                    <option value="Konghucu">{t('auth.religions.confucian')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="plan_type" className="label-field">Tipe Plan</label>
+                                <label htmlFor="plan_type" className="label-field">{t('auth.plan_type_label')}</label>
                                 <select
                                     id="plan_type"
                                     name="plan_type"
@@ -295,9 +295,9 @@ export function RegisterPage() {
                                     onChange={handleChange}
                                     className="input-field"
                                 >
-                                    <option value="basic">Basic (100 Tamu)</option>
-                                    <option value="pro">Pro (500 Tamu)</option>
-                                    <option value="premium">Premium (1000 Tamu)</option>
+                                    <option value="basic">{t('auth.plan_basic')}</option>
+                                    <option value="pro">{t('auth.plan_pro')}</option>
+                                    <option value="premium">{t('auth.plan_premium')}</option>
                                 </select>
                             </div>
                             
@@ -378,7 +378,7 @@ export function RegisterPage() {
                                     value={form.username}
                                     onChange={handleChange}
                                     className="input-field pl-12"
-                                    placeholder="Admin username"
+                                    placeholder={t('auth.username_placeholder')}
                                     autoComplete="username"
                                 />
                             </div>
@@ -395,7 +395,7 @@ export function RegisterPage() {
                                     value={form.password}
                                     onChange={handleChange}
                                     className="input-field pl-12"
-                                    placeholder="Min 6 characters"
+                                    placeholder={t('auth.password_hint')}
                                     autoComplete="new-password"
                                 />
                             </div>

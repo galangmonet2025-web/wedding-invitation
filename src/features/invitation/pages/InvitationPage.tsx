@@ -4,6 +4,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
 import type { Wish, InvitationContent, TimelineItem, ImageRecord } from '@/types';
 import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '@/shared/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
@@ -36,6 +37,7 @@ interface InvitationPageProps {
 export function InvitationPage({ previewData }: InvitationPageProps) {
     const { slug } = useParams<{ slug: string }>();
     const location = useLocation();
+    const { t, i18n } = useTranslation();
     const [data, setData] = useState<InvitationData | null>(null);
     const [loading, setLoading] = useState(!previewData); // Only load if not previewing
     const [error, setError] = useState('');
@@ -45,7 +47,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [resolvedImages, setResolvedImages] = useState<Record<string, string> | null>(null);
 
     const [showGuestForm, setShowGuestForm] = useState(false);
-    const [tempGuestData, setTempGuestData] = useState({ name: '', category: 'Tamu' });
+    const [tempGuestData, setTempGuestData] = useState({ name: '', category: t('invitation.guest_categories.general_guest') });
     const [generatedUninvitedQR, setGeneratedUninvitedQR] = useState<string | null>(null);
     const [isCheckingGuest, setIsCheckingGuest] = useState(false);
 
@@ -89,12 +91,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // Update Page Title
     useEffect(() => {
         if (data && data.tenant) {
-            document.title = `The Wedding of ${data.tenant.bride_name} & ${data.tenant.groom_name} | Wedding Invitation`;
+            document.title = t('invitation.page_title', { bride: data.tenant.bride_name, groom: data.tenant.groom_name });
         }
         return () => {
-            document.title = 'Digital Wedding Invitation - You are Invited!';
+            document.title = t('invitation.default_title');
         };
-    }, [data?.tenant]);
+    }, [data?.tenant, t]);
 
     useEffect(() => {
         const musicLink = activeContent.link_backsound_music;
@@ -340,7 +342,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const guests = manualData?.guests || rsvpGuests;
         const code = manualData?.code || rsvpCode;
 
-        if (!code.trim()) return { success: false, message: 'Kode undangan wajib diisi' };
+        if (!code.trim()) return { success: false, message: t('invitation.rsvp_code_required') };
 
         setRsvpLoading(true);
         setRsvpResult(null);
@@ -357,7 +359,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
                 // Generate Google Calendar Link
                 try {
-                    const eventTitle = `Pernikahan ${tenant.groom_name} & ${tenant.bride_name}`;
+                    const eventTitle = t('invitation.page_title', { bride: tenant.bride_name, groom: tenant.groom_name }).split('|')[0].trim();
                     const startDate = activeContent.wedding_date || tenant.wedding_date;
                     const startTime = activeContent.jam_awal_resepsi || '08:00';
                     const endTime = activeContent.jam_akhir_resepsi;
@@ -377,7 +379,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         title: eventTitle,
                         date: startDate,
                         time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
-                        location: location || 'Lokasi Resepsi',
+                        location: location || t('invitation.resepsi'),
                         calendarUrl: calendarUrl
                     });
                     setIsRSVPModalOpen(true);
@@ -400,7 +402,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             setRsvpResult(result);
             return result;
         } catch {
-            const errorResult = { success: false, message: 'Gagal mengirim konfirmasi' };
+            const errorResult = { success: false, message: t('invitation.system_error') };
             setRsvpResult(errorResult);
             return errorResult;
         } finally {
@@ -414,7 +416,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const name = manualData?.name || wishName;
         const message = manualData?.message || wishMessage;
 
-        if (!name.trim() || !message.trim()) return { success: false, message: 'Nama dan pesan wajib diisi' };
+        if (!name.trim() || !message.trim()) return { success: false, message: t('invitation.wish_required') };
 
         setWishLoading(true);
         try {
@@ -435,11 +437,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         guest: { ...data.guest, flag_sudah_isi_ucapan: true }
                     });
                 }
-                return { success: true, message: 'Ucapan berhasil terkirim!', data: newWish };
+                return { success: true, message: t('invitation.wish_success'), data: newWish };
             }
-            return { success: false, message: res.message || 'Gagal mengirim ucapan' };
+            return { success: false, message: res.message || t('invitation.wish_failed') };
         } catch {
-            return { success: false, message: 'Terjadi kesalahan sistem' };
+            return { success: false, message: t('invitation.system_error') };
         } finally {
             setWishLoading(false);
         }
@@ -450,7 +452,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const amount = manualData?.amount || 0;
         const bank = manualData?.bank || '';
 
-        if (!name.trim() || !bank.trim() || amount <= 0) return { success: false, message: 'Data hadiah tidak valid' };
+        if (!name.trim() || !bank.trim() || amount <= 0) return { success: false, message: t('invitation.gift_invalid') };
 
         try {
             const res = await publicApi.submitGift({
@@ -467,11 +469,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         guest: { ...data.guest, flag_sudah_kirim_hadiah: true }
                     });
                 }
-                return { success: true, message: 'Konfirmasi hadiah berhasil terkirim!' };
+                return { success: true, message: t('invitation.gift_success') };
             }
-            return { success: false, message: res.message || 'Gagal mengirim konfirmasi hadiah' };
+            return { success: false, message: res.message || t('invitation.gift_failed') };
         } catch {
-            return { success: false, message: 'Terjadi kesalahan sistem' };
+            return { success: false, message: t('invitation.system_error') };
         }
     };
 
@@ -498,7 +500,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     const formatDate = (dateStr: string) => {
         try {
-            return new Date(dateStr).toLocaleDateString('id-ID', {
+            return new Date(dateStr).toLocaleDateString(i18n.language === 'id' ? 'id-ID' : 'en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -514,14 +516,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             const date = new Date(dateStr);
             const diff = Date.now() - date.getTime();
             const mins = Math.floor(diff / 60000);
-            if (mins < 1) return 'Baru saja';
-            if (mins < 60) return `${mins} menit lalu`;
+            if (mins < 1) return t('invitation.time.just_now');
+            if (mins < 60) return t('invitation.time.minutes_ago', { count: mins });
             const hours = Math.floor(mins / 60);
-            if (hours < 24) return `${hours} jam lalu`;
+            if (hours < 24) return t('invitation.time.hours_ago', { count: hours });
             const days = Math.floor(hours / 24);
-            if (days <= 3) return `${days} hari lalu`;
+            if (days <= 3) return t('invitation.time.days_ago', { count: days });
 
-            return date.toLocaleDateString('id-ID', {
+            return date.toLocaleDateString(i18n.language === 'id' ? 'id-ID' : 'en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -548,7 +550,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         <Modal
             isOpen={showQRModal}
             onClose={() => setShowQRModal(false)}
-            title="QR Code Kehadiran"
+            title={t('invitation.qr_modal_title')}
             size="sm"
         >
             <div className="flex flex-col items-center gap-4 py-4 w-full text-center">
@@ -566,7 +568,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     <p className="text-gold-600 font-mono text-sm mt-1">{data.guest.invitation_code}</p>
                 </div>
                 <p className="text-sm text-gray-500 mt-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                    Pindai QR Code ini pada saat Anda tiba di lokasi acara untuk konfirmasi kedatangan.
+                    {t('invitation.qr_modal_desc')}
                 </p>
             </div>
         </Modal>
@@ -576,39 +578,39 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         <Modal
             isOpen={showGuestForm}
             onClose={() => setShowGuestForm(false)}
-            title={generatedUninvitedQR ? "QR Code Kehadiran" : "Isi Data Kehadiran"}
+            title={generatedUninvitedQR ? t('invitation.qr_modal_title') : t('invitation.uninvited_form_title')}
         >
             {!generatedUninvitedQR ? (
                 <div className="py-4 space-y-4">
                     <p className="text-sm text-gray-500 mb-4">
-                        Untuk mempercepat proses check-in di lokasi acara, silakan lengkapi data diri Anda terlebih dahulu.
+                        {t('invitation.uninvited_form_desc')}
                     </p>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Nama Lengkap
+                            {t('invitation.full_name')}
                         </label>
                         <input
                             type="text"
                             value={tempGuestData.name}
                             onChange={(e) => setTempGuestData({ ...tempGuestData, name: e.target.value })}
                             className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                            placeholder="Masukkan nama Anda"
+                            placeholder={t('invitation.full_name_placeholder')}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Kategori Tamu
+                            {t('invitation.guest_category')}
                         </label>
                         <select
                             value={tempGuestData.category}
                             onChange={(e) => setTempGuestData({ ...tempGuestData, category: e.target.value })}
                             className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                         >
-                            <option value="Keluarga Laki-laki">Keluarga Laki-laki</option>
-                            <option value="Keluarga Perempuan">Keluarga Perempuan</option>
-                            <option value="Teman/Rekan Kerja">Teman/Rekan Kerja</option>
-                            <option value="Tamu Undangan">Tamu Undangan Umum</option>
-                            <option value="VIP">VIP</option>
+                            <option value="Keluarga Laki-laki">{t('invitation.guest_categories.groom_family')}</option>
+                            <option value="Keluarga Perempuan">{t('invitation.guest_categories.bride_family')}</option>
+                            <option value="Teman/Rekan Kerja">{t('invitation.guest_categories.work_friends')}</option>
+                            <option value="Tamu Undangan">{t('invitation.guest_categories.general_guest')}</option>
+                            <option value="VIP">{t('invitation.guest_categories.vip')}</option>
                         </select>
                     </div>
                     <div className="pt-4 flex justify-end">
@@ -628,7 +630,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                     }
 
                                     if (res.data?.exists) {
-                                        toast.error(`Nama '${tempGuestData.name.trim()}' sudah ada di daftar. Mohon tambahkan inisial, gelar, atau keterangan lain sebagai pembeda.`, { duration: 5000 });
+                                        toast.error(t('invitation.guest_exists_error', { name: tempGuestData.name.trim() }), { duration: 5000 });
                                     } else {
                                         setGeneratedUninvitedQR(`NEW_GUEST:${tempGuestData.name.trim()}:${tempGuestData.category}`);
                                     }
@@ -644,10 +646,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                             {isCheckingGuest ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Memeriksa...
+                                    {t('invitation.checking')}
                                 </>
                             ) : (
-                                'Buat QR Code'
+                                t('invitation.generate_qr')
                             )}
                         </button>
                     </div>
@@ -672,11 +674,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         onClick={() => setGeneratedUninvitedQR(null)}
                         className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-medium cursor-pointer text-sm w-full md:w-auto mt-2"
                     >
-                        Koreksi Data
+                        {t('invitation.correct_data')}
                     </button>
 
                     <p className="text-sm text-gray-500 mt-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                        Pindai QR Code ini pada saat Anda tiba di lokasi acara untuk konfirmasi kedatangan.
+                        {t('invitation.qr_modal_desc')}
                     </p>
                 </div>
             )}

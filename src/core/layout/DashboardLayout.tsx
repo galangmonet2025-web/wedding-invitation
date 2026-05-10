@@ -74,7 +74,9 @@ export function DashboardLayout() {
         logout();
         sessionStorage.removeItem('review_fill_later');
         sessionStorage.removeItem('review_checked_this_session');
-        navigate('/login');
+        
+        // Force a full page reload on logout to wipe memory and prevent session leakage
+        window.location.href = window.location.origin + window.location.pathname + '#/login';
     };
 
     const navItems = !showTenantMenu
