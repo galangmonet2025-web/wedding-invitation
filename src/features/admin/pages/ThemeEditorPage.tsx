@@ -125,7 +125,13 @@ export function ThemeEditorPage() {
         doc.querySelectorAll('[data-bg]').forEach(el => {
             const varName = el.getAttribute('data-bg');
             el.removeAttribute('data-bg');
-            (el as HTMLElement).style.backgroundImage = `url('{{${varName}}}')`;
+            const htmlEl = el as HTMLElement;
+            const currentBg = htmlEl.style.backgroundImage;
+            if (currentBg && currentBg.includes('url(')) {
+                htmlEl.style.backgroundImage = currentBg.replace(/url\(['"]?[^)]+['"]?\)/gi, `url("{{${varName}}}")`);
+            } else {
+                htmlEl.style.backgroundImage = `url("{{${varName}}}")`;
+            }
         });
 
         // Convert data-loop (Reverse order to handle nesting)
@@ -151,6 +157,16 @@ export function ThemeEditorPage() {
             el.removeAttribute('data-if');
             const content = el.outerHTML;
             el.outerHTML = `\n{{#if ${condition}}}\n${content}\n{{/if}}\n`;
+        }
+
+        // Convert data-unless (Reverse order to handle nesting)
+        const unlessNodes = Array.from(doc.querySelectorAll('[data-unless]'));
+        for (let i = unlessNodes.length - 1; i >= 0; i--) {
+            const el = unlessNodes[i];
+            const condition = el.getAttribute('data-unless');
+            el.removeAttribute('data-unless');
+            const content = el.outerHTML;
+            el.outerHTML = `\n{{#unless ${condition}}}\n${content}\n{{/unless}}\n`;
         }
 
         let resultHtml = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
@@ -330,14 +346,18 @@ export function ThemeEditorPage() {
 
     // When the selected preview tenant changes, fetch their real content + images
     const loadTenantPreviewData = useCallback(async (tenantId: string, force = false) => {
-        // If already showing this tenant and have content, skip loading unless force
-        if (!force && previewStore.lastSelectedTenantId === tenantId && previewStore.lastPreviewContent) {
-            return;
-        }
+        // Always fetch fresh data to ensure accurate preview
+        // Removed store skip logic which caused stale/missing images
 
         const tenant = allTenants.find(t => t.id === tenantId);
         if (!tenant) return;
+        
         setPreviewTenant(tenant);
+        // Clear previous data immediately to prevent "stuck" data if fetch fails or is slow
+        setPreviewContent({});
+        setPreviewImages([]);
+        setPreviewImagesB64({});
+        
         setLoadingPreview(true);
         try {
             const res = await publicApi.getInvitation(tenant.domain_slug);
@@ -367,9 +387,24 @@ export function ThemeEditorPage() {
                     imagesB64: b64map,
                     tenantId
                 });
+            } else {
+                // If failed (e.g. invitation not found), still save the empty state to store
+                previewStore.setPreviewData({
+                    content: {},
+                    images: [],
+                    imagesB64: {},
+                    tenantId
+                });
             }
         } catch (e) {
             console.error('Failed to load tenant preview data:', e);
+            // On error, also update store to prevent returning to stuck state
+            previewStore.setPreviewData({
+                content: {},
+                images: [],
+                imagesB64: {},
+                tenantId
+            });
         } finally {
             setLoadingPreview(false);
         }
@@ -751,8 +786,12 @@ export function ThemeEditorPage() {
                 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop',
                 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=800&auto=format&fit=crop'
             ];
-            const realImg = (type: string, fallbackIdx = 0) =>
-                imgs[type] || dummies[fallbackIdx % dummies.length];
+            const realImg = (type: string, fallbackIdx = 0) => {
+                if (imgs[type]) return imgs[type];
+                const imgRec = previewImages.find(i => i.image_type === type);
+                if (imgRec && imgRec.cdn_url) return imgRec.cdn_url;
+                return dummies[fallbackIdx % dummies.length];
+            };
 
             let timeline: any[] = [];
             try { timeline = c.timeline_kisah ? JSON.parse(c.timeline_kisah) : []; } catch { }
@@ -760,6 +799,16 @@ export function ThemeEditorPage() {
             const galleryImgs = previewImages
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: imgs[img.cdn_url] || img.cdn_url || '', caption: img.file_name || '' }));
+
+            const cGalleries = c.galleries || [];
+            const activeGalleries = cGalleries.length > 0 ? cGalleries : galleryImgs;
+
+            const getBool = (val: any) => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true' || val === '1';
+                if (typeof val === 'number') return val === 1;
+                return !!val;
+            };
 
             const mockData: Record<string, any> = {
                 bride_name: t.bride_name || 'Fiona',
@@ -804,15 +853,15 @@ export function ThemeEditorPage() {
                 bank_1: c.nama_bank_1 || 'BCA',
                 rek_1: c.nomor_rekening_bank_1 || '1234567890',
                 nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
-                flag_pakai_qris_rekening_1: !!(c.flag_pakai_qris_rekening_1),
-                gambar_qris_rekening_1: c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
+                flag_pakai_qris_rekening_1: getBool(c.flag_pakai_qris_rekening_1),
+                gambar_qris_rekening_1: imgs['qris_1'] || previewImages.find(i => i.image_type === 'qris_1')?.cdn_url || c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
 
                 bank_2: c.nama_bank_2 || 'Mandiri',
                 rek_2: c.nomor_rekening_bank_2 || '0987654321',
                 nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
-                flag_pakai_qris_rekening_2: !!(c.flag_pakai_qris_rekening_2),
-                gambar_qris_rekening_2: c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
-                flag_pakai_2_rekening: !!(c.flag_pakai_2_rekening),
+                flag_pakai_qris_rekening_2: getBool(c.flag_pakai_qris_rekening_2),
+                gambar_qris_rekening_2: imgs['qris_2'] || previewImages.find(i => i.image_type === 'qris_2')?.cdn_url || c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
+                flag_pakai_2_rekening: getBool(c.flag_pakai_2_rekening),
 
                 link_backsound_music: c.link_backsound_music || '',
                 link_live_streaming: c.link_live_streaming || '',
@@ -823,12 +872,13 @@ export function ThemeEditorPage() {
                     { tanggal: 'Maret 2022', judul: 'Memutuskan Bersama', deskripsi: 'Kami resmi berpacaran dan memiliki komitmen.' },
                     { tanggal: 'Desember 2024', judul: 'Lamaran', deskripsi: 'Momen berharga ketika dua keluarga bertemu.' }
                 ],
-                tampilkan_amplop_online: !!(c.tampilkan_amplop_online),
+                tampilkan_amplop_online: getBool(c.tampilkan_amplop_online),
                 flag_lokasi_akad_dan_resepsi_berbeda: true,
                 flag_tampilkan_nama_orang_tua: true,
                 flag_tampilkan_sosial_media_mempelai: true,
-                is_fitur_gallery: galleryImgs.length > 0,
-                galleries: galleryImgs.length > 0 ? galleryImgs : [
+                is_fitur_gallery: activeGalleries.length > 0,
+                has_gallery: activeGalleries.length > 0,
+                galleries: activeGalleries.length > 0 ? activeGalleries : [
                     { url: dummies[0], caption: 'Prewedding 1' },
                     { url: dummies[1], caption: 'Prewedding 2' },
                     { url: dummies[2], caption: 'Prewedding 3' }
@@ -847,10 +897,10 @@ export function ThemeEditorPage() {
                 photo_hero_cover: realImg('hero_cover', 0),
                 photo_groom_photo: realImg('groom_photo', 1),
                 photo_bride_photo: realImg('bride_photo', 2),
-                photo_background: realImg('background', 3),
+                photo_background: realImg('background', 3) !== dummies[3] ? realImg('background', 3) : realImg('cover', 3),
                 photo_closing: realImg('closing', 0),
                 photo_story_photo: realImg('story_photo', 1),
-                photo_gallery: galleryImgs.length > 0 ? galleryImgs : [
+                photo_gallery: activeGalleries.length > 0 ? activeGalleries : [
                     { url: dummies[0] }, { url: dummies[1] }, { url: dummies[2] }
                 ],
 

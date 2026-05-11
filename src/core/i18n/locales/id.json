@@ -21,7 +21,9 @@
     "name": "Nama",
     "copy": "Salin",
     "copied": "Berhasil disalin!",
-    "confirm": "Konfirmasi"
+    "confirm": "Konfirmasi",
+    "previous": "Sebelumnya",
+    "next": "Selanjutnya"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -237,8 +239,13 @@
     "footer_text_placeholder": "Misal: Kehadiran Anda adalah kado terindah...",
     "gallery_title": "Galeri & Foto Undangan",
     "gallery_desc": "Upload gambar sesuai kebutuhan variabel tema yang Anda pilih.",
+    "gallery_description": "Upload gambar sesuai kebutuhan variabel tema yang Anda pilih.",
     "album_title": "Foto Album (Multi Image)",
+    "album_photo": "Foto Album",
     "photo_count": "{{count}} / {{max}} Foto (Paket {{plan}})",
+    "photos": "Foto",
+    "plan_label": "Paket",
+    "gallery_label": "Galeri",
     "add_album_photo": "Tambah Foto Album",
     "backsound_title": "Musik Latar",
     "backsound_link": "Link Musik Latar (URL YouTube)",

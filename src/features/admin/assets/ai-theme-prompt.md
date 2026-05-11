@@ -1,5 +1,292 @@
-Buatkan saya kode untuk sebuah website SPA (Single Page Application) Undangan Pernikahan yang interaktif, tekankan animasi dan efek visual yang interaktif
+Buatkan saya kode untuk sebuah website SPA (Single Page Application) Wedding Invitation premium dengan kualitas visual setara template undangan wedding modern profesional Indonesia.
 
+Fokus utama:
+- visual cinematic
+- elegant luxury
+- smooth interaction
+- premium typography
+- immersive mobile experience
+- clean modern romantic aesthetic
+- interactive animation yang halus dan classy
+
+Website HARUS terasa:
+- mahal
+- eksklusif
+- emosional
+- cinematic
+- modern
+- bukan template murahan
+
+HINDARI:
+- desain generik bootstrap
+- tampilan seperti admin dashboard
+- gradient norak
+- glassmorphism berlebihan
+- shadow terlalu keras
+- warna terlalu ramai
+- animasi berlebihan
+- icon random tidak konsisten
+- typography default browser
+- spacing sempit
+- layout kaku
+
+==================================================
+OUTPUT RULES
+==================================================
+
+Output HANYA boleh berupa:
+- index.html
+- style.css
+- script.js
+
+Tidak boleh ada penjelasan tambahan.
+
+Gunakan:
+- HTML
+- CSS
+- Vanilla Javascript ONLY
+
+DILARANG:
+- React
+- Vue
+- Tailwind CDN
+- Bootstrap
+- jQuery
+- library eksternal besar
+
+Boleh menggunakan:
+- Google Fonts
+- Font Awesome CDN
+- AOS ringan bila diperlukan
+
+==================================================
+DESIGN DIRECTION
+==================================================
+
+STYLE:
+Elegant Modern Romantic Luxury
+
+VISUAL FEEL:
+Gabungan aesthetic:
+- wedding invitation Indonesia premium
+- editorial luxury magazine
+- cinematic landing page
+- fine dining visual style
+- soft romantic atmosphere
+
+COLOR PALETTE:
+Gunakan warna classy seperti:
+- ivory
+- champagne gold
+- soft beige
+- warm white
+- muted sage
+- dusty rose
+- dark charcoal
+- soft cream
+
+Gunakan warna accent gold secara subtle.
+
+TYPOGRAPHY:
+Gunakan kombinasi:
+- serif luxury untuk heading
+- clean sans-serif modern untuk body
+- script font elegan SECARA MINIMAL
+
+Typography HARUS terasa premium.
+
+==================================================
+LAYOUT RULES
+==================================================
+
+Layout HARUS:
+- mobile first
+- width max 480px
+- centered
+- smooth vertical storytelling
+- tiap section punya visual breathing room
+- padding besar dan lega
+- hierarchy visual jelas
+
+Gunakan:
+- alternating layout rhythm
+- layered background
+- decorative divider elegan
+- subtle texture
+- parallax ringan
+- overlapping section halus
+
+JANGAN:
+- section terlalu penuh
+- text terlalu mepet
+- card monoton
+- border terlalu tebal
+
+==================================================
+ANIMATION & INTERACTION
+==================================================
+
+Animasi HARUS:
+- smooth
+- cinematic
+- elegant
+- subtle
+- bukan flashy
+
+Gunakan:
+- fade up
+- reveal animation
+- soft zoom
+- parallax ringan
+- floating ornament
+- smooth scrolling
+- button micro interaction
+- hover soft glow
+- image scale interaction
+
+Gunakan animation timing yang lambat dan premium.
+
+Tambahkan:
+- opening transition cinematic
+- smooth section transition
+- floating particles/leaves/light effect ringan
+- ambient background movement halus
+
+==================================================
+COVER EXPERIENCE
+==================================================
+
+Cover page HARUS terasa immersive.
+
+Gunakan:
+- full screen hero
+- layered dark overlay
+- animated background image
+- cinematic entrance animation
+- elegant opening button
+
+Button buka undangan HARUS:
+- premium
+- besar
+- ada hover & press effect
+- glow subtle
+
+==================================================
+MUSIC EXPERIENCE
+==================================================
+
+Tambahkan:
+- background music autoplay setelah tombol buka undangan
+- tombol music floating elegant
+- visual state play/pause yang premium
+
+==================================================
+SECTION SPECIFIC DIRECTION
+==================================================
+
+SECTION MEMPELAI:
+- foto besar elegan
+- framing premium
+- layout romantis
+- nama besar dengan typography luxury
+
+SECTION COUNTDOWN:
+- countdown cinematic
+- angka besar
+- glowing subtle
+- elegant card
+
+SECTION LOKASI:
+- card lokasi premium
+- tombol maps modern
+- visual hierarchy jelas
+
+SECTION LIVE STREAMING:
+- tampil seperti exclusive streaming card
+
+SECTION TIMELINE:
+- timeline vertikal cinematic
+- alternating animation
+- romantic storytelling
+
+SECTION GALLERY:
+- masonry aesthetic
+- immersive photo gallery
+- lightbox smooth
+- image hover cinematic
+
+SECTION UCAPAN:
+- card ucapan aesthetic
+- scrollable elegant
+- form modern clean
+
+SECTION GIFT:
+- card rekening luxury
+- tombol copy premium
+- QRIS tampil elegan
+- toast notification modern
+
+SECTION PENUTUP:
+- emotional closing
+- elegant thank you section
+- subtle branding placement
+
+==================================================
+BACKGROUND & DECORATION
+==================================================
+
+Tambahkan dekorasi ringan seperti:
+- floral ornament tipis
+- blur glow
+- grain texture halus
+- floating particles
+- elegant divider
+- soft vignette
+
+Tetap minimalis dan classy.
+
+==================================================
+TECHNICAL QUALITY
+==================================================
+
+WAJIB:
+- responsive sempurna
+- smooth scrolling
+- optimized animation
+- tidak lag
+- clean code
+- semantic HTML
+- CSS terstruktur rapi
+- modern JS
+
+Gunakan:
+- CSS variables
+- reusable class
+- modular section styling
+
+==================================================
+PENTING
+==================================================
+
+SEMUA struktur HTML, ID, atribut dynamic:
+- data-var
+- data-img
+- data-bg
+- data-loop
+- data-if
+- data-unless
+- data-menu-label
+- seluruh ID WAJIB
+
+HARUS tetap dipertahankan PERSIS sesuai requirement di bawah ini.
+
+JANGAN mengubah:
+- nama variabel
+- nama ID
+- struktur integrasi
+- logic attribute
+
+[LANJUTKAN SEMUA REQUIREMENT SYSTEM INTEGRATION MILIK SAYA TANPA DIUBAH]
 Output HANYA boleh berupa 3 file terpisah: index.html, style.css, dan script.js. Tidak perlu penjelasan panjang, langsung berikan kodenya.
 
 ### ATURAN INTEGRASI DATA (SANGAT PENTING - BACA BAIK-BAIK)
@@ -119,7 +406,6 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
      - nilai default variabel "is_sudah_isi_konfirmasi_kehadiran" adalah false, dan bernilai true jika tamu sudah mengisi form kehadiran
      - nilai default variabel "is_sudah_isi_ucapan_dan_doa" adalah false, dan bernilai true jika tamu sudah mengisi form ucapan & doa
 6. Pada data nomor rekening tambahkan fungsi salin, jika di klik maka akan muncul toast cantik yang menampilkan tulisan nomor rekening sudah di salin dan nomor rekening akan tersalin ke clipboard.
-7. Cari referensi design website undangan yang ada di indonesia sebagai inspirasi design website undangan ini.
 
 
 ### STRUKRUR WEBSITE

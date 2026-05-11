@@ -21,7 +21,9 @@
     "name": "Name",
     "copy": "Copy",
     "copied": "Copied to clipboard!",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "previous": "Previous",
+    "next": "Next"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -237,8 +239,13 @@
     "footer_text_placeholder": "e.g. Your presence is the best gift for us.",
     "gallery_title": "Gallery & Wedding Photos",
     "gallery_desc": "Upload images according to the theme variables you selected.",
+    "gallery_description": "Upload images according to the theme variables you selected.",
     "album_title": "Photo Album (Multi Image)",
+    "album_photo": "Photo Album",
     "photo_count": "{{count}} / {{max}} Photos ({{plan}} Plan)",
+    "photos": "Photos",
+    "plan_label": "Plan",
+    "gallery_label": "Gallery",
     "add_album_photo": "Add Album Photo",
     "backsound_title": "Music Background",
     "backsound_link": "Music Background Link (YouTube URL)",

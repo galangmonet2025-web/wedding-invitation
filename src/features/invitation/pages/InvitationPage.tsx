@@ -211,15 +211,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data && event.data.type === 'invitation-preview-update') {
-                const { content, images: newImages } = event.data;
-                console.log("Live Preview Update Received:", { content, newImages });
+                const { content, images: newImages, theme: newTheme } = event.data;
+                console.log("Live Preview Update Received:", { content, newImages, newTheme });
                 
                 setData(prev => {
                     if (!prev) return prev;
                     return {
                         ...prev,
                         content: { ...prev.content, ...content },
-                        images: newImages || prev.images
+                        images: newImages || prev.images,
+                        theme: newTheme || prev.theme
                     };
                 });
             }
@@ -771,7 +772,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             photo_hero_cover: images['hero_cover'] || getImageUrl('hero_cover'),
             photo_groom_photo: images['groom_photo'] || getImageUrl('groom_photo'),
             photo_bride_photo: images['bride_photo'] || getImageUrl('bride_photo'),
-            photo_background: images['background'] || getImageUrl('background'),
+            photo_background: images['background'] || getImageUrl('background') || images['cover'] || getImageUrl('cover'),
             photo_closing: images['closing'] || getImageUrl('closing'),
             photo_story_photo: images['story_photo'] || getImageUrl('story_photo'),
             photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])

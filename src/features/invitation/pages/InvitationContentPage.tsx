@@ -210,10 +210,12 @@ export function InvitationContentPage() {
 
         const syncPreview = () => {
             if (iframeRef.current?.contentWindow) {
+                const selectedThemeObj = themes.find(t => t.id === selectedThemeId);
                 iframeRef.current.contentWindow.postMessage({
                     type: 'invitation-preview-update',
                     content: content,
-                    images: images
+                    images: images,
+                    theme: selectedThemeObj
                 }, '*');
             }
         };
@@ -234,7 +236,7 @@ export function InvitationContentPage() {
             clearTimeout(timeout);
             window.removeEventListener('blur', handleBlur, true);
         };
-    }, [content, images]);
+    }, [content, images, selectedThemeId, themes]);
 
 
 
@@ -1011,9 +1013,9 @@ export function InvitationContentPage() {
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
                                             <HiOutlineColorSwatch className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.choose_theme_title')}</h2>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.select_theme_title')}</h2>
                                     </div>
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="flex flex-col gap-8 w-full">
                                         {(() => {
                                             const filteredThemes = themes.filter(theme => {
                                                 // Filter out drafts
@@ -1031,43 +1033,60 @@ export function InvitationContentPage() {
                                                 return <p className="text-gray-500 text-sm">{t('invitation_content.no_theme_available', { plan: tenant?.plan_type })}</p>;
                                             }
 
-                                            return filteredThemes.map(theme => (
-                                                <div
-                                                    key={theme.id}
-                                                    onClick={() => setSelectedThemeId(theme.id)}
-                                                    className={`cursor-pointer rounded-xl border-2 transition-all duration-200 overflow-hidden group 
-                                                            ${selectedThemeId === theme.id ? 'border-gold-500 shadow-lg shadow-gold-500/20 transform -translate-y-1' : 'border-gray-200 dark:border-gray-700 hover:border-gold-300 dark:hover:border-gold-700'}`}
-                                                >
-                                                    <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-800 relative">
-                                                        {theme.preview_image ? (
-                                                            <ProxyImage 
-                                                                src={theme.preview_image} 
-                                                                alt={theme.name} 
-                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                <HiOutlineColorSwatch className="w-12 h-12 opacity-50" />
-                                                            </div>
-                                                        )}
-                                                        {selectedThemeId === theme.id && (
-                                                            <div className="absolute inset-0 bg-gold-500/10 flex items-center justify-center">
-                                                                <div className="bg-gold-500 text-white p-2 rounded-full shadow-lg">
-                                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                                    </svg>
+                                            // Group themes by style_category
+                                            const groupedThemes = filteredThemes.reduce((acc, theme) => {
+                                                const category = theme.style_category || 'Lainnya';
+                                                if (!acc[category]) acc[category] = [];
+                                                acc[category].push(theme);
+                                                return acc;
+                                            }, {} as Record<string, typeof filteredThemes>);
+
+                                            return Object.entries(groupedThemes).map(([category, catThemes]) => (
+                                                <div key={category} className="space-y-3">
+                                                    <h3 className="font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2 uppercase text-xs tracking-wider">
+                                                        {category}
+                                                    </h3>
+                                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                                                        {catThemes.map(theme => (
+                                                            <div
+                                                                key={theme.id}
+                                                                onClick={() => setSelectedThemeId(theme.id)}
+                                                                className={`cursor-pointer rounded-xl border-2 transition-all duration-200 overflow-hidden group 
+                                                                        ${selectedThemeId === theme.id ? 'border-gold-500 shadow-lg shadow-gold-500/20 transform -translate-y-1' : 'border-gray-200 dark:border-gray-700 hover:border-gold-300 dark:hover:border-gold-700'}`}
+                                                            >
+                                                                <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-800 relative">
+                                                                    {theme.preview_image ? (
+                                                                        <ProxyImage 
+                                                                            src={theme.preview_image} 
+                                                                            alt={theme.name} 
+                                                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                            <HiOutlineColorSwatch className="w-12 h-12 opacity-50" />
+                                                                        </div>
+                                                                    )}
+                                                                    {selectedThemeId === theme.id && (
+                                                                        <div className="absolute inset-0 bg-gold-500/10 flex items-center justify-center">
+                                                                            <div className="bg-gold-500 text-white p-2 rounded-full shadow-lg">
+                                                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                                </svg>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="p-2 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-col justify-between h-[60px]">
+                                                                    <h3 className="font-semibold text-xs text-gray-800 dark:text-white truncate" title={theme.name}>{theme.name}</h3>
+                                                                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded 
+                                                                        ${theme.plan_type === 'basic' ? 'bg-gray-100 text-gray-600' :
+                                                                            theme.plan_type === 'pro' ? 'bg-blue-100 text-blue-600' :
+                                                                                'bg-gold-100 text-gold-600'}`}>
+                                                                        {theme.plan_type}
+                                                                    </span>
                                                                 </div>
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
-                                                        <h3 className="font-semibold text-gray-800 dark:text-white truncate">{theme.name}</h3>
-                                                        <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded 
-                                                            ${theme.plan_type === 'basic' ? 'bg-gray-100 text-gray-600' :
-                                                                theme.plan_type === 'pro' ? 'bg-blue-100 text-blue-600' :
-                                                                    'bg-gold-100 text-gold-600'}`}>
-                                                            {theme.plan_type}
-                                                        </span>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             ));

@@ -38,6 +38,8 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
         }
 
         const value = data[trimmed];
+        if (value === 'false') return false;
+        if (value === '0') return false;
         return value !== undefined && value !== null && value !== '' && value !== false && (Array.isArray(value) ? value.length > 0 : true);
     };
 

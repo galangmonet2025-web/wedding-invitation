@@ -16,6 +16,12 @@ interface AiThemeModalProps {
 
 const THEME_STYLES = [
     {
+        id: 'none',
+        name: 'Tanpa Tema (Bebas AI)',
+        icon: '🤖',
+        prompt: ""
+    },
+    {
         id: 'modern',
         name: 'Modern Clean',
         icon: '✨',
@@ -50,7 +56,7 @@ const THEME_STYLES = [
 export function AiThemeModal({ isOpen, onClose, onTriggerUpload, onApplyCode }: AiThemeModalProps) {
     const [isCopied, setIsCopied] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [selectedStyleId, setSelectedStyleId] = useState('modern');
+    const [selectedStyleId, setSelectedStyleId] = useState('none');
     const [pastedCodes, setPastedCodes] = useState<{ html: string; css: string; js: string }>({
         html: '',
         css: '',
@@ -58,7 +64,7 @@ export function AiThemeModal({ isOpen, onClose, onTriggerUpload, onApplyCode }: 
     });
 
     const selectedStyle = THEME_STYLES.find(s => s.id === selectedStyleId) || THEME_STYLES[0];
-    const FULL_PROMPT = `${BASE_PROMPT}\n\n${selectedStyle.prompt}`;
+    const FULL_PROMPT = selectedStyle.prompt ? `${BASE_PROMPT}\n\n${selectedStyle.prompt}` : BASE_PROMPT;
 
     const handleCopy = useCallback(() => {
         navigator.clipboard.writeText(FULL_PROMPT).then(() => {
