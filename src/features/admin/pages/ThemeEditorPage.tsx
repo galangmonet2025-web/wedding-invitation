@@ -54,7 +54,7 @@ export function ThemeEditorPage() {
     const [pendingPreviewFile, setPendingPreviewFile] = useState<File | null>(null);
     const [pendingPreviewBase64, setPendingPreviewBase64] = useState<string | null>(null);
     const [initialPreviewImage, setInitialPreviewImage] = useState('');
-    
+
     // Logo-like management states for preview image
     const [uploadingPreview, setUploadingPreview] = useState(false);
     const [deletingPreview, setDeletingPreview] = useState(false);
@@ -256,7 +256,7 @@ export function ThemeEditorPage() {
                 // Ensure themes are loaded
                 await fetchThemes();
                 const theme = themes.find(t => t.id === id);
-                
+
                 if (theme) {
                     setName(theme.name);
                     setPlanType(theme.plan_type);
@@ -267,7 +267,7 @@ export function ThemeEditorPage() {
                     setCssCode(theme.css_template || '');
                     setJsCode(theme.js_template || '');
                     setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
-                    
+
                     // Robust image_types parsing
                     let imgTypes = theme.image_types || [];
                     if (typeof imgTypes === 'string') {
@@ -288,7 +288,7 @@ export function ThemeEditorPage() {
                         setCssCode(refetchedTheme.css_template || '');
                         setJsCode(refetchedTheme.js_template || '');
                         setFlagDraft(refetchedTheme.flag_draft !== false && refetchedTheme.flag_draft !== 'false');
-                        
+
                         // Robust image_types parsing
                         let imgTypes = refetchedTheme.image_types || [];
                         if (typeof imgTypes === 'string') {
@@ -310,7 +310,7 @@ export function ThemeEditorPage() {
                 setCssCode(copiedTheme.css_template || '');
                 setJsCode(copiedTheme.js_template || '');
                 setFlagDraft(true); // Default copies to draft
-                
+
                 // Robust image_types parsing
                 let imgTypes = copiedTheme.image_types || [];
                 if (typeof imgTypes === 'string') {
@@ -351,13 +351,13 @@ export function ThemeEditorPage() {
 
         const tenant = allTenants.find(t => t.id === tenantId);
         if (!tenant) return;
-        
+
         setPreviewTenant(tenant);
         // Clear previous data immediately to prevent "stuck" data if fetch fails or is slow
         setPreviewContent({});
         setPreviewImages([]);
         setPreviewImagesB64({});
-        
+
         setLoadingPreview(true);
         try {
             const res = await publicApi.getInvitation(tenant.domain_slug);
@@ -379,7 +379,7 @@ export function ThemeEditorPage() {
                     }
                 }));
                 setPreviewImagesB64(b64map);
-                
+
                 // Save to store for next time
                 previewStore.setPreviewData({
                     content,
@@ -499,7 +499,7 @@ export function ThemeEditorPage() {
                 fileType: 'image/webp'
             };
             const compressedFile = await imageCompression(file, options);
-            
+
             // 2. Get dimensions
             const getDimensions = (): Promise<{ w: number, h: number }> => {
                 return new Promise((resolve) => {
@@ -545,7 +545,7 @@ export function ThemeEditorPage() {
                     };
                     const res = await themeApi.updateTheme(payload, { skipLoader: true } as any);
                     if (!res.success) throw new Error(res.message);
-                    
+
                     updateTheme(id!, payload);
                 }
             }
@@ -566,7 +566,7 @@ export function ThemeEditorPage() {
             setInitialPreviewImage(finalPreviewUrl);
             setPendingPreviewFile(null);
             setPendingPreviewBase64(null);
-            
+
             toast.success('Gambar pratinjau diperbarui!');
         } catch (err: any) {
             console.error('Preview upload error:', err);
@@ -580,7 +580,7 @@ export function ThemeEditorPage() {
     const handleDeletePreview = async () => {
         setDeletingPreview(true);
         setShowDeletePreviewModal(false);
-        
+
         try {
             const oldPreviewUrl = previewImage;
 
@@ -594,7 +594,7 @@ export function ThemeEditorPage() {
                     };
                     const res = await themeApi.updateTheme(payload, { skipLoader: true } as any);
                     if (!res.success) throw new Error(res.message);
-                    
+
                     updateTheme(id!, payload);
                 }
             }
@@ -642,7 +642,7 @@ export function ThemeEditorPage() {
 
         setSaving(true);
         const loadingToast = toast.loading('Menyimpan tema...');
-        
+
         try {
             let finalPreviewUrl = previewImage;
 
@@ -722,10 +722,10 @@ export function ThemeEditorPage() {
                     toast.success('Theme saved successfully', { id: loadingToast });
                     updateTheme(id!, payload); // Update local cache
                     setFlagDraft(isDraft);
-                    
+
                     // Update initial state to new URL
                     setInitialPreviewImage(finalPreviewUrl);
-                    
+
                     // Clear pending states after successful save
                     setPendingPreviewFile(null);
                     setPendingPreviewBase64(null);
@@ -762,205 +762,206 @@ export function ThemeEditorPage() {
 
             try {
 
-        // Dummy tenant data mapped just like in InvitationPage
-        const t = previewTenant || { 
-            bride_name: 'Fiona', 
-            bride_nickname: 'Fiona',
-            groom_name: 'Galang', 
-            groom_nickname: 'Galang',
-            religion: 'Islam',
-            wedding_date: '2026-10-20' 
-        };
+                // Dummy tenant data mapped just like in InvitationPage
+                const t = previewTenant || {
+                    bride_name: 'Fiona',
+                    bride_nickname: 'Fiona',
+                    groom_name: 'Galang',
+                    groom_nickname: 'Galang',
+                    religion: 'Islam',
+                    wedding_date: '2026-10-20'
+                };
 
-        let finalHtml = htmlCodeRef.current;
-        let activeBacksound = '';
+                let finalHtml = htmlCodeRef.current;
+                let activeBacksound = '';
 
-        if (showDataBinding) {
-            const c = previewContent;
-            const imgs = previewImagesB64;
+                if (showDataBinding) {
+                    const c = previewContent;
+                    const imgs = previewImagesB64;
 
-            // Helper to get real image URL or fallback to a dummy
-            const dummies = [
-                'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=800&auto=format&fit=crop'
-            ];
-            const realImg = (type: string, fallbackIdx = 0) => {
-                if (imgs[type]) return imgs[type];
-                const imgRec = previewImages.find(i => i.image_type === type);
-                if (imgRec && imgRec.cdn_url) return imgRec.cdn_url;
-                return dummies[fallbackIdx % dummies.length];
-            };
+                    // Helper to get real image URL or fallback to a dummy
+                    const dummies = [
+                        'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop',
+                        'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop',
+                        'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop',
+                        'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=800&auto=format&fit=crop'
+                    ];
+                    const realImg = (type: string, fallbackIdx = 0) => {
+                        if (imgs[type]) return imgs[type];
+                        const imgRec = previewImages.find(i => i.image_type === type);
+                        if (imgRec && imgRec.cdn_url) return imgRec.cdn_url;
+                        return dummies[fallbackIdx % dummies.length];
+                    };
 
-            let timeline: any[] = [];
-            try { timeline = c.timeline_kisah ? JSON.parse(c.timeline_kisah) : []; } catch { }
+                    let timeline: any[] = [];
+                    try { timeline = c.timeline_kisah ? JSON.parse(c.timeline_kisah) : []; } catch { }
 
-            const galleryImgs = previewImages
-                .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: imgs[img.cdn_url] || img.cdn_url || '', caption: img.file_name || '' }));
+                    const galleryImgs = previewImages
+                        .filter(img => img.image_type === 'gallery')
+                        .map(img => ({ url: imgs[img.cdn_url] || img.cdn_url || '', caption: img.file_name || '' }));
 
-            const cGalleries = c.galleries || [];
-            const activeGalleries = cGalleries.length > 0 ? cGalleries : galleryImgs;
+                    const cGalleries = c.galleries || [];
+                    const activeGalleries = cGalleries.length > 0 ? cGalleries : galleryImgs;
 
-            const getBool = (val: any) => {
-                if (typeof val === 'boolean') return val;
-                if (typeof val === 'string') return val.toLowerCase() === 'true' || val === '1';
-                if (typeof val === 'number') return val === 1;
-                return !!val;
-            };
+                    const getBool = (val: any) => {
+                        if (typeof val === 'boolean') return val;
+                        if (typeof val === 'string') return val.toLowerCase() === 'true' || val === '1';
+                        if (typeof val === 'number') return val === 1;
+                        return !!val;
+                    };
 
-            const mockData: Record<string, any> = {
-                bride_name: t.bride_name || 'Fiona',
-                bride_nickname: t.bride_nickname || 'Fiona',
-                groom_name: t.groom_name || 'Galang',
-                groom_nickname: t.groom_nickname || 'Galang',
-                religion: t.religion || 'Islam',
-                wedding_date: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
-                tanggal_akad: c.tanggal_akad ? new Date(c.tanggal_akad).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Minggu, 9 Agustus 2026',
-                jam_akad: `${c.jam_awal_akad || '08:00'} - ${c.jam_akhir_akad || 'Selesai'}`,
-                jam_resepsi: `${c.jam_awal_resepsi || '11:00'} - ${c.jam_akhir_resepsi || '14:00'}`,
-                nama_lokasi_akad: c.nama_lokasi_akad || 'Masjid Istiqlal',
-                keterangan_lokasi_akad: c.keterangan_lokasi_akad || 'Jl. Taman Wijaya Kusuma',
-                akad_map: c.akad_map || '#',
-                tanggal_resepsi: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
-                nama_lokasi_resepsi: c.nama_lokasi_resepsi || 'Gedung Serbaguna',
-                keterangan_lokasi_resepsi: c.keterangan_lokasi_resepsi || 'Jl. Sudirman No 10',
-                resepsi_map: c.resepsi_map || '#',
-                nama_bapak_laki_laki: c.nama_bapak_laki_laki || 'Bpk. Ahmad',
-                nama_ibu_laki_laki: c.nama_ibu_laki_laki || 'Ibu Siti',
-                nama_bapak_perempuan: c.nama_bapak_perempuan || 'Bpk. Budi',
-                nama_ibu_perempuan: c.nama_ibu_perempuan || 'Ibu Ani',
-                ig_laki_laki: c.account_media_sosial_laki_laki || 'galang',
-                ig_perempuan: c.account_media_sosial_perempuan || 'fiona',
-                guest_name: mockGuestData.nama_tamu,
-                nama_tamu: mockGuestData.nama_tamu,
-                kode_undangan: mockGuestData.kode_tamu,
-                is_sudah_isi_ucapan: mockGuestData.is_sudah_isi_ucapan,
-                is_sudah_kirim_hadiah: mockGuestData.is_sudah_kirim_hadiah,
-                is_sudah_isi_konfirmasi_kehadiran: mockGuestData.is_sudah_isi_konfirmasi_kehadiran,
-                flag_konfirmasi_kehadiran_dari_tamu: mockGuestData.is_sudah_isi_konfirmasi_kehadiran,
-                is_link_umum_and_not_for_spesific_guest: mockGuestData.is_link_umum,
-                flag_sudah_isi_ucapan: mockGuestData.is_sudah_isi_ucapan,
-                flag_sudah_kirim_hadiah: mockGuestData.is_sudah_kirim_hadiah,
-                kalimat_pembuka: c.kalimat_pembuka_undangan || 'Dengan memohon rahmat dan ridho Allah SWT...',
-                kalimat_penutup: c.kalimat_penutup_undangan || 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
-                quote: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
-                custom_kalimat_1: c.custom_kalimat_1 || '',
-                custom_kalimat_2: c.custom_kalimat_2 || '',
-                custom_kalimat_3: c.custom_kalimat_3 || '',
-                custom_kalimat_4: c.custom_kalimat_4 || '',
-                bank_1: c.nama_bank_1 || 'BCA',
-                rek_1: c.nomor_rekening_bank_1 || '1234567890',
-                nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
-                flag_pakai_qris_rekening_1: getBool(c.flag_pakai_qris_rekening_1),
-                gambar_qris_rekening_1: imgs['qris_1'] || previewImages.find(i => i.image_type === 'qris_1')?.cdn_url || c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
+                    const mockData: Record<string, any> = {
+                        bride_name: t.bride_name || 'Fiona',
+                        bride_nickname: t.bride_nickname || 'Fiona',
+                        groom_name: t.groom_name || 'Galang',
+                        groom_nickname: t.groom_nickname || 'Galang',
+                        religion: t.religion || 'Islam',
+                        wedding_date: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
+                        tanggal_akad: c.tanggal_akad ? new Date(c.tanggal_akad).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Minggu, 9 Agustus 2026',
+                        jam_akad: `${c.jam_awal_akad || '08:00'} - ${c.jam_akhir_akad || 'Selesai'}`,
+                        jam_resepsi: `${c.jam_awal_resepsi || '11:00'} - ${c.jam_akhir_resepsi || '14:00'}`,
+                        nama_lokasi_akad: c.nama_lokasi_akad || 'Masjid Istiqlal',
+                        keterangan_lokasi_akad: c.keterangan_lokasi_akad || 'Jl. Taman Wijaya Kusuma',
+                        akad_map: c.akad_map || '#',
+                        tanggal_resepsi: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
+                        nama_lokasi_resepsi: c.nama_lokasi_resepsi || 'Gedung Serbaguna',
+                        keterangan_lokasi_resepsi: c.keterangan_lokasi_resepsi || 'Jl. Sudirman No 10',
+                        resepsi_map: c.resepsi_map || '#',
+                        nama_bapak_laki_laki: c.nama_bapak_laki_laki || 'Bpk. Ahmad',
+                        nama_ibu_laki_laki: c.nama_ibu_laki_laki || 'Ibu Siti',
+                        nama_bapak_perempuan: c.nama_bapak_perempuan || 'Bpk. Budi',
+                        nama_ibu_perempuan: c.nama_ibu_perempuan || 'Ibu Ani',
+                        ig_laki_laki: c.account_media_sosial_laki_laki || 'galang',
+                        ig_perempuan: c.account_media_sosial_perempuan || 'fiona',
+                        guest_name: mockGuestData.nama_tamu,
+                        nama_tamu: mockGuestData.nama_tamu,
+                        kode_undangan: mockGuestData.kode_tamu,
+                        is_sudah_isi_ucapan: mockGuestData.is_sudah_isi_ucapan,
+                        is_sudah_kirim_hadiah: mockGuestData.is_sudah_kirim_hadiah,
+                        is_sudah_isi_konfirmasi_kehadiran: mockGuestData.is_sudah_isi_konfirmasi_kehadiran,
+                        flag_konfirmasi_kehadiran_dari_tamu: mockGuestData.is_sudah_isi_konfirmasi_kehadiran,
+                        is_link_umum_and_not_for_spesific_guest: mockGuestData.is_link_umum,
+                        flag_sudah_isi_ucapan: mockGuestData.is_sudah_isi_ucapan,
+                        flag_sudah_kirim_hadiah: mockGuestData.is_sudah_kirim_hadiah,
+                        kalimat_pembuka: c.kalimat_pembuka_undangan || 'Dengan memohon rahmat dan ridho Allah SWT...',
+                        kalimat_penutup: c.kalimat_penutup_undangan || 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
+                        quote: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
+                        custom_kalimat_1: c.custom_kalimat_1 || '',
+                        custom_kalimat_2: c.custom_kalimat_2 || '',
+                        custom_kalimat_3: c.custom_kalimat_3 || '',
+                        custom_kalimat_4: c.custom_kalimat_4 || '',
+                        bank_1: c.nama_bank_1 || 'BCA',
+                        rek_1: c.nomor_rekening_bank_1 || '1234567890',
+                        nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
+                        flag_pakai_qris_rekening_1: getBool(c.flag_pakai_qris_rekening_1),
+                        gambar_qris_rekening_1: imgs['qris_1'] || previewImages.find(i => i.image_type === 'qris_1')?.cdn_url || c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
 
-                bank_2: c.nama_bank_2 || 'Mandiri',
-                rek_2: c.nomor_rekening_bank_2 || '0987654321',
-                nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
-                flag_pakai_qris_rekening_2: getBool(c.flag_pakai_qris_rekening_2),
-                gambar_qris_rekening_2: imgs['qris_2'] || previewImages.find(i => i.image_type === 'qris_2')?.cdn_url || c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
-                flag_pakai_2_rekening: getBool(c.flag_pakai_2_rekening),
+                        bank_2: c.nama_bank_2 || 'Mandiri',
+                        rek_2: c.nomor_rekening_bank_2 || '0987654321',
+                        nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
+                        flag_pakai_qris_rekening_2: getBool(c.flag_pakai_qris_rekening_2),
+                        gambar_qris_rekening_2: imgs['qris_2'] || previewImages.find(i => i.image_type === 'qris_2')?.cdn_url || c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
+                        flag_pakai_2_rekening: getBool(c.flag_pakai_2_rekening),
 
-                link_backsound_music: c.link_backsound_music || '',
-                link_live_streaming: c.link_live_streaming || '',
-                platform_live_streaming: c.platform_live_streaming || 'YouTube',
-                flag_pakai_timeline_kisah: timeline.length > 0,
-                timeline_kisah: timeline.length > 0 ? timeline : [
-                    { tanggal: 'Januari 2020', judul: 'Pertama Kali Bertemu', deskripsi: 'Kami bertemu dalam sebuah acara komunitas.' },
-                    { tanggal: 'Maret 2022', judul: 'Memutuskan Bersama', deskripsi: 'Kami resmi berpacaran dan memiliki komitmen.' },
-                    { tanggal: 'Desember 2024', judul: 'Lamaran', deskripsi: 'Momen berharga ketika dua keluarga bertemu.' }
-                ],
-                tampilkan_amplop_online: getBool(c.tampilkan_amplop_online),
-                flag_lokasi_akad_dan_resepsi_berbeda: true,
-                flag_tampilkan_nama_orang_tua: true,
-                flag_tampilkan_sosial_media_mempelai: true,
-                is_fitur_gallery: activeGalleries.length > 0,
-                has_gallery: activeGalleries.length > 0,
-                galleries: activeGalleries.length > 0 ? activeGalleries : [
-                    { url: dummies[0], caption: 'Prewedding 1' },
-                    { url: dummies[1], caption: 'Prewedding 2' },
-                    { url: dummies[2], caption: 'Prewedding 3' }
-                ],
-                is_fitur_cerita: true,
-                is_fitur_live_streaming: !!(c.flag_pakai_live_streaming),
-                live_streaming: { url: c.link_live_streaming || 'https://youtube.com', platform: c.platform_live_streaming || 'YouTube' },
+                        link_backsound_music: c.link_backsound_music || '',
+                        link_live_streaming: c.link_live_streaming || '',
+                        platform_live_streaming: c.platform_live_streaming || 'YouTube',
+                        flag_pakai_timeline_kisah: timeline.length > 0,
+                        timeline_kisah: timeline.length > 0 ? timeline : [
+                            { tanggal: 'Januari 2020', judul: 'Pertama Kali Bertemu', deskripsi: 'Kami bertemu dalam sebuah acara komunitas.' },
+                            { tanggal: 'Maret 2022', judul: 'Memutuskan Bersama', deskripsi: 'Kami resmi berpacaran dan memiliki komitmen.' },
+                            { tanggal: 'Desember 2024', judul: 'Lamaran', deskripsi: 'Momen berharga ketika dua keluarga bertemu.' }
+                        ],
+                        tampilkan_amplop_online: getBool(c.tampilkan_amplop_online),
+                        flag_lokasi_akad_dan_resepsi_berbeda: true,
+                        flag_tampilkan_nama_orang_tua: true,
+                        flag_tampilkan_sosial_media_mempelai: true,
+                        flag_sudah_kirim_undangan_via_whatsapp: false,
+                        is_fitur_gallery: activeGalleries.length > 0,
+                        has_gallery: activeGalleries.length > 0,
+                        galleries: activeGalleries.length > 0 ? activeGalleries : [
+                            { url: dummies[0], caption: 'Prewedding 1' },
+                            { url: dummies[1], caption: 'Prewedding 2' },
+                            { url: dummies[2], caption: 'Prewedding 3' }
+                        ],
+                        is_fitur_cerita: true,
+                        is_fitur_live_streaming: !!(c.flag_pakai_live_streaming),
+                        live_streaming: { url: c.link_live_streaming || 'https://youtube.com', platform: c.platform_live_streaming || 'YouTube' },
 
-                // Gift Delivery Offline
-                flag_kirim_hadiah_offline: !!(c.flag_kirim_hadiah_offline),
-                nama_lokasi_kirim_hadiah_offline: c.nama_lokasi_kirim_hadiah_offline || 'Rumah Mempelai Wanita / Bpk. Sigit',
-                alamat_lokasi_kirim_hadiah_offline: c.alamat_lokasi_kirim_hadiah_offline || 'Jl. Sudirman No. 10, Jakarta',
-                map_kirim_hadiah_offline: c.map_kirim_hadiah_offline || 'https://maps.app.goo.gl/dummy',
+                        // Gift Delivery Offline
+                        flag_kirim_hadiah_offline: !!(c.flag_kirim_hadiah_offline),
+                        nama_lokasi_kirim_hadiah_offline: c.nama_lokasi_kirim_hadiah_offline || 'Rumah Mempelai Wanita / Bpk. Sigit',
+                        alamat_lokasi_kirim_hadiah_offline: c.alamat_lokasi_kirim_hadiah_offline || 'Jl. Sudirman No. 10, Jakarta',
+                        map_kirim_hadiah_offline: c.map_kirim_hadiah_offline || 'https://maps.app.goo.gl/dummy',
 
-                // Standard photo variables (real base64 or dummy fallback)
-                photo_hero_cover: realImg('hero_cover', 0),
-                photo_groom_photo: realImg('groom_photo', 1),
-                photo_bride_photo: realImg('bride_photo', 2),
-                photo_background: realImg('background', 3) !== dummies[3] ? realImg('background', 3) : realImg('cover', 3),
-                photo_closing: realImg('closing', 0),
-                photo_story_photo: realImg('story_photo', 1),
-                photo_gallery: activeGalleries.length > 0 ? activeGalleries : [
-                    { url: dummies[0] }, { url: dummies[1] }, { url: dummies[2] }
-                ],
+                        // Standard photo variables (real base64 or dummy fallback)
+                        photo_hero_cover: realImg('hero_cover', 0),
+                        photo_groom_photo: realImg('groom_photo', 1),
+                        photo_bride_photo: realImg('bride_photo', 2),
+                        photo_background: realImg('background', 3) !== dummies[3] ? realImg('background', 3) : realImg('cover', 3),
+                        photo_closing: realImg('closing', 0),
+                        photo_story_photo: realImg('story_photo', 1),
+                        photo_gallery: activeGalleries.length > 0 ? activeGalleries : [
+                            { url: dummies[0] }, { url: dummies[1] }, { url: dummies[2] }
+                        ],
 
-                // Wishes / Comments
-                wishes: [
-                    {
-                        guest_name: 'Bpk. Ridwan',
-                        name: 'Bpk. Ridwan',
-                        guest_message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
-                        message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
-                        guest_comment_time: '2 jam lalu',
-                        created_at: new Date().toISOString(),
-                        guest_initial: 'R'
-                    },
-                    {
-                        guest_name: 'Sdr. Andi',
-                        name: 'Sdr. Andi',
-                        guest_message: 'Selamat menempuh hidup baru ya!',
-                        message: 'Selamat menempuh hidup baru ya!',
-                        guest_comment_time: '1 hari lalu',
-                        created_at: new Date(Date.now() - 86400000).toISOString(),
-                        guest_initial: 'A'
-                    },
-                    {
-                        guest_name: 'Ibu Siti',
-                        name: 'Ibu Siti',
-                        guest_message: 'Barakallahu lakuma wa baraka alaikuma.',
-                        message: 'Barakallahu lakuma wa baraka alaikuma.',
-                        guest_comment_time: '13 Maret 2021',
-                        created_at: '2021-03-13T10:00:00Z',
-                        guest_initial: 'S'
+                        // Wishes / Comments
+                        wishes: [
+                            {
+                                guest_name: 'Bpk. Ridwan',
+                                name: 'Bpk. Ridwan',
+                                guest_message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
+                                message: 'Semoga menjadi keluarga yang sakinah, mawaddah, warahmah.',
+                                guest_comment_time: '2 jam lalu',
+                                created_at: new Date().toISOString(),
+                                guest_initial: 'R'
+                            },
+                            {
+                                guest_name: 'Sdr. Andi',
+                                name: 'Sdr. Andi',
+                                guest_message: 'Selamat menempuh hidup baru ya!',
+                                message: 'Selamat menempuh hidup baru ya!',
+                                guest_comment_time: '1 hari lalu',
+                                created_at: new Date(Date.now() - 86400000).toISOString(),
+                                guest_initial: 'A'
+                            },
+                            {
+                                guest_name: 'Ibu Siti',
+                                name: 'Ibu Siti',
+                                guest_message: 'Barakallahu lakuma wa baraka alaikuma.',
+                                message: 'Barakallahu lakuma wa baraka alaikuma.',
+                                guest_comment_time: '13 Maret 2021',
+                                created_at: '2021-03-13T10:00:00Z',
+                                guest_initial: 'S'
+                            }
+                        ],
+                        empty_wishes: false,
+                        countdown_hari: 12,
+                        countdown_jam: 5,
+                        countdown_menit: 30,
+                        countdown_detik: 45,
+
+                        // Website Config Branding
+                        site_name: 'GalangMonet2025',
+                        site_url: 'https://galangmonet2025.com',
+                        site_logo: 'https://galangmonet2025.com/logo.png',
+                        tagline: 'Solusi Undangan Digital Modern',
+                        site_description: 'Platform pembuatan undangan digital terbaik dengan fitur lengkap dan desain premium.',
+                    };
+
+                    // Inject dynamic image type variables (real base64 or dummy fallback)
+                    if (Array.isArray(imageTypes)) {
+                        imageTypes.forEach((key, index) => {
+                            mockData[key] = imgs[key] || dummies[index % dummies.length];
+                        });
                     }
-                ],
-                empty_wishes: false,
-                countdown_hari: 12,
-                countdown_jam: 5,
-                countdown_menit: 30,
-                countdown_detik: 45,
 
-                // Website Config Branding
-                site_name: 'GalangMonet2025',
-                site_url: 'https://galangmonet2025.com',
-                site_logo: 'https://galangmonet2025.com/logo.png',
-                tagline: 'Solusi Undangan Digital Modern',
-                site_description: 'Platform pembuatan undangan digital terbaik dengan fitur lengkap dan desain premium.',
-            };
+                    activeBacksound = mockData.link_backsound_music || '';
+                    finalHtml = parseTemplate(htmlCodeRef.current, mockData);
+                }
 
-            // Inject dynamic image type variables (real base64 or dummy fallback)
-            if (Array.isArray(imageTypes)) {
-                imageTypes.forEach((key, index) => {
-                    mockData[key] = imgs[key] || dummies[index % dummies.length];
-                });
-            }
-
-            activeBacksound = mockData.link_backsound_music || '';
-            finalHtml = parseTemplate(htmlCodeRef.current, mockData);
-        }
-
-        // Construct HTML content to render inside iframe
-        const iframeContent = `
+                // Construct HTML content to render inside iframe
+                const iframeContent = `
             <!DOCTYPE html>
             <html lang="id">
             <head>
@@ -1391,8 +1392,8 @@ export function ThemeEditorPage() {
                                                     )}
                                                 </div>
                                             </div>
-                                        
-                                            <div 
+
+                                            <div
                                                 className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${isPreviewDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'} overflow-hidden`}
                                                 onDragOver={(e) => { e.preventDefault(); setIsPreviewDragging(true); }}
                                                 onDragLeave={() => setIsPreviewDragging(false)}
@@ -1421,14 +1422,14 @@ export function ThemeEditorPage() {
                                                             alt="Preview"
                                                             className={`w-full h-48 rounded-xl object-cover border border-gray-100 dark:border-gray-700 shadow-sm transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}
                                                         />
-                                                        
+
                                                         {!uploadingPreview && !deletingPreview && (
                                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer">
                                                                 <p className="text-white text-xs font-bold uppercase">Ganti Gambar</p>
                                                                 <p className="text-gray-300 text-[10px]">Upload / Paste / Drop</p>
-                                                                <input 
-                                                                    type="file" 
-                                                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                                <input
+                                                                    type="file"
+                                                                    className="absolute inset-0 opacity-0 cursor-pointer"
                                                                     accept="image/*"
                                                                     onChange={(e) => {
                                                                         const file = e.target.files?.[0];
@@ -1446,9 +1447,9 @@ export function ThemeEditorPage() {
                                                         </div>
                                                         <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik untuk upload gambar pratinjau</p>
                                                         <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop / Paste (Ctrl+V)</p>
-                                                        <input 
-                                                            type="file" 
-                                                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                        <input
+                                                            type="file"
+                                                            className="absolute inset-0 opacity-0 cursor-pointer"
                                                             accept="image/*"
                                                             onChange={(e) => {
                                                                 const file = e.target.files?.[0];
@@ -1625,7 +1626,7 @@ export function ThemeEditorPage() {
                                         <span className={`text-[10px] font-bold uppercase tracking-tighter ${!showDataBinding ? 'text-gray-400' : 'text-gold-600'}`}>Data</span>
                                     </label>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-1.5">
                                     <select
                                         value={selectedPreviewTenantId}
@@ -1684,7 +1685,7 @@ export function ThemeEditorPage() {
             />
 
             {/* Simulation Modal */}
-            <SimulationModal 
+            <SimulationModal
                 isOpen={isSimulationModalOpen}
                 onClose={() => setIsSimulationModalOpen(false)}
                 mockGuestData={mockGuestData}
@@ -1745,12 +1746,12 @@ export function ThemeEditorPage() {
                     </div>
 
                     <div className="flex items-center justify-end gap-3">
-                        <button 
+                        <button
                             onClick={() => {
                                 setShowReplacePreviewModal(false);
                                 setPendingReplacePreviewFile(null);
-                            }} 
-                            className="btn-ghost" 
+                            }}
+                            className="btn-ghost"
                             disabled={uploadingPreview}
                         >
                             Batal

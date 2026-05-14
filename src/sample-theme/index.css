@@ -1,0 +1,1646 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #f8fafc;
+    overflow: hidden;
+}
+
+/* Left Side: Gradient Background */
+.preview-sidebar {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.preview-sidebar::before {
+    content: "";
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    width: 40%;
+    height: 40%;
+    background: rgba(255, 255, 255, 0.1);
+    filter: blur(80px);
+    border-radius: 50%;
+}
+
+/* Right Side: Phone Container on Desktop */
+.phone-container {
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    height: 100vh;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+@media (min-width: 960px) {
+    .phone-container {
+        width: 500px;
+        /* Fixed "Phone" size on desktop */
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+/* Mobile View: Take Full Screen */
+@media (max-width: 959px) {
+    .phone-container {
+        width: 100%;
+        height: 100vh;
+    }
+
+    body {
+        overflow: auto;
+    }
+}
+
+.mock-app-screen {
+    flex: 1;
+    flex-direction: column;
+    background-color: transparent;
+    width: 100%;
+    position: relative;
+}
+
+.status-bar {
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    /* border: 1px solid rgba(255, 255, 255, 0.2); */
+    border-radius: 10px;
+    padding: 30px;
+}
+
+
+
+
+
+/* ==== section hero ==== */
+
+
+.section-hero {
+    min-height: 100vh;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    background-color: #000;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Ken Burns Effect on Background */
+.section-hero > .hero-bg {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-size: cover;
+    background-position: center;
+    animation: kenBurns 20s ease-in-out infinite alternate;
+    z-index: 0 !important;
+}
+
+/* Floating Orbs */
+.section-hero::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 20%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.3) 0%, transparent 25%),
+        radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.35) 0%, transparent 30%),
+        radial-gradient(circle at 10% 70%, rgba(255, 255, 255, 0.25) 0%, transparent 15%);
+    filter: blur(25px);
+    animation: floatingGlow 12s ease-in-out infinite alternate;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.section-hero>* {
+    position: relative;
+    z-index: 2;
+}
+
+@keyframes kenBurns {
+    0% {
+        transform: scale(1) translate(0, 0);
+    }
+
+    100% {
+        transform: scale(1.1) translate(-1%, -1%);
+    }
+}
+
+@keyframes floatingGlow {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: translate(2%, 3%) rotate(5deg);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: translate(-1%, -2%) rotate(-5deg);
+        opacity: 0.5;
+    }
+}
+
+.scroll-indicator {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+    opacity: 0.8;
+}
+
+.scroll-indicator span {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #fff;
+    font-weight: 300;
+}
+
+.mouse {
+    width: 22px;
+    height: 35px;
+    border: 2px solid #fff;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    padding-top: 5px;
+}
+
+.wheel {
+    width: 3px;
+    height: 6px;
+    background: #fff;
+    border-radius: 2px;
+    animation: scrollMouse 1.5s ease-in-out infinite;
+}
+
+@keyframes scrollMouse {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(15px);
+        opacity: 0;
+    }
+}
+
+.container-section-header {
+    padding: 60px 0 20px 0;
+    width: 100%;
+}
+
+.section-cover .container-section-header,
+.section-hero .container-section-header {
+    padding-top: 100px;
+}
+
+.container-section-hero-quotes {
+    font-size: 12px;
+    padding-right: 3em;
+    padding-left: 3em;
+    letter-spacing: 0.5px;
+    font-family: "Comfortaa", sans-serif;
+    font-weight: 400;
+    line-height: normal;
+    position: absolute;
+    bottom: 120px;
+    color: #fff;
+}
+
+
+.section-hero .the-wedding-of,
+.section-cover .the-wedding-of,
+.section-streaming .the-wedding-of,
+.section-story .the-wedding-of,
+.section-gallery .the-wedding-of {
+    font-size: .8em;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #C4C9CB;
+}
+
+
+.section-hero .groom-bride-name,
+.section-cover .groom-bride-name,
+.section-rsvp .groom-bride-name,
+.section-closing .groom-bride-name,
+.section-couples .groom-bride-name,
+.section-schedule .groom-bride-name,
+.section-gift .groom-bride-name,
+.section-wishes .groom-bride-name,
+.section-streaming .groom-bride-name,
+.section-story .groom-bride-name,
+.section-gallery .groom-bride-name {
+    font-weight: 600;
+    font-size: 2em;
+    letter-spacing: -1px;
+}
+
+/* ==== Section couple ==== */
+.section-couples {
+    min-height: 100vh;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    background-color: transparent;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    padding: 60px 20px;
+}
+
+.section-couples .quotes {
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 0px;
+    padding: 0 10px;
+}
+
+.couple-content {
+    margin-top: 20px;
+}
+
+.couple-separator {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.couple-separator .journey-line-art {
+    width: 120px;
+    height: auto;
+}
+
+.couple-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+    margin-bottom: 40px;
+    padding: 0;
+}
+
+.couple-row.reverse {
+    flex-direction: row-reverse;
+}
+
+.couple-info {
+    flex: 1.2;
+    text-align: left;
+    padding-left: 17px;
+}
+
+.couple-row.reverse .couple-info {
+    text-align: right;
+    padding-left: 0;
+    padding-right: 17px;
+}
+
+.couple-name {
+    font-size: 1.3em;
+    font-weight: 600;
+    margin: 0;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.couple-parents {
+    font-size: 13px;
+    margin: 10px 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: "Comfortaa", sans-serif;
+}
+
+.couple-instagram {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #fff !important;
+    text-decoration: none !important;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 15px;
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.couple-instagram:hover {
+    background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(220, 39, 67, 0.4);
+    border-color: transparent;
+}
+
+.couple-img-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.couple-img {
+    width: 100%;
+    max-width: 160px;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 600px) {
+    .couple-row {
+        gap: 50px;
+    }
+
+    .couple-img {
+        max-width: 250px;
+        /* Larger image for tablets */
+    }
+
+    .couple-name {
+        font-size: 1.8em;
+    }
+
+    .couple-parents {
+        font-size: 15px;
+    }
+
+    .couple-instagram {
+        font-size: 13px;
+        padding: 8px 20px;
+    }
+}
+
+.couple-divider {
+    border: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+    margin: 40px 0;
+}
+
+
+
+/* ==== Section schedule ==== */
+.section-schedule {
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    background-color: transparent;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    padding: 60px 0;
+}
+
+.schedule-card {
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 35px 25px;
+    transform: none !important;
+    transition: none !important;
+}
+
+.schedule-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background-image:
+        radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.05) 1px, transparent 0),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px, 20px 20px, 20px 20px;
+    animation: mapPan 60s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Scanning effect */
+.schedule-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right,
+            transparent,
+            rgba(255, 255, 255, 0.03),
+            transparent);
+    transform: skewX(-25deg);
+    animation: mapScan 4s infinite;
+    z-index: 1;
+}
+
+.schedule-card>* {
+    position: relative;
+    z-index: 2;
+}
+
+@keyframes mapPan {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    100% {
+        transform: translate(20px, 20px);
+    }
+}
+
+@keyframes mapScan {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 200%;
+    }
+}
+
+.schedule-card:hover {
+    transform: none !important;
+}
+
+.schedule-title {
+    font-size: 1.8em;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.schedule-date {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.schedule-time {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 15px;
+}
+
+.schedule-line {
+    border: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+    margin: 15px auto;
+    width: 80%;
+}
+
+.schedule-venue {
+    font-weight: 600;
+    color: #fff;
+    font-size: 15px;
+}
+
+.schedule-address {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 5px;
+}
+
+.btn-schedule {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    color: #fff !important;
+    padding: 10px 30px !important;
+    font-size: 14px !important;
+    text-transform: uppercase !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer;
+    outline: none;
+}
+
+.btn-schedule:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-schedule:active {
+    transform: translateY(0) scale(0.95);
+}
+
+/* ==== Section Story ==== */
+.section-story {
+    height: 100vh;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    padding: 60px 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.story-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.story-scroll-box {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-bottom: 20px;
+}
+
+/* Custom Scrollbar for Story */
+.story-scroll-box::-webkit-scrollbar {
+    width: 3px;
+}
+
+.story-scroll-box::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.story-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.story-timeline {
+    position: relative;
+    max-width: 320px;
+    margin: 20px auto;
+    padding-left: 20px;
+    max-height: 600px;
+}
+
+/* The vertical dashed line */
+.story-timeline::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 7px;
+    height: 100%;
+    width: 2px;
+    border-left: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+/* A glowing pulse that "travels" down the line */
+.story-timeline::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 6px;
+    width: 4px;
+    height: 100px;
+    background: linear-gradient(to bottom, transparent, #fff, transparent);
+    animation: timelineTravel 4s linear infinite;
+    filter: blur(2px);
+}
+
+@keyframes timelineTravel {
+    0% {
+        top: -100px;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+.story-item {
+    margin-left: 30px;
+    margin-bottom: 40px;
+    position: relative;
+    text-align: left;
+    transition: all 0.5s ease;
+    opacity: 1;
+    /* Ensure visible by default */
+}
+
+.story-item:hover {
+    transform: translateX(10px);
+}
+
+.story-dot {
+    position: absolute;
+    left: -30px;
+    top: 5px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    border: 3px solid #000;
+    z-index: 2;
+}
+
+.story-date {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.story-title {
+    font-size: 15px;
+    color: #fff;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+}
+
+.story-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.story-item.uk-scrollspy-inview {
+    animation: slideInRight 0.8s ease forwards;
+}
+
+/* ==== Story Footer Animation ==== */
+.story-footer {
+    margin-top: 20px;
+    text-align: center;
+    padding-bottom: 40px;
+}
+
+.journey-line-art {
+    width: 150px;
+    height: auto;
+    margin: 0 auto;
+}
+
+.line-path {
+    stroke-dasharray: 300;
+    stroke-dashoffset: 300;
+    animation: drawLine 3s ease-out forwards;
+    animation-delay: 1s;
+}
+
+.heart-icon {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: drawHeart 2s ease-out forwards, pulseHeart 2s ease-in-out infinite;
+    animation-delay: 2.5s;
+    transform-origin: center;
+}
+
+.end-dot {
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+    animation-delay: 3.5s;
+}
+
+.journey-text {
+    font-size: 12px;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 10px;
+    opacity: 0;
+    animation: fadeIn 1s ease forwards;
+    animation-delay: 4s;
+}
+
+@keyframes drawLine {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes drawHeart {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes pulseHeart {
+
+    0%,
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px #fff);
+    }
+
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 8px #fff);
+    }
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ==== Section Gallery ==== */
+.section-gallery {
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    padding: 60px 0;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    z-index: 1;
+}
+
+.section-gallery::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: -1;
+}
+
+.gallery-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    display: block;
+    width: 100%;
+}
+
+.gallery-img {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.gallery-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: all 0.4s ease;
+    backdrop-filter: blur(2px);
+}
+
+.overlay-content {
+    text-align: center;
+    color: #fff;
+    transform: translateY(20px);
+    transition: all 0.4s ease;
+}
+
+.overlay-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-top: 5px;
+    text-transform: uppercase;
+}
+
+/* Hover Effects */
+.gallery-item:hover .gallery-img {
+    transform: scale(1.1);
+}
+
+.gallery-item:hover .gallery-overlay {
+    opacity: 1;
+}
+
+.gallery-item:hover .overlay-content {
+    transform: translateY(0);
+}
+
+/* ==== Section Streaming ==== */
+.section-streaming {
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    padding: 60px 0;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    z-index: 1;
+}
+
+.section-streaming::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: -1;
+}
+
+/* ==== Section wishes ==== */
+.section-wishes {
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    padding: 60px 0;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.section-wishes::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+}
+
+.wishes-container {
+    padding: 0 30px;
+    margin-top: 30px;
+}
+
+.wishes-scroll-box {
+    max-height: 45vh;
+    overflow-y: auto;
+    margin-top: 30px;
+    padding-right: 10px;
+}
+
+/* Custom Scrollbar */
+.wishes-scroll-box::-webkit-scrollbar {
+    width: 4px;
+}
+
+.wishes-scroll-box::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.wishes-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.wish-item {
+    margin-bottom: 15px;
+    padding: 20px !important;
+    text-align: left;
+}
+
+.wish-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.wish-author {
+    font-weight: 700;
+    color: #fff;
+    font-size: 14px;
+}
+
+.wish-time {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.wish-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+}
+
+/* ==== Section gift ==== */
+.section-gift {
+    min-height: 100vh;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    background-color: transparent;
+    padding: 60px 0;
+}
+
+.gift-rekening-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.gift-rekening-container .gift-card {
+    flex: 1 1 0;
+    /* Ensures equal width or full width if alone */
+    min-width: 0;
+    /* Prevents overflow */
+    padding: 20px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 220px;
+}
+
+/* Custom UIkit Notification (Toast) Style */
+.uk-notification {
+    z-index: 10000 !important;
+}
+
+.uk-notification-message {
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 30px !important;
+    color: #fff !important;
+    font-size: 13px !important;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    padding: 12px 25px !important;
+}
+
+.uk-notification-message-success {
+    border-color: rgba(40, 167, 69, 0.5);
+}
+
+.gift-bank-logo {
+    font-weight: 700;
+    font-size: 0.9em;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.gift-number {
+    font-size: 1em;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.gift-name {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 15px;
+}
+
+.gift-qris-wrapper {
+    margin-bottom: 10px;
+}
+
+.gift-qris-img {
+    width: 100%;
+    max-width: 80px;
+    border-radius: 5px;
+    border: 3px solid #fff;
+}
+
+.gift-title {
+    font-weight: 700;
+    font-size: 1.2em;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.gift-address {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.btn-copy {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    color: #fff !important;
+    padding: 10px 15px !important;
+    font-size: 10px !important;
+    text-transform: uppercase !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    width: 100%;
+}
+
+.btn-copy:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-2px);
+}
+
+.btn-copy:active {
+    transform: translateY(0) scale(0.95);
+}
+
+/* ==== Section cover ==== */
+.section-cover {
+    min-height: 100vh;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    background-color: transparent;
+    background-size: cover;
+    background-position: center;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 100;
+    transition: transform 1.5s cubic-bezier(0.77, 0, 0.175, 1), opacity 1s ease;
+}
+
+.container-section-cover-guest {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+    color: #fff;
+    position: absolute;
+    bottom: 120px;
+    width: 100%;
+
+}
+
+.container-section-cover-guest .guest-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: -10px;
+}
+
+.section-cover .btn {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 10px 30px;
+    display: inline-block;
+    font-weight: 400;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.section-cover .btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.section-cover .btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+
+/* ==== section RSVP ==== */
+.section-rsvp {
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    width: 100%;
+    background-color: transparent;
+    background-size: cover;
+    background-position: center;
+}
+
+.countdown-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.countdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.countdown-box {
+    color: white;
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    /* border: 1px solid rgba(255, 255, 255, 0.2); */
+    border-radius: 10px;
+    padding: 50px 12px;
+    min-width: 60px;
+    font-weight: 100;
+    font-size: 28px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+}
+
+.countdown-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.rsvp-form-container {
+    margin-top: 50px;
+    padding: 0 30px;
+}
+
+.glass-form {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    /* border: 1px solid rgba(255, 255, 255, 0.1); */
+    border-radius: 10px;
+    padding: 25px;
+}
+
+.custom-input {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 7px !important;
+    color: white !important;
+    font-size: 14px !important;
+    height: 45px !important;
+}
+
+.custom-input::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.uk-select.custom-input option {
+    background: #222;
+    color: white;
+}
+
+.thank-you-message {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    /* border: 1px solid rgba(255, 255, 255, 0.2); */
+    border-radius: 10px;
+    color: white;
+    font-weight: 500;
+    line-height: 1.6;
+}
+
+.btn-konfirm {
+    background: rgba(233, 233, 233, 0.5);
+    border-radius: 30px;
+    padding: 10px 30px;
+    display: inline-block;
+    font-weight: 400;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 14px;
+    border-style: none;
+    color: white;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.btn-konfirm:hover:not(:disabled) {
+    background: rgba(233, 233, 233, 0.7);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-konfirm:active:not(:disabled) {
+    transform: translateY(0) scale(0.95);
+}
+
+.btn-konfirm:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: rgba(233, 233, 233, 0.2);
+}
+
+/* ==== section closing ==== */
+
+.section-closing {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    background-color: transparent;
+    background-size: cover;
+    background-position: center;
+    padding-top: 50px;
+}
+
+.section-closing .quotes {
+    font-size: 13px;
+    line-height: 1.6;
+    color: white;
+    margin-top: 20px;
+    padding: 0 30px;
+}
+
+.section-closing .header {
+    font-weight: 600;
+    font-size: 1.6em;
+    /* letter-spacing: -1px; */
+    line-height: normal;
+    text-transform: uppercase;
+}
+
+.section-closing .the-wedding-of {
+    margin-top: 15px;
+}
+
+
+.closing-photo {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 20px;
+    margin-bottom: 25px;
+    /* border: 5px solid rgba(255, 255, 255, 0.1); */
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+}
+
+/* ==== invitation footer ==== */
+.invitation-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-bottom: 10em;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.footer-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-family: "Poppins", sans-serif;
+}
+
+.footer-info {
+    margin-bottom: 10px;
+    font-family: "Comfortaa", sans-serif;
+}
+
+.footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.footer-social a {
+    color: rgba(255, 255, 255, 1);
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.05);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.footer-social a:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-3px);
+}
+
+
+
+/* Hide all sections initially except cover */
+section:not(.section-cover) {
+    display: none;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Class to reveal content and hide cover */
+.mock-app-screen.reveal-content section:not(.section-cover) {
+    display: block !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+.mock-app-screen.reveal-content .section-cover {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Hero Staggered Animations */
+.section-hero .the-wedding-of,
+.section-hero .groom-bride-name,
+.section-hero .container-section-hero-quotes,
+.section-hero .scroll-indicator {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+}
+
+.mock-app-screen.reveal-content .section-hero .the-wedding-of {
+    animation: revealUp 1s ease forwards 0.8s;
+}
+
+.mock-app-screen.reveal-content .section-hero .groom-bride-name {
+    animation: revealUp 1s ease forwards 1s;
+}
+
+.mock-app-screen.reveal-content .section-hero .container-section-hero-quotes {
+    animation: revealUp 1s ease forwards 1.2s;
+}
+
+.mock-app-screen.reveal-content .section-hero .scroll-indicator {
+    animation: revealUpCentered 1s ease forwards 1.4s;
+}
+
+@keyframes revealUpCentered {
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* ==== Floating UI & Menu ==== */
+.floating-ui-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    padding: 20px;
+}
+
+@media (min-width: 960px) {
+    .floating-ui-container {
+        width: 500px;
+        right: 0;
+        left: auto;
+    }
+}
+
+.floating-btn {
+    pointer-events: auto;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.floating-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.btn-menu {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+}
+
+.bottom-controls {
+    position: absolute;
+    bottom: 70px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Menu Modal Styles */
+.transparent-dark-bg {
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(15px);
+}
+
+.menu-header {
+    animation: fadeInDown 0.8s ease forwards;
+}
+
+.menu-wedding-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 10px;
+    font-family: "Poppins", sans-serif;
+}
+
+.menu-couple-name {
+    font-family: "Poppins", sans-serif;
+    font-weight: 700;
+    font-size: 2.5rem;
+    color: white;
+    margin: 0;
+    letter-spacing: -1px;
+}
+
+.menu-wedding-date {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 5px;
+    font-family: "Comfortaa", sans-serif;
+}
+
+.menu-divider {
+    width: 40px;
+    height: 2px;
+    background: white;
+    margin: 25px auto 0;
+    opacity: 0.3;
+}
+
+.menu-list {
+    margin-top: 40px;
+}
+
+.menu-list li {
+    margin-bottom: 15px;
+}
+
+.menu-list a {
+    font-size: 1.2rem !important;
+    font-weight: 300 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.4s ease !important;
+}
+
+.menu-list a:hover {
+    color: white !important;
+    letter-spacing: 5px;
+    transform: scale(1.1);
+}
+
+.menu-close-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 30px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.menu-close-btn:hover {
+    transform: rotate(90deg);
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Pulse animation for music icon when playing */
+.music-playing {
+    animation: pulseIcon 2s infinite;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes pulseIcon {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes revealUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==== Falling Leaves Animation ==== */
+.falling-leaf {
+    position: absolute;
+    top: -10%;
+    pointer-events: none;
+    z-index: 3;
+    animation-name: fall, sway;
+    animation-timing-function: linear, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+    animation-direction: normal, alternate;
+    color: white;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
+}
+
+@keyframes fall {
+    0% { top: -10%; }
+    100% { top: 110%; }
+}
+
+@keyframes sway {
+    0% { transform: scale(var(--leaf-scale, 1)) translateX(-40px) rotate(-25deg); }
+    100% { transform: scale(var(--leaf-scale, 1)) translateX(40px) rotate(45deg); }
+}

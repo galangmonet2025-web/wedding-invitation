@@ -727,6 +727,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
             kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
             quote: activeContent.custom_kalimat_1 || '',
+            custom_kalimat_1: activeContent.custom_kalimat_1 || '',
+            custom_kalimat_2: activeContent.custom_kalimat_2 || '',
+            custom_kalimat_3: activeContent.custom_kalimat_3 || '',
+            custom_kalimat_4: activeContent.custom_kalimat_4 || '',
             bank_1: activeContent.nama_bank_1 || '',
             rek_1: activeContent.nomor_rekening_bank_1 || '',
             nama_rek_1: activeContent.nama_rekening_bank_1 || '',
@@ -741,6 +745,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
             timeline_kisah: timeline,
             tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
+            flag_kirim_hadiah_offline: getBool(activeContent.flag_kirim_hadiah_offline),
+            nama_lokasi_kirim_hadiah_offline: activeContent.nama_lokasi_kirim_hadiah_offline || '',
+            alamat_lokasi_kirim_hadiah_offline: activeContent.alamat_lokasi_kirim_hadiah_offline || '',
+            map_kirim_hadiah_offline: activeContent.map_kirim_hadiah_offline || '',
             flag_lokasi_akad_dan_resepsi_berbeda: getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda),
             flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
             flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
@@ -748,11 +756,24 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
             // Advanced features 
             has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
+            is_fitur_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),
             has_story: getBool(activeContent.is_fitur_cerita),
+            is_fitur_cerita: getBool(activeContent.is_fitur_cerita),
             live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
                 url: activeContent.link_live_streaming || '',
                 platform: activeContent.platform_live_streaming || ''
             } : null,
+            is_fitur_live_streaming: getBool(activeContent.flag_pakai_live_streaming),
+            link_backsound_music: activeContent.link_backsound_music || '',
+            link_live_streaming: activeContent.link_live_streaming || '',
+            platform_live_streaming: activeContent.platform_live_streaming || '',
+            flag_sudah_kirim_undangan_via_whatsapp: false,
+            
+            // Site details
+            site_name: 'Kundangan',
+            site_url: window.location.origin,
+            tagline: '',
+            site_description: '',
             galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
