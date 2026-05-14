@@ -16,7 +16,9 @@ import { RSVPSuccessModal } from '../components/RSVPSuccessModal';
 
 interface TenantPublic {
     bride_name: string;
+    bride_nickname?: string;
     groom_name: string;
+    groom_nickname?: string;
     wedding_date: string;
     domain_slug: string;
 }
@@ -75,7 +77,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         return {
             tenant: {
                 bride_name: 'Fiona',
+                bride_nickname: 'Fiona',
                 groom_name: 'Galang',
+                groom_nickname: 'Galang',
                 wedding_date: '2026-10-20',
                 domain_slug: 'demo'
             }
@@ -693,10 +697,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const dataContext: Record<string, any> = useMemo(() => {
         const images = resolvedImages || {};
         return {
-            bride_name: activeContent.bride_name || tenant.bride_name,
-            groom_name: activeContent.groom_name || tenant.groom_name,
-            bride_nickname: activeContent.bride_nickname || '',
-            groom_nickname: activeContent.groom_nickname || '',
+            bride_name: activeContent.bride_name || tenant.bride_name || 'Mempelai Wanita',
+            groom_name: activeContent.groom_name || tenant.groom_name || 'Mempelai Pria',
+            bride_nickname: activeContent.bride_nickname || tenant.bride_nickname || activeContent.bride_name || tenant.bride_name || 'Wanita',
+            groom_nickname: activeContent.groom_nickname || tenant.groom_nickname || activeContent.groom_name || tenant.groom_name || 'Pria',
             religion: activeContent.religion || '',
             wedding_date: formatDate(activeContent.wedding_date || tenant.wedding_date),
             tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),

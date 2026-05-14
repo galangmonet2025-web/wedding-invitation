@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, forwardRef } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format, parse } from 'date-fns';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi, publicApi } from '@/core/api/endpoints';
@@ -102,6 +105,100 @@ export function RegisterPage() {
         if (!b) return g;
         return `${g}-${b}`;
     }, []);
+
+    // Helper for date formatting DD/MM/YYYY <-> YYYY-MM-DD
+    const formatToDisplay = (dateStr: string) => {
+        if (!dateStr) return '';
+        if (dateStr.includes('/')) return dateStr; // Already in display format
+        const parts = dateStr.split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return dateStr;
+    };
+
+    const formatToValue = (displayStr: string) => {
+        if (!displayStr) return '';
+        // If already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(displayStr)) return displayStr;
+
+        const digits = displayStr.replace(/\D/g, '');
+        if (digits.length === 8) {
+            const d = digits.substring(0, 2);
+            const m = digits.substring(2, 4);
+            const y = digits.substring(4, 8);
+            return `${y}-${m}-${d}`;
+        }
+        return displayStr;
+    };
+
+    const CustomDateInput = forwardRef(({ value, onClick, placeholder }: any, ref: any) => (
+        <div className="relative cursor-pointer" onClick={onClick}>
+            <input
+                ref={ref}
+                value={value}
+                readOnly
+                placeholder={placeholder}
+                className="input-field pl-12 pr-12 w-full cursor-pointer"
+            />
+            <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+        </div>
+    ));
+
+    const DateInputLocal = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
+        const dateValue = useMemo(() => {
+            if (!value) return null;
+            const parsed = parse(value, 'yyyy-MM-dd', new Date());
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }, [value]);
+
+        return (
+            <div className="w-full premium-datepicker">
+                <DatePicker
+                    selected={dateValue}
+                    onChange={(date: Date | null) => {
+                        if (date) {
+                            onChange(format(date, 'yyyy-MM-dd'));
+                        } else {
+                            onChange('');
+                        }
+                    }}
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="DD/MM/YYYY"
+                    className="input-field pl-12 pr-12 w-full"
+                    autoComplete="off"
+                    showYearDropdown
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={15}
+                    customInput={<CustomDateInput />}
+                />
+                <style>{`
+                    .premium-datepicker .react-datepicker-wrapper {
+                        width: 100%;
+                    }
+                    .premium-datepicker .react-datepicker {
+                        font-family: inherit;
+                        border-radius: 12px;
+                        border: 1px solid #e5e7eb;
+                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                        overflow: hidden;
+                    }
+                    .premium-datepicker .react-datepicker__header {
+                        background-color: #fff;
+                        border-bottom: 1px solid #f3f4f6;
+                        padding-top: 12px;
+                    }
+                    .premium-datepicker .react-datepicker__day--selected {
+                        background-color: #d4af37 !important;
+                        color: #fff !important;
+                        border-radius: 8px;
+                    }
+                    .premium-datepicker .react-datepicker__day:hover {
+                        background-color: #fefce8;
+                        border-radius: 8px;
+                    }
+                `}</style>
+            </div>
+        );
+    };
 
     // Effect for auto-slug generation and availability check
     useEffect(() => {
@@ -306,15 +403,11 @@ export function RegisterPage() {
 
                         <div>
                             <label htmlFor="wedding_date" className="label-field">{t('auth.wedding_date')}</label>
-                            <div className="relative">
-                                <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    id="wedding_date"
-                                    name="wedding_date"
-                                    type="date"
+                            <div className="relative group">
+                                <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                                <DateInputLocal
                                     value={form.wedding_date}
-                                    onChange={handleChange}
-                                    className="input-field pl-12"
+                                    onChange={(val) => setForm(prev => ({ ...prev, wedding_date: val }))}
                                 />
                             </div>
                         </div>

@@ -284,6 +284,19 @@ export function ThemeWrapper({
         if (target.closest('#btn-open-invitation')) {
             setIsOpened(true);
             setIsPlaying(true);
+            
+            const appScreen = document.querySelector('.mock-app-screen');
+            if (appScreen) appScreen.classList.add('reveal-content');
+
+            setTimeout(() => {
+                document.body.style.overflow = 'auto';
+                const phoneContainer = document.querySelector('.phone-container') as HTMLElement;
+                if (phoneContainer) phoneContainer.style.overflowY = 'auto';
+                
+                if ((window as any).UIkit) {
+                    (window as any).UIkit.update(document.body, 'update');
+                }
+            }, 1000);
         }
         if (target.closest('#btn-show-qr')) {
             e.preventDefault();

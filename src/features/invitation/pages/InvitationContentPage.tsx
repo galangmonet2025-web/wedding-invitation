@@ -1,4 +1,7 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, forwardRef } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format, parse } from 'date-fns';
 import { useBlocker } from 'react-router-dom';
 import { tenantApi } from '@/core/api/endpoints';
 import { useInvitationContentStore } from '../store/invitationContentStore';
@@ -27,7 +30,8 @@ import {
     HiOutlineChevronRight,
     HiOutlineChevronDown,
     HiOutlineX,
-    HiOutlineRefresh
+    HiOutlineRefresh,
+    HiOutlineCalendar
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -97,7 +101,7 @@ export function InvitationContentPage() {
     const { themes, fetchThemes } = useThemeStore();
     const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const { tenant } = useAuthStore();
+    const { tenant, updateTenant: updateAuthTenant } = useAuthStore();
     const [iframeKey, setIframeKey] = useState(0);
     const { t } = useTranslation();
     const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set(['mempelai', 'acara', 'hadiah', 'teks', 'cerita']));
@@ -244,6 +248,7 @@ export function InvitationContentPage() {
         if (!content || !tenant) return;
         setSaving(false); // No global loading needed since we use isDirty and saving state in button
         setSaving(true);
+        setSaving(true);
         try {
             const success = await updateContent(content);
 
@@ -253,7 +258,11 @@ export function InvitationContentPage() {
                     id: tenant.id,
                     theme_id: selectedThemeId || undefined
                 });
-                tenant.theme_id = selectedThemeId || undefined;
+                // Update the auth store to keep it in sync and persist across reloads
+                updateAuthTenant({
+                    ...tenant,
+                    theme_id: selectedThemeId || undefined
+                });
             }
 
             if (success) {
@@ -278,6 +287,115 @@ export function InvitationContentPage() {
 
     // Safe boolean parsing since DB might return 'TRUE' or boolean true
     const getBool = (val: any) => String(val).toLowerCase() === 'true';
+
+    // Date formatting helpers
+    const formatToDisplay = (dateStr: string) => {
+        if (!dateStr) return '';
+        if (dateStr.includes('/')) return dateStr;
+        const parts = dateStr.split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return dateStr;
+    };
+
+    const formatToValue = (displayStr: string) => {
+        if (!displayStr) return '';
+        // If already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(displayStr)) return displayStr;
+
+        const digits = displayStr.replace(/\D/g, '');
+        if (digits.length === 8) {
+            const d = digits.substring(0, 2);
+            const m = digits.substring(2, 4);
+            const y = digits.substring(4, 8);
+            return `${y}-${m}-${d}`;
+        }
+        return displayStr;
+    };
+
+    const handleDateChange = (field: keyof InvitationContent, displayVal: string) => {
+        // As the user types, we keep the display format in the store temporarily?
+        // No, let's keep the display format ONLY in the input and update the store when it's valid.
+        // Actually, for simplicity, let's store the display format in the store 
+        // and convert it just before saving in handleSave.
+        updateField(field, displayVal);
+    };
+
+    const CustomDateInput = forwardRef(({ value, onClick, placeholder }: any, ref: any) => (
+        <div className="relative cursor-pointer" onClick={onClick}>
+            <input
+                ref={ref}
+                value={value}
+                readOnly
+                placeholder={placeholder}
+                className="input-field pr-12 w-full cursor-pointer"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <HiOutlineCalendar className="w-5 h-5" />
+            </div>
+        </div>
+    ));
+
+    const DateInput = ({ value, onChange, placeholder = "DD/MM/YYYY" }: { value: string, onChange: (val: string) => void, placeholder?: string }) => {
+        // value is YYYY-MM-DD
+        const dateValue = useMemo(() => {
+            if (!value) return null;
+            const parsed = parse(value, 'yyyy-MM-dd', new Date());
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }, [value]);
+
+        return (
+            <div className="relative premium-datepicker">
+                <DatePicker
+                    selected={dateValue}
+                    onChange={(date: Date | null) => {
+                        if (date) {
+                            onChange(format(date, 'yyyy-MM-dd'));
+                        } else {
+                            onChange('');
+                        }
+                    }}
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText={placeholder}
+                    className="input-field pr-12 w-full"
+                    autoComplete="off"
+                    showYearDropdown
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={15}
+                    customInput={<CustomDateInput placeholder={placeholder} />}
+                />
+                <style>{`
+                    .premium-datepicker .react-datepicker-wrapper {
+                        width: 100%;
+                    }
+                    .premium-datepicker .react-datepicker {
+                        font-family: inherit;
+                        border-radius: 12px;
+                        border: 1px solid #e5e7eb;
+                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                        overflow: hidden;
+                    }
+                    .premium-datepicker .react-datepicker__header {
+                        background-color: #fff;
+                        border-bottom: 1px solid #f3f4f6;
+                        padding-top: 12px;
+                    }
+                    .premium-datepicker .react-datepicker__day--selected {
+                        background-color: #d4af37 !important;
+                        color: #fff !important;
+                        border-radius: 8px;
+                    }
+                    .premium-datepicker .react-datepicker__day:hover {
+                        background-color: #fefce8;
+                        border-radius: 8px;
+                    }
+                    .premium-datepicker .react-datepicker__current-month {
+                        color: #1f2937;
+                        font-weight: 700;
+                    }
+                `}</style>
+            </div>
+        );
+    };
 
     const isInitialLoading = !hasLoadedContent || !content;
     if (loading && isInitialLoading) return <PageLoader />;
@@ -475,11 +593,11 @@ export function InvitationContentPage() {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
                                                         <label className="label-field">{t('invitation_content.akad_date')}</label>
-                                                        <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
+                                                        <DateInput value={content.tanggal_akad || ''} onChange={(val) => updateField('tanggal_akad', val)} />
                                                     </div>
                                                     <div>
                                                         <label className="label-field">{t('invitation_content.resepsi_date')}</label>
-                                                        <input type="date" value={content.wedding_date || ''} onChange={(e) => updateField('wedding_date', e.target.value)} className="input-field" />
+                                                        <DateInput value={content.wedding_date || ''} onChange={(val) => updateField('wedding_date', val)} />
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -780,11 +898,11 @@ export function InvitationContentPage() {
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
                                                                 <label className="label-field text-xs">{t('invitation_content.date')}</label>
-                                                                <input type="date" value={item.tanggal} onChange={(e) => {
+                                                                <DateInput value={item.tanggal} onChange={(val) => {
                                                                     const newArr = [...timelineItems];
-                                                                    newArr[idx].tanggal = e.target.value;
+                                                                    newArr[idx].tanggal = val;
                                                                     setTimelineItems(newArr);
-                                                                }} className="input-field text-sm" />
+                                                                }} />
                                                             </div>
                                                             <div>
                                                                 <label className="label-field text-xs">{t('invitation_content.title')}</label>
