@@ -54,6 +54,13 @@ export function DashboardPage() {
     const [reviewForm, setReviewForm] = useState({ rate_star: 5, comment: '' });
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [isHPlusOnePassed, setIsHPlusOnePassed] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         fetchDashboard();
@@ -152,14 +159,14 @@ export function DashboardPage() {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-4 md:space-y-6 animate-fade-in">
             {/* Page Header */}
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 md:gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">
+                    <h1 className="text-xl md:text-2xl font-display font-bold text-gray-800 dark:text-white">
                         {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : 'Dashboard'}
                     </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 md:mt-1">
                         {tenant ? `${t('dashboard.wedding_date')}: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : t('dashboard.overview')}
                     </p>
                 </div>
@@ -185,7 +192,7 @@ export function DashboardPage() {
             ) : (
                 <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
                 <StatCard
                     title={t('dashboard.total_guests')}
                     value={dashboard.total_guests}
@@ -224,64 +231,93 @@ export function DashboardPage() {
                 />
             </div>
 
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Guest Growth Chart */}
-                <div className="lg:col-span-2 card">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.guest_growth')}</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={dashboard.guest_growth}>
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                {/* Guest Growth Chart - Sparkline Style */}
+                <div className="lg:col-span-2 card !p-4 md:!p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm md:text-lg font-semibold text-gray-800 dark:text-white">{t('dashboard.guest_growth')}</h3>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">{t('dashboard.last_7_days', '7 Hari Terakhir')}</span>
+                    </div>
+                    <ResponsiveContainer width="100%" height={isMobile ? 140 : 200}>
+                        <AreaChart data={dashboard.guest_growth} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#C6A769" stopOpacity={0.3} />
                                     <stop offset="95%" stopColor="#C6A769" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
-                            <YAxis stroke="#9CA3AF" fontSize={12} />
+                            <XAxis 
+                                dataKey="date" 
+                                hide={isMobile} 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                            />
+                            <YAxis hide axisLine={false} tickLine={false} />
                             <Tooltip
                                 contentStyle={{
                                     backgroundColor: '#FFF',
                                     border: '1px solid #E5E7EB',
                                     borderRadius: '12px',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                    fontSize: '11px'
                                 }}
                             />
                             <Area
                                 type="monotone"
                                 dataKey="count"
                                 stroke="#C6A769"
-                                strokeWidth={3}
+                                strokeWidth={2.5}
                                 fill="url(#goldGradient)"
                                 name="Guests"
+                                dot={!isMobile}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* RSVP Pie Chart */}
-                <div className="card">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.rsvp_breakdown')}</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={dashboard.rsvp_breakdown}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={100}
-                                paddingAngle={5}
-                                dataKey="value"
-                            >
-                                {dashboard.rsvp_breakdown.map((_, index) => (
-                                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
+                {/* RSVP Breakdown - Compact Bar Style */}
+                <div className="card !p-4 md:!p-6 flex flex-col justify-center">
+                    <h3 className="text-sm md:text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.rsvp_breakdown')}</h3>
+                    
+                    <div className="space-y-4">
+                        {/* Compact Stacked Bar */}
+                        <div className="flex h-3 md:h-4 w-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            {dashboard.rsvp_breakdown.map((item, idx) => {
+                                const total = dashboard.rsvp_breakdown.reduce((acc, curr) => acc + curr.value, 0);
+                                const percentage = total > 0 ? (item.value / total) * 100 : 0;
+                                return (
+                                    <div 
+                                        key={idx} 
+                                        style={{ width: `${percentage}%`, backgroundColor: PIE_COLORS[idx] }}
+                                        className="h-full transition-all duration-500 hover:opacity-80"
+                                        title={`${item.name}: ${item.value}`}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        {/* Legend Grid */}
+                        <div className="grid grid-cols-1 gap-2.5">
+                            {dashboard.rsvp_breakdown.map((item, idx) => {
+                                const total = dashboard.rsvp_breakdown.reduce((acc, curr) => acc + curr.value, 0);
+                                const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                                return (
+                                    <div key={idx} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[idx] }} />
+                                            <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{item.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-gray-800 dark:text-white">{item.value}</span>
+                                            <span className="text-[10px] text-gray-400 font-medium">({percentage}%)</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -310,9 +346,9 @@ export function DashboardPage() {
 
             {/* Quick Info */}
             {tenant && (
-                <div className="card">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.wedding_info')}</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="card !p-4 md:!p-6">
+                    <h3 className="text-sm md:text-lg font-semibold text-gray-800 dark:text-white mb-3 md:mb-4">{t('dashboard.wedding_info')}</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{t('dashboard.plan')}</p>
                             {tenant.plan_type === 'basic' && <span className="badge-gray text-sm capitalize">{tenant.plan_type}</span>}

@@ -34,6 +34,122 @@ import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
 import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 
+function MobileMenuOverlay({ 
+    isOpen, 
+    onClose, 
+    items, 
+    user, 
+    tenant, 
+    onLogout, 
+    onChangePassword,
+    t 
+}: any) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] lg:hidden animate-fade-in overflow-hidden">
+            {/* Background with animated blur */}
+            <div className="absolute inset-0 bg-white/95 dark:bg-gray-950/98 backdrop-blur-2xl" />
+            
+            {/* Decorative background elements */}
+            <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-gold-400/10 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-gold-600/10 rounded-full blur-3xl animate-pulse" />
+
+            <div className="relative h-full flex flex-col p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
+                            <span className="text-white font-display font-bold text-lg">W</span>
+                        </div>
+                        <h1 className="font-display font-bold text-lg text-gray-800 dark:text-white">
+                            Wedding<span className="text-gradient-gold">SaaS</span>
+                        </h1>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 active:scale-90 transition-transform"
+                    >
+                        <HiOutlineX className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Tenant / User Welcome */}
+                <div className="mb-8">
+                    <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-1">{t('dashboard.welcome_back', 'Selamat Datang Kembali')}</p>
+                    <h2 className="text-2xl font-display font-bold text-gray-800 dark:text-white leading-tight">
+                        {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : user?.username}
+                    </h2>
+                    {tenant && <p className="text-sm text-gray-400 mt-1">{tenant.domain_slug}</p>}
+                </div>
+
+                {/* Grid Menu Container */}
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-10 px-1">
+                    <div className="grid grid-cols-3 gap-3 p-1">
+                        {items.map((item: any) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                onClick={onClose}
+                                className={({ isActive }) => 
+                                    `flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 active:scale-95 ${
+                                        isActive 
+                                        ? 'bg-gold-500 text-white shadow-gold transform scale-105 z-10' 
+                                        : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 shadow-sm'
+                                    }`
+                                }
+                            >
+                                {({ isActive }) => (
+                                    <>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
+                                            isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-white/5'
+                                        }`}>
+                                            <item.icon className="w-6 h-6" />
+                                        </div>
+                                        <span className="text-[9px] font-bold text-center leading-tight uppercase tracking-wider h-7 flex items-center overflow-hidden">
+                                            {item.label}
+                                        </span>
+                                    </>
+                                )}
+                            </NavLink>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Bottom Profile & Actions */}
+                <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
+                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-gray-800/50">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
+                            <span className="text-white font-bold text-xl">{user?.username?.[0]?.toUpperCase()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
+                            <p className="text-[10px] text-gold-600 font-bold uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={() => { onClose(); onChangePassword(); }}
+                            className="flex items-center justify-center gap-2 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-400 active:scale-95 transition-all shadow-sm"
+                        >
+                            <HiOutlineKey className="w-5 h-5 text-gold-500" />
+                            {t('sidebar.change_password')}
+                        </button>
+                        <button 
+                            onClick={onLogout}
+                            className="flex items-center justify-center gap-2 p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl text-xs font-bold text-red-600 active:scale-95 transition-all shadow-sm"
+                        >
+                            <HiOutlineLogout className="w-5 h-5" />
+                            {t('sidebar.logout')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user, tenant, logout } = useAuthStore();
@@ -109,19 +225,22 @@ export function DashboardLayout() {
 
     return (
         <div className={`min-h-screen flex ${isDark ? 'dark' : ''}`}>
-            {/* Sidebar Overlay */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
+            {/* Mobile Menu Overlay */}
+            <MobileMenuOverlay 
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                items={filteredNavItems}
+                user={user}
+                tenant={tenant}
+                onLogout={handleLogout}
+                onChangePassword={() => setPasswordModalOpen(true)}
+                t={t}
+            />
 
-            {/* Sidebar */}
+            {/* Desktop Sidebar (Only visible on LG up) */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700 
-        transform transition-transform duration-300 ease-in-out flex flex-col
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+                className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700 
+        hidden lg:flex flex-col"
             >
                 {/* Logo */}
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700">
@@ -207,7 +326,7 @@ export function DashboardLayout() {
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 lg:ml-72 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark">
+            <div className="flex-1 lg:ml-72 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden">
                 {/* Topbar */}
                 <header className="sticky top-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between px-4 lg:px-8 h-16">
@@ -284,7 +403,7 @@ export function DashboardLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-8">
+                <main className="flex-1 p-3 lg:p-8 overflow-y-auto">
                     <Outlet />
                 </main>
 
