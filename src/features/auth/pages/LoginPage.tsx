@@ -87,7 +87,7 @@ export function LoginPage() {
 
         setLoading(true);
         try {
-            const response = await authApi.login({ username, password });
+            const response = await authApi.login({ username, password }, { skipLoader: true } as any);
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success(t('auth.welcome_back_toast'));

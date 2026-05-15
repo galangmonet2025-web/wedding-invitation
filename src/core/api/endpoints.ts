@@ -36,13 +36,13 @@ import type {
 // =============================================
 
 export const authApi = {
-    login: async (data: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
-        const res = await apiClient.post('', { action: 'login', ...data });
+    login: async (data: LoginRequest, config?: any): Promise<ApiResponse<LoginResponse>> => {
+        const res = await apiClient.post('', { action: 'login', ...data }, config);
         return res.data;
     },
 
-    registerTenant: async (data: RegisterTenantRequest): Promise<ApiResponse<LoginResponse>> => {
-        const res = await apiClient.post('', { action: 'registerTenant', ...data });
+    registerTenant: async (data: RegisterTenantRequest, config?: any): Promise<ApiResponse<LoginResponse>> => {
+        const res = await apiClient.post('', { action: 'registerTenant', ...data }, config);
         return res.data;
     },
 

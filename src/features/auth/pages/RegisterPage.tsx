@@ -301,7 +301,7 @@ export function RegisterPage() {
 
         setLoading(true);
         try {
-            const response = await authApi.registerTenant(form);
+            const response = await authApi.registerTenant(form, { skipLoader: true } as any);
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success(t('auth.register_success'));
