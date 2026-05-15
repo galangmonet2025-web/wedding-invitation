@@ -603,7 +603,7 @@
         wedding_date: sanitized.wedding_date,
         domain_slug: sanitized.domain_slug,
         plan_type: sanitized.plan_type || 'basic',
-        guest_limit: sanitized.plan_type === 'premium' ? 1000 : (sanitized.plan_type === 'pro' ? 500 : 100),
+        guest_limit: PaymentService.getPlanGuestLimit(sanitized.plan_type || 'basic'),
         created_at: now,
         status_account: 'active',
         payment_deadline: deadline,
@@ -908,7 +908,6 @@
       var userId = DB.generateId();
       var now = new Date().toISOString();
 
-      var planLimits = { basic: 100, pro: 500, premium: -1 };
       var plan = sanitized.plan_type || 'basic';
       var deadline = new Date(new Date(now).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -920,7 +919,7 @@
         domain_slug: sanitized.domain_slug || '',
         plan_type: plan,
         theme_id: sanitized.theme_id || '',
-        guest_limit: planLimits[plan] || 100,
+        guest_limit: PaymentService.getPlanGuestLimit(plan),
         created_at: now,
         status_account: 'active',
         payment_deadline: deadline,
@@ -957,8 +956,7 @@
     if (auth.role === 'superadmin') {
       if (payload.plan_type) {
         updates.plan_type = payload.plan_type;
-        var planLimits = { basic: 100, pro: 500, premium: -1 }; 
-        updates.guest_limit = planLimits[payload.plan_type] || 100;
+        updates.guest_limit = PaymentService.getPlanGuestLimit(payload.plan_type);
       }
       if (payload.status_account) updates.status_account = payload.status_account;
       if (payload.status_payment) updates.status_payment = payload.status_payment;
@@ -3008,6 +3006,14 @@
       return ResponseHelper.success(null, 'Features reordered');
     },
 
+    getPlanGuestLimit: function(planType) {
+      var plan = DB.findOne(CONFIG.PLAN_TYPE_SHEET, 'plan_type', planType);
+      if (plan) {
+        return parseInt(plan.guest_limit) || 100;
+      }
+      return 100; // default fallback
+    },
+
     handleWebhook: function(payload) {
       // Pengecekan awal untuk Test/Ping dari Midtrans dashboard
       if (!payload || (!payload.order_id && !payload.id)) {
@@ -3101,7 +3107,8 @@
           if (tenant) {
             DB.update('Tenants', tenantId, {
               status_payment: 'Sudah dibayar',
-              plan_type: itemId // e.g. 'pro' or 'premium'
+              plan_type: itemId, // e.g. 'pro' or 'premium'
+              guest_limit: this.getPlanGuestLimit(itemId)
             });
             Logger.log('Plan activated: ' + itemId + ' for tenant: ' + tenantId);
           }

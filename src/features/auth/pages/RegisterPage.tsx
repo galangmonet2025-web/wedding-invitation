@@ -31,6 +31,7 @@ export function RegisterPage() {
     const [isAutoSlug, setIsAutoSlug] = useState(true);
     const [isCheckingSlug, setIsCheckingSlug] = useState(false);
     const [slugStatus, setSlugStatus] = useState({ message: '', isConflict: false });
+    const [planTypes, setPlanTypes] = useState<any[]>([]);
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -59,13 +60,41 @@ export function RegisterPage() {
         fetchConfig();
     }, []);
 
+    // Fetch Plan Types
+    useEffect(() => {
+        const fetchPlanTypes = async () => {
+            try {
+                const res = await publicApi.getPublicPlanTypes();
+                if (res.success) {
+                    setPlanTypes(res.data);
+                    // Update initial guest_limit based on default basic plan
+                    const basicPlan = res.data.find((p: any) => p.plan_type === 'basic');
+                    if (basicPlan) {
+                        setForm(prev => ({ ...prev, guest_limit: basicPlan.guest_limit }));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch plan types:', err);
+            }
+        };
+        fetchPlanTypes();
+    }, []);
+
     // Set plan_type from URL if exists
     useEffect(() => {
         const planFromUrl = searchParams.get('plan_type');
         if (planFromUrl && ['basic', 'pro', 'premium'].includes(planFromUrl.toLowerCase())) {
             setForm(prev => ({ ...prev, plan_type: planFromUrl.toLowerCase() }));
+            
+            // Also sync guest_limit if plans are already loaded
+            if (planTypes.length > 0) {
+                const selectedPlan = planTypes.find(p => p.plan_type === planFromUrl.toLowerCase());
+                if (selectedPlan) {
+                    setForm(prev => ({ ...prev, guest_limit: selectedPlan.guest_limit }));
+                }
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, planTypes]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -76,6 +105,12 @@ export function RegisterPage() {
             }
             if (name === 'bride_name' && isAutoBrideNickname) {
                 next.bride_nickname = getFirstName(value);
+            }
+            if (name === 'plan_type') {
+                const selectedPlan = planTypes.find(p => p.plan_type === value);
+                if (selectedPlan) {
+                    next.guest_limit = selectedPlan.guest_limit;
+                }
             }
             return next;
         });
@@ -392,9 +427,19 @@ export function RegisterPage() {
                                     onChange={handleChange}
                                     className="input-field"
                                 >
-                                    <option value="basic">{t('auth.plan_basic')}</option>
-                                    <option value="pro">{t('auth.plan_pro')}</option>
-                                    <option value="premium">{t('auth.plan_premium')}</option>
+                                    {planTypes.length > 0 ? (
+                                        planTypes.map((p) => (
+                                            <option key={p.plan_type} value={p.plan_type}>
+                                                {t(`auth.plan_${p.plan_type}`)} ({p.guest_limit === 999999 ? t('dashboard.unlimited') : `${p.guest_limit} Tamu`})
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="basic">{t('auth.plan_basic')} (100 Tamu)</option>
+                                            <option value="pro">{t('auth.plan_pro')} (500 Tamu)</option>
+                                            <option value="premium">{t('auth.plan_premium')} (1000 Tamu)</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
                             

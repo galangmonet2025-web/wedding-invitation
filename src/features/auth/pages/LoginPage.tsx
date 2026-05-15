@@ -67,7 +67,7 @@ export function LoginPage() {
                 status_account: 'active' as const,
                 package: 'premium' as const,
                 plan_type: 'premium' as const,
-                guest_limit: 1000,
+                guest_limit: 999999,
                 created_at: new Date().toISOString(),
                 payment_deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                 status_payment: 'Sudah dibayar' as const
