@@ -23,7 +23,8 @@
     "copied": "Berhasil disalin!",
     "confirm": "Konfirmasi",
     "previous": "Sebelumnya",
-    "next": "Selanjutnya"
+    "next": "Selanjutnya",
+    "clear": "Bersihkan"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -73,7 +74,8 @@
     "domain": "Domain",
     "experience_question": "Bagaimana pengalaman Anda?",
     "experience_description": "Berikan review untuk membantu kami meningkatkan layanan.",
-    "write_review": "Tulis Review Sekarang"
+    "write_review": "Tulis Review Sekarang",
+    "status": "Status"
   },
   "guests": {
     "management": "Manajemen Tamu",

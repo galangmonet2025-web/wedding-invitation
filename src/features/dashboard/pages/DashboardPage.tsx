@@ -192,24 +192,12 @@ export function DashboardPage() {
             ) : (
                 <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <StatCard
                     title={t('dashboard.total_guests')}
                     value={dashboard.total_guests}
                     icon={<HiOutlineUsers className="w-6 h-6" />}
                     color="gold"
-                />
-                <StatCard
-                    title={t('dashboard.confirmed')}
-                    value={dashboard.total_confirmed}
-                    icon={<HiOutlineCheckCircle className="w-6 h-6" />}
-                    color="emerald"
-                />
-                <StatCard
-                    title={t('dashboard.declined')}
-                    value={dashboard.total_declined}
-                    icon={<HiOutlineXCircle className="w-6 h-6" />}
-                    color="rose"
                 />
                 <StatCard
                     title={t('dashboard.wishes')}
@@ -227,7 +215,7 @@ export function DashboardPage() {
                     title={t('dashboard.total_amount')}
                     value={formatCurrency(dashboard.total_nominal)}
                     icon={<HiOutlineCurrencyDollar className="w-6 h-6" />}
-                    color="gold"
+                    color="emerald"
                 />
             </div>
 

@@ -23,7 +23,8 @@
     "copied": "Copied to clipboard!",
     "confirm": "Confirm",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "clear": "Clear"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -73,7 +74,8 @@
     "domain": "Domain",
     "experience_question": "How was your experience?",
     "experience_description": "Provide a review to help us improve our service.",
-    "write_review": "Write Review Now"
+    "write_review": "Write Review Now",
+    "status": "Status"
   },
   "guests": {
     "management": "Guest Management",

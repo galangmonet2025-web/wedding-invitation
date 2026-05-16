@@ -21,7 +21,6 @@ import {
     HiOutlineSpeakerphone,
 } from 'react-icons/hi';
 import { GoogleContactModal } from '../components/GoogleContactModal';
-import { WhatsAppBlastModal } from '../components/WhatsAppBlastModal';
 
 export function GuestPage() {
     const { t } = useTranslation();
@@ -50,7 +49,6 @@ export function GuestPage() {
     const [showQRModal, setShowQRModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showGoogleModal, setShowGoogleModal] = useState(false);
-    const [showBlastModal, setShowBlastModal] = useState(false);
     const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
@@ -186,10 +184,6 @@ export function GuestPage() {
     const handleImportGoogleContacts = async (contacts: CreateGuestRequest[]) => {
         return await bulkCreateGuests(contacts);
     };
-
-    const selectedGuestsObjects = useMemo(() => {
-        return guests.filter(g => selectedIds.includes(g.id));
-    }, [guests, selectedIds]);
 
     const statusBadge = (status: string) => {
         const classes: Record<string, string> = {
@@ -437,13 +431,6 @@ export function GuestPage() {
                         <HiOutlineTrash className="w-4 h-4 inline mr-1" />
                         {t('common.delete')}
                     </button>
-                    <button 
-                        onClick={() => setShowBlastModal(true)} 
-                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors"
-                    >
-                        <HiOutlineSpeakerphone className="w-4 h-4" />
-                        Blast
-                    </button>
                     <button onClick={() => setSelectedIds([])} className="btn-ghost text-sm py-1.5">
                         {t('common.clear')}
                     </button>
@@ -620,13 +607,6 @@ export function GuestPage() {
                 isOpen={showGoogleModal}
                 onClose={() => setShowGoogleModal(false)}
                 onImport={handleImportGoogleContacts}
-            />
-
-            <WhatsAppBlastModal 
-                isOpen={showBlastModal}
-                onClose={() => setShowBlastModal(false)}
-                selectedGuests={selectedGuestsObjects}
-                tenant={tenant}
             />
         </div>
     );
