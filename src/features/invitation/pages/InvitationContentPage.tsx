@@ -158,10 +158,10 @@ export function InvitationContentPage() {
 
 
     const steps = [
-        { id: 1, title: t('invitation_content.step_content_title', 'Isi Konten'), subTitle: t('invitation_content.couple_info') },
-        { id: 2, title: t('invitation_content.step_gallery_title', 'Galeri'), subTitle: t('invitation_content.media_link') },
-        { id: 3, title: t('invitation_content.step_media_title', 'Backsound & Streaming'), subTitle: t('invitation_content.media_link') },
-        { id: 4, title: t('invitation_content.step_theme_title', 'Tema'), subTitle: t('invitation_content.design_pilih') },
+        { id: 1, title: t('invitation_content.step_content_title'), subTitle: t('invitation_content.step_content_subtitle') },
+        { id: 2, title: t('invitation_content.step_gallery_title'), subTitle: t('invitation_content.step_gallery_subtitle') },
+        { id: 3, title: t('invitation_content.step_media_title'), subTitle: t('invitation_content.step_media_subtitle') },
+        { id: 4, title: t('invitation_content.step_theme_title'), subTitle: t('invitation_content.step_theme_subtitle') },
     ];
 
     const toggleAccordion = (id: string) => {
@@ -905,7 +905,7 @@ export function InvitationContentPage() {
                                                                 }} />
                                                             </div>
                                                             <div>
-                                                                <label className="label-field text-xs">{t('invitation_content.title')}</label>
+                                                                <label className="label-field text-xs">{t('invitation_content.story_title_label')}</label>
                                                                 <input type="text" value={item.judul} onChange={(e) => {
                                                                     const newArr = [...timelineItems];
                                                                     newArr[idx].judul = e.target.value;
@@ -914,7 +914,7 @@ export function InvitationContentPage() {
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <label className="label-field text-xs">{t('invitation_content.description')}</label>
+                                                            <label className="label-field text-xs">{t('invitation_content.story_description_label')}</label>
                                                             <textarea value={item.deskripsi} onChange={(e) => {
                                                                 const newArr = [...timelineItems];
                                                                 newArr[idx].deskripsi = e.target.value;

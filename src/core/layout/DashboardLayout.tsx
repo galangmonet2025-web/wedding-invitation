@@ -212,7 +212,7 @@ export function DashboardLayout() {
             { to: '/private/scanner', icon: HiOutlineQrcode, label: t('sidebar.scanner_kehadiran', 'Scanner Kehadiran'), roles: ['tenant_admin', 'staff', 'superadmin'] },
             { to: '/private/guests', icon: HiOutlineUsers, label: t('sidebar.guests'), roles: ['tenant_admin', 'staff', 'superadmin'] },
             { to: '/private/whatsapp-blast', icon: HiOutlineChatAlt2, label: t('sidebar.whatsapp_blast'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/staff', icon: HiOutlineUserAdd, label: t('sidebar.manage_staff'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/staff', icon: HiOutlineDocumentText, label: t('sidebar.manage_staff'), roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: t('sidebar.content_settings'), roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/wishes', icon: HiOutlineHeart, label: t('sidebar.wishes'), roles: ['tenant_admin', 'superadmin'] },
             { to: '/private/gifts', icon: HiOutlineGift, label: t('sidebar.gifts'), roles: ['tenant_admin', 'superadmin'] },
