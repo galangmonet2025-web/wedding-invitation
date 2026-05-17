@@ -62,12 +62,10 @@ export function StaffPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
                 <div>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        Manage receptionist accounts for scanning QR codes at the venue.
-                    </p>
+
                 </div>
-                <button 
-                    onClick={() => fetchStaffs(true)} 
+                <button
+                    onClick={() => fetchStaffs(true)}
                     className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                     title="Refresh Data"
                 >

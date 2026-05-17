@@ -344,37 +344,37 @@ export function GuestPage() {
                         {t('guests.total_count', { count: total })}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                     <button 
                         onClick={() => fetchGuests(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm shrink-0"
                         title={t('common.refresh')}
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     {!isStaff && (
                         <>
-                            <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2">
+                            <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2 shrink-0">
                                 <HiOutlineUpload className="w-4 h-4" />
                                 {t('common.import')}
                                 <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
                             </label>
-                            <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
-                                <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                            <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700 shrink-0">
+                                <button onClick={handleExportExcel} className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
                                     Excel
                                 </button>
-                                <button onClick={handleExportPdf} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
+                                <button onClick={handleExportPdf} className="px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
                                     PDF
                                 </button>
                             </div>
                             <button 
                                 onClick={() => setShowGoogleModal(true)} 
-                                className="btn-ghost text-sm flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                                className="btn-ghost text-sm flex items-center gap-2 text-blue-600 hover:text-blue-700 shrink-0"
                             >
                                 <HiOutlineUserGroup className="w-4 h-4" />
                                 Google
                             </button>
-                            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
+                            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2 shrink-0">
                                 <HiOutlinePlus className="w-4 h-4" />
                                 {t('guests.add_new')}
                             </button>

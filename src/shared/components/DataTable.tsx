@@ -68,12 +68,12 @@ export function DataTable<T extends Record<string, any>>({
 
     return (
         <div className="card p-0 overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full">
+            <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full table-auto">
                     <thead>
                         <tr className="table-header">
                             {onSelectChange && (
-                                <th className="px-6 py-4 text-left w-12">
+                                <th className="px-3 py-3 sm:px-6 sm:py-4 text-left w-10 sm:w-12 shrink-0">
                                     <input
                                         type="checkbox"
                                         checked={allSelected}
@@ -85,7 +85,7 @@ export function DataTable<T extends Record<string, any>>({
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
-                                    className="px-6 py-4 text-left"
+                                    className="px-3 py-3 sm:px-6 sm:py-4 text-left text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap"
                                     style={col.width ? { width: col.width } : undefined}
                                 >
                                     {col.header}
@@ -119,7 +119,7 @@ export function DataTable<T extends Record<string, any>>({
                                     onClick={() => onRowClick?.(item)}
                                 >
                                     {onSelectChange && (
-                                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                        <td className="px-3 py-3 sm:px-6 sm:py-4" onClick={(e) => e.stopPropagation()}>
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.includes(String(item[idKey]))}
@@ -129,7 +129,7 @@ export function DataTable<T extends Record<string, any>>({
                                         </td>
                                     )}
                                     {columns.map((col) => (
-                                        <td key={col.key} className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                        <td key={col.key} className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300 max-w-[150px] sm:max-w-none truncate sm:whitespace-normal">
                                             {col.render ? col.render(item) : String(item[col.key] ?? '')}
                                         </td>
                                     ))}

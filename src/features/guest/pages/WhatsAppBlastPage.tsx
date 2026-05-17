@@ -305,21 +305,14 @@ export function WhatsAppBlastPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <p className="text-gray-400 dark:text-gray-500 text-xs">
-                        {t('whatsapp_blast.description')}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => { fetchGuests(true); fetchContent(true); }} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                        title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
+            <div className="flex items-center justify-end mb-1">
+                <button
+                    onClick={() => { fetchGuests(true); fetchContent(true); }}
+                    className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                    title="Refresh Data"
+                >
+                    <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -334,7 +327,7 @@ export function WhatsAppBlastPage() {
                             <button
                                 onClick={handleSaveTemplate}
                                 disabled={isSavingTemplate}
-                                className="text-xs btn-primary flex items-center gap-1.5 py-1 px-3"
+                                className="btn-primary py-1 px-3 text-[11px] text-white flex items-center gap-1.5 rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-sm font-semibold"
                             >
                                 {isSavingTemplate ? (
                                     <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -348,111 +341,111 @@ export function WhatsAppBlastPage() {
                         <div className="space-y-4 flex-1 flex flex-col">
                             <div>
                                 {/* Visual Toolbar */}
-                                    <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-700">
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
-                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all font-bold"
-                                            title="Bold"
-                                        >
-                                            B
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
-                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all italic"
-                                            title="Italic"
-                                        >
-                                            I
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); handleFormat('strikeThrough'); }}
-                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all line-through"
-                                            title="Strikethrough"
-                                        >
-                                            S
-                                        </button>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-1.5">
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_name')}
-                                        >
-                                            NAMA
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{link}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md hover:bg-emerald-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_link')}
-                                        >
-                                            LINK
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{groom}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md hover:bg-indigo-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_groom')}
-                                        >
-                                            PRIA
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{bride}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_bride')}
-                                        >
-                                            WANITA
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{lokasi}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-md hover:bg-amber-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_location')}
-                                        >
-                                            LOKASI
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{tanggal}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md hover:bg-teal-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_date')}
-                                        >
-                                            TANGGAL
-                                        </button>
-                                        <button
-                                            onMouseDown={(e) => { e.preventDefault(); insertText('{{waktu}}'); }}
-                                            className="text-[10px] font-bold px-2 py-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-md hover:bg-violet-100 transition-colors shadow-sm"
-                                            title={t('whatsapp_blast.var_time')}
-                                        >
-                                            WAKTU
-                                        </button>
-                                    </div>
+                                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-700">
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
+                                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all font-bold"
+                                        title="Bold"
+                                    >
+                                        B
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
+                                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all italic"
+                                        title="Italic"
+                                    >
+                                        I
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); handleFormat('strikeThrough'); }}
+                                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300 transition-all line-through"
+                                        title="Strikethrough"
+                                    >
+                                        S
+                                    </button>
                                 </div>
 
-                                {/* ContentEditable Editor */}
-                                <div
-                                    ref={editorRef}
-                                    contentEditable
-                                    className="input-field min-h-[300px] h-auto text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-gold-500/20 overflow-y-auto bg-white dark:bg-gray-900/50"
-                                    style={{ whiteSpace: 'pre-wrap' }}
-                                />
+                                <div className="flex flex-wrap gap-1.5">
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{nama}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400 rounded-md hover:bg-gold-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_name')}
+                                    >
+                                        NAMA
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{link}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-md hover:bg-emerald-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_link')}
+                                    >
+                                        LINK
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{groom}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md hover:bg-indigo-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_groom')}
+                                    >
+                                        PRIA
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{bride}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_bride')}
+                                    >
+                                        WANITA
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{lokasi}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-md hover:bg-amber-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_location')}
+                                    >
+                                        LOKASI
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{tanggal}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-md hover:bg-teal-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_date')}
+                                    >
+                                        TANGGAL
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); insertText('{{waktu}}'); }}
+                                        className="text-[10px] font-bold px-2 py-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-md hover:bg-violet-100 transition-colors shadow-sm"
+                                        title={t('whatsapp_blast.var_time')}
+                                    >
+                                        WAKTU
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
-                                <h4 className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">{t('whatsapp_blast.preview_realtime')}</h4>
-                                <p className="text-[10px] text-emerald-600 dark:text-emerald-300 leading-tight">
-                                    {t('whatsapp_blast.preview_desc')}
+                            {/* ContentEditable Editor */}
+                            <div
+                                ref={editorRef}
+                                contentEditable
+                                className="input-field min-h-[300px] h-auto text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-gold-500/20 overflow-y-auto bg-white dark:bg-gray-900/50"
+                                style={{ whiteSpace: 'pre-wrap' }}
+                            />
+                        </div>
+
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                            <h4 className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">{t('whatsapp_blast.preview_realtime')}</h4>
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-300 leading-tight">
+                                {t('whatsapp_blast.preview_desc')}
+                            </p>
+                        </div>
+
+                        {/* Format Info Box Moved Here */}
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex gap-2">
+                            <HiOutlineChatAlt2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                            <div>
+                                <h4 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase mb-0.5">{t('whatsapp_blast.format_title')}</h4>
+                                <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
+                                    {t('whatsapp_blast.format_desc')}
                                 </p>
-                            </div>
-
-                            {/* Format Info Box Moved Here */}
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex gap-2">
-                                <HiOutlineChatAlt2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                                <div>
-                                    <h4 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase mb-0.5">{t('whatsapp_blast.format_title')}</h4>
-                                    <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
-                                        {t('whatsapp_blast.format_desc')}
-                                    </p>
-                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
                 {/* Guest List Section */}
                 <div className="lg:col-span-2 space-y-4">

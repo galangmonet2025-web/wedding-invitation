@@ -199,19 +199,15 @@ export function GlobalDashboardPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Platform-wide statistics and insights</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => fetchDashboard(true)}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                        title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
+            <div className="flex items-center justify-end mb-1">
+                <button
+                    onClick={() => fetchDashboard(true)}
+                    className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                    title="Refresh Data"
+                >
+                    <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                </button>
             </div>
 
             {!dashboard && loading ? (

@@ -34,13 +34,13 @@ import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
 import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 
-function MobileMenuOverlay({ 
-    isOpen, 
-    onClose, 
-    items, 
-    user, 
-    tenant, 
-    onLogout, 
+function MobileMenuOverlay({
+    isOpen,
+    onClose,
+    items,
+    user,
+    tenant,
+    onLogout,
     onChangePassword,
     t,
     isDark,
@@ -50,10 +50,10 @@ function MobileMenuOverlay({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] lg:hidden animate-fade-in overflow-hidden">
+        <div className={`fixed inset-0 z-[100] lg:hidden animate-fade-in overflow-hidden ${isDark ? 'dark' : ''}`}>
             {/* Background with animated blur */}
-            <div className="absolute inset-0 bg-white/95 dark:bg-gray-950/98 backdrop-blur-2xl" />
-            
+            <div className="absolute inset-0 bg-white/95 dark:bg-wedding-dark backdrop-blur-2xl" />
+
             {/* Decorative background elements */}
             <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-gold-400/10 rounded-full blur-3xl animate-pulse" />
             <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-gold-600/10 rounded-full blur-3xl animate-pulse" />
@@ -69,9 +69,9 @@ function MobileMenuOverlay({
                             Wedding<span className="text-gradient-gold">SaaS</span>
                         </h1>
                     </div>
-                    <button 
+                    <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 active:scale-90 transition-transform"
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-wedding-dark-card text-gray-500 active:scale-90 transition-transform"
                     >
                         <HiOutlineX className="w-6 h-6" />
                     </button>
@@ -82,8 +82,8 @@ function MobileMenuOverlay({
                     <div className="min-w-0">
                         <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-1">{t('dashboard.welcome_back', 'Selamat Datang Kembali')}</p>
                         <h2 className="text-2xl font-display font-bold text-gray-800 dark:text-white leading-tight truncate">
-                            {tenant 
-                                ? `${tenant.bride_nickname || tenant.bride_name.split(' ')[0]} & ${tenant.groom_nickname || tenant.groom_name.split(' ')[0]}` 
+                            {tenant
+                                ? `${tenant.bride_nickname || tenant.bride_name.split(' ')[0]} & ${tenant.groom_nickname || tenant.groom_name.split(' ')[0]}`
                                 : user?.username
                             }
                         </h2>
@@ -96,7 +96,7 @@ function MobileMenuOverlay({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={onClose}
-                            className="w-10 h-10 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-2xl text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                            className="w-10 h-10 bg-white dark:bg-wedding-dark-card border border-gray-150 dark:border-gray-800 rounded-2xl text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform shrink-0"
                             title={t('topbar.open_invitation', 'Buka Undangan')}
                         >
                             <HiOutlineExternalLink className="w-5 h-5 text-gold-500" />
@@ -112,19 +112,17 @@ function MobileMenuOverlay({
                                 key={item.to}
                                 to={item.to}
                                 onClick={onClose}
-                                className={({ isActive }) => 
-                                    `flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 active:scale-95 ${
-                                        isActive 
-                                        ? 'bg-gold-500 text-white shadow-gold transform scale-105 z-10' 
-                                        : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 shadow-sm'
+                                className={({ isActive }) =>
+                                    `flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 active:scale-95 ${isActive
+                                        ? 'bg-gold-500 text-white shadow-gold transform scale-105 z-10'
+                                        : 'bg-white dark:bg-wedding-dark-card border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-450 shadow-sm'
                                     }`
                                 }
                             >
                                 {({ isActive }) => (
                                     <>
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
-                                            isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-white/5'
-                                        }`}>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-wedding-dark'
+                                            }`}>
                                             <item.icon className="w-6 h-6" />
                                         </div>
                                         <span className="text-[9px] font-bold text-center leading-tight uppercase tracking-wider h-7 flex items-center overflow-hidden">
@@ -141,7 +139,7 @@ function MobileMenuOverlay({
 
                 {/* Bottom Profile & Actions */}
                 <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
-                    <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-gray-800/50">
+                    <div className="p-4 bg-gray-50 dark:bg-wedding-dark-card rounded-3xl border border-gray-100 dark:border-gray-800/50">
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
@@ -152,7 +150,7 @@ function MobileMenuOverlay({
                                     <p className="text-[10px] text-gold-600 font-bold uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
                                 </div>
                             </div>
-                            
+
                             {/* 2 Compact Settings Icon Buttons inside Card */}
                             <div className="flex items-center gap-1.5 shrink-0">
                                 {/* Language Switcher for Mobile */}
@@ -161,7 +159,7 @@ function MobileMenuOverlay({
                                 {/* Dark Mode Switcher for Mobile */}
                                 <button
                                     onClick={toggleTheme}
-                                    className="w-9 h-9 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-gray-500 hover:text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform"
+                                    className="w-9 h-9 bg-white dark:bg-wedding-dark border border-gray-150 dark:border-gray-800 rounded-xl text-gray-500 hover:text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform"
                                     aria-label="Toggle dark mode"
                                 >
                                     {isDark ? (
@@ -173,18 +171,18 @@ function MobileMenuOverlay({
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
-                        <button 
+                        <button
                             onClick={() => { onClose(); onChangePassword(); }}
-                            className="flex items-center justify-center gap-2 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-400 active:scale-95 transition-all shadow-sm"
+                            className="flex items-center justify-center gap-2 p-4 bg-white dark:bg-wedding-dark-card border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-400 active:scale-95 transition-all shadow-sm"
                         >
                             <HiOutlineKey className="w-5 h-5 text-gold-500" />
                             {t('sidebar.change_password')}
                         </button>
-                        <button 
+                        <button
                             onClick={onLogout}
-                            className="flex items-center justify-center gap-2 p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl text-xs font-bold text-red-600 active:scale-95 transition-all shadow-sm"
+                            className="flex items-center justify-center gap-2 p-4 bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-950/20 rounded-2xl text-xs font-bold text-red-600 active:scale-95 transition-all shadow-sm"
                         >
                             <HiOutlineLogout className="w-5 h-5" />
                             {t('sidebar.logout')}
@@ -209,7 +207,7 @@ export function DashboardLayout() {
         if (location.pathname.startsWith('/private/themes/editor/')) {
             return t('theme_editor.title', 'Theme Editor');
         }
-        
+
         // Exact match first
         const exactMatch = filteredNavItems.find(item => location.pathname === item.to);
         if (exactMatch) return exactMatch.label;
@@ -222,7 +220,25 @@ export function DashboardLayout() {
 
         return isSuperAdmin ? t('topbar.superadmin_panel', 'Super Admin Panel') : t('topbar.wedding_dashboard', 'Wedding Dashboard');
     };
-    
+
+    const getHeaderDescription = () => {
+        if (location.pathname.startsWith('/private/themes/editor/')) {
+            return t('theme_editor.description', 'Sesuaikan visual, tata letak, dan detail undangan');
+        }
+
+        // Exact match first
+        const exactMatch = filteredNavItems.find(item => location.pathname === item.to);
+        if (exactMatch) return exactMatch.desc;
+
+        // Prefix match for nested routes
+        const prefixMatch = filteredNavItems.find(item => {
+            return item.to !== '/private' && location.pathname.startsWith(item.to + '/');
+        });
+        if (prefixMatch) return prefixMatch.desc;
+
+        return '';
+    };
+
     // Fetch Global Website Config for Favicon
     useEffect(() => {
         const fetchConfig = async () => {
@@ -255,35 +271,35 @@ export function DashboardLayout() {
         logout();
         sessionStorage.removeItem('review_fill_later');
         sessionStorage.removeItem('review_checked_this_session');
-        
+
         // Force a full page reload on logout to wipe memory and prevent session leakage
         window.location.href = window.location.origin + window.location.pathname + '#/login';
     };
 
     const navItems = !showTenantMenu
         ? [
-            { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: t('sidebar.global_dashboard'), roles: ['superadmin'] },
-            { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: t('sidebar.manage_tenants'), roles: ['superadmin'] },
-            { to: '/private/themes', icon: HiOutlineColorSwatch, label: t('sidebar.manage_themes'), roles: ['superadmin'] },
-            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['superadmin'] },
-            { to: '/private/plan-config', icon: HiOutlineAdjustments, label: t('sidebar.plan_config', 'Konfigurasi Paket'), roles: ['superadmin'] },
-            { to: '/private/transactions', icon: HiOutlineCreditCard, label: 'Monitoring Transaksi', roles: ['superadmin'] },
-            { to: '/private/reviews', icon: HiOutlineChatAlt2, label: t('sidebar.review_rating'), roles: ['superadmin'] },
-            { to: '/private/website-config', icon: HiOutlineCog, label: t('sidebar.website_config'), roles: ['superadmin'] },
-            { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.system_activity'), roles: ['superadmin'] },
+            { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: t('sidebar.global_dashboard'), roles: ['superadmin'], desc: 'Statistik platform, estimasi pendapatan, dan fitur tertunda' },
+            { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: t('sidebar.manage_tenants'), roles: ['superadmin'], desc: 'Kelola semua tenant pengguna, masa aktif, dan status data pernikahan' },
+            { to: '/private/themes', icon: HiOutlineColorSwatch, label: t('sidebar.manage_themes'), roles: ['superadmin'], desc: 'Kelola database desain tema, template undangan, dan kategori plan' },
+            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['superadmin'], desc: 'Konfigurasi add-on kustom, input tenant, dan hasil output admin' },
+            { to: '/private/plan-config', icon: HiOutlineAdjustments, label: t('sidebar.plan_config', 'Konfigurasi Paket'), roles: ['superadmin'], desc: 'Atur harga paket basic/pro/premium, guest limit, dan list fitur benefit' },
+            { to: '/private/transactions', icon: HiOutlineCreditCard, label: 'Monitoring Transaksi', roles: ['superadmin'], desc: 'Pantau riwayat pembayaran invoice, nominal transfer, dan status order' },
+            { to: '/private/reviews', icon: HiOutlineChatAlt2, label: t('sidebar.review_rating'), roles: ['superadmin'], desc: 'Moderasi ulasan bintang, komentar feedback, dan testimoni pengguna' },
+            { to: '/private/website-config', icon: HiOutlineCog, label: t('sidebar.website_config'), roles: ['superadmin'], desc: 'Atur identitas web, logo platform, kontak support, dan banner landing page' },
+            { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.system_activity'), roles: ['superadmin'], desc: 'Audit log sistem dan rekaman aktivitas administratif platform' },
         ]
         : [
-            { to: '/private/dashboard', icon: HiOutlineHome, label: t('sidebar.dashboard'), roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/private/scanner', icon: HiOutlineQrcode, label: t('sidebar.scanner_kehadiran', 'Scanner Kehadiran'), roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/private/guests', icon: HiOutlineUsers, label: t('sidebar.guests'), roles: ['tenant_admin', 'staff', 'superadmin'] },
-            { to: '/private/whatsapp-blast', icon: HiOutlineChatAlt2, label: t('sidebar.whatsapp_blast'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/staff', icon: HiOutlineDocumentText, label: t('sidebar.manage_staff'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: t('sidebar.content_settings'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/wishes', icon: HiOutlineHeart, label: t('sidebar.wishes'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/gifts', icon: HiOutlineGift, label: t('sidebar.gifts'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['tenant_admin', 'superadmin'] },
-            { to: '/private/payments', icon: HiOutlineCreditCard, label: 'Pembayaran', roles: ['tenant_admin'] },
-            { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.activity_log'), roles: ['tenant_admin', 'superadmin'] },
+            { to: '/private/dashboard', icon: HiOutlineHome, label: t('sidebar.dashboard'), roles: ['tenant_admin', 'staff', 'superadmin'], desc: 'Ringkasan data RSVP tamu, ucapan selamat, dan kuota undangan Anda' },
+            { to: '/private/scanner', icon: HiOutlineQrcode, label: t('sidebar.scanner_kehadiran', 'Scanner Kehadiran'), roles: ['tenant_admin', 'staff', 'superadmin'], desc: 'Gunakan kamera scanner QR Code tamu untuk absensi meja resepsionis' },
+            { to: '/private/guests', icon: HiOutlineUsers, label: t('sidebar.guests'), roles: ['tenant_admin', 'staff', 'superadmin'], desc: 'Kelola database tamu undangan pernikahan, kategori grup, dan link sebar' },
+            { to: '/private/whatsapp-blast', icon: HiOutlineChatAlt2, label: t('sidebar.whatsapp_blast'), roles: ['tenant_admin', 'superadmin'], desc: t('whatsapp_blast.description', 'Kirim undangan personal ke tamu via WhatsApp') },
+            { to: '/private/staff', icon: HiOutlineDocumentText, label: t('sidebar.manage_staff'), roles: ['tenant_admin', 'superadmin'], desc: 'Kelola panitia penerima tamu di lokasi acara serta petugas scanner QR' },
+            { to: '/private/invitation-content', icon: HiOutlineDocumentText, label: t('sidebar.content_settings'), roles: ['tenant_admin', 'superadmin'], desc: 'Ubah detail mempelai, jadwal akad & resepsi, kompilasi galeri foto, dan backsound' },
+            { to: '/private/wishes', icon: HiOutlineHeart, label: t('sidebar.wishes'), roles: ['tenant_admin', 'superadmin'], desc: 'Kelola ucapan selamat dan doa restu yang dikirimkan oleh tamu undangan' },
+            { to: '/private/gifts', icon: HiOutlineGift, label: t('sidebar.gifts'), roles: ['tenant_admin', 'superadmin'], desc: 'Atur rekening amplop digital, kiriman kado fisik, dan konfirmasi hadiah tamu' },
+            { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['tenant_admin', 'superadmin'], desc: 'Aktivasi, unggah data input, dan download output untuk menu add-on kustom' },
+            { to: '/private/payments', icon: HiOutlineCreditCard, label: 'Pembayaran', roles: ['tenant_admin'], desc: 'Riwayat invoice pembayaran paket langganan serta pembelian fitur kustom' },
+            { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.activity_log'), roles: ['tenant_admin', 'superadmin'], desc: 'Lihat rekaman audit log perubahan data dan aktivitas penting pada undangan' },
         ];
 
     const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
@@ -291,7 +307,7 @@ export function DashboardLayout() {
     return (
         <div className={`min-h-screen flex ${isDark ? 'dark' : ''}`}>
             {/* Mobile Menu Overlay */}
-            <MobileMenuOverlay 
+            <MobileMenuOverlay
                 isOpen={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
                 items={filteredNavItems}
@@ -417,10 +433,15 @@ export function DashboardLayout() {
                                         Staff Receptionist: {tenant?.bride_name} & {tenant?.groom_name}
                                     </span>
                                 )}
-                                
-                                <h2 className="text-lg font-bold text-gray-800 dark:text-white leading-tight">
+
+                                <h2 className="text-sm md:text-base font-black text-gray-800 dark:text-white leading-tight">
                                     {getHeaderTitle()}
                                 </h2>
+                                {getHeaderDescription() && (
+                                    <p className="text-[9px] md:text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 hidden sm:block truncate max-w-[280px] md:max-w-[450px]">
+                                        {getHeaderDescription()}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -484,9 +505,9 @@ export function DashboardLayout() {
                 </footer>
             </div>
 
-            <ChangePasswordModal 
-                isOpen={passwordModalOpen} 
-                onClose={() => setPasswordModalOpen(false)} 
+            <ChangePasswordModal
+                isOpen={passwordModalOpen}
+                onClose={() => setPasswordModalOpen(false)}
             />
         </div>
     );
