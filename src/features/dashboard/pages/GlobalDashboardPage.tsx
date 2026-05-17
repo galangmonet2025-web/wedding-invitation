@@ -192,8 +192,7 @@ export function GlobalDashboardPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Global Dashboard</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Platform-wide statistics and insights</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Platform-wide statistics and insights</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button

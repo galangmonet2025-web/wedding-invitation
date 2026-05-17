@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { additionalFeatureApi } from '@/core/api/endpoints';
 import { useTranslation } from 'react-i18next';
@@ -42,7 +42,10 @@ function MobileMenuOverlay({
     tenant, 
     onLogout, 
     onChangePassword,
-    t 
+    t,
+    isDark,
+    toggleTheme,
+    isSuperAdmin
 }: any) {
     if (!isOpen) return null;
 
@@ -75,12 +78,30 @@ function MobileMenuOverlay({
                 </div>
 
                 {/* Tenant / User Welcome */}
-                <div className="mb-8">
-                    <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-1">{t('dashboard.welcome_back', 'Selamat Datang Kembali')}</p>
-                    <h2 className="text-2xl font-display font-bold text-gray-800 dark:text-white leading-tight">
-                        {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : user?.username}
-                    </h2>
-                    {tenant && <p className="text-sm text-gray-400 mt-1">{tenant.domain_slug}</p>}
+                <div className="mb-8 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                        <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-1">{t('dashboard.welcome_back', 'Selamat Datang Kembali')}</p>
+                        <h2 className="text-2xl font-display font-bold text-gray-800 dark:text-white leading-tight truncate">
+                            {tenant 
+                                ? `${tenant.bride_nickname || tenant.bride_name.split(' ')[0]} & ${tenant.groom_nickname || tenant.groom_name.split(' ')[0]}` 
+                                : user?.username
+                            }
+                        </h2>
+                    </div>
+
+                    {/* Open Invitation Shortcut next to Nickname */}
+                    {tenant?.domain_slug && !isSuperAdmin && (
+                        <a
+                            href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={onClose}
+                            className="w-10 h-10 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-2xl text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                            title={t('topbar.open_invitation', 'Buka Undangan')}
+                        >
+                            <HiOutlineExternalLink className="w-5 h-5 text-gold-500" />
+                        </a>
+                    )}
                 </div>
 
                 {/* Grid Menu Container */}
@@ -114,17 +135,42 @@ function MobileMenuOverlay({
                             </NavLink>
                         ))}
                     </div>
+
+                    {/* Quick Settings Section for Mobile integrated into Profile Card below */}
                 </div>
 
                 {/* Bottom Profile & Actions */}
                 <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-gray-800/50">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
-                            <span className="text-white font-bold text-xl">{user?.username?.[0]?.toUpperCase()}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
-                            <p className="text-[10px] text-gold-600 font-bold uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
+                    <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-gray-800/50">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
+                                    <span className="text-white font-bold text-xl">{user?.username?.[0]?.toUpperCase()}</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
+                                    <p className="text-[10px] text-gold-600 font-bold uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
+                                </div>
+                            </div>
+                            
+                            {/* 2 Compact Settings Icon Buttons inside Card */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                {/* Language Switcher for Mobile */}
+                                <LanguageSwitcher />
+
+                                {/* Dark Mode Switcher for Mobile */}
+                                <button
+                                    onClick={toggleTheme}
+                                    className="w-9 h-9 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-gray-500 hover:text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform"
+                                    aria-label="Toggle dark mode"
+                                >
+                                    {isDark ? (
+                                        <HiOutlineSun className="w-4.5 h-4.5 text-gold-400" />
+                                    ) : (
+                                        <HiOutlineMoon className="w-4.5 h-4.5 text-gray-500" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -157,6 +203,25 @@ export function DashboardLayout() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    const location = useLocation();
+
+    const getHeaderTitle = () => {
+        if (location.pathname.startsWith('/private/themes/editor/')) {
+            return t('theme_editor.title', 'Theme Editor');
+        }
+        
+        // Exact match first
+        const exactMatch = filteredNavItems.find(item => location.pathname === item.to);
+        if (exactMatch) return exactMatch.label;
+
+        // Prefix match for nested routes
+        const prefixMatch = filteredNavItems.find(item => {
+            return item.to !== '/private' && location.pathname.startsWith(item.to + '/');
+        });
+        if (prefixMatch) return prefixMatch.label;
+
+        return isSuperAdmin ? t('topbar.superadmin_panel', 'Super Admin Panel') : t('topbar.wedding_dashboard', 'Wedding Dashboard');
+    };
     
     // Fetch Global Website Config for Favicon
     useEffect(() => {
@@ -235,6 +300,9 @@ export function DashboardLayout() {
                 onLogout={handleLogout}
                 onChangePassword={() => setPasswordModalOpen(true)}
                 t={t}
+                isDark={isDark}
+                toggleTheme={toggleTheme}
+                isSuperAdmin={isSuperAdmin}
             />
 
             {/* Desktop Sidebar (Only visible on LG up) */}
@@ -337,59 +405,60 @@ export function DashboardLayout() {
                             >
                                 <HiOutlineMenu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                             </button>
-                            <div>
-                                {user?.role === 'staff' ? (
-                                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                        {t('topbar.staff_reception', 'Resepsionis Pernikahan')} {tenant?.groom_name} & {tenant?.bride_name}
-                                    </h2>
-                                ) : isImpersonating ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full">SUPERADMIN</span>
-                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                            {t('topbar.viewing', 'Viewing')}: {tenant?.bride_name} & {tenant?.groom_name}
-                                        </h2>
-                                    </div>
-                                ) : (
-                                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                        {isSuperAdmin ? t('topbar.superadmin_panel', 'Super Admin Panel') : t('topbar.wedding_dashboard', 'Wedding Dashboard')}
-                                    </h2>
+                            <div className="flex flex-col justify-center">
+                                {/* Breadcrumb / Context Badge */}
+                                {isImpersonating && (
+                                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider uppercase mb-0.5">
+                                        Viewing as Tenant: {tenant?.bride_name} & {tenant?.groom_name}
+                                    </span>
                                 )}
+                                {user?.role === 'staff' && (
+                                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 tracking-wider uppercase mb-0.5">
+                                        Staff Receptionist: {tenant?.bride_name} & {tenant?.groom_name}
+                                    </span>
+                                )}
+                                
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-white leading-tight">
+                                    {getHeaderTitle()}
+                                </h2>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {/* Open Invitation Shortcut */}
-                            {tenant?.domain_slug && !isSuperAdmin && (
-                                <a
-                                    href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-gold-500 text-gray-500 hover:text-gold-600 transition-all flex items-center gap-2 group shadow-sm"
-                                    title={t('topbar.open_invitation', 'Buka Undangan')}
-                                >
-                                    <HiOutlineExternalLink className="w-5 h-5" />
-                                    <span className="hidden md:inline text-[11px] font-bold uppercase tracking-wider">{t('topbar.open_invitation', 'Buka Undangan')}</span>
-                                </a>
-                            )}
-
-                            {/* Background Tasks Indicator */}
-                            <BackgroundTaskIndicator />
-
-                            {/* Language Toggle */}
-                            <LanguageSwitcher />
-
-                            {/* Dark Mode Toggle */}
-                            <button
-                                onClick={toggleTheme}
-                                className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
-                                aria-label="Toggle dark mode"
-                            >
-                                {isDark ? (
-                                    <HiOutlineSun className="w-5 h-5 text-gold-400" />
-                                ) : (
-                                    <HiOutlineMoon className="w-5 h-5 text-gray-500" />
+                            <div className="hidden lg:flex items-center gap-3">
+                                {/* Open Invitation Shortcut */}
+                                {tenant?.domain_slug && !isSuperAdmin && (
+                                    <a
+                                        href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-gold-500 text-gray-500 hover:text-gold-600 transition-all flex items-center gap-2 group shadow-sm"
+                                        title={t('topbar.open_invitation', 'Buka Undangan')}
+                                    >
+                                        <HiOutlineExternalLink className="w-5 h-5" />
+                                        <span className="hidden md:inline text-[11px] font-bold uppercase tracking-wider">{t('topbar.open_invitation', 'Buka Undangan')}</span>
+                                    </a>
                                 )}
-                            </button>
+
+                                {/* Background Tasks Indicator */}
+                                <BackgroundTaskIndicator />
+
+                                {/* Language Toggle */}
+                                <LanguageSwitcher />
+
+                                {/* Dark Mode Toggle */}
+                                <button
+                                    onClick={toggleTheme}
+                                    className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
+                                    aria-label="Toggle dark mode"
+                                >
+                                    {isDark ? (
+                                        <HiOutlineSun className="w-5 h-5 text-gold-400" />
+                                    ) : (
+                                        <HiOutlineMoon className="w-5 h-5 text-gray-500" />
+                                    )}
+                                </button>
+                            </div>
 
                             {/* User Badge */}
                             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gold-50 dark:bg-gold-900/20 rounded-full">

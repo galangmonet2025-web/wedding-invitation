@@ -181,8 +181,7 @@ export function PaymentPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Pembayaran</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Kelola transaksi dan tagihan Anda</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Kelola transaksi dan tagihan Anda</p>
                 </div>
                 <button
                     onClick={() => fetchAll(false)}

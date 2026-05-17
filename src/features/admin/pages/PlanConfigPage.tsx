@@ -326,10 +326,7 @@ export function PlanConfigPage() {
         <div className="space-y-8 animate-fade-in pb-20">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-gray-800 dark:text-white">
-                        {t('sidebar.plan_config', 'Konfigurasi Paket')}
-                    </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                         Atur detail harga, limit, dan fitur unggulan layanan Digital Invitation
                     </p>
                 </div>

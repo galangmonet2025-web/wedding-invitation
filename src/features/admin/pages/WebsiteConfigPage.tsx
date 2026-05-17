@@ -531,7 +531,6 @@ export function WebsiteConfigPage() {
                         <HiOutlineDesktopComputer className="w-6 h-6" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-display font-bold text-gray-800 dark:text-white leading-none">Website Configuration</h1>
                         <p className="text-[11px] text-gray-500 mt-1 uppercase tracking-wider font-bold">Manage Platform Identity & Branding</p>
                     </div>
                 </div>

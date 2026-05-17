@@ -7,10 +7,12 @@ import type { Gift } from '@/types';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineCurrencyDollar, HiOutlineRefresh } from 'react-icons/hi';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
+import { useTranslation } from 'react-i18next';
 
 import { useGiftStore } from '../store/giftStore';
 
 export function GiftsPage() {
+    const { t } = useTranslation();
     const { gifts, loading, fetchGifts, addGift, deleteGift: deleteGiftInStore } = useGiftStore();
     const [showAddModal, setShowAddModal] = useState(false);
     const [giftToDelete, setGiftToDelete] = useState<Gift | null>(null);
@@ -27,19 +29,19 @@ export function GiftsPage() {
 
     const handleCreate = async () => {
         if (!form.guest_name || !form.amount || !form.bank_name) {
-            toast.error('Please fill in all fields');
+            toast.error(t('gifts.toast_fill_all', 'Please fill in all fields'));
             return;
         }
         try {
             const response = await giftApi.createGift(form);
             if (response.success) {
-                toast.success('Gift recorded!');
+                toast.success(t('gifts.toast_success_recorded', 'Gift recorded!'));
                 addGift(response.data); // Optimistic update
                 setShowAddModal(false);
                 setForm({ guest_name: '', amount: 0, bank_name: '' });
             }
         } catch {
-            toast.error('Failed to record gift');
+            toast.error(t('gifts.toast_error_failed_record', 'Failed to record gift'));
         }
     };
 
@@ -47,11 +49,11 @@ export function GiftsPage() {
         if (!giftToDelete) return;
         try {
             await giftApi.deleteGift(giftToDelete.id);
-            toast.success('Gift removed');
+            toast.success(t('gifts.toast_success_deleted', 'Gift removed'));
             deleteGiftInStore(giftToDelete.id); // Optimistic update
             setGiftToDelete(null);
         } catch {
-            toast.error('Failed to delete');
+            toast.error(t('gifts.toast_error_failed_delete', 'Failed to delete'));
         }
     };
 
@@ -75,22 +77,22 @@ export function GiftsPage() {
     const columns: Column<Gift>[] = [
         {
             key: 'guest_name',
-            header: 'Guest',
+            header: t('gifts.table_guest', 'Guest'),
             render: (g: Gift) => <span className="font-medium text-gray-800 dark:text-white">{g.guest_name}</span>,
         },
         {
             key: 'amount',
-            header: 'Amount',
+            header: t('gifts.table_amount', 'Amount'),
             render: (g: Gift) => <span className="font-semibold text-gold-600">{formatCurrency(g.amount)}</span>,
         },
         {
             key: 'bank_name',
-            header: 'Bank',
+            header: t('gifts.table_bank', 'Bank'),
             render: (g: Gift) => <span className="badge-info">{g.bank_name}</span>,
         },
         {
             key: 'created_at',
-            header: 'Date',
+            header: t('gifts.table_date', 'Date'),
             render: (g: Gift) => new Date(g.created_at).toLocaleDateString('id-ID'),
         },
         {
@@ -113,8 +115,7 @@ export function GiftsPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Gift Records</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{gifts.length} gifts recorded</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('gifts.recorded_count', { count: gifts.length })}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
@@ -128,13 +129,13 @@ export function GiftsPage() {
                     <button 
                         onClick={() => fetchGifts(true)} 
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                        title="Refresh Data"
+                        title={t('common.refresh', 'Segarkan')}
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
                         <HiOutlinePlus className="w-4 h-4" />
-                        Record Gift
+                        {t('gifts.record_button', 'Record Gift')}
                     </button>
                 </div>
             </div>
@@ -146,7 +147,7 @@ export function GiftsPage() {
                         <HiOutlineCurrencyDollar className="w-8 h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-white/80">Total Gift Amount</p>
+                        <p className="text-sm text-white/80">{t('gifts.total_amount', 'Total Gift Amount')}</p>
                         <p className="text-3xl font-bold">{formatCurrency(totalAmount)}</p>
                     </div>
                 </div>
@@ -156,33 +157,33 @@ export function GiftsPage() {
                 columns={columns}
                 data={gifts}
                 loading={loading}
-                emptyMessage="No gifts recorded yet"
+                emptyMessage={t('gifts.empty_message', 'No gifts recorded yet')}
             />
 
             <Modal
                 isOpen={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                title="Record Gift"
+                title={t('gifts.modal_title', 'Record Gift')}
                 footer={
                     <>
-                        <button onClick={() => setShowAddModal(false)} className="btn-ghost">Cancel</button>
-                        <button onClick={handleCreate} className="btn-primary">Record</button>
+                        <button onClick={() => setShowAddModal(false)} className="btn-ghost">{t('common.cancel', 'Cancel')}</button>
+                        <button onClick={handleCreate} className="btn-primary">{t('common.save', 'Record')}</button>
                     </>
                 }
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="label-field">Guest Name *</label>
+                        <label className="label-field">{t('gifts.guest_name', 'Guest Name *')}</label>
                         <input
                             type="text"
                             value={form.guest_name}
                             onChange={(e) => setForm((f) => ({ ...f, guest_name: e.target.value }))}
                             className="input-field"
-                            placeholder="Guest name"
+                            placeholder={t('gifts.guest_name_placeholder', 'Guest name')}
                         />
                     </div>
                     <div>
-                        <label className="label-field">Amount (IDR) *</label>
+                        <label className="label-field">{t('gifts.amount_label', 'Amount (IDR) *')}</label>
                         <input
                             type="number"
                             value={form.amount || ''}
@@ -192,13 +193,13 @@ export function GiftsPage() {
                         />
                     </div>
                     <div>
-                        <label className="label-field">Bank Name *</label>
+                        <label className="label-field">{t('gifts.bank_name_label', 'Bank Name *')}</label>
                         <select
                             value={form.bank_name}
                             onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))}
                             className="select-field"
                         >
-                            <option value="">Select bank</option>
+                            <option value="">{t('gifts.select_bank', 'Select bank')}</option>
                             <option value="BCA">BCA</option>
                             <option value="Mandiri">Mandiri</option>
                             <option value="BRI">BRI</option>

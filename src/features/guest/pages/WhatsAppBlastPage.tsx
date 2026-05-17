@@ -307,8 +307,9 @@ export function WhatsAppBlastPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">{t('whatsapp_blast.title')}</h1>
-                    <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">{t('whatsapp_blast.description')}</p>
+                    <p className="text-gray-400 dark:text-gray-500 text-xs">
+                        {t('whatsapp_blast.description')}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 

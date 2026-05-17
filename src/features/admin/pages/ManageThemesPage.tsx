@@ -104,7 +104,7 @@ export function ManageThemesPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Manage Themes</h1>
+                        <p className="text-sm text-gray-500">Create and modify themes via Advanced Builder</p>
                         <button
                             onClick={() => setIsGuideOpen(true)}
                             className="text-gray-400 hover:text-gold-500 transition-colors tooltip tooltip-right"
@@ -113,7 +113,6 @@ export function ManageThemesPage() {
                             <span className="tooltip-text">Panduan Pembuatan Tema</span>
                         </button>
                     </div>
-                    <p className="text-sm text-gray-500">Create and modify themes via Advanced Builder</p>
                 </div>
                 <div className="flex gap-2">
                     <button 

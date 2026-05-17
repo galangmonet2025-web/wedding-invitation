@@ -397,5 +397,26 @@
       "location": "Lokasi",
       "save_calendar": "Simpan ke Google Calendar"
     }
+  },
+  "gifts": {
+    "recorded_count": "{{count}} hadiah tercatat",
+    "total_amount": "Total Nominal Hadiah",
+    "table_guest": "Tamu",
+    "table_amount": "Nominal",
+    "table_bank": "Bank",
+    "table_date": "Tanggal",
+    "record_button": "Catat Hadiah",
+    "modal_title": "Catat Hadiah",
+    "guest_name": "Nama Tamu *",
+    "guest_name_placeholder": "Masukkan nama tamu",
+    "amount_label": "Nominal (IDR) *",
+    "bank_name_label": "Bank / Sumber *",
+    "select_bank": "Pilih bank / sumber",
+    "empty_message": "Belum ada catatan hadiah",
+    "toast_fill_all": "Harap isi semua kolom",
+    "toast_success_recorded": "Hadiah berhasil dicatat!",
+    "toast_error_failed_record": "Gagal mencatat hadiah",
+    "toast_success_deleted": "Hadiah berhasil dihapus",
+    "toast_error_failed_delete": "Gagal menghapus hadiah"
   }
 }

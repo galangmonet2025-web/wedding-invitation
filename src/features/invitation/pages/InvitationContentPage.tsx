@@ -405,8 +405,7 @@ export function InvitationContentPage() {
         <div className="space-y-6 animate-fade-in w-full max-w-[1600px] mx-auto pb-20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('invitation_content.title')}</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('invitation_content.description')}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('invitation_content.description')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button

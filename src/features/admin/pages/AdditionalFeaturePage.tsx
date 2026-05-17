@@ -181,8 +181,7 @@ export function AdditionalFeaturePage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Additional Features</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage custom features for tenants</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Manage custom features for tenants</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">

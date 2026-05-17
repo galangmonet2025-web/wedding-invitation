@@ -340,8 +340,7 @@ export function GuestPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">{t('guests.management')}</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                         {t('guests.total_count', { count: total })}
                     </p>
                 </div>

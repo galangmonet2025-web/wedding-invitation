@@ -311,11 +311,7 @@ export function ScannerPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-6 animate-fade-in" onDragOver={handleDragOver} onDrop={handleDrop}>
             <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center justify-center gap-2">
-                    <HiOutlineQrcode className="text-gold-500 w-8 h-8" />
-                    Buku Tamu & Scanner Kehadiran
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-2">
+                <p className="text-gray-500 dark:text-gray-400">
                     Pindai QR Code tamu atau catat kehadiran tamu secara manual.
                 </p>
             </div>

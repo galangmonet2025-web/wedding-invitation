@@ -163,10 +163,7 @@ export function DashboardPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between flex-wrap gap-2 md:gap-4">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-display font-bold text-gray-800 dark:text-white">
-                        {tenant ? `${tenant.bride_name} & ${tenant.groom_name}` : 'Dashboard'}
-                    </h1>
-                    <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 md:mt-1">
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
                         {tenant ? `${t('dashboard.wedding_date')}: ${new Date(tenant.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : t('dashboard.overview')}
                     </p>
                 </div>

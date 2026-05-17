@@ -62,10 +62,7 @@ export function StaffPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-                        Staff Management
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-gray-500 dark:text-gray-400">
                         Manage receptionist accounts for scanning QR codes at the venue.
                     </p>
                 </div>

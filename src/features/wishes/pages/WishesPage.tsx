@@ -69,8 +69,7 @@ export function WishesPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Wedding Wishes</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{wishes.length} wishes received</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{wishes.length} wishes received</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 

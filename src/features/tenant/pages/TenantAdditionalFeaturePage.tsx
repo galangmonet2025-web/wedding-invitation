@@ -235,8 +235,7 @@ export function TenantAdditionalFeaturePage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Additional Features</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Fitur tambahan kustom untuk undangan Anda</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Fitur tambahan kustom untuk undangan Anda</p>
                 </div>
                 <div className="flex gap-2">
                     <button 

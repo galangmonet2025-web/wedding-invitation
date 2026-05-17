@@ -82,8 +82,7 @@ export function ActivityPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-white">Activity Log</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track all actions performed in the system</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Track all actions performed in the system</p>
                 </div>
                 <button 
                     onClick={() => fetchLogs()} 
