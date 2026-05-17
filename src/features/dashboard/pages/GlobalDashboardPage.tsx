@@ -48,6 +48,7 @@ export function GlobalDashboardPage() {
     } = useDashboardStore();
 
     const [pendingTenants, setPendingTenants] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'charts' | 'pending'>('pending');
     const { themes, fetchThemes } = useThemeStore();
     const { updateTenant: updateTenantInStore, fetchTenants } = useTenantStore();
     const [showEditModal, setShowEditModal] = useState(false);
@@ -74,6 +75,14 @@ export function GlobalDashboardPage() {
         fetchPendingActions();
         fetchThemes(); // Background fetch if not loaded
     }, []);
+
+    useEffect(() => {
+        if (pendingTenants.length === 0) {
+            setActiveTab('charts');
+        } else {
+            setActiveTab('pending');
+        }
+    }, [pendingTenants.length]);
 
     const fetchDashboard = async (force = false) => {
         if (force) {
@@ -215,8 +224,7 @@ export function GlobalDashboardPage() {
                 </div>
             ) : (
                 <>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                         <StatCard
                             title="Total Tenants"
                             value={dashboard.total_tenants}
@@ -243,10 +251,44 @@ export function GlobalDashboardPage() {
                         />
                     </div>
 
+                    {/* Mobile Tab Switcher for Compact View */}
+                    <div className="flex lg:hidden bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl gap-1">
+                        <button
+                            onClick={() => setActiveTab('pending')}
+                            type="button"
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                                activeTab === 'pending'
+                                    ? 'bg-white dark:bg-gray-700 text-gold-600 dark:text-gold-400 shadow-sm border border-gray-100 dark:border-gray-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <HiOutlineExclamationCircle className="w-4 h-4" />
+                            <span>Fitur Tertunda</span>
+                            {pendingTenants.length > 0 && (
+                                <span className="bg-amber-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black leading-none">
+                                    {pendingTenants.length}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('charts')}
+                            type="button"
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                                activeTab === 'charts'
+                                    ? 'bg-white dark:bg-gray-700 text-gold-600 dark:text-gold-400 shadow-sm border border-gray-100 dark:border-gray-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <HiOutlineChartBar className="w-4 h-4" />
+                            <span>Grafik Tren</span>
+                        </button>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 card">
+                        {/* Tenant Growth (Charts Tab) */}
+                        <div className={`${activeTab === 'charts' ? 'block' : 'hidden lg:block'} lg:col-span-2 card`}>
                             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tenant Growth</h3>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={200}>
                                 <BarChart data={dashboard.tenant_growth}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                                     <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
@@ -264,17 +306,18 @@ export function GlobalDashboardPage() {
                             </ResponsiveContainer>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="card">
+                        <div className="space-y-6 lg:block flex-1">
+                            {/* Plan Distribution (Charts Tab) */}
+                            <div className={`${activeTab === 'charts' ? 'block' : 'hidden lg:block'} card`}>
                                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Plan Distribution</h3>
-                                <ResponsiveContainer width="100%" height={250}>
+                                <ResponsiveContainer width="100%" height={160}>
                                     <PieChart>
                                         <Pie
                                             data={dashboard.plan_distribution}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={50}
-                                            outerRadius={80}
+                                            innerRadius={35}
+                                            outerRadius={60}
                                             paddingAngle={5}
                                             dataKey="value"
                                         >
@@ -288,8 +331,8 @@ export function GlobalDashboardPage() {
                                 </ResponsiveContainer>
                             </div>
 
-                            {/* Pending Actions Widget */}
-                            <div className="card">
+                            {/* Pending Actions Widget (Pending Tab) */}
+                            <div className={`${activeTab === 'pending' ? 'block' : 'hidden lg:block'} card`}>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                                         <HiOutlineExclamationCircle className="w-5 h-5 text-amber-500" />
@@ -354,7 +397,6 @@ export function GlobalDashboardPage() {
                             </div>
                         </div>
                     </div>
-
                     {/* Edit Tenant Modal (Reused from TenantPage) */}
                     <Modal
                         isOpen={showEditModal}
