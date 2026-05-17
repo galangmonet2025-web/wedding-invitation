@@ -23,7 +23,7 @@ export function AdditionalFeaturePage() {
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [featureToDelete, setFeatureToDelete] = useState<MstAdditionalFeature | null>(null);
-    
+
     const initialForm: Partial<MstAdditionalFeature> = {
         feature_name: '',
         description: '',
@@ -114,7 +114,7 @@ export function AdditionalFeaturePage() {
             render: (f) => (
                 <div className="flex flex-col">
                     <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>
-                    {f.description && <span className="text-[10px] text-gray-400 line-clamp-1">{f.description}</span>}
+                    {f.description && <span className="text-[10px] text-gray-400 md:line-clamp-1 break-words">{f.description}</span>}
                 </div>
             ),
         },
@@ -181,7 +181,6 @@ export function AdditionalFeaturePage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Manage custom features for tenants</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
@@ -192,15 +191,15 @@ export function AdditionalFeaturePage() {
                             PDF
                         </button>
                     </div>
-                    <button 
-                        onClick={() => fetchFeatures(true)} 
+                    <button
+                        onClick={() => fetchFeatures(true)}
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm tooltip tooltip-bottom"
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         <span className="tooltip-text">Refresh Data</span>
                     </button>
-                    <button 
-                        onClick={() => { setForm(initialForm); setIsEditing(false); setShowModal(true); }} 
+                    <button
+                        onClick={() => { setForm(initialForm); setIsEditing(false); setShowModal(true); }}
                         className="btn-primary text-sm flex items-center gap-2"
                     >
                         <HiOutlinePlus className="w-4 h-4" />
@@ -231,57 +230,57 @@ export function AdditionalFeaturePage() {
                 <div className="space-y-4">
                     <div>
                         <label className="label-field">Nama Fitur *</label>
-                        <input 
-                            type="text" 
-                            value={form.feature_name || ''} 
-                            onChange={(e) => setForm({ ...form, feature_name: e.target.value })} 
-                            className="input-field" 
+                        <input
+                            type="text"
+                            value={form.feature_name || ''}
+                            onChange={(e) => setForm({ ...form, feature_name: e.target.value })}
+                            className="input-field"
                         />
                     </div>
-                    
+
                     <div>
                         <label className="label-field">Deskripsi</label>
-                        <textarea 
-                            value={form.description || ''} 
-                            onChange={(e) => setForm({ ...form, description: e.target.value })} 
-                            className="input-field min-h-[80px]" 
+                        <textarea
+                            value={form.description || ''}
+                            onChange={(e) => setForm({ ...form, description: e.target.value })}
+                            className="input-field min-h-[80px]"
                             placeholder="Keterangan singkat fitur ini..."
                         />
                     </div>
-                    
+
                     <div>
                         <label className="label-field">Harga (Rp.) *</label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">Rp.</span>
-                            <input 
-                                type="text" 
-                                value={form.price ? form.price.toLocaleString('id-ID') : ''} 
+                            <input
+                                type="text"
+                                value={form.price ? form.price.toLocaleString('id-ID') : ''}
                                 onChange={(e) => {
                                     // Remove any non-digit characters except for comma/dot if needed, but here we just want digits
                                     const rawValue = e.target.value.replace(/\D/g, '');
                                     const numValue = parseInt(rawValue) || 0;
                                     setForm({ ...form, price: numValue });
-                                }} 
-                                className="input-field pl-10" 
+                                }}
+                                className="input-field pl-10"
                                 placeholder="0"
                             />
                         </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-                        <input 
-                            type="checkbox" 
+                        <input
+                            type="checkbox"
                             id="tenant_input"
-                            checked={form.is_required_tenant_input} 
+                            checked={form.is_required_tenant_input}
                             onChange={(e) => {
                                 const isChecked = e.target.checked;
-                                setForm({ 
-                                    ...form, 
+                                setForm({
+                                    ...form,
                                     is_required_tenant_input: isChecked,
                                     input_data_type: isChecked ? form.input_data_type : 'empty'
                                 });
-                            }} 
-                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500" 
+                            }}
+                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500"
                         />
                         <label htmlFor="tenant_input" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                             Perlu input data dari tenant
@@ -292,9 +291,9 @@ export function AdditionalFeaturePage() {
                         {form.is_required_tenant_input && (
                             <div>
                                 <label className="label-field">Tipe Data Input (Tenant)</label>
-                                <select 
-                                    value={form.input_data_type || 'empty'} 
-                                    onChange={(e) => setForm({ ...form, input_data_type: e.target.value as any })} 
+                                <select
+                                    value={form.input_data_type || 'empty'}
+                                    onChange={(e) => setForm({ ...form, input_data_type: e.target.value as any })}
                                     className="select-field"
                                 >
                                     {DATA_TYPES.map(d => (
@@ -305,9 +304,9 @@ export function AdditionalFeaturePage() {
                         )}
                         <div>
                             <label className="label-field">Tipe Data Output (Admin)</label>
-                            <select 
-                                value={form.output_data_type || 'empty'} 
-                                onChange={(e) => setForm({ ...form, output_data_type: e.target.value as any })} 
+                            <select
+                                value={form.output_data_type || 'empty'}
+                                onChange={(e) => setForm({ ...form, output_data_type: e.target.value as any })}
                                 className="select-field"
                             >
                                 {DATA_TYPES.map(d => (
@@ -318,12 +317,12 @@ export function AdditionalFeaturePage() {
                     </div>
 
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-                        <input 
-                            type="checkbox" 
+                        <input
+                            type="checkbox"
                             id="is_active"
-                            checked={form.active} 
-                            onChange={(e) => setForm({ ...form, active: e.target.checked })} 
-                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500" 
+                            checked={form.active}
+                            onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500"
                         />
                         <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                             Fitur Aktif

@@ -72,9 +72,9 @@ export function ReviewPage() {
     const isRowChanged = (review: ReviewAndRating) => {
         const original = originalReviews[review.id];
         if (!original) return false;
-        
+
         return (
-            review.alamat !== original.alamat || 
+            review.alamat !== original.alamat ||
             review.flag_show_review !== original.flag_show_review
         );
     };
@@ -103,7 +103,6 @@ export function ReviewPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Kelola review dari tenant setelah hari pernikahan</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
@@ -114,8 +113,8 @@ export function ReviewPage() {
                             PDF
                         </button>
                     </div>
-                    <button 
-                        onClick={() => fetchReviews(true)} 
+                    <button
+                        onClick={() => fetchReviews(true)}
                         className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title="Refresh Data"
                     >
@@ -154,9 +153,9 @@ export function ReviewPage() {
                                                 <p className="text-xs text-gray-400 mt-0.5 uppercase tracking-wider font-bold">{review.plan_type}</p>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <a 
-                                                    href={`#/${review.domain_slug}`} 
-                                                    target="_blank" 
+                                                <a
+                                                    href={`#/${review.domain_slug}`}
+                                                    target="_blank"
                                                     rel="noreferrer"
                                                     className="text-gold-600 hover:text-gold-700 text-xs flex items-center gap-1 font-medium"
                                                 >
@@ -167,9 +166,9 @@ export function ReviewPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-0.5">
                                                     {[...Array(5)].map((_, i) => (
-                                                        <HiOutlineStar 
-                                                            key={i} 
-                                                            className={`w-4 h-4 ${i < review.rate_star ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} 
+                                                        <HiOutlineStar
+                                                            key={i}
+                                                            className={`w-4 h-4 ${i < review.rate_star ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`}
                                                         />
                                                     ))}
                                                 </div>
@@ -180,7 +179,7 @@ export function ReviewPage() {
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <input 
+                                                <input
                                                     type="text"
                                                     value={review.alamat || ''}
                                                     onChange={(e) => handleLocalChange(review.id, 'alamat', e.target.value)}
@@ -191,9 +190,9 @@ export function ReviewPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex justify-center">
                                                     <label className="relative inline-flex items-center cursor-pointer">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            className="sr-only peer" 
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only peer"
                                                             checked={review.flag_show_review === true || review.flag_show_review === 'TRUE'}
                                                             onChange={(e) => handleLocalChange(review.id, 'flag_show_review', e.target.checked ? 'TRUE' : 'FALSE')}
                                                         />
@@ -209,11 +208,10 @@ export function ReviewPage() {
                                                         <button
                                                             onClick={() => handleSaveRow(review)}
                                                             disabled={!hasChanges}
-                                                            className={`p-1.5 rounded-lg transition-all ${
-                                                                hasChanges 
-                                                                ? 'bg-gold-100 text-gold-600 hover:bg-gold-200' 
-                                                                : 'text-gray-300 cursor-not-allowed'
-                                                            }`}
+                                                            className={`p-1.5 rounded-lg transition-all ${hasChanges
+                                                                    ? 'bg-gold-100 text-gold-600 hover:bg-gold-200'
+                                                                    : 'text-gray-300 cursor-not-allowed'
+                                                                }`}
                                                             title="Simpan Perubahan"
                                                         >
                                                             <HiSave className="w-4 h-4" />
@@ -255,11 +253,10 @@ export function ReviewPage() {
                             return (
                                 <div
                                     key={review.id}
-                                    className={`card p-2.5 space-y-1.5 relative transition-all duration-300 border ${
-                                        hasChanges
+                                    className={`card p-2.5 space-y-1.5 relative transition-all duration-300 border ${hasChanges
                                             ? 'border-amber-400 bg-amber-50/10 dark:bg-amber-950/5 shadow-md shadow-amber-500/5'
                                             : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-wedding-dark-card shadow-sm'
-                                    }`}
+                                        }`}
                                 >
                                     {/* Header Row */}
                                     <div className="flex items-start justify-between gap-2">
@@ -271,9 +268,9 @@ export function ReviewPage() {
                                                 <span className="px-1.5 py-0.5 inline-flex text-[9px] leading-none font-bold rounded bg-gray-100 dark:bg-gray-800 text-gray-550 dark:text-gray-300 uppercase shrink-0">
                                                     {review.plan_type}
                                                 </span>
-                                                <a 
-                                                    href={`#/${review.domain_slug}`} 
-                                                    target="_blank" 
+                                                <a
+                                                    href={`#/${review.domain_slug}`}
+                                                    target="_blank"
                                                     rel="noreferrer"
                                                     className="text-gold-600 hover:text-gold-700 text-[10.5px] flex items-center gap-0.5 font-medium leading-none truncate max-w-[100px]"
                                                 >
@@ -282,9 +279,9 @@ export function ReviewPage() {
                                                 </a>
                                                 <div className="flex items-center gap-0.5 shrink-0 pl-1.5 border-l border-gray-200 dark:border-gray-700">
                                                     {[...Array(5)].map((_, i) => (
-                                                        <HiOutlineStar 
-                                                            key={i} 
-                                                            className={`w-3 h-3 ${i < review.rate_star ? 'text-amber-400 fill-amber-400' : 'text-gray-250 dark:text-gray-700'}`} 
+                                                        <HiOutlineStar
+                                                            key={i}
+                                                            className={`w-3 h-3 ${i < review.rate_star ? 'text-amber-400 fill-amber-400' : 'text-gray-250 dark:text-gray-700'}`}
                                                         />
                                                     ))}
                                                 </div>
@@ -299,11 +296,10 @@ export function ReviewPage() {
                                                 <button
                                                     onClick={() => handleSaveRow(review)}
                                                     disabled={!hasChanges}
-                                                    className={`p-1 rounded-md transition-all ${
-                                                        hasChanges 
-                                                        ? 'bg-gold-100 text-gold-600 hover:bg-gold-200' 
-                                                        : 'text-gray-300 cursor-not-allowed'
-                                                    }`}
+                                                    className={`p-1 rounded-md transition-all ${hasChanges
+                                                            ? 'bg-gold-100 text-gold-600 hover:bg-gold-200'
+                                                            : 'text-gray-300 cursor-not-allowed'
+                                                        }`}
                                                     title="Simpan Perubahan"
                                                 >
                                                     <HiSave className="w-3.5 h-3.5" />
@@ -326,7 +322,7 @@ export function ReviewPage() {
                                             <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
                                                 Alamat
                                             </span>
-                                            <input 
+                                            <input
                                                 type="text"
                                                 value={review.alamat || ''}
                                                 onChange={(e) => handleLocalChange(review.id, 'alamat', e.target.value)}
@@ -342,9 +338,9 @@ export function ReviewPage() {
                                             </span>
                                             <div className="flex items-center h-5">
                                                 <label className="relative inline-flex items-center cursor-pointer scale-75">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className="sr-only peer" 
+                                                    <input
+                                                        type="checkbox"
+                                                        className="sr-only peer"
                                                         checked={review.flag_show_review === true || review.flag_show_review === 'TRUE'}
                                                         onChange={(e) => handleLocalChange(review.id, 'flag_show_review', e.target.checked ? 'TRUE' : 'FALSE')}
                                                     />
@@ -399,8 +395,8 @@ export function ReviewPage() {
 
                     <div className="flex items-center justify-end gap-3">
                         <button onClick={() => setReviewToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={isDeleting}>Batal</button>
-                        <button 
-                            onClick={handleDelete} 
+                        <button
+                            onClick={handleDelete}
                             className="btn-danger py-1.5 px-6 text-sm flex items-center gap-2"
                             disabled={isDeleting}
                         >
