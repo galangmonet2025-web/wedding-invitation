@@ -125,8 +125,9 @@ export function StaffPage() {
 
                 {/* STAFF LIST */}
                 <div className="lg:col-span-2">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                        <div className="overflow-x-auto">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden p-0">
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                     <tr>
@@ -190,6 +191,65 @@ export function StaffPage() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Mobile Cards List View */}
+                        <div className="block md:hidden p-2.5 space-y-2.5 bg-gray-50/30 dark:bg-wedding-dark/30">
+                            {isLoading && staffs.length === 0 ? (
+                                <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+                                        Loading...
+                                    </div>
+                                </div>
+                            ) : staffs.length === 0 ? (
+                                <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                                    No staff accounts found. Create one to get started!
+                                </div>
+                            ) : (
+                                staffs.map((staff) => (
+                                    <div
+                                        key={staff.id}
+                                        className="card p-2.5 space-y-1.5 relative transition-all duration-300 border border-gray-100 dark:border-gray-800 bg-white dark:bg-wedding-dark-card shadow-sm"
+                                    >
+                                        {/* Header Row */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div className="w-6 h-6 rounded-full bg-gold-50 dark:bg-gold-950/20 flex items-center justify-center shrink-0">
+                                                    <HiOutlineUserGroup className="w-3.5 h-3.5 text-gold-600 dark:text-gold-400" />
+                                                </div>
+                                                <div className="font-bold text-[13px] text-gray-900 dark:text-white truncate">
+                                                    {staff.username}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="px-1.5 py-0.5 inline-flex text-[9px] leading-5 font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                                                    Receptionist
+                                                </span>
+                                                <button
+                                                    onClick={() => setStaffToDelete({ id: staff.id, username: staff.username })}
+                                                    className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                    title="Delete Staff"
+                                                >
+                                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Details Info */}
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-0.5">
+                                            <div className="space-y-0.5">
+                                                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                    Created On
+                                                </span>
+                                                <span className="text-[10.5px] text-gray-655 dark:text-gray-300 font-semibold leading-tight">
+                                                    {new Date(staff.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

@@ -173,6 +173,110 @@ export function WhatsAppBlastPage() {
         );
     };
 
+    // Sub-component for editable mobile guest card to prevent full-list re-renders
+    const GuestMobileCard = ({ guest, onSend, onUpdate }: {
+        guest: any,
+        onSend: (g: any) => void,
+        onUpdate: (id: string, data: any) => void
+    }) => {
+        const [localName, setLocalName] = useState(guest.name || '');
+        const [localPhone, setLocalPhone] = useState(guest.phone || '');
+        const [isFocused, setIsFocused] = useState(false);
+        const [isUpdating, setIsUpdating] = useState(false);
+
+        // Sync local state if guest prop changes from store (e.g. after a fetch)
+        useEffect(() => {
+            setLocalName(guest.name || '');
+            setLocalPhone(guest.phone || '');
+        }, [guest.name, guest.phone]);
+
+        const handleBlur = async () => {
+            setIsFocused(false);
+            if (localName !== guest.name || localPhone !== guest.phone) {
+                setIsUpdating(true);
+                try {
+                    await onUpdate(guest.id, { name: localName, phone: localPhone });
+                } finally {
+                    setIsUpdating(false);
+                }
+            }
+        };
+
+        return (
+            <div
+                className={`card p-2.5 space-y-1.5 relative transition-all duration-300 border ${
+                    isFocused
+                        ? 'border-gold-400 bg-gold-50/10 dark:bg-gold-950/5 shadow-md shadow-gold-500/5'
+                        : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-wedding-dark-card'
+                }`}
+            >
+                {/* Header / Name Edit Row */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <input
+                            type="text"
+                            value={localName}
+                            onChange={(e) => setLocalName(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={handleBlur}
+                            className="w-full bg-transparent border-none focus:ring-0 rounded py-0 px-0 text-gray-850 dark:text-white font-bold text-[13px] leading-tight transition-all"
+                            placeholder={t('common.name')}
+                        />
+                        {isUpdating && (
+                            <div className="w-3 h-3 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin shrink-0" />
+                        )}
+                    </div>
+                    
+                    {/* Action Button right in Header */}
+                    <button
+                        onClick={() => onSend({ ...guest, name: localName, phone: localPhone })}
+                        className="btn-primary py-1 px-2.5 text-[11px] flex items-center gap-1 rounded-md transition-transform active:scale-95 shadow-sm shrink-0"
+                    >
+                        <HiOutlineChatAlt2 className="w-3.5 h-3.5" />
+                        {t('whatsapp_blast.send')}
+                    </button>
+                </div>
+
+                {/* Info Fields Stack */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-0.5">
+                    <div className="space-y-0.5">
+                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
+                            No. Telepon
+                        </span>
+                        <input
+                            type="text"
+                            value={localPhone}
+                            onChange={(e) => setLocalPhone(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={handleBlur}
+                            className="w-full bg-transparent border-none focus:ring-0 rounded py-0 px-0 text-[10.5px] text-gray-655 dark:text-gray-300 font-semibold transition-all leading-tight"
+                            placeholder={t('common.phone')}
+                        />
+                    </div>
+
+                    <div className="space-y-0.5">
+                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
+                            Status Blast
+                        </span>
+                        <div className="flex items-center">
+                            {(guest.flag_sudah_kirim_undangan_via_whatsapp === true || guest.flag_sudah_kirim_undangan_via_whatsapp === 'TRUE') ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                    <HiOutlineCheckCircle className="w-2.5 h-2.5" />
+                                    {t('whatsapp_blast.sent')}
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                    <HiOutlineClock className="w-2.5 h-2.5" />
+                                    {t('whatsapp_blast.pending')}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     useEffect(() => {
         setFilters({ limit: 1000, page: 1 });
         fetchGuests();
@@ -468,41 +572,67 @@ export function WhatsAppBlastPage() {
                         </div>
 
                         <div className="flex-1 overflow-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gold-200 dark:scrollbar-thumb-gray-700">
-                            <table className="w-full text-left">
-                                <thead className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">Nama</th>
-                                        <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">No. Telepon</th>
-                                        <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase text-center">Sudah Kirim</th>
-                                        <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                    {loading && filteredGuests.length === 0 ? (
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                                         <tr>
-                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <div className="w-4 h-4 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
-                                                    Memuat data...
-                                                </div>
-                                            </td>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">Nama</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">No. Telepon</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase text-center">Sudah Kirim</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase text-right">Aksi</th>
                                         </tr>
-                                    ) : filteredGuests.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Tamu tidak ditemukan</td>
-                                        </tr>
-                                    ) : (
-                                        filteredGuests.map((guest) => (
-                                            <GuestRow
-                                                key={guest.id}
-                                                guest={guest}
-                                                onSend={handleSend}
-                                                onUpdate={(id, data) => updateGuest({ id, ...data }, true)}
-                                            />
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                        {loading && filteredGuests.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="w-4 h-4 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+                                                        Memuat data...
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : filteredGuests.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Tamu tidak ditemukan</td>
+                                            </tr>
+                                        ) : (
+                                            filteredGuests.map((guest) => (
+                                                <GuestRow
+                                                    key={guest.id}
+                                                    guest={guest}
+                                                    onSend={handleSend}
+                                                    onUpdate={(id, data) => updateGuest({ id, ...data }, true)}
+                                                />
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile Cards List View */}
+                            <div className="block md:hidden p-1 space-y-3">
+                                {loading && filteredGuests.length === 0 ? (
+                                    <div className="py-8 text-center text-gray-400">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-gold-500/30 border-t-gold-500 rounded-full animate-spin" />
+                                            Memuat data...
+                                        </div>
+                                    </div>
+                                ) : filteredGuests.length === 0 ? (
+                                    <div className="py-8 text-center text-gray-400">Tamu tidak ditemukan</div>
+                                ) : (
+                                    filteredGuests.map((guest) => (
+                                        <GuestMobileCard
+                                            key={guest.id}
+                                            guest={guest}
+                                            onSend={handleSend}
+                                            onUpdate={(id, data) => updateGuest({ id, ...data }, true)}
+                                        />
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
