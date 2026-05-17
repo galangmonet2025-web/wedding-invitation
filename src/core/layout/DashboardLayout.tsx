@@ -412,7 +412,7 @@ export function DashboardLayout() {
             {/* Main Content */}
             <div className="flex-1 lg:ml-72 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden">
                 {/* Topbar */}
-                <header className="sticky top-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
+                <header className="fixed top-0 left-0 lg:left-72 right-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between px-4 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button
@@ -493,7 +493,7 @@ export function DashboardLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-3 lg:p-8 overflow-y-auto">
+                <main className="flex-1 p-3 lg:p-8 pt-20 lg:pt-24 overflow-y-auto">
                     <Outlet />
                 </main>
 
