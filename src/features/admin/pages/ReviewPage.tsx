@@ -124,8 +124,9 @@ export function ReviewPage() {
                 </div>
             </div>
 
-            <div className="card overflow-hidden p-0">
-                <div className="overflow-x-auto">
+            <div className="card overflow-hidden p-0 border-0 md:border bg-transparent md:bg-white dark:md:bg-wedding-dark-card shadow-none md:shadow-sm">
+                {/* Desktop View Table */}
+                <div className="hidden md:block overflow-x-auto bg-white dark:bg-wedding-dark-card rounded-xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
@@ -220,7 +221,7 @@ export function ReviewPage() {
                                                     )}
                                                     <button
                                                         onClick={() => setReviewToDelete(review)}
-                                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-all"
+                                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-650 transition-all"
                                                         title="Hapus Review"
                                                     >
                                                         <HiOutlineTrash className="w-4 h-4" />
@@ -242,6 +243,139 @@ export function ReviewPage() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards List View */}
+                <div className="block md:hidden space-y-2 bg-gray-50/30 dark:bg-wedding-dark/30">
+                    {reviews.length > 0 ? (
+                        reviews.map((review) => {
+                            const hasChanges = isRowChanged(review);
+                            const isSaving = savingIds.includes(review.id);
+
+                            return (
+                                <div
+                                    key={review.id}
+                                    className={`card p-2.5 space-y-1.5 relative transition-all duration-300 border ${
+                                        hasChanges
+                                            ? 'border-amber-400 bg-amber-50/10 dark:bg-amber-950/5 shadow-md shadow-amber-500/5'
+                                            : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-wedding-dark-card shadow-sm'
+                                    }`}
+                                >
+                                    {/* Header Row */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-[13px] text-gray-900 dark:text-white leading-tight">
+                                                {review.bride_name} & {review.groom_name}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                <span className="px-1.5 py-0.5 inline-flex text-[9px] leading-none font-bold rounded bg-gray-100 dark:bg-gray-800 text-gray-550 dark:text-gray-300 uppercase shrink-0">
+                                                    {review.plan_type}
+                                                </span>
+                                                <a 
+                                                    href={`#/${review.domain_slug}`} 
+                                                    target="_blank" 
+                                                    rel="noreferrer"
+                                                    className="text-gold-600 hover:text-gold-700 text-[10.5px] flex items-center gap-0.5 font-medium leading-none truncate max-w-[100px]"
+                                                >
+                                                    {review.domain_slug}
+                                                    <HiOutlineExternalLink className="w-2.5 h-2.5 shrink-0" />
+                                                </a>
+                                                <div className="flex items-center gap-0.5 shrink-0 pl-1.5 border-l border-gray-200 dark:border-gray-700">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <HiOutlineStar 
+                                                            key={i} 
+                                                            className={`w-3 h-3 ${i < review.rate_star ? 'text-amber-400 fill-amber-400' : 'text-gray-250 dark:text-gray-700'}`} 
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Actions in Header */}
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            {isSaving ? (
+                                                <div className="w-5 h-5 border-2 border-gold-600 border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleSaveRow(review)}
+                                                    disabled={!hasChanges}
+                                                    className={`p-1 rounded-md transition-all ${
+                                                        hasChanges 
+                                                        ? 'bg-gold-100 text-gold-600 hover:bg-gold-200' 
+                                                        : 'text-gray-300 cursor-not-allowed'
+                                                    }`}
+                                                    title="Simpan Perubahan"
+                                                >
+                                                    <HiSave className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setReviewToDelete(review)}
+                                                className="p-1 rounded-md text-red-400 hover:bg-red-50 hover:text-red-650 transition-all"
+                                                title="Hapus Review"
+                                            >
+                                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Details Grid */}
+                                    <div className="grid grid-cols-3 gap-x-2 gap-y-1.5 pt-1.5 border-t border-gray-100/50 dark:border-gray-800/50 items-end">
+                                        {/* Alamat Input (col-span-2) */}
+                                        <div className="col-span-2 space-y-0.5">
+                                            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                Alamat
+                                            </span>
+                                            <input 
+                                                type="text"
+                                                value={review.alamat || ''}
+                                                onChange={(e) => handleLocalChange(review.id, 'alamat', e.target.value)}
+                                                className="w-full bg-gray-50/70 dark:bg-wedding-dark/50 border border-gray-100 dark:border-gray-800 rounded-lg px-2 py-0.5 text-[10.5px] text-gray-750 dark:text-gray-300 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all font-semibold placeholder-gray-400 leading-tight"
+                                                placeholder="Isi alamat..."
+                                            />
+                                        </div>
+
+                                        {/* Tampilkan Switch (col-span-1) */}
+                                        <div className="flex flex-col items-center justify-center space-y-0.5">
+                                            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block leading-none">
+                                                Tampil?
+                                            </span>
+                                            <div className="flex items-center h-5">
+                                                <label className="relative inline-flex items-center cursor-pointer scale-75">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="sr-only peer" 
+                                                        checked={review.flag_show_review === true || review.flag_show_review === 'TRUE'}
+                                                        onChange={(e) => handleLocalChange(review.id, 'flag_show_review', e.target.checked ? 'TRUE' : 'FALSE')}
+                                                    />
+                                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gold-600"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {/* Comment (col-span-3) */}
+                                        <div className="col-span-3 space-y-0.5">
+                                            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                Komentar
+                                            </span>
+                                            <div className="bg-gray-50/50 dark:bg-wedding-dark/40 rounded-lg px-2 py-1 border border-gray-100/50 dark:border-gray-850/50">
+                                                <p className="text-[10.5px] text-gray-655 dark:text-gray-300 leading-tight italic break-words font-medium">
+                                                    "{review.comment}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="py-12 text-center bg-white dark:bg-gray-800 rounded-xl">
+                            <div className="flex flex-col items-center gap-2">
+                                <HiOutlineChatAlt2 className="w-10 h-10 text-gray-300" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Belum ada review dari tenant</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
