@@ -311,12 +311,12 @@ export function ThemeWrapper({
             setIsPlaying(!isPlaying);
         }
 
-        // --- UNIVERSAL LIGHTBOX (Restricted to #sec-gallery) ---
-        const lbImg = target.closest('#sec-gallery img.lightbox-injection') as HTMLImageElement;
+        // --- UNIVERSAL LIGHTBOX (Restricted to gallery container with .lightbox-injection) ---
+        const lbImg = target.closest('.lightbox-injection') as HTMLImageElement;
         if (lbImg) {
-            const galleryContainer = target.closest('#sec-gallery');
+            const galleryContainer = target.closest('#sec-gallery, #gallery, .gallery-container, .section-gallery');
             if (galleryContainer) {
-                const allLbImages = Array.from(galleryContainer.querySelectorAll('img.lightbox-injection')) as HTMLImageElement[];
+                const allLbImages = Array.from(galleryContainer.querySelectorAll('.lightbox-injection')) as HTMLImageElement[];
                 const imageUrls = allLbImages.map(img => img.src);
                 const currentIndex = allLbImages.indexOf(lbImg);
                 onOpenLightbox(currentIndex, imageUrls);
@@ -334,6 +334,7 @@ export function ThemeWrapper({
             <style dangerouslySetInnerHTML={{ __html: `
                 .is-closed #theme-fab-container { display: none !important; }
                 .is-closed #main-content { display: none !important; }
+                .is-opened #theme-fab-container { display: block !important; }
                 .is-opened #theme-cover { display: none !important; }
                 .is-opened #main-content { display: block !important; }
             ` }} />

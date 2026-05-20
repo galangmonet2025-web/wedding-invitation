@@ -89,7 +89,7 @@ const x = setInterval(function () {
 }, 1000);
 
 // RSVP Form Logic
-document.addEventListener('DOMContentLoaded', function () {
+function initTheme() {
     const submitBtn = document.getElementById('submit-rsvp');
     const rsvpForm = document.getElementById('rsvp-form');
     const thankYouMsg = document.getElementById('rsvp-thank-you');
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnOpen = document.getElementById('btn-open-invitation');
     const phoneContainer = document.querySelector('.phone-container');
     const appScreen = document.querySelector('.mock-app-screen');
-    const floatingUI = document.getElementById('floating-ui');
+    const floatingUI = document.getElementById('theme-fab-container');
     const btnMusic = document.getElementById('btn-music');
     const bgMusic = document.getElementById('bg-music');
     let isPlaying = false;
@@ -244,4 +244,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+} else {
+    initTheme();
+}
