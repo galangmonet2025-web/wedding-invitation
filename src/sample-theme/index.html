@@ -571,95 +571,95 @@
                 <!-- Section 9 amplop online, berisikan no rekening / qris & alamat tempat untuk pengiriman kado -->
 
                 {{#if tampilkan_amplop_online}}
-                    <section id="gift" class="section-gift" data-menu-label="Wedding gifts"
-                        uk-scrollspy="cls: uk-animation-fade; target: .gift-card, .gift-instruction; delay: 300; repeat: true">
-                        <div class="container-section-header">
-                            <div class="groom-bride-name" style="margin-bottom: 20px;">
-                                WEDDING GIFT
-                            </div>
-                            <div class="quotes" style="padding: 0 30px; font-size: 13px; line-height: 1.6;">
-                                Doa restu Anda merupakan karunia yang sangat berarti bagi kami. Namun, apabila Anda
-                                ingin
-                                memberi kado, kami sediakan fitur ini.
-                            </div>
+                <section id="gift" class="section-gift" data-menu-label="Wedding gifts"
+                    uk-scrollspy="cls: uk-animation-fade; target: .gift-card, .gift-instruction; delay: 300; repeat: true">
+                    <div class="container-section-header">
+                        <div class="groom-bride-name" style="margin-bottom: 20px;">
+                            WEDDING GIFT
                         </div>
+                        <div class="quotes" style="padding: 0 30px; font-size: 13px; line-height: 1.6;">
+                            Doa restu Anda merupakan karunia yang sangat berarti bagi kami. Namun, apabila Anda
+                            ingin
+                            memberi kado, kami sediakan fitur ini.
+                        </div>
+                    </div>
 
-                        <div class="gift-content" style="padding: 0 30px; margin-top: 30px;">
-                            <div class="gift-rekening-container">
-                                <!-- Rekening 1 -->
-                                <div class="gift-card glass-card">
-                                    <div class="gift-bank-logo">{{bank_1}}</div>
+                    <div class="gift-content" style="padding: 0 30px; margin-top: 30px;">
+                        <div class="gift-rekening-container">
+                            <!-- Rekening 1 -->
+                            <div class="gift-card glass-card">
+                                <div class="gift-bank-logo">{{bank_1}}</div>
 
-                                    {{#if flag_pakai_qris_rekening_1}}
-                                    <div>
-                                        <div class="gift-qris-wrapper">
-                                            <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="gift-qris-img">
-                                        </div>
+                                {{#if flag_pakai_qris_rekening_1}}
+                                <div>
+                                    <div class="gift-qris-wrapper">
+                                        <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="gift-qris-img">
                                     </div>
-                                    {{/if}}
-
-                                    <div class="gift-number" id="acc-1">{{rek_1}}</div>
-                                    <div class="gift-name">{{nama_rek_1}}</div>
-                                    <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
-                                        <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
-                                    </button>
                                 </div>
-
-                                <!-- Rekening 2 -->
-
-                                {{#if flag_pakai_2_rekening}}
-                                    <div class="gift-card glass-card">
-                                        <div class="gift-bank-logo">{{bank_2}}</div>
-
-                                        {{#if flag_pakai_qris_rekening_2}}
-                                        <div>
-                                            <div class="gift-qris-wrapper">
-                                                <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="gift-qris-img">
-                                            </div>
-                                        </div>
-                                        {{/if}}
-
-                                        <div class="gift-number" id="acc-2">{{rek_2}}</div>
-                                        <div class="gift-name">{{nama_rek_2}}</div>
-                                        <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
-                                            <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
-                                        </button>
-                                    </div>
                                 {{/if}}
 
+                                <div class="gift-number" id="acc-1">{{rek_1}}</div>
+                                <div class="gift-name">{{nama_rek_1}}</div>
+                                <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
+                                    <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
+                                </button>
                             </div>
 
-                            <!-- Alamat -->
+                            <!-- Rekening 2 -->
 
-                            {{#if flag_kirim_hadiah_offline}}
-                            <div>
-                                <div class="gift-instruction"
-                                    style="text-align: center; margin-bottom: 15px; color: rgba(255,255,255,0.7); font-size: 13px; font-style: italic;">
-                                    "Bagi Bapak/Ibu/Saudara/i yang ingin mengirimkan kado fisik berupa barang, dapat
-                                    dikirimkan
-                                    melalui alamat di bawah ini:"
-                                </div>
-                                <div class="gift-card glass-card">
-                                    <div class="gift-icon" style="margin-bottom: 15px; color: #fff;">
-                                        <span uk-icon="icon: home; ratio: 1.5"></span>
+                            {{#if flag_pakai_2_rekening}}
+                            <div class="gift-card glass-card">
+                                <div class="gift-bank-logo">{{bank_2}}</div>
+
+                                {{#if flag_pakai_qris_rekening_2}}
+                                <div>
+                                    <div class="gift-qris-wrapper">
+                                        <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="gift-qris-img">
                                     </div>
-                                    <div class="gift-title"
-                                        style="font-weight: 700; font-size: 1.2em; color: #fff; margin-bottom: 10px;">
-                                        {{nama_lokasi_kirim_hadiah_offline}}</div>
-                                    <div class="gift-address" id="gift-addr"
-                                        style="font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 20px;">
-                                        {{alamat_lokasi_kirim_hadiah_offline}}</div>
-                                    <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
-                                        <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN ALAMAT
-                                    </button>
                                 </div>
+                                {{/if}}
+
+                                <div class="gift-number" id="acc-2">{{rek_2}}</div>
+                                <div class="gift-name">{{nama_rek_2}}</div>
+                                <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
+                                    <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
+                                </button>
                             </div>
                             {{/if}}
 
-
-
                         </div>
-                    </section>
+
+                        <!-- Alamat -->
+
+                        {{#if flag_kirim_hadiah_offline}}
+                        <div>
+                            <div class="gift-instruction"
+                                style="text-align: center; margin-bottom: 15px; color: rgba(255,255,255,0.7); font-size: 13px; font-style: italic;">
+                                "Bagi Bapak/Ibu/Saudara/i yang ingin mengirimkan kado fisik berupa barang, dapat
+                                dikirimkan
+                                melalui alamat di bawah ini:"
+                            </div>
+                            <div class="gift-card glass-card">
+                                <div class="gift-icon" style="margin-bottom: 15px; color: #fff;">
+                                    <span uk-icon="icon: home; ratio: 1.5"></span>
+                                </div>
+                                <div class="gift-title"
+                                    style="font-weight: 700; font-size: 1.2em; color: #fff; margin-bottom: 10px;">
+                                    {{nama_lokasi_kirim_hadiah_offline}}</div>
+                                <div class="gift-address" id="gift-addr"
+                                    style="font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 20px;">
+                                    {{alamat_lokasi_kirim_hadiah_offline}}</div>
+                                <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
+                                    <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN ALAMAT
+                                </button>
+                            </div>
+                        </div>
+                        {{/if}}
+
+
+
+                    </div>
+                </section>
                 {{/if}}
 
 

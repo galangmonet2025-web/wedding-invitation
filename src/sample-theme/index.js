@@ -1,8 +1,8 @@
 // Copy to Clipboard Function
-window.copyToClipboard = function(elementId, btn) {
+window.copyToClipboard = function (elementId, btn) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    
+
     let text = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ? el.value : el.innerText || el.textContent;
     const originalText = btn.innerHTML;
 
@@ -55,7 +55,7 @@ function fallbackCopy(text, callback) {
 const countDownDate = new Date("Dec 31, 2026 00:00:00").getTime();
 
 // Update the count down every 1 second
-const x = setInterval(function() {
+const x = setInterval(function () {
 
     // Get today's date and time
     const now = new Date().getTime();
@@ -89,7 +89,7 @@ const x = setInterval(function() {
 }, 1000);
 
 // RSVP Form Logic
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const submitBtn = document.getElementById('submit-rsvp');
     const rsvpForm = document.getElementById('rsvp-form');
     const thankYouMsg = document.getElementById('rsvp-thank-you');
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
         attendanceStatus.addEventListener('change', checkForm);
         guestCodeInput.addEventListener('input', checkForm);
 
-        submitBtn.addEventListener('click', function() {
+        submitBtn.addEventListener('click', function () {
             const name = guestNameInput.value;
             const status = attendanceStatus.value;
 
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
         wishNameInput.addEventListener('input', checkWishForm);
         wishMessageInput.addEventListener('input', checkWishForm);
 
-        submitWishBtn.addEventListener('click', function() {
+        submitWishBtn.addEventListener('click', function () {
             submitWishBtn.innerHTML = "Mengirim...";
             submitWishBtn.disabled = true;
 
@@ -218,9 +218,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (btnOpen) {
-        btnOpen.onclick = function() {
+        btnOpen.onclick = function () {
             console.log("Button Open Clicked");
-            
+
             if (appScreen) appScreen.classList.add('reveal-content');
 
             setTimeout(() => {
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (btnMusic && bgMusic) {
-        btnMusic.addEventListener('click', function() {
+        btnMusic.addEventListener('click', function () {
             if (bgMusic.paused) {
                 bgMusic.play();
             } else {

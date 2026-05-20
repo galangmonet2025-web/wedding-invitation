@@ -105,7 +105,7 @@ body {
 }
 
 /* Ken Burns Effect on Background */
-.section-hero > .hero-bg {
+.section-hero>.hero-bg {
     position: absolute !important;
     top: 0;
     left: 0;
@@ -1592,6 +1592,7 @@ section:not(.section-cover) {
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1641,11 +1642,21 @@ section:not(.section-cover) {
 }
 
 @keyframes fall {
-    0% { top: -10%; }
-    100% { top: 110%; }
+    0% {
+        top: -10%;
+    }
+
+    100% {
+        top: 110%;
+    }
 }
 
 @keyframes sway {
-    0% { transform: scale(var(--leaf-scale, 1)) translateX(-40px) rotate(-25deg); }
-    100% { transform: scale(var(--leaf-scale, 1)) translateX(40px) rotate(45deg); }
+    0% {
+        transform: scale(var(--leaf-scale, 1)) translateX(-40px) rotate(-25deg);
+    }
+
+    100% {
+        transform: scale(var(--leaf-scale, 1)) translateX(40px) rotate(45deg);
+    }
 }
