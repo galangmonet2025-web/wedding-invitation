@@ -133,13 +133,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         } else if (audioRef.current) {
             audioRef.current.pause();
         }
+    }, [isPlaying, isOpened, activeContent.link_backsound_music]);
 
+    // Cleanup audio on component unmount
+    useEffect(() => {
         return () => {
             if (audioRef.current) {
                 audioRef.current.pause();
             }
         };
-    }, [isPlaying, isOpened, activeContent.link_backsound_music]);
+    }, []);
 
     // RSVP State
     const [rsvpCode, setRsvpCode] = useState('');
@@ -867,6 +870,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 setIsPlaying={setIsPlaying}
                 setIsOpened={setIsOpened}
                 weddingDate={tenant.wedding_date}
+                flagUseSystemActionButton={activeTheme?.flag_use_system_action_button !== false && activeTheme?.flag_use_system_action_button !== 'false'}
                 onShowQR={() => {
                     if (data?.guest) setShowQRModal(true);
                     else setShowGuestForm(true);
@@ -879,7 +883,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             >
                 {guestQrModal}
                 {uninvitedGuestFormModal}
-                {youtubeId && isPlaying && (
+                {youtubeId && isOpened && (
                     <iframe
                         ref={ytIframeRef}
                         width="0"
@@ -998,7 +1002,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 )}
 
                 {/* Universal Scroll Up Button */}
-                {isOpened && activeSectionIndex >= 1 && (
+                {activeTheme?.flag_use_system_action_button !== false && activeTheme?.flag_use_system_action_button !== 'false' && isOpened && activeSectionIndex >= 1 && (
                     <button
                         id="btn-scroll-to-top"
                         onClick={() => {

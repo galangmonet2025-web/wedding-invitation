@@ -102,6 +102,7 @@ export interface Theme {
     style_category?: string;
     preview_image?: string;
     flag_draft?: boolean | string;
+    flag_use_system_action_button?: boolean | string;
     image_types?: string[];
     created_at: string;
 }
@@ -260,8 +261,10 @@ export interface CreateThemeRequest {
     css_template?: string;
     js_template?: string;
     plan_type: 'basic' | 'pro' | 'premium';
+    style_category?: string;
     preview_image?: string;
     flag_draft?: boolean | string;
+    flag_use_system_action_button?: boolean | string;
     image_types?: string[];
 }
 
@@ -272,8 +275,10 @@ export interface UpdateThemeRequest {
     css_template?: string;
     js_template?: string;
     plan_type: 'basic' | 'pro' | 'premium';
+    style_category?: string;
     preview_image?: string;
     flag_draft?: boolean | string;
+    flag_use_system_action_button?: boolean | string;
     image_types?: string[];
 }
 

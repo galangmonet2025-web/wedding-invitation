@@ -72,6 +72,7 @@ export function ThemeEditorPage() {
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
     const [jsCode, setJsCode] = useState('console.log("Theme Loaded!");');
     const [flagDraft, setFlagDraft] = useState(true);
+    const [flagUseSystemActionButton, setFlagUseSystemActionButton] = useState(true);
     const [imageTypes, setImageTypes] = useState<string[]>([]);
     const [newImageType, setNewImageType] = useState('');
 
@@ -267,6 +268,7 @@ export function ThemeEditorPage() {
                     setCssCode(theme.css_template || '');
                     setJsCode(theme.js_template || '');
                     setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
+                    setFlagUseSystemActionButton(theme.flag_use_system_action_button !== false && theme.flag_use_system_action_button !== 'false');
 
                     // Robust image_types parsing
                     let imgTypes = theme.image_types || [];
@@ -288,6 +290,7 @@ export function ThemeEditorPage() {
                         setCssCode(refetchedTheme.css_template || '');
                         setJsCode(refetchedTheme.js_template || '');
                         setFlagDraft(refetchedTheme.flag_draft !== false && refetchedTheme.flag_draft !== 'false');
+                        setFlagUseSystemActionButton(refetchedTheme.flag_use_system_action_button !== false && refetchedTheme.flag_use_system_action_button !== 'false');
 
                         // Robust image_types parsing
                         let imgTypes = refetchedTheme.image_types || [];
@@ -310,6 +313,7 @@ export function ThemeEditorPage() {
                 setCssCode(copiedTheme.css_template || '');
                 setJsCode(copiedTheme.js_template || '');
                 setFlagDraft(true); // Default copies to draft
+                setFlagUseSystemActionButton(copiedTheme.flag_use_system_action_button !== false && copiedTheme.flag_use_system_action_button !== 'false');
 
                 // Robust image_types parsing
                 let imgTypes = copiedTheme.image_types || [];
@@ -689,6 +693,7 @@ export function ThemeEditorPage() {
                 css_template: cssCode,
                 js_template: jsCode,
                 flag_draft: isDraft,
+                flag_use_system_action_button: flagUseSystemActionButton,
                 image_types: imageTypes
             };
 
@@ -1355,6 +1360,22 @@ export function ThemeEditorPage() {
                                         <option value="Cultural">Cultural</option>
                                         <option value="Lainnya">Lainnya</option>
                                     </select>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <div className="pr-4">
+                                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">Gunakan Floating Action Button Sistem</label>
+                                        <p className="text-xs text-gray-550 mt-0.5">Jika aktif, undangan akan menggunakan 4 tombol mengambang bawaan sistem (Menu, QR Code, Musik, Scroll Up).</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            checked={flagUseSystemActionButton}
+                                            onChange={e => setFlagUseSystemActionButton(e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-500 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                    </label>
                                 </div>
 
                                 {!isNewTheme && (

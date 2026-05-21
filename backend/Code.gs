@@ -2047,6 +2047,8 @@
     getThemes: function(auth) {
       var themes = DB.getAll('Themes');
       themes.forEach(function(t) {
+        t.style_category = t.style_category || '';
+        t.flag_use_system_action_button = (t.flag_use_system_action_button === undefined || t.flag_use_system_action_button === null || t.flag_use_system_action_button === '' ? true : (t.flag_use_system_action_button === true || t.flag_use_system_action_button === 'true' || t.flag_use_system_action_button === 'TRUE' || t.flag_use_system_action_button === 1 || t.flag_use_system_action_button === '1'));
         try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
       });
       // Tenant only sees themes for their plan or lower. Public sees all non-drafts.
@@ -2090,8 +2092,10 @@
         css_template: css_template,
         js_template: js_template,
         plan_type: sanitized.plan_type,
+        style_category: sanitized.style_category || '',
         preview_image: sanitized.preview_image || '',
         flag_draft: payload.hasOwnProperty('flag_draft') ? payload.flag_draft : true,
+        flag_use_system_action_button: payload.hasOwnProperty('flag_use_system_action_button') ? (payload.flag_use_system_action_button === true || payload.flag_use_system_action_button === 'true' || payload.flag_use_system_action_button === 'TRUE') : true,
         image_types: payload.image_types ? JSON.stringify(payload.image_types) : '[]',
         created_at: new Date().toISOString()
       };
@@ -2109,9 +2113,13 @@
       if (payload.css_template !== undefined) updates.css_template = payload.css_template;
       if (payload.js_template !== undefined) updates.js_template = payload.js_template;
       if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
+      if (payload.style_category !== undefined) updates.style_category = Validator.sanitizeObject({s: payload.style_category}).s;
       if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
       if (payload.flag_draft !== undefined) updates.flag_draft = payload.flag_draft;
       if (payload.image_types !== undefined) updates.image_types = JSON.stringify(payload.image_types);
+      if (payload.flag_use_system_action_button !== undefined) {
+        updates.flag_use_system_action_button = (payload.flag_use_system_action_button === true || payload.flag_use_system_action_button === 'true' || payload.flag_use_system_action_button === 'TRUE');
+      }
 
       var success = DB.update('Themes', payload.id, updates);
       if (!success) {
@@ -2467,7 +2475,7 @@
     var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
     var sheets = {
-      'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'flag_draft', 'image_types', 'created_at'],
+      'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'image_types', 'created_at'],
       'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
       'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],

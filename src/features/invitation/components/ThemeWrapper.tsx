@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ThemeWrapperProps {
     htmlBase: string;
@@ -15,6 +15,7 @@ interface ThemeWrapperProps {
     onSubmitGift?: (data: { name: string; amount: number; bank: string }) => Promise<{ success: boolean; message: string }>;
     onOpenLightbox: (index: number, images: string[]) => void;
     weddingDate?: string;
+    flagUseSystemActionButton?: boolean;
     children?: React.ReactNode;
 }
 
@@ -33,9 +34,20 @@ export function ThemeWrapper({
     onSubmitGift,
     onOpenLightbox,
     weddingDate,
+    flagUseSystemActionButton = true,
     children
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [showScrollUp, setShowScrollUp] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = (e: any) => {
+            const scrollTop = e.target.scrollTop || window.scrollY || document.documentElement.scrollTop;
+            setShowScrollUp(scrollTop > 200);
+        };
+        window.addEventListener('scroll', handleScroll, true);
+        return () => window.removeEventListener('scroll', handleScroll, true);
+    }, []);
 
     useEffect(() => {
         const loadScript = (id: string, src: string) => {
@@ -111,15 +123,34 @@ export function ThemeWrapper({
         const container = containerRef.current;
         if (!container) return;
 
-        const musicBtnIcon = container.querySelector('#btn-toggle-music i');
-        if (musicBtnIcon) {
-            if (isPlaying) {
-                // Change to pause icon when playing
-                musicBtnIcon.className = 'ri-pause-circle-line';
-                musicBtnIcon.classList.add('uk-animation-stroke'); // Add a subtle animation if using UIkit
-            } else {
-                // Change back to music/play icon when paused
-                musicBtnIcon.className = 'ri-music-2-line';
+        const musicBtn = container.querySelector('#btn-toggle-music, #btn-music');
+        if (musicBtn) {
+            // 1. Check for child with uk-icon attribute
+            const ukIconEl = musicBtn.querySelector('[uk-icon], #music-icon');
+            if (ukIconEl) {
+                const ratio = ukIconEl.getAttribute('uk-icon')?.includes('ratio: 1.2') ? '; ratio: 1.2' : '';
+                ukIconEl.setAttribute('uk-icon', isPlaying ? `icon: pause${ratio}` : `icon: play${ratio}`);
+                if ((window as any).UIkit) {
+                    try { (window as any).UIkit.icon(ukIconEl); } catch(e) {}
+                }
+            }
+            
+            // 2. Check for child with remix icon or font awesome classes
+            const musicBtnIcon = musicBtn.querySelector('i, span:not([uk-icon])');
+            if (musicBtnIcon) {
+                if (isPlaying) {
+                    if (musicBtnIcon.className.includes('ri-')) {
+                        musicBtnIcon.className = 'ri-pause-circle-line';
+                    } else if (musicBtnIcon.className.includes('fa-')) {
+                        musicBtnIcon.className = 'fa fa-pause';
+                    }
+                } else {
+                    if (musicBtnIcon.className.includes('ri-')) {
+                        musicBtnIcon.className = 'ri-music-2-line';
+                    } else if (musicBtnIcon.className.includes('fa-')) {
+                        musicBtnIcon.className = 'fa fa-play';
+                    }
+                }
             }
         }
     }, [isPlaying, htmlBase]); // Re-run when playing state OR html content changes
@@ -302,13 +333,29 @@ export function ThemeWrapper({
             e.preventDefault();
             onShowQR();
         }
-        if (target.closest('#btn-show-menu')) {
+        if (target.closest('#btn-show-menu') && flagUseSystemActionButton) {
             e.preventDefault();
             onShowMenu();
         }
-        if (target.closest('#btn-toggle-music')) {
+        if (target.closest('#btn-toggle-music') || target.closest('#btn-music')) {
             e.preventDefault();
             setIsPlaying(!isPlaying);
+        }
+        if (target.closest('#btn-scoll-up') || target.closest('#btn-scroll-up')) {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const phoneContainer = document.querySelector('.phone-container');
+            if (phoneContainer) {
+                phoneContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            const scrollableMain = document.querySelector('.mock-app-screen');
+            if (scrollableMain) {
+                scrollableMain.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) {
+                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
 
         // --- UNIVERSAL LIGHTBOX (Restricted to gallery container with .lightbox-injection) ---
@@ -334,9 +381,46 @@ export function ThemeWrapper({
             <style dangerouslySetInnerHTML={{ __html: `
                 .is-closed #theme-fab-container { display: none !important; }
                 .is-closed #main-content { display: none !important; }
-                .is-opened #theme-fab-container { display: block !important; }
                 .is-opened #theme-cover { display: none !important; }
                 .is-opened #main-content { display: block !important; }
+                
+                /* Override/hide theme FAB container if system action button is requested */
+                ${flagUseSystemActionButton ? `
+                    #theme-fab-container { display: none !important; }
+                ` : `
+                    .is-opened #theme-fab-container { display: block !important; }
+                `}
+
+                .system-fab-container {
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    z-index: 999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    pointer-events: auto;
+                }
+                
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+
+                @media (max-width: 640px) {
+                    .system-fab-container {
+                        bottom: 16px;
+                        right: 16px;
+                        gap: 8px;
+                    }
+                    .system-fab-container button {
+                        width: 42px !important;
+                        height: 42px !important;
+                    }
+                    .system-fab-container button i {
+                        font-size: 16px !important;
+                    }
+                }
             ` }} />
 
             <div
@@ -363,6 +447,53 @@ export function ThemeWrapper({
                 }}
                 onSubmit={(e) => e.preventDefault()}
             />
+
+            {/* System Floating Action Buttons */}
+            {flagUseSystemActionButton && isOpened && (
+                <div className="system-fab-container">
+                    {/* Scroll up */}
+                    {showScrollUp && (
+                        <button
+                            id="btn-scoll-up"
+                            className="w-12 h-12 rounded-full bg-white/85 dark:bg-gray-800/85 backdrop-blur-md shadow-lg border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-gold-500 hover:text-white"
+                            title="Scroll ke Atas"
+                        >
+                            <i className="ri-arrow-up-line text-lg"></i>
+                        </button>
+                    )}
+
+                    {/* Play/Pause Music */}
+                    <button
+                        id="btn-toggle-music"
+                        className={`w-12 h-12 rounded-full backdrop-blur-md shadow-lg border flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 ${
+                            isPlaying
+                                ? 'bg-gold-500 border-gold-400/50 text-white'
+                                : 'bg-white/85 dark:bg-gray-800/85 border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200'
+                        }`}
+                        title={isPlaying ? "Jeda Musik" : "Putar Musik"}
+                    >
+                        <i className={`text-lg ${isPlaying ? 'ri-music-2-fill' : 'ri-music-2-line'}`} style={{ animation: isPlaying ? 'spin 3s linear infinite' : 'none' }}></i>
+                    </button>
+
+                    {/* Show QR code */}
+                    <button
+                        id="btn-show-qr"
+                        className="w-12 h-12 rounded-full bg-white/85 dark:bg-gray-800/85 backdrop-blur-md shadow-lg border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-gold-500 hover:text-white"
+                        title="QR Code"
+                    >
+                        <i className="ri-qr-code-line text-lg"></i>
+                    </button>
+
+                    {/* Show list menu */}
+                    <button
+                        id="btn-show-menu"
+                        className="w-12 h-12 rounded-full bg-white/85 dark:bg-gray-800/85 backdrop-blur-md shadow-lg border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-gold-500 hover:text-white"
+                        title="Daftar Menu"
+                    >
+                        <i className="ri-menu-line text-lg"></i>
+                    </button>
+                </div>
+            )}
 
             {/* Render any React floating elements / Modals on top */}
             {children}
