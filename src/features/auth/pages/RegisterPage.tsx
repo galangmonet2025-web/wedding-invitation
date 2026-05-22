@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format, parse } from 'date-fns';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import kosaIcon from '@/assets/img/kosa-icon.png';
 import { useAuthStore } from '../store/authStore';
 import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
@@ -39,19 +40,25 @@ export function RegisterPage() {
     
     // Fetch Global Website Config for Favicon
     useEffect(() => {
+        // Set default favicon immediately
+        let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+        if (!favicon) {
+            favicon = document.createElement('link');
+            favicon.rel = 'icon';
+            document.head.appendChild(favicon);
+        }
+        favicon.href = kosaIcon;
+
         const fetchConfig = async () => {
             try {
                 const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
                 const res = await publicApi.getWebsiteConfig();
                 if (res.success && res.data.site_logo) {
                     const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
-                    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                    if (!favicon) {
-                        favicon = document.createElement('link');
-                        favicon.rel = 'icon';
-                        document.head.appendChild(favicon);
+                    let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                    if (fav) {
+                        fav.href = resolvedLogo;
                     }
-                    favicon.href = resolvedLogo;
                 }
             } catch (err) {
                 console.error('Failed to load website config for favicon:', err);

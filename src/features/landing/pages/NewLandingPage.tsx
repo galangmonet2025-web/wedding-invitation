@@ -18,6 +18,7 @@ import { FaInstagram, FaTiktok, FaYoutube, FaWhatsapp } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
 import { Theme, MstPlanType, MstPlanFeature, WebsiteConfig, ReviewAndRating, MstAdditionalFeature } from '@/types';
+import kosaIcon from '@/assets/img/kosa-icon.png';
 
 export function NewLandingPage() {
     // Data States
@@ -46,22 +47,28 @@ export function NewLandingPage() {
                     publicApi.getPublicPlanFeatures()
                 ]);
 
+                // Update Favicon
+                let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                if (!favicon) {
+                    favicon = document.createElement('link');
+                    favicon.rel = 'icon';
+                    document.head.appendChild(favicon);
+                }
+                favicon.href = kosaIcon;
+
                 if (configRes.success) {
                     setConfig(configRes.data);
                     setReviews(configRes.data.reviews || []);
                     setAdditionalFeatures(configRes.data.features || []);
 
-                    // Update Favicon
+                    // Update Favicon with dynamic site logo if loaded
                     if (configRes.data.site_logo) {
                         const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
                         const resolvedLogo = await fetchProxyImageBase64(configRes.data.site_logo);
-                        let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                        if (!favicon) {
-                            favicon = document.createElement('link');
-                            favicon.rel = 'icon';
-                            document.head.appendChild(favicon);
+                        let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                        if (fav) {
+                            fav.href = resolvedLogo;
                         }
-                        favicon.href = resolvedLogo;
                     }
                 }
                 if (themesRes.success) setThemes(themesRes.data);

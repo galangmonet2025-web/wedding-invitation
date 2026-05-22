@@ -3,6 +3,7 @@ import { publicApi } from '@/core/api/endpoints';
 import { WebsiteConfig } from '@/types';
 import { parseTemplate } from '@/utils/templateParser';
 import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
+import kosaIcon from '@/assets/img/kosa-icon.png';
 
 export function LandingPage() {
     const [config, setConfig] = useState<WebsiteConfig | null>(null);
@@ -146,15 +147,13 @@ export function LandingPage() {
         metaDesc.setAttribute('content', config.site_description || '');
         
         // Update Favicon
-        if (resolvedData.site_logo) {
-            let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-            if (!favicon) {
-                favicon = document.createElement('link');
-                favicon.rel = 'icon';
-                document.head.appendChild(favicon);
-            }
-            favicon.href = resolvedData.site_logo;
+        let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+        if (!favicon) {
+            favicon = document.createElement('link');
+            favicon.rel = 'icon';
+            document.head.appendChild(favicon);
         }
+        favicon.href = resolvedData.site_logo || kosaIcon;
 
         // JS execution is handled below
 

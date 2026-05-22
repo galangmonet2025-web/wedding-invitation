@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { additionalFeatureApi } from '@/core/api/endpoints';
 import { useTranslation } from 'react-i18next';
+import kosaIcon from '@/assets/img/kosa-icon.png';
 
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 import {
@@ -241,6 +242,15 @@ export function DashboardLayout() {
 
     // Fetch Global Website Config for Favicon
     useEffect(() => {
+        // Set default favicon immediately
+        let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+        if (!favicon) {
+            favicon = document.createElement('link');
+            favicon.rel = 'icon';
+            document.head.appendChild(favicon);
+        }
+        favicon.href = kosaIcon;
+
         const fetchConfig = async () => {
             try {
                 const { publicApi } = await import('@/core/api/endpoints');
@@ -248,13 +258,10 @@ export function DashboardLayout() {
                 const res = await publicApi.getWebsiteConfig();
                 if (res.success && res.data.site_logo) {
                     const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
-                    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                    if (!favicon) {
-                        favicon = document.createElement('link');
-                        favicon.rel = 'icon';
-                        document.head.appendChild(favicon);
+                    let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                    if (fav) {
+                        fav.href = resolvedLogo;
                     }
-                    favicon.href = resolvedLogo;
                 }
             } catch (err) {
                 console.error('Failed to load website config for favicon:', err);
