@@ -45,7 +45,7 @@
 
             <!-- Cover page berisikan kata2 kpd yth nama tamu yang di undang, dan button buka undangan, buka QC code -->
             <section id="theme-cover" class="section-cover"
-                style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_hero_cover}}&quot;);">
+                style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_cover}}&quot;);">
                 <div class="container-section-header">
                     <div class="the-wedding-of">
                         THE WEDDING OF
@@ -88,67 +88,368 @@
                 </div>
             </section>
 
-            <div id="main-content">
+            <!-- Section 1 Hero page (nama, tanggal, quotes, background gambar hero) -->
+            <section class="section-hero">
+                <div class="hero-bg"
+                    style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url({{photo_hero_cover}});">
+                </div>
 
-                <!-- Section 1 Hero page (nama, tanggal, quotes, background gambar hero) -->
-                <section class="section-hero">
-                    <div class="hero-bg"
-                        style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url({{photo_hero_cover}});">
+                <div class="container-section-header">
+                    <div class="the-wedding-of">
+                        THE WEDDING OF
                     </div>
 
-                    <div class="container-section-header">
-                        <div class="the-wedding-of">
-                            THE WEDDING OF
-                        </div>
-
-                        <div class="groom-bride-name">
-                            <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
-                        </div>
-
-                        <div class="the-wedding-of">{{wedding_date}}</div>
+                    <div class="groom-bride-name">
+                        <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
                     </div>
 
-                    <div class="container-section-hero-quotes">
-                        <span>“Dan di antara tanda-tanda (kebesaran)-Nya ialah Dia menciptakan
-                            pasangan-pasangan untukmu
-                            dari jenismu sendiri, agar kamu cenderung dan merasa tenteram kepadanya, dan Dia menjadikan
-                            diantaramu rasa kasih dan sayang. Sungguh, pada yang demikian itu benar-benar terdapat
-                            tanda-tanda bagi kaum yang berpikir.”
+                    <div class="the-wedding-of">{{wedding_date}}</div>
+                </div>
+
+                <div class="container-section-hero-quotes">
+                    <span>“Dan di antara tanda-tanda (kebesaran)-Nya ialah Dia menciptakan
+                        pasangan-pasangan untukmu
+                        dari jenismu sendiri, agar kamu cenderung dan merasa tenteram kepadanya, dan Dia menjadikan
+                        diantaramu rasa kasih dan sayang. Sungguh, pada yang demikian itu benar-benar terdapat
+                        tanda-tanda bagi kaum yang berpikir.”
+                        <br>
+                        (QS. Ar-Rum: 21)</span>
+                </div>
+
+                <div class="scroll-indicator">
+                    <div class="mouse">
+                        <div class="wheel"></div>
+                    </div>
+                    <span>scroll kebawah</span>
+                </div>
+            </section>
+
+
+
+            <!-- Section 2 perkenalan pasangan (nama, nama orang tua, akun sosmed) -->
+            <section id="couples" class="section-couples" data-menu-label="Mempelai"
+                uk-scrollspy="cls: uk-animation-slide-bottom-medium; target: .couple-row; delay: 300; repeat: true">
+                <div class="container-section-header" style="padding-bottom: 0;">
+                    <div class="the-wedding-of">
+                        pasangan
+                    </div>
+
+                    <div class="groom-bride-name">
+                        <span>Mempelai</span>
+                    </div>
+
+                    <div class="quotes" style="margin-top: 20px; line-height: 1.6; text-transform: none;">
+                        Dengan segala puji bagi Allah yang telah menciptakan mahluk-Nya berpasang-pasangan, Ya Allah
+                        izinkanlah kami merangkai cinta yang Engkau berikan dalam ikatan pernikahan.
+                    </div>
+                </div>
+
+                <div class="couple-content">
+                    <!-- Journey Separator -->
+                    <div class="couple-separator">
+                        <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+                            <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50" fill="none"
+                                stroke="white" stroke-width="2"></path>
+                            <path class="heart-icon" d="M90,45 Q100,35 110,45 T100,65 T90,45" fill="none" stroke="white"
+                                stroke-width="2"></path>
+                            <circle class="end-dot" cx="180" cy="50" r="3" fill="white"></circle>
+                        </svg>
+                    </div>
+
+                    <!-- Laki-laki (Groom) -->
+                    <div class="couple-row">
+                        <div class="couple-info">
+                            <h3 class="couple-name">{{groom_name}}</h3>
+
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div>
+                                <p class="couple-parents">
+                                    Putra dari <br>
+                                    Bapak <span>{{nama_bapak_laki_laki}}</span> <br>
+                                    &amp;
+                                    Ibu <span>{{nama_ibu_laki_laki}}</span>
+                                </p>
+                            </div>
+                            {{/if}}
+
+
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <div>
+                                <a href="#" class="couple-instagram">
+                                    <span uk-icon="instagram" style="margin-right: 5px;"></span>
+                                    <span>{{ig_laki_laki}}</span>
+                                </a>
+                            </div>
+                            {{/if}}
+
+                        </div>
+                        <div class="couple-img-wrapper">
+                            <img src="{{photo_groom_photo}}" alt="Galang" class="couple-img">
+                        </div>
+                    </div>
+
+                    <hr class="couple-divider">
+
+                    <!-- Perempuan (Bride) -->
+                    <div class="couple-row reverse">
+                        <div class="couple-info">
+                            <h3 class="couple-name">{{bride_name}}</h3>
+
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div>
+                                <p class="couple-parents">
+                                    Putri dari <br>
+                                    Bapak <span>{{nama_bapak_perempuan}}</span> <br>
+                                    &amp;
+                                    Ibu <span>{{nama_ibu_perempuan}}</span>
+                                </p>
+                            </div>
+                            {{/if}}
+
+
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <div>
+                                <a href="#" class="couple-instagram">
+                                    <span uk-icon="instagram" style="margin-right: 5px;"></span>
+                                    <span>{{ig_perempuan}}</span>
+                                </a>
+                            </div>
+                            {{/if}}
+
+                        </div>
+                        <div class="couple-img-wrapper">
+                            <img src="{{photo_bride_photo}}" alt="Dini" class="couple-img">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3 waktu & tempat untuk akad & resepsi -->
+            <section id="schedule" class="section-schedule" data-menu-label="Waktu &amp; tempat"
+                style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(&quot;{{photo_story_photo}}&quot;);"
+                uk-scrollspy="cls: uk-animation-scale-up; target: .schedule-card; delay: 300; repeat: true">
+                <div class="container-section-schedule">
+                    <div class="the-wedding-of">
+                        Acara pernikahan
+                    </div>
+                    <div class="groom-bride-name">
+                        Waktu &amp; tempat
+                    </div>
+                </div>
+
+                <div class="schedule-content" style="padding: 0 20px; margin-top: 20px;">
+                    <!-- Akad Nikah -->
+                    <div class="schedule-card">
+                        <div class="schedule-icon" style="margin-bottom: 15px; color: #fff;">
+                            <span uk-icon="calendar" style="margin-right: 5px;"></span>
+                        </div>
+                        <h3 class="schedule-title">Akad Nikah</h3>
+                        <div class="schedule-date">{{tanggal_akad}}</div>
+                        <div class="schedule-time">{{jam_akad}}</div>
+                        <hr class="schedule-line">
+                        <div class="schedule-venue">{{nama_lokasi_akad}}</div>
+                        <div class="schedule-address">{{keterangan_lokasi_akad}}</div>
+                        <br>
+                        <a href="{{akad_map}}" target="_blank" class="btn btn-schedule">
+                            <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
+                        </a>
+                    </div>
+
+                    <!-- Resepsi -->
+
+                    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                    <div>
+                        <div class="schedule-card" style="margin-top: 30px;">
+                            <div class="schedule-icon" style="margin-bottom: 15px; color: #fff;">
+                                <span uk-icon="icon: users; ratio: 1.5"></span>
+                            </div>
+                            <h3 class="schedule-title">Resepsi</h3>
+                            <div class="schedule-date">{{tanggal_resepsi}}</div>
+                            <div class="schedule-time">{{jam_resepsi}}</div>
+                            <hr class="schedule-line">
+                            <div class="schedule-venue">{{nama_lokasi_resepsi}}</div>
+                            <div class="schedule-address">{{keterangan_lokasi_resepsi}}</div>
                             <br>
-                            (QS. Ar-Rum: 21)</span>
+                            <a href="{{resepsi_map}}" target="_blank" class="btn btn-schedule">
+                                <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
+                            </a>
+                        </div>
+                    </div>
+                    {{/if}}
+
+                </div>
+            </section>
+
+
+
+            <!-- section 4 count down, input form konfirmasi kehadiran -->
+            <section class="section-rsvp"
+                uk-scrollspy="cls: uk-animation-fade; target: .container-section-header &gt; *; delay: 300; repeat: true">
+                <div class="container-section-header">
+                    <div class="the-wedding-of">
+                        HITUNG MUNDUR
                     </div>
 
-                    <div class="scroll-indicator">
-                        <div class="mouse">
-                            <div class="wheel"></div>
+                    <div class="groom-bride-name">
+                        Menuju Hari bahagia
+                    </div>
+                    <div class="countdown-container" id="countdown">
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="days">{{countdown_hari}}</div>
+                            <div class="countdown-label">Hari</div>
                         </div>
-                        <span>scroll kebawah</span>
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="hours">{{countdown_jam}}</div>
+                            <div class="countdown-label">Jam</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="minutes">{{countdown_menit}}</div>
+                            <div class="countdown-label">Menit</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="seconds">{{countdown_detik}}</div>
+                            <div class="countdown-label">Detik</div>
+                        </div>
+                    </div>
+
+                    <div class="rsvp-form-container" id="rsvp-container">
+
+                        {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                        <div>
+                            <div class="glass-form" id="rsvp-form">
+                                <div class="the-wedding-of">
+                                    Konfirmasi Kehadiran
+                                </div>
+                                <div class="uk-margin-small">
+                                    <input class="uk-input custom-input" type="text" id="rsvp-code"
+                                        placeholder="Kode Undangan">
+                                </div>
+                                <div class="uk-margin-small">
+                                    <input class="uk-input custom-input" type="text" id="guest-name-input"
+                                        placeholder="Nama Tamu">
+                                </div>
+                                <div class="uk-margin-small">
+                                    <select class="uk-select custom-input" id="rsvp-guests">
+                                        <option value="" disabled="" selected="">Jumlah Kehadiran</option>
+                                        <option value="1">1 Orang</option>
+                                        <option value="2">2 Orang</option>
+                                    </select>
+                                </div>
+                                <div class="uk-margin-small">
+                                    <select class="uk-select custom-input" id="rsvp-status">
+                                        <option value="" disabled="" selected="">Konfirmasi Kehadiran</option>
+                                        <option value="hadir">Hadir</option>
+                                        <option value="tidak-hadir">Tidak Hadir</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-konfirm" id="btn-submit-kehadiran"
+                                    style="margin-top: 10px; width: 100%;">Konfirmasi</button>
+                            </div>
+                        </div>
+                        {{/unless}}
+
+
+                        {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                        <div>
+                            <div id="alert-submit-kehadiran" style="padding: 20px;"
+                                class="thank-you-message glass-card">
+
+                                {{#if is_hadir}}
+                                <div>
+                                    <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                                    Terima kasih <strong>{{guest_name}}</strong>!<br>
+                                    Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
+                                </div>
+                                {{/if}}
+
+
+                                {{#unless is_hadir}}
+                                <div>
+                                    <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
+                                    Terima kasih <strong>{{guest_name}}</strong>.<br>
+                                    Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
+                                </div>
+                                {{/unless}}
+
+                            </div>
+                        </div>
+                        {{/if}}
+
+                    </div>
+                </div>
+
+
+            </section>
+
+
+            <!-- Section 5 Section untuk live streaming -->
+            {{#if is_fitur_live_streaming}}
+            <div>
+                <section class="section-streaming"
+                    style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_background}}&quot;);"
+                    data-menu-label="Streaming"
+                    uk-scrollspy="cls: uk-animation-slide-top-medium; target: .streaming-container; delay: 300; repeat: true">
+                    <div class="container-section-header">
+                        <div class="the-wedding-of">LIVE STREAMING</div>
+                        <div class="groom-bride-name">Momen Bahagia</div>
+                        <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                            Bagi Bapak/Ibu/Saudara/i yang tidak dapat hadir secara langsung, kami mengundang Anda
+                            untuk
+                            menyaksikan momen bahagia kami melalui siaran langsung.
+                        </div>
+                    </div>
+
+                    <div class="streaming-container uk-padding">
+                        <div class="glass-card streaming-card" style="text-align: center; padding: 30px;">
+                            <div class="streaming-icon uk-margin-bottom">
+                                <span uk-icon="icon: video-camera; ratio: 2.5" style="color: #fff;"></span>
+                            </div>
+                            <div class="streaming-info">
+                                <h4 style="color: #fff; font-weight: 700; margin-bottom: 10px;">LIVE</h4>
+                                <p style="font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+                                    Saksikan rangkaian acara pernikahan kami secara live dari mana saja Anda berada.
+                                </p>
+                                <a href="{{link_live_streaming}}" target="_blank" class="btn-schedule"
+                                    style="text-decoration: none;">
+                                    BUKA STREAMING
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </section>
+            </div>
+            {{/if}}
 
+            <!-- Section 6 Timeline kisah -->
 
-
-                <!-- Section 2 perkenalan pasangan (nama, nama orang tua, akun sosmed) -->
-                <section id="couples" class="section-couples" data-menu-label="Mempelai"
-                    uk-scrollspy="cls: uk-animation-slide-bottom-medium; target: .couple-row; delay: 300; repeat: true">
-                    <div class="container-section-header" style="padding-bottom: 0;">
-                        <div class="the-wedding-of">
-                            pasangan
-                        </div>
-
-                        <div class="groom-bride-name">
-                            <span>Mempelai</span>
-                        </div>
-
-                        <div class="quotes" style="margin-top: 20px; line-height: 1.6; text-transform: none;">
-                            Dengan segala puji bagi Allah yang telah menciptakan mahluk-Nya berpasang-pasangan, Ya Allah
-                            izinkanlah kami merangkai cinta yang Engkau berikan dalam ikatan pernikahan.
+            {{#if flag_pakai_timeline_kisah}}
+            <div>
+                <section class="section-story">
+                    <div class="container-section-header">
+                        <div class="the-wedding-of">OUR JOURNEY</div>
+                        <div class="groom-bride-name">Love Story</div>
+                        <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                            Perjalanan cinta kami dari awal bertemu hingga akhirnya memutuskan untuk bersatu.
                         </div>
                     </div>
 
-                    <div class="couple-content">
-                        <!-- Journey Separator -->
-                        <div class="couple-separator">
+                    <div class="story-container uk-padding uk-padding-remove-bottom uk-padding-remove-top">
+                        <div class="story-scroll-box"
+                            uk-scrollspy="target: &gt; .story-timeline &gt; .story-item; cls: uk-scrollspy-inview; delay: 300; repeat: true">
+                            <div class="story-timeline">
+                                {{#each timeline_kisah}}
+                                <div class="story-item">
+                                    <div class="story-dot"></div>
+                                    <div class="story-date">{{this.tanggal}}</div>
+                                    <h4 class="story-title">{{this.judul}}</h4>
+                                    <p class="story-text">{{this.deskripsi}}</p>
+                                </div>
+                                {{/each}}
+                            </div>
+                        </div>
+
+                        <!-- Story Footer Animation (Fixed outside scroll) -->
+                        <div class="story-footer">
                             <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
                                 <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50" fill="none"
                                     stroke="white" stroke-width="2"></path>
@@ -156,574 +457,292 @@
                                     stroke="white" stroke-width="2"></path>
                                 <circle class="end-dot" cx="180" cy="50" r="3" fill="white"></circle>
                             </svg>
-                        </div>
-
-                        <!-- Laki-laki (Groom) -->
-                        <div class="couple-row">
-                            <div class="couple-info">
-                                <h3 class="couple-name">{{groom_name}}</h3>
-
-                                {{#if flag_tampilkan_nama_orang_tua}}
-                                <div>
-                                    <p class="couple-parents">
-                                        Putra dari <br>
-                                        Bapak <span>{{nama_bapak_laki_laki}}</span> <br>
-                                        &amp;
-                                        Ibu <span>{{nama_ibu_laki_laki}}</span>
-                                    </p>
-                                </div>
-                                {{/if}}
-
-
-                                {{#if flag_tampilkan_sosial_media_mempelai}}
-                                <div>
-                                    <a href="#" class="couple-instagram">
-                                        <span uk-icon="instagram" style="margin-right: 5px;"></span>
-                                        <span>{{ig_laki_laki}}</span>
-                                    </a>
-                                </div>
-                                {{/if}}
-
-                            </div>
-                            <div class="couple-img-wrapper">
-                                <img src="{{photo_groom_photo}}" alt="Galang" class="couple-img">
-                            </div>
-                        </div>
-
-                        <hr class="couple-divider">
-
-                        <!-- Perempuan (Bride) -->
-                        <div class="couple-row reverse">
-                            <div class="couple-info">
-                                <h3 class="couple-name">{{bride_name}}</h3>
-
-                                {{#if flag_tampilkan_nama_orang_tua}}
-                                <div>
-                                    <p class="couple-parents">
-                                        Putri dari <br>
-                                        Bapak <span>{{nama_bapak_perempuan}}</span> <br>
-                                        &amp;
-                                        Ibu <span>{{nama_ibu_perempuan}}</span>
-                                    </p>
-                                </div>
-                                {{/if}}
-
-
-                                {{#if flag_tampilkan_sosial_media_mempelai}}
-                                <div>
-                                    <a href="#" class="couple-instagram">
-                                        <span uk-icon="instagram" style="margin-right: 5px;"></span>
-                                        <span>{{ig_perempuan}}</span>
-                                    </a>
-                                </div>
-                                {{/if}}
-
-                            </div>
-                            <div class="couple-img-wrapper">
-                                <img src="{{photo_bride_photo}}" alt="Dini" class="couple-img">
-                            </div>
+                            <div class="journey-text">Dan perjalanan indah pun dimulai...</div>
                         </div>
                     </div>
-                </section>
-
-                <!-- Section 3 waktu & tempat untuk akad & resepsi -->
-                <section id="schedule" class="section-schedule" data-menu-label="Waktu &amp; tempat"
-                    style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(&quot;{{photo_story_photo}}&quot;);"
-                    uk-scrollspy="cls: uk-animation-scale-up; target: .schedule-card; delay: 300; repeat: true">
-                    <div class="container-section-schedule">
-                        <div class="the-wedding-of">
-                            Acara pernikahan
-                        </div>
-                        <div class="groom-bride-name">
-                            Waktu &amp; tempat
-                        </div>
-                    </div>
-
-                    <div class="schedule-content" style="padding: 0 20px; margin-top: 20px;">
-                        <!-- Akad Nikah -->
-                        <div class="schedule-card">
-                            <div class="schedule-icon" style="margin-bottom: 15px; color: #fff;">
-                                <span uk-icon="calendar" style="margin-right: 5px;"></span>
-                            </div>
-                            <h3 class="schedule-title">Akad Nikah</h3>
-                            <div class="schedule-date">{{tanggal_akad}}</div>
-                            <div class="schedule-time">{{jam_akad}}</div>
-                            <hr class="schedule-line">
-                            <div class="schedule-venue">{{nama_lokasi_akad}}</div>
-                            <div class="schedule-address">{{keterangan_lokasi_akad}}</div>
-                            <br>
-                            <a href="{{akad_map}}" target="_blank" class="btn btn-schedule">
-                                <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
-                            </a>
-                        </div>
-
-                        <!-- Resepsi -->
-
-                        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
-                        <div>
-                            <div class="schedule-card" style="margin-top: 30px;">
-                                <div class="schedule-icon" style="margin-bottom: 15px; color: #fff;">
-                                    <span uk-icon="icon: users; ratio: 1.5"></span>
-                                </div>
-                                <h3 class="schedule-title">Resepsi</h3>
-                                <div class="schedule-date">{{tanggal_resepsi}}</div>
-                                <div class="schedule-time">{{jam_resepsi}}</div>
-                                <hr class="schedule-line">
-                                <div class="schedule-venue">{{nama_lokasi_resepsi}}</div>
-                                <div class="schedule-address">{{keterangan_lokasi_resepsi}}</div>
-                                <br>
-                                <a href="{{resepsi_map}}" target="_blank" class="btn btn-schedule">
-                                    <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
-                                </a>
-                            </div>
-                        </div>
-                        {{/if}}
-
-                    </div>
-                </section>
-
-
-
-                <!-- section 4 count down, input form konfirmasi kehadiran -->
-                <section class="section-rsvp"
-                    uk-scrollspy="cls: uk-animation-fade; target: .container-section-header &gt; *; delay: 300; repeat: true">
-                    <div class="container-section-header">
-                        <div class="the-wedding-of">
-                            HITUNG MUNDUR
-                        </div>
-
-                        <div class="groom-bride-name">
-                            Menuju Hari bahagia
-                        </div>
-                        <div class="countdown-container" id="countdown">
-                            <div class="countdown-item">
-                                <div class="countdown-box" id="days">{{countdown_hari}}</div>
-                                <div class="countdown-label">Hari</div>
-                            </div>
-                            <div class="countdown-item">
-                                <div class="countdown-box" id="hours">{{countdown_jam}}</div>
-                                <div class="countdown-label">Jam</div>
-                            </div>
-                            <div class="countdown-item">
-                                <div class="countdown-box" id="minutes">{{countdown_menit}}</div>
-                                <div class="countdown-label">Menit</div>
-                            </div>
-                            <div class="countdown-item">
-                                <div class="countdown-box" id="seconds">{{countdown_detik}}</div>
-                                <div class="countdown-label">Detik</div>
-                            </div>
-                        </div>
-
-                        <div class="rsvp-form-container" id="rsvp-container">
-                            <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
-                                <div class="glass-form" id="rsvp-form">
-                                    <div class="the-wedding-of">
-                                        Konfirmasi Kehadiran
-                                    </div>
-                                    <div class="uk-margin-small">
-                                        <input class="uk-input custom-input" type="text" id="rsvp-code"
-                                            placeholder="Kode Undangan">
-                                    </div>
-                                    <div class="uk-margin-small">
-                                        <input class="uk-input custom-input" type="text" id="guest-name-input"
-                                            placeholder="Nama Tamu">
-                                    </div>
-                                    <div class="uk-margin-small">
-                                        <select class="uk-select custom-input" id="rsvp-guests">
-                                            <option value="" disabled="" selected="">Jumlah Kehadiran</option>
-                                            <option value="1">1 Orang</option>
-                                            <option value="2">2 Orang</option>
-                                        </select>
-                                    </div>
-                                    <div class="uk-margin-small">
-                                        <select class="uk-select custom-input" id="rsvp-status">
-                                            <option value="" disabled="" selected="">Konfirmasi Kehadiran</option>
-                                            <option value="hadir">Hadir</option>
-                                            <option value="tidak-hadir">Tidak Hadir</option>
-                                        </select>
-                                    </div>
-                                    <button class="btn btn-konfirm" id="btn-submit-kehadiran"
-                                        style="margin-top: 10px; width: 100%;">Konfirmasi</button>
-                                </div>
-                            </div>
-
-                            {{#if is_sudah_isi_konfirmasi_kehadiran}}
-                            <div>
-                                <div id="alert-submit-kehadiran" style="padding: 20px;"
-                                    class="thank-you-message glass-card">
-
-                                    {{#if is_hadir}}
-                                    <div>
-                                        <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
-                                        Terima kasih <strong>{{guest_name}}</strong>!<br>
-                                        Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
-                                    </div>
-                                    {{/if}}
-
-                                    <div data-unless="is_hadir">
-                                        <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
-                                        Terima kasih <strong>{{guest_name}}</strong>.<br>
-                                        Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
-                                    </div>
-                                </div>
-                            </div>
-                            {{/if}}
-
-                        </div>
-                    </div>
-
-
-                </section>
-
-
-                <!-- Section 5 Section untuk live streaming -->
-
-                {{#if is_fitur_live_streaming}}
-                <div>
-                    <section class="section-streaming"
-                        style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_background}}&quot;);"
-                        data-menu-label="Streaming"
-                        uk-scrollspy="cls: uk-animation-slide-top-medium; target: .streaming-container; delay: 300; repeat: true">
-                        <div class="container-section-header">
-                            <div class="the-wedding-of">LIVE STREAMING</div>
-                            <div class="groom-bride-name">Momen Bahagia</div>
-                            <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
-                                Bagi Bapak/Ibu/Saudara/i yang tidak dapat hadir secara langsung, kami mengundang Anda
-                                untuk
-                                menyaksikan momen bahagia kami melalui siaran langsung.
-                            </div>
-                        </div>
-
-                        <div class="streaming-container uk-padding">
-                            <div class="glass-card streaming-card" style="text-align: center; padding: 30px;">
-                                <div class="streaming-icon uk-margin-bottom">
-                                    <span uk-icon="icon: video-camera; ratio: 2.5" style="color: #fff;"></span>
-                                </div>
-                                <div class="streaming-info">
-                                    <h4 style="color: #fff; font-weight: 700; margin-bottom: 10px;">LIVE</h4>
-                                    <p style="font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 20px;">
-                                        Saksikan rangkaian acara pernikahan kami secara live dari mana saja Anda berada.
-                                    </p>
-                                    <a href="{{link_live_streaming}}" target="_blank" class="btn-schedule"
-                                        style="text-decoration: none;">
-                                        BUKA STREAMING
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-                {{/if}}
-
-
-                <!-- Section 6 Timeline kisah -->
-
-                {{#if flag_pakai_timeline_kisah}}
-                <div>
-                    <section class="section-story">
-                        <div class="container-section-header">
-                            <div class="the-wedding-of">OUR JOURNEY</div>
-                            <div class="groom-bride-name">Love Story</div>
-                            <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
-                                Perjalanan cinta kami dari awal bertemu hingga akhirnya memutuskan untuk bersatu.
-                            </div>
-                        </div>
-
-                        <div class="story-container uk-padding uk-padding-remove-bottom uk-padding-remove-top">
-                            <div class="story-scroll-box"
-                                uk-scrollspy="target: &gt; .story-timeline &gt; .story-item; cls: uk-scrollspy-inview; delay: 300; repeat: true">
-                                <div class="story-timeline">
-                                    {{#each timeline_kisah}}
-                                    <div class="story-item">
-                                        <div class="story-dot"></div>
-                                        <div class="story-date">{{this.tanggal}}</div>
-                                        <h4 class="story-title">{{this.judul}}</h4>
-                                        <p class="story-text">{{this.deskripsi}}</p>
-                                    </div>
-                                    {{/each}}
-                                </div>
-                            </div>
-
-                            <!-- Story Footer Animation (Fixed outside scroll) -->
-                            <div class="story-footer">
-                                <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
-                                    <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50"
-                                        fill="none" stroke="white" stroke-width="2"></path>
-                                    <path class="heart-icon" d="M90,45 Q100,35 110,45 T100,65 T90,45" fill="none"
-                                        stroke="white" stroke-width="2"></path>
-                                    <circle class="end-dot" cx="180" cy="50" r="3" fill="white"></circle>
-                                </svg>
-                                <div class="journey-text">Dan perjalanan indah pun dimulai...</div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-                {{/if}}
-
-
-                <!-- Section 7 gallery foto -->
-
-                {{#if is_fitur_gallery}}
-                <div>
-                    <section id="gallery" class="section-gallery"
-                        style="background-image: url('../asset-img/D &amp; G-50.jpg');"
-                        uk-scrollspy="cls: uk-animation-scale-up; target: .gallery-item; delay: 100; repeat: true">
-                        <div class="container-section-header" style="margin-top: -50px;">
-                            <div class="the-wedding-of">OUR MOMENTS</div>
-                            <div class="groom-bride-name">Wedding Gallery</div>
-                            <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
-                                Momen-momen indah yang kami abadikan dalam lensa kamera.
-                            </div>
-                        </div>
-
-
-                        {{#if has_gallery}}
-                        <div class="gallery-container uk-padding" uk-lightbox="animation: slide">
-                            <div class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@m" uk-grid="">
-                                {{#each galleries}}
-                                <div>
-                                    <a class="uk-inline gallery-item" href="../asset-img/D &amp; G-37.jpg"
-                                        caption="Prewedding 1">
-                                        <img src="{{this.url}}" alt="" class="gallery-img lightbox-injection">
-                                        <div class="gallery-overlay">
-                                            <div class="overlay-content">
-                                                <span uk-icon="icon: search; ratio: 1.5"></span>
-                                                <div class="overlay-label">LIHAT</div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-                                {{/each}}
-                            </div>
-                        </div>
-                        {{/if}}
-
-                    </section>
-                </div>
-                {{/if}}
-
-
-                <!-- Section 8 Form input ucapan & list ucapan di bawahnya, data ucapan dari tamu undangan bisa sangat bayak, jika lebih dari 8 ucapan maka selebihnya bisa diakses via scroll kotak ucapannya -->
-                <!-- Section 8 Form input ucapan & list ucapan di bawahnya -->
-                <section id="wishes" class="section-wishes" data-menu-label="Doa &amp; Ucapan"
-                    style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(&quot;{{photo_story_photo}}&quot;);"
-                    uk-scrollspy="cls: uk-animation-slide-bottom-small; target: .wish-item; delay: 150; repeat: true">
-
-                    <div class="container-section-header">
-                        <div class="groom-bride-name">
-                            Ucapan &amp; Doa
-                        </div>
-                        <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
-                            Berikan ucapan manis dan doa restu Anda untuk kedua mempelai.
-                        </div>
-                    </div>
-
-                    <div class="wishes-container">
-                        <!-- Form Input Ucapan -->
-                        <div class="wishes-form-wrapper" id="wish-container">
-                            <div data-unless="is_sudah_isi_ucapan">
-                                <form class="glass-form" id="wish-form">
-                                    <div class="uk-margin-small">
-                                        <input class="uk-input custom-input" type="text" id="wish-name"
-                                            placeholder="Nama Anda">
-                                    </div>
-                                    <div class="uk-margin-small">
-                                        <textarea class="uk-textarea custom-input" rows="3" id="wish-message"
-                                            placeholder="Tulis Ucapan &amp; Doa..."
-                                            style="height: auto !important; padding: 12px !important;"></textarea>
-                                    </div>
-                                    <button type="button" id="btn-submit-ucapan" class="btn-konfirm"
-                                        style="width: 100%; margin-top: 5px;">KIRIM
-                                        UCAPAN</button>
-                                </form>
-                            </div>
-
-                            {{#if is_sudah_isi_ucapan}}
-                            <div>
-                                <div id="alert-submit-ucapan"
-                                    class="thank-you-message glass-card uk-margin-top uk-padding">
-                                    <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
-                                    Terima kasih atas ucapan dan doanya!<br>
-                                    Semoga doa baik Anda kembali kepada Anda.
-                                </div>
-                            </div>
-                            {{/if}}
-
-                        </div>
-
-                        <!-- List Ucapan -->
-                        <div class="wishes-list-wrapper">
-                            <div class="wishes-scroll-box">
-                                {{#each wishes}}
-                                <div class="wish-item glass-card">
-                                    <div class="wish-header">
-                                        <span class="wish-author">{{this.guest_name}}</span>
-                                        <span class="wish-time">{{this.guest_comment_time}}</span>
-                                    </div>
-                                    <div class="wish-text">{{this.guest_message}}</div>
-                                </div>
-                                {{/each}}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Section 9 amplop online, berisikan no rekening / qris & alamat tempat untuk pengiriman kado -->
-
-                {{#if tampilkan_amplop_online}}
-                <section id="gift" class="section-gift" data-menu-label="Wedding gifts"
-                    uk-scrollspy="cls: uk-animation-fade; target: .gift-card, .gift-instruction; delay: 300; repeat: true">
-                    <div class="container-section-header">
-                        <div class="groom-bride-name" style="margin-bottom: 20px;">
-                            WEDDING GIFT
-                        </div>
-                        <div class="quotes" style="padding: 0 30px; font-size: 13px; line-height: 1.6;">
-                            Doa restu Anda merupakan karunia yang sangat berarti bagi kami. Namun, apabila Anda
-                            ingin
-                            memberi kado, kami sediakan fitur ini.
-                        </div>
-                    </div>
-
-                    <div class="gift-content" style="padding: 0 30px; margin-top: 30px;">
-                        <div class="gift-rekening-container">
-                            <!-- Rekening 1 -->
-                            <div class="gift-card glass-card">
-                                <div class="gift-bank-logo">{{bank_1}}</div>
-
-                                {{#if flag_pakai_qris_rekening_1}}
-                                <div>
-                                    <div class="gift-qris-wrapper">
-                                        <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="gift-qris-img">
-                                    </div>
-                                </div>
-                                {{/if}}
-
-                                <div class="gift-number" id="acc-1">{{rek_1}}</div>
-                                <div class="gift-name">{{nama_rek_1}}</div>
-                                <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
-                                    <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
-                                </button>
-                            </div>
-
-                            <!-- Rekening 2 -->
-
-                            {{#if flag_pakai_2_rekening}}
-                            <div class="gift-card glass-card">
-                                <div class="gift-bank-logo">{{bank_2}}</div>
-
-                                {{#if flag_pakai_qris_rekening_2}}
-                                <div>
-                                    <div class="gift-qris-wrapper">
-                                        <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="gift-qris-img">
-                                    </div>
-                                </div>
-                                {{/if}}
-
-                                <div class="gift-number" id="acc-2">{{rek_2}}</div>
-                                <div class="gift-name">{{nama_rek_2}}</div>
-                                <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
-                                    <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
-                                </button>
-                            </div>
-                            {{/if}}
-
-                        </div>
-
-                        <!-- Alamat -->
-
-                        {{#if flag_kirim_hadiah_offline}}
-                        <div>
-                            <div class="gift-instruction"
-                                style="text-align: center; margin-bottom: 15px; color: rgba(255,255,255,0.7); font-size: 13px; font-style: italic;">
-                                "Bagi Bapak/Ibu/Saudara/i yang ingin mengirimkan kado fisik berupa barang, dapat
-                                dikirimkan
-                                melalui alamat di bawah ini:"
-                            </div>
-                            <div class="gift-card glass-card">
-                                <div class="gift-icon" style="margin-bottom: 15px; color: #fff;">
-                                    <span uk-icon="icon: home; ratio: 1.5"></span>
-                                </div>
-                                <div class="gift-title"
-                                    style="font-weight: 700; font-size: 1.2em; color: #fff; margin-bottom: 10px;">
-                                    {{nama_lokasi_kirim_hadiah_offline}}</div>
-                                <div class="gift-address" id="gift-addr"
-                                    style="font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 20px;">
-                                    {{alamat_lokasi_kirim_hadiah_offline}}</div>
-                                <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
-                                    <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN ALAMAT
-                                </button>
-                            </div>
-                        </div>
-                        {{/if}}
-
-
-
-                    </div>
-                </section>
-                {{/if}}
-
-
-                <!-- Section 10 Kata penutup bisa berisi informasi undangan by website ini -->
-                <section class="section-closing"
-                    uk-scrollspy="cls: uk-animation-scale-up; target: .container-section-header; delay: 300; repeat: true">
-
-                    <div class="container-section-header">
-                        <img src="{{photo_closing}}" alt="Closing Photo" class="closing-photo">
-
-                        <div class="header">
-                            Terima kasih <br> atas kehadirannya
-                        </div>
-
-                        <div class="quotes uk-padding-remove-top uk-padding-remove-bottom">
-                            Merupakan suatu kebahagiaan dan kehormatan bagi kami, apabila Bapak/Ibu/Saudara/i berkenan
-                            hadir
-                            di hari bahagia kami.
-                        </div>
-
-
-                        <div class="uk-text-bold">
-                            <br>
-                            <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
-                        </div>
-                    </div>
-
-                    <footer class="invitation-footer">
-                        <div class="footer-name">{{site_name}}</div>
-                        <div class="footer-info">Digital wedding invitation © 2026 | <span>{{site_url}}</span></div>
-                        <div class="footer-social">
-                            <a href="#" aria-label="TikTok">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
-                                </svg>
-                            </a>
-                            <a href="#" aria-label="Instagram">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
-                                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
-                                </svg>
-                            </a>
-                            <a href="#" aria-label="WhatsApp">
-                                <span uk-icon="icon: whatsapp; ratio: 0.9"></span>
-                            </a>
-                        </div>
-                    </footer>
                 </section>
             </div>
+            {{/if}}
+
+
+            <!-- Section 7 gallery foto -->
+
+            {{#if is_fitur_gallery}}
+            <div>
+                <section id="gallery" class="section-gallery"
+                    style="background-image: url('../asset-img/D &amp; G-50.jpg');"
+                    uk-scrollspy="cls: uk-animation-scale-up; target: .gallery-item; delay: 100; repeat: true">
+                    <div class="container-section-header" style="margin-top: -50px;">
+                        <div class="the-wedding-of">OUR MOMENTS</div>
+                        <div class="groom-bride-name">Wedding Gallery</div>
+                        <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                            Momen-momen indah yang kami abadikan dalam lensa kamera.
+                        </div>
+                    </div>
+
+
+                    {{#if has_gallery}}
+                    <div class="gallery-container uk-padding" uk-lightbox="animation: slide">
+                        <div class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@m" uk-grid="">
+                            {{#each galleries}}
+                            <div>
+                                <a class="uk-inline gallery-item" href="../asset-img/D &amp; G-37.jpg"
+                                    caption="Prewedding 1">
+                                    <img src="{{this.url}}" alt="" class="gallery-img lightbox-injection">
+                                    <div class="gallery-overlay">
+                                        <div class="overlay-content">
+                                            <span uk-icon="icon: search; ratio: 1.5"></span>
+                                            <div class="overlay-label">LIHAT</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                    {{/if}}
+
+                </section>
+            </div>
+            {{/if}}
+
+
+            <!-- Section 8 Form input ucapan & list ucapan di bawahnya, data ucapan dari tamu undangan bisa sangat bayak, jika lebih dari 8 ucapan maka selebihnya bisa diakses via scroll kotak ucapannya -->
+            <!-- Section 8 Form input ucapan & list ucapan di bawahnya -->
+            <section id="wishes" class="section-wishes" data-menu-label="Doa &amp; Ucapan"
+                style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('../asset-img/D &amp; G-67.jpg');"
+                uk-scrollspy="cls: uk-animation-slide-bottom-small; target: .wish-item; delay: 150; repeat: true">
+
+                <div class="container-section-header">
+                    <div class="groom-bride-name">
+                        Ucapan &amp; Doa
+                    </div>
+                    <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                        Berikan ucapan manis dan doa restu Anda untuk kedua mempelai.
+                    </div>
+                </div>
+
+                <div class="wishes-container">
+                    <!-- Form Input Ucapan -->
+                    <div class="wishes-form-wrapper" id="wish-container">
+
+                        {{#unless is_sudah_isi_ucapan}}
+                        <div>
+                            <form class="glass-form" id="wish-form">
+                                <div class="uk-margin-small">
+                                    <input class="uk-input custom-input" type="text" id="wish-name"
+                                        placeholder="Nama Anda">
+                                </div>
+                                <div class="uk-margin-small">
+                                    <textarea class="uk-textarea custom-input" rows="3" id="wish-message"
+                                        placeholder="Tulis Ucapan &amp; Doa..."
+                                        style="height: auto !important; padding: 12px !important;"></textarea>
+                                </div>
+                                <button type="button" id="btn-submit-ucapan" class="btn-konfirm"
+                                    style="width: 100%; margin-top: 5px;">KIRIM
+                                    UCAPAN</button>
+                            </form>
+                        </div>
+                        {{/unless}}
+
+
+                        {{#if is_sudah_isi_ucapan}}
+                        <div>
+                            <div id="alert-submit-ucapan" class="thank-you-message glass-card uk-margin-top uk-padding">
+                                <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                                Terima kasih atas ucapan dan doanya!<br>
+                                Semoga doa baik Anda kembali kepada Anda.
+                            </div>
+                        </div>
+                        {{/if}}
+
+                    </div>
+
+                    <!-- List Ucapan -->
+                    <div class="wishes-list-wrapper">
+                        <div class="wishes-scroll-box">
+                            {{#each wishes}}
+                            <div class="wish-item glass-card">
+                                <div class="wish-header">
+                                    <span class="wish-author">{{this.guest_name}}</span>
+                                    <span class="wish-time">{{this.guest_comment_time}}</span>
+                                </div>
+                                <div class="wish-text">{{this.guest_message}}</div>
+                            </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 9 amplop online, berisikan no rekening / qris & alamat tempat untuk pengiriman kado -->
+
+            {{#if tampilkan_amplop_online}}
+            <section id="gift" class="section-gift" data-menu-label="Wedding gifts"
+                uk-scrollspy="cls: uk-animation-fade; target: .gift-card, .gift-instruction; delay: 300; repeat: true">
+                <div class="container-section-header">
+                    <div class="groom-bride-name" style="margin-bottom: 20px;">
+                        WEDDING GIFT
+                    </div>
+                    <div class="quotes" style="padding: 0 30px; font-size: 13px; line-height: 1.6;">
+                        Doa restu Anda merupakan karunia yang sangat berarti bagi kami. Namun, apabila Anda
+                        ingin
+                        memberi kado, kami sediakan fitur ini.
+                    </div>
+                </div>
+
+                <div class="gift-content" style="padding: 0 30px; margin-top: 30px;">
+                    <div class="gift-rekening-container">
+                        <!-- Rekening 1 -->
+                        <div class="gift-card glass-card">
+                            <div class="gift-bank-logo">{{bank_1}}</div>
+
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <div>
+                                <div class="gift-qris-wrapper">
+                                    <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="gift-qris-img">
+                                </div>
+                            </div>
+                            {{/if}}
+
+                            <div class="gift-number" id="acc-1">{{rek_1}}</div>
+                            <div class="gift-name">{{nama_rek_1}}</div>
+                            <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
+                                <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
+                            </button>
+                        </div>
+
+                        <!-- Rekening 2 -->
+
+                        {{#if flag_pakai_2_rekening}}
+                        <div class="gift-card glass-card">
+                            <div class="gift-bank-logo">{{bank_2}}</div>
+
+                            {{#if flag_pakai_qris_rekening_2}}
+                            <div>
+                                <div class="gift-qris-wrapper">
+                                    <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="gift-qris-img">
+                                </div>
+                            </div>
+                            {{/if}}
+
+                            <div class="gift-number" id="acc-2">{{rek_2}}</div>
+                            <div class="gift-name">{{nama_rek_2}}</div>
+                            <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
+                                <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
+                            </button>
+                        </div>
+                        {{/if}}
+
+                    </div>
+
+                    <!-- Alamat -->
+
+                    {{#if flag_kirim_hadiah_offline}}
+                    <div>
+                        <div class="gift-instruction"
+                            style="text-align: center; margin-bottom: 15px; color: rgba(255,255,255,0.7); font-size: 13px; font-style: italic;">
+                            "Bagi Bapak/Ibu/Saudara/i yang ingin mengirimkan kado fisik berupa barang, dapat
+                            dikirimkan
+                            melalui alamat di bawah ini:"
+                        </div>
+                        <div class="gift-card glass-card">
+                            <div class="gift-icon" style="margin-bottom: 15px; color: #fff;">
+                                <span uk-icon="icon: home; ratio: 1.5"></span>
+                            </div>
+                            <div class="gift-title"
+                                style="font-weight: 700; font-size: 1.2em; color: #fff; margin-bottom: 10px;">
+                                {{nama_lokasi_kirim_hadiah_offline}}</div>
+                            <div class="gift-address" id="gift-addr"
+                                style="font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 20px;">
+                                {{alamat_lokasi_kirim_hadiah_offline}}</div>
+                            <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
+                                <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN ALAMAT
+                            </button>
+                        </div>
+                    </div>
+                    {{/if}}
+
+
+
+                </div>
+            </section>
+            {{/if}}
+
+
+            <!-- Section 10 Kata penutup bisa berisi informasi undangan by website ini -->
+            <section class="section-closing"
+                uk-scrollspy="cls: uk-animation-scale-up; target: .container-section-header; delay: 300; repeat: true">
+
+                <div class="container-section-header">
+                    <img src="{{photo_closing}}" alt="Closing Photo" class="closing-photo">
+
+                    <div class="header">
+                        Terima kasih <br> atas kehadirannya
+                    </div>
+
+                    <div class="quotes uk-padding-remove-top uk-padding-remove-bottom">
+                        Merupakan suatu kebahagiaan dan kehormatan bagi kami, apabila Bapak/Ibu/Saudara/i berkenan
+                        hadir
+                        di hari bahagia kami.
+                    </div>
+
+
+                    <div class="uk-text-bold">
+                        <br>
+                        <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
+                    </div>
+                </div>
+
+                <footer class="invitation-footer">
+                    <div class="footer-name">{{site_name}}</div>
+                    <div class="footer-info">Digital wedding invitation © 2026 | <span>{{site_url}}</span></div>
+                    <div class="footer-social">
+                        <a href="#" aria-label="TikTok">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="Instagram">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="WhatsApp">
+                            <span uk-icon="icon: whatsapp; ratio: 0.9"></span>
+                        </a>
+                    </div>
+                </footer>
+
+
+            </section>
+
+
 
             <!-- Floating UI -->
             <div id="theme-fab-container" class="floating-ui-container" style="display: none;">
                 <!-- Top Right: Hamburger -->
-                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal">
-                    <span uk-icon="icon: menu; ratio: 1.2"></span>
+                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal" style="outline: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="4" x2="20" y1="12" y2="12"></line>
+                        <line x1="4" x2="20" y1="6" y2="6"></line>
+                        <line x1="4" x2="20" y1="18" y2="18"></line>
+                    </svg>
                 </button>
 
                 <!-- Bottom Right: Music & QR -->
                 <div class="bottom-controls">
+                    <button id="btn-scroll-up" class="floating-btn btn-scroll-up" style="display: none; outline: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="18 15 12 9 6 15"></polyline>
+                        </svg>
+                    </button>
                     <button id="btn-show-qr" class="floating-btn btn-qr" uk-toggle="target: #qr-modal">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -773,9 +792,7 @@
                     <div class="uk-width-1-1 uk-text-center menu-content">
                         <div class="menu-header uk-margin-large-bottom">
                             <div class="menu-wedding-title">The Wedding Of</div>
-                            <h2 class="menu-couple-name"><span>{{groom_nickname}}</span> &amp;
-                                <span>{{bride_nickname}}</span>
-                            </h2>
+                            <h2 class="menu-couple-name">Galang &amp; Dini</h2>
                             <div class="menu-wedding-date">Sabtu, 21 Mei 2022</div>
                             <div class="menu-divider"></div>
                         </div>
@@ -814,27 +831,29 @@
         </div>
     </div>
 
-    <!-- UIkit JS -->
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
-    <script src="index.js"></script>
+</div>
 
-    <!-- Parallax Mouse Effect Script -->
-    <script>
-        document.addEventListener('mousemove', function (e) {
-            const container = document.getElementById('desktop-bg-container');
-            if (!container || window.innerWidth < 960) return;
+<!-- UIkit JS -->
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
+<script src="index.js"></script>
 
-            const x = (e.clientX / window.innerWidth) - 0.5;
-            const y = (e.clientY / window.innerHeight) - 0.5;
+<!-- Parallax Mouse Effect Script -->
+<script>
+    document.addEventListener('mousemove', function (e) {
+        const container = document.getElementById('desktop-bg-container');
+        if (!container || window.innerWidth < 960) return;
 
-            const bg = document.getElementById('layer-bg');
-            const leaves = document.getElementById('layer-leaves');
-            const text = document.getElementById('layer-text');
+        const x = (e.clientX / window.innerWidth) - 0.5;
+        const y = (e.clientY / window.innerHeight) - 0.5;
 
-            if (bg) bg.style.transform = `translate(${x * -30}px, ${y * -30}px)`;
-            if (leaves) leaves.style.transform = `translate(${x * 60}px, ${y * 60}px)`;
-            if (text) text.style.transform = `translate(${x * -10}px, ${y * -10}px)`;
-        });
+        const bg = document.getElementById('layer-bg');
+        const leaves = document.getElementById('layer-leaves');
+        const text = document.getElementById('layer-text');
 
-    </script>
+        if (bg) bg.style.transform = `translate(${x * -30}px, ${y * -30}px)`;
+        if (leaves) leaves.style.transform = `translate(${x * 60}px, ${y * 60}px)`;
+        if (text) text.style.transform = `translate(${x * -10}px, ${y * -10}px)`;
+    });
+
+</script>

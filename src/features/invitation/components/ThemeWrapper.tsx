@@ -125,6 +125,13 @@ export function ThemeWrapper({
 
         const musicBtn = container.querySelector('#btn-toggle-music, #btn-music');
         if (musicBtn) {
+            // Toggle music-playing class on the button
+            if (isPlaying) {
+                musicBtn.classList.add('music-playing');
+            } else {
+                musicBtn.classList.remove('music-playing');
+            }
+
             // 1. Check for child with uk-icon attribute
             const ukIconEl = musicBtn.querySelector('[uk-icon], #music-icon');
             if (ukIconEl) {
@@ -151,6 +158,25 @@ export function ThemeWrapper({
                         musicBtnIcon.className = 'fa fa-play';
                     }
                 }
+            }
+
+            // 3. Check for specific play/pause icons (like SVGs with play-icon/pause-icon)
+            const playIcon = musicBtn.querySelector('#play-icon') as HTMLElement;
+            const pauseIcon = musicBtn.querySelector('#pause-icon') as HTMLElement;
+            if (playIcon && pauseIcon) {
+                playIcon.style.display = isPlaying ? 'none' : 'block';
+                pauseIcon.style.display = isPlaying ? 'block' : 'none';
+            }
+        }
+
+        // 4. Dispatch native play/pause events on the local audio element to trigger theme-level listeners
+        const bgMusicEl = container.querySelector('#bg-music');
+        if (bgMusicEl) {
+            try {
+                const eventName = isPlaying ? 'play' : 'pause';
+                bgMusicEl.dispatchEvent(new Event(eventName));
+            } catch (e) {
+                console.error("Failed to dispatch event on theme bg-music element:", e);
             }
         }
     }, [isPlaying, htmlBase]); // Re-run when playing state OR html content changes
@@ -193,6 +219,52 @@ export function ThemeWrapper({
 
     const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
+
+        // --- INTERCEPT HASH LINKS FOR SMOOTH SCROLLING ---
+        const anchor = target.closest('a') as HTMLAnchorElement;
+        if (anchor) {
+            const href = anchor.getAttribute('href');
+            if (href && (href.startsWith('#') || href.includes('#'))) {
+                const hashIndex = href.indexOf('#');
+                const hash = href.substring(hashIndex);
+                if (hash.length > 1) {
+                    const targetId = hash.substring(1);
+                    const container = containerRef.current;
+                    if (container) {
+                        const targetEl = container.querySelector(`#${targetId}`);
+                        if (targetEl) {
+                            // 1. Prevent default and stop propagation so UIkit or native browser navigation
+                            // doesn't hijack the hash URL and break React Router's HashRouter!
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (e.nativeEvent) {
+                                e.nativeEvent.stopImmediatePropagation();
+                            }
+
+                            // 2. Safely trigger target modal hiding to close any open UIkit nav menus
+                            const toggleAttr = anchor.getAttribute('uk-toggle');
+                            if (toggleAttr && (window as any).UIkit) {
+                                const match = toggleAttr.match(/target:\s*(#[a-zA-Z0-9_-]+)/);
+                                if (match && match[1]) {
+                                    try {
+                                        (window as any).UIkit.modal(match[1]).hide();
+                                    } catch (err) {}
+                                }
+                            } else if ((window as any).UIkit) {
+                                // Default fallback to close #menu-modal if present
+                                try {
+                                    (window as any).UIkit.modal('#menu-modal').hide();
+                                } catch (err) {}
+                            }
+
+                            // 3. Smooth scroll to the target section element
+                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            return;
+                        }
+                    }
+                }
+            }
+        }
 
         // --- SUBMIT RSVP (Kehadiran) ---
         if (target.closest('#btn-submit-kehadiran')) {
@@ -331,7 +403,12 @@ export function ThemeWrapper({
         }
         if (target.closest('#btn-show-qr')) {
             e.preventDefault();
+            e.stopPropagation();
+            if (e.nativeEvent) {
+                e.nativeEvent.stopImmediatePropagation();
+            }
             onShowQR();
+            return;
         }
         if (target.closest('#btn-show-menu') && flagUseSystemActionButton) {
             e.preventDefault();
@@ -358,15 +435,31 @@ export function ThemeWrapper({
             }
         }
 
-        // --- UNIVERSAL LIGHTBOX (Restricted to gallery container with .lightbox-injection) ---
-        const lbImg = target.closest('.lightbox-injection') as HTMLImageElement;
-        if (lbImg) {
-            const galleryContainer = target.closest('#sec-gallery, #gallery, .gallery-container, .section-gallery');
-            if (galleryContainer) {
-                const allLbImages = Array.from(galleryContainer.querySelectorAll('.lightbox-injection')) as HTMLImageElement[];
-                const imageUrls = allLbImages.map(img => img.src);
-                const currentIndex = allLbImages.indexOf(lbImg);
-                onOpenLightbox(currentIndex, imageUrls);
+        // --- UNIVERSAL LIGHTBOX ---
+        const galleryItem = target.closest('.gallery-item, .lightbox-injection') as HTMLElement;
+        if (galleryItem) {
+            const imgEl = (galleryItem.tagName === 'IMG' 
+                ? galleryItem 
+                : galleryItem.querySelector('.lightbox-injection, img')) as HTMLImageElement;
+                
+            if (imgEl) {
+                // Prevent default and stop propagation immediately to override UIkit's or theme's built-in lightboxes!
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.nativeEvent) {
+                    e.nativeEvent.stopImmediatePropagation();
+                }
+
+                const galleryContainer = target.closest('#sec-gallery, #gallery, .gallery-container, .section-gallery');
+                if (galleryContainer) {
+                    const allLbImages = Array.from(galleryContainer.querySelectorAll('.lightbox-injection, img')) as HTMLImageElement[];
+                    const imageUrls = allLbImages.map(img => img.src || img.getAttribute('src') || '');
+                    const currentIndex = allLbImages.indexOf(imgEl);
+                    onOpenLightbox(currentIndex >= 0 ? currentIndex : 0, imageUrls);
+                } else {
+                    onOpenLightbox(0, [imgEl.src]);
+                }
+                return;
             }
         }
     };

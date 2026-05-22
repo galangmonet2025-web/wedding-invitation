@@ -89,165 +89,166 @@ const x = setInterval(function () {
 }, 1000);
 
 // RSVP Form Logic
-function initTheme() {
-    const submitBtn = document.getElementById('submit-rsvp');
-    const rsvpForm = document.getElementById('rsvp-form');
-    const thankYouMsg = document.getElementById('rsvp-thank-you');
-    const guestNameInput = document.getElementById('guest-name-input');
-    const attendanceStatus = document.getElementById('attendance-status');
-    const guestCodeInput = document.getElementById('guest-code');
+(function() {
+    function initTheme() {
+        const submitBtn = document.getElementById('submit-rsvp');
+        const rsvpForm = document.getElementById('rsvp-form');
+        const thankYouMsg = document.getElementById('rsvp-thank-you');
+        const guestNameInput = document.getElementById('guest-name-input');
+        const attendanceStatus = document.getElementById('attendance-status');
+        const guestCodeInput = document.getElementById('guest-code');
 
-    function checkForm() {
-        const name = guestNameInput.value.trim();
-        const status = attendanceStatus.value;
-        const code = guestCodeInput.value.trim();
-
-        if (name && status && code) {
-            submitBtn.disabled = false;
-        } else {
-            submitBtn.disabled = true;
-        }
-    }
-
-    if (submitBtn) {
-        // Initial state
-        submitBtn.disabled = true;
-
-        // Listen for changes
-        guestNameInput.addEventListener('input', checkForm);
-        attendanceStatus.addEventListener('change', checkForm);
-        guestCodeInput.addEventListener('input', checkForm);
-
-        submitBtn.addEventListener('click', function () {
-            const name = guestNameInput.value;
+        function checkForm() {
+            const name = guestNameInput.value.trim();
             const status = attendanceStatus.value;
+            const code = guestCodeInput.value.trim();
 
-            // Optional: add a small loading effect
-            submitBtn.innerHTML = "Mengirim...";
+            if (name && status && code) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+
+        if (submitBtn) {
+            // Initial state
             submitBtn.disabled = true;
 
-            setTimeout(() => {
-                // Hide form
-                rsvpForm.style.display = 'none';
+            // Listen for changes
+            guestNameInput.addEventListener('input', checkForm);
+            attendanceStatus.addEventListener('change', checkForm);
+            guestCodeInput.addEventListener('input', checkForm);
 
-                // Show thank you message
-                thankYouMsg.style.display = 'block';
+            submitBtn.addEventListener('click', function () {
+                const name = guestNameInput.value;
+                const status = attendanceStatus.value;
 
-                if (status === 'hadir') {
-                    thankYouMsg.innerHTML = `
-                        <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
-                        Terima kasih <strong>${name}</strong>!<br>
-                        Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
-                    `;
-                } else {
-                    thankYouMsg.innerHTML = `
-                        <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
-                        Terima kasih <strong>${name}</strong>.<br>
-                        Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
-                    `;
-                }
-            }, 1000);
-        });
-    }
+                // Optional: add a small loading effect
+                submitBtn.innerHTML = "Mengirim...";
+                submitBtn.disabled = true;
 
-    // Wishes Form Logic
-    const submitWishBtn = document.getElementById('submit-wish');
-    const wishForm = document.getElementById('wish-form');
-    const wishThankYou = document.getElementById('wish-thank-you');
-    const wishNameInput = document.getElementById('wish-name');
-    const wishMessageInput = document.getElementById('wish-message');
+                setTimeout(() => {
+                    // Hide form
+                    rsvpForm.style.display = 'none';
 
-    function checkWishForm() {
-        const name = wishNameInput.value.trim();
-        const message = wishMessageInput.value.trim();
+                    // Show thank you message
+                    thankYouMsg.style.display = 'block';
 
-        if (name && message) {
-            submitWishBtn.disabled = false;
-        } else {
-            submitWishBtn.disabled = true;
+                    if (status === 'hadir') {
+                        thankYouMsg.innerHTML = `
+                            <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                            Terima kasih <strong>${name}</strong>!<br>
+                            Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
+                        `;
+                    } else {
+                        thankYouMsg.innerHTML = `
+                            <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
+                            Terima kasih <strong>${name}</strong>.<br>
+                            Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
+                        `;
+                    }
+                }, 1000);
+            });
         }
-    }
 
-    if (submitWishBtn) {
-        submitWishBtn.disabled = true;
-        wishNameInput.addEventListener('input', checkWishForm);
-        wishMessageInput.addEventListener('input', checkWishForm);
+        // Wishes Form Logic
+        const submitWishBtn = document.getElementById('submit-wish');
+        const wishForm = document.getElementById('wish-form');
+        const wishThankYou = document.getElementById('wish-thank-you');
+        const wishNameInput = document.getElementById('wish-name');
+        const wishMessageInput = document.getElementById('wish-message');
 
-        submitWishBtn.addEventListener('click', function () {
-            submitWishBtn.innerHTML = "Mengirim...";
-            submitWishBtn.disabled = true;
+        function checkWishForm() {
+            const name = wishNameInput.value.trim();
+            const message = wishMessageInput.value.trim();
 
-            setTimeout(() => {
-                wishForm.style.display = 'none';
-                wishThankYou.style.display = 'block';
-                console.log("Wish sent:", wishNameInput.value, wishMessageInput.value);
-            }, 1000);
-        });
-    }
-
-    // Handle Opening Invitation
-    const btnOpen = document.getElementById('btn-open-invitation');
-    const phoneContainer = document.querySelector('.phone-container');
-    const appScreen = document.querySelector('.mock-app-screen');
-    const floatingUI = document.getElementById('theme-fab-container');
-    const btnMusic = document.getElementById('btn-music');
-    const bgMusic = document.getElementById('bg-music');
-    let isPlaying = false;
-
-    // Function to update UI based on music state
-    function updateMusicUI() {
-        const playIcon = document.getElementById('play-icon');
-        const pauseIcon = document.getElementById('pause-icon');
-        if (!playIcon || !pauseIcon) return;
-
-        if (bgMusic.paused) {
-            btnMusic.classList.remove('music-playing');
-            playIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-        } else {
-            btnMusic.classList.add('music-playing');
-            playIcon.style.display = 'none';
-            pauseIcon.style.display = 'block';
-        }
-    }
-
-    if (bgMusic) {
-        bgMusic.addEventListener('play', updateMusicUI);
-        bgMusic.addEventListener('pause', updateMusicUI);
-        bgMusic.addEventListener('playing', updateMusicUI);
-    }
-
-    if (btnOpen) {
-        btnOpen.onclick = function () {
-            console.log("Button Open Clicked");
-
-            if (appScreen) appScreen.classList.add('reveal-content');
-
-            setTimeout(() => {
-                document.body.style.overflow = 'auto';
-                if (phoneContainer) phoneContainer.style.overflowY = 'auto';
-            }, 1000);
-
-            if (floatingUI) floatingUI.style.display = 'block';
-            if (bgMusic) {
-                bgMusic.play().catch(err => console.log("Auto-play blocked"));
-            }
-        };
-    }
-
-    if (btnMusic && bgMusic) {
-        btnMusic.addEventListener('click', function () {
-            if (bgMusic.paused) {
-                bgMusic.play();
+            if (name && message) {
+                submitWishBtn.disabled = false;
             } else {
-                bgMusic.pause();
+                submitWishBtn.disabled = true;
             }
-        });
-    }
-}
+        }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTheme);
-} else {
-    initTheme();
-}
+        if (submitWishBtn) {
+            submitWishBtn.disabled = true;
+            wishNameInput.addEventListener('input', checkWishForm);
+            wishMessageInput.addEventListener('input', checkWishForm);
+
+            submitWishBtn.addEventListener('click', function () {
+                submitWishBtn.innerHTML = "Mengirim...";
+                submitWishBtn.disabled = true;
+
+                setTimeout(() => {
+                    wishForm.style.display = 'none';
+                    wishThankYou.style.display = 'block';
+                    console.log("Wish sent:", wishNameInput.value, wishMessageInput.value);
+                }, 1000);
+            });
+        }
+
+        // Handle Opening Invitation
+        const btnOpen = document.getElementById('btn-open-invitation');
+        const phoneContainer = document.querySelector('.phone-container');
+        const appScreen = document.querySelector('.mock-app-screen');
+        const floatingUI = document.getElementById('theme-fab-container') || document.getElementById('floating-ui');
+        const btnMusic = document.getElementById('btn-toggle-music') || document.getElementById('btn-music');
+        const bgMusic = document.getElementById('bg-music');
+
+        // Function to update UI based on music state
+        function updateMusicUI() {
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            if (!playIcon || !pauseIcon || !btnMusic) return;
+
+            if (bgMusic && bgMusic.paused) {
+                btnMusic.classList.remove('music-playing');
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            } else if (btnMusic) {
+                btnMusic.classList.add('music-playing');
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+            }
+        }
+
+        if (bgMusic) {
+            bgMusic.addEventListener('play', updateMusicUI);
+            bgMusic.addEventListener('pause', updateMusicUI);
+            bgMusic.addEventListener('playing', updateMusicUI);
+        }
+
+        if (btnOpen) {
+            btnOpen.onclick = function () {
+                console.log("Button Open Clicked");
+
+                if (appScreen) appScreen.classList.add('reveal-content');
+
+                setTimeout(() => {
+                    document.body.style.overflow = 'auto';
+                    if (phoneContainer) phoneContainer.style.overflowY = 'auto';
+                }, 1000);
+
+                if (floatingUI) floatingUI.style.display = 'block';
+                if (bgMusic) {
+                    bgMusic.play().catch(err => console.log("Auto-play blocked"));
+                }
+            };
+        }
+
+        if (btnMusic && bgMusic) {
+            btnMusic.addEventListener('click', function () {
+                if (bgMusic.paused) {
+                    bgMusic.play();
+                } else {
+                    bgMusic.pause();
+                }
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTheme);
+    } else {
+        initTheme();
+    }
+})();
