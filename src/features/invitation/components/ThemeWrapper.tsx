@@ -217,6 +217,67 @@ export function ThemeWrapper({
         return () => clearInterval(interval);
     }, [weddingDate, htmlBase]); // Restart if wedding date or HTML structure changes
 
+    // --- INTERCEPT HASH LINKS IN CAPTURE PHASE ---
+    // This intercepts click events before any child element listeners (UIkit, standard browser navigation, etc.)
+    // can capture them, ensuring the URL is absolutely protected from hash mutations!
+    useEffect(() => {
+        const handleCaptureClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest('a');
+            if (anchor) {
+                const href = anchor.getAttribute('href');
+                if (href && (href.startsWith('#') || href.includes('#'))) {
+                    const hashIndex = href.indexOf('#');
+                    const hash = href.substring(hashIndex);
+
+                    // Only intercept if it's a theme layout hash link, NOT a React Router route (which starts with #/)
+                    if (hash === '#' || (!hash.startsWith('#/') && hash !== '#/')) {
+                        // 1. Instantly kill the event so no other listener (native or UIkit) ever receives it!
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+
+                        // 2. Safely trigger target modal hiding to close any open UIkit nav menus
+                        const toggleAttr = anchor.getAttribute('uk-toggle');
+                        if (toggleAttr && (window as any).UIkit) {
+                            const match = toggleAttr.match(/target:\s*(#[a-zA-Z0-9_-]+)/);
+                            if (match && match[1]) {
+                                try {
+                                    (window as any).UIkit.modal(match[1]).hide();
+                                } catch (err) {}
+                            }
+                        } else if ((window as any).UIkit) {
+                            // Default fallback to close #menu-modal if present
+                            try {
+                                (window as any).UIkit.modal('#menu-modal').hide();
+                            } catch (err) {}
+                            // Also close any offcanvas drawers
+                            try {
+                                (window as any).UIkit.offcanvas('.uk-offcanvas').hide();
+                            } catch (err) {}
+                        }
+
+                        // 3. Smooth scroll to the target section element globally
+                        if (hash.length > 1) {
+                            const targetId = hash.substring(1);
+                            const targetEl = document.querySelector(`#${targetId}`);
+                            if (targetEl) {
+                                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Attach listener globally to document in capture phase
+        document.addEventListener('click', handleCaptureClick, true);
+
+        return () => {
+            document.removeEventListener('click', handleCaptureClick, true);
+        };
+    }, [htmlBase]);
+
     const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
 
@@ -227,42 +288,40 @@ export function ThemeWrapper({
             if (href && (href.startsWith('#') || href.includes('#'))) {
                 const hashIndex = href.indexOf('#');
                 const hash = href.substring(hashIndex);
+                
+                // 1. Prevent default and stop propagation immediately so UIkit or native browser navigation
+                // doesn't hijack the hash URL and break React Router's HashRouter!
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.nativeEvent) {
+                    e.nativeEvent.stopImmediatePropagation();
+                }
+
+                // 2. Safely trigger target modal hiding to close any open UIkit nav menus
+                const toggleAttr = anchor.getAttribute('uk-toggle');
+                if (toggleAttr && (window as any).UIkit) {
+                    const match = toggleAttr.match(/target:\s*(#[a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                        try {
+                            (window as any).UIkit.modal(match[1]).hide();
+                        } catch (err) {}
+                    }
+                } else if ((window as any).UIkit) {
+                    // Default fallback to close #menu-modal if present
+                    try {
+                        (window as any).UIkit.modal('#menu-modal').hide();
+                    } catch (err) {}
+                }
+
+                // 3. Smooth scroll to the target section element globally
                 if (hash.length > 1) {
                     const targetId = hash.substring(1);
-                    const container = containerRef.current;
-                    if (container) {
-                        const targetEl = container.querySelector(`#${targetId}`);
-                        if (targetEl) {
-                            // 1. Prevent default and stop propagation so UIkit or native browser navigation
-                            // doesn't hijack the hash URL and break React Router's HashRouter!
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (e.nativeEvent) {
-                                e.nativeEvent.stopImmediatePropagation();
-                            }
-
-                            // 2. Safely trigger target modal hiding to close any open UIkit nav menus
-                            const toggleAttr = anchor.getAttribute('uk-toggle');
-                            if (toggleAttr && (window as any).UIkit) {
-                                const match = toggleAttr.match(/target:\s*(#[a-zA-Z0-9_-]+)/);
-                                if (match && match[1]) {
-                                    try {
-                                        (window as any).UIkit.modal(match[1]).hide();
-                                    } catch (err) {}
-                                }
-                            } else if ((window as any).UIkit) {
-                                // Default fallback to close #menu-modal if present
-                                try {
-                                    (window as any).UIkit.modal('#menu-modal').hide();
-                                } catch (err) {}
-                            }
-
-                            // 3. Smooth scroll to the target section element
-                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            return;
-                        }
+                    const targetEl = document.querySelector(`#${targetId}`);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 }
+                return;
             }
         }
 

@@ -168,6 +168,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // Navigation Menu State
     const [sections, setSections] = useState<{ id: string; label: string }[]>([]);
     const [showMenuModal, setShowMenuModal] = useState(false);
+    const [websiteConfig, setWebsiteConfig] = useState<any>(null);
     const [activeSectionIndex, setActiveSectionIndex] = useState(-1);
     const hasFetchedSections = useRef(false);
 
@@ -256,11 +257,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const fetchConfig = async () => {
             try {
                 const res = await publicApi.getWebsiteConfig();
-                if (res.success && res.data.site_logo) {
-                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
-                    let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                    if (fav) {
-                        fav.href = resolvedLogo;
+                if (res.success) {
+                    setWebsiteConfig(res.data);
+                    if (res.data.site_logo) {
+                        const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                        let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                        if (fav) {
+                            fav.href = resolvedLogo;
+                        }
                     }
                 }
             } catch (err) {
@@ -784,10 +788,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             flag_sudah_kirim_undangan_via_whatsapp: false,
             
             // Site details
-            site_name: 'Kundangan',
-            site_url: window.location.origin,
-            tagline: '',
-            site_description: '',
+            site_name: websiteConfig?.site_name || 'Kundangan',
+            site_url: websiteConfig?.site_url || window.location.origin,
+            tagline: websiteConfig?.tagline || '',
+            site_description: websiteConfig?.site_description || '',
             galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
@@ -817,7 +821,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
             ...images
         };
-    }, [tenant, activeContent, data, timeline, wishes, resolvedImages]);
+    }, [tenant, activeContent, data, timeline, wishes, resolvedImages, websiteConfig]);
 
     // Memoize the rendered HTML to prevent re-parsing and re-injecting DOM nodes
     // every second when the countdown state updates.
