@@ -49,6 +49,40 @@ export function ThemeWrapper({
         return () => window.removeEventListener('scroll', handleScroll, true);
     }, []);
 
+    // Sync open/envelope state when isOpened is true OR htmlBase changes (re-renders fresh HTML)
+    useEffect(() => {
+        if (!isOpened) return;
+
+        const container = containerRef.current;
+        if (!container) return;
+
+        // 1. Instantly reveal the mock app screen content if open
+        const appScreen = container.querySelector('.mock-app-screen');
+        if (appScreen && !appScreen.classList.contains('reveal-content')) {
+            appScreen.classList.add('reveal-content');
+        }
+
+        // 2. Make sure document body / phone container allows scrolling
+        document.body.style.overflow = 'auto';
+        const phoneContainer = container.closest('.phone-container') as HTMLElement;
+        if (phoneContainer) {
+            phoneContainer.style.overflowY = 'auto';
+        }
+
+        // 3. Make sure floating UI/FAB container is visible
+        const floatingUI = container.querySelector('#theme-fab-container') || container.querySelector('#floating-ui') as HTMLElement;
+        if (floatingUI) {
+            (floatingUI as HTMLElement).style.display = 'block';
+        }
+
+        // 4. Force update UIkit just in case
+        if ((window as any).UIkit) {
+            try {
+                (window as any).UIkit.update(container, 'update');
+            } catch (err) {}
+        }
+    }, [isOpened, htmlBase]);
+
     useEffect(() => {
         const loadScript = (id: string, src: string) => {
             if (!document.getElementById(id)) {
@@ -217,12 +251,34 @@ export function ThemeWrapper({
         return () => clearInterval(interval);
     }, [weddingDate, htmlBase]); // Restart if wedding date or HTML structure changes
 
-    // --- INTERCEPT HASH LINKS IN CAPTURE PHASE ---
+    // --- INTERCEPT LINKS & BUTTONS IN CAPTURE PHASE ---
     // This intercepts click events before any child element listeners (UIkit, standard browser navigation, etc.)
-    // can capture them, ensuring the URL is absolutely protected from hash mutations!
+    // can capture them, ensuring the URL is absolutely protected from hash mutations, and preventing
+    // UIkit's uk-toggle from hijacking/hiding crucial floating icons.
     useEffect(() => {
         const handleCaptureClick = (e: MouseEvent) => {
             const target = e.target as HTMLElement;
+
+            // A. Prevent UIkit's uk-toggle from hijacking/hiding the QR button
+            const qrBtn = target.closest('#btn-show-qr');
+            if (qrBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                onShowQR();
+                return;
+            }
+
+            // B. Prevent UIkit's uk-toggle from hijacking/hiding the Menu button
+            const menuBtn = target.closest('#btn-show-menu');
+            if (menuBtn && flagUseSystemActionButton) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                onShowMenu();
+                return;
+            }
+
             const anchor = target.closest('a');
             if (anchor) {
                 const href = anchor.getAttribute('href');
@@ -276,7 +332,7 @@ export function ThemeWrapper({
         return () => {
             document.removeEventListener('click', handleCaptureClick, true);
         };
-    }, [htmlBase]);
+    }, [htmlBase, onShowQR, onShowMenu, flagUseSystemActionButton]);
 
     const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;

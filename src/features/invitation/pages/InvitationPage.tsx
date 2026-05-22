@@ -357,7 +357,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const handleRSVP = async (e?: React.FormEvent, manualData?: { status: string; guests: number; code: string }) => {
         if (e) e.preventDefault();
 
-        const status = manualData?.status || rsvpStatus;
+        const rawStatus = manualData?.status || rsvpStatus;
+        const normalizedStatus = (rawStatus === 'hadir' || rawStatus === 'confirmed') ? 'confirmed' : 'declined';
         const guests = manualData?.guests || rsvpGuests;
         const code = manualData?.code || rsvpCode;
 
@@ -369,41 +370,43 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             const res = await publicApi.submitRSVP({
                 slug: slug!,
                 invitation_code: code.trim(),
-                status: status,
+                status: normalizedStatus,
                 number_of_guests: guests,
             });
             let calendarUrl = undefined;
-            if (res.success && status === 'confirmed') {
+            if (res.success) {
                 setRsvpCode('');
 
-                // Generate Google Calendar Link
-                try {
-                    const eventTitle = t('invitation.page_title', { bride: tenant.bride_name, groom: tenant.groom_name }).split('|')[0].trim();
-                    const startDate = activeContent.wedding_date || tenant.wedding_date;
-                    const startTime = activeContent.jam_awal_resepsi || '08:00';
-                    const endTime = activeContent.jam_akhir_resepsi;
-                    const location = `${activeContent.nama_lokasi_resepsi || ''}, ${activeContent.keterangan_lokasi_resepsi || ''}`.trim();
+                if (normalizedStatus === 'confirmed') {
+                    // Generate Google Calendar Link
+                    try {
+                        const eventTitle = t('invitation.page_title', { bride: tenant.bride_name, groom: tenant.groom_name }).split('|')[0].trim();
+                        const startDate = activeContent.wedding_date || tenant.wedding_date;
+                        const startTime = activeContent.jam_awal_resepsi || '08:00';
+                        const endTime = activeContent.jam_akhir_resepsi;
+                        const location = `${activeContent.nama_lokasi_resepsi || ''}, ${activeContent.keterangan_lokasi_resepsi || ''}`.trim();
 
-                    calendarUrl = generateGoogleCalendarUrl({
-                        title: eventTitle,
-                        startDate: startDate,
-                        startTime: startTime,
-                        endTime: endTime,
-                        location: location,
-                        description: `Acara Pernikahan ${tenant.groom_name} & ${tenant.bride_name}. \nLihat Undangan: ${window.location.href}`
-                    });
+                        calendarUrl = generateGoogleCalendarUrl({
+                            title: eventTitle,
+                            startDate: startDate,
+                            startTime: startTime,
+                            endTime: endTime,
+                            location: location,
+                            description: `Acara Pernikahan ${tenant.groom_name} & ${tenant.bride_name}. \nLihat Undangan: ${window.location.href}`
+                        });
 
-                    // Prepare Modal Data
-                    setRsvpModalData({
-                        title: eventTitle,
-                        date: startDate,
-                        time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
-                        location: location || t('invitation.resepsi'),
-                        calendarUrl: calendarUrl
-                    });
-                    setIsRSVPModalOpen(true);
-                } catch (e) {
-                    console.error("Failed to generate calendar URL", e);
+                        // Prepare Modal Data
+                        setRsvpModalData({
+                            title: eventTitle,
+                            date: startDate,
+                            time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
+                            location: location || t('invitation.resepsi'),
+                            calendarUrl: calendarUrl
+                        });
+                        setIsRSVPModalOpen(true);
+                    } catch (e) {
+                        console.error("Failed to generate calendar URL", e);
+                    }
                 }
 
                 // Update local guest status
@@ -411,7 +414,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     setData({
                         ...data,
                         guest: data.guest
-                            ? { ...data.guest, status: status, number_of_guests: guests }
+                            ? { ...data.guest, status: normalizedStatus, number_of_guests: guests }
                             : res.data
                     });
                 }
@@ -737,6 +740,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             nama_tamu: data?.guest?.name || 'Tamu Undangan',
             kode_undangan: data?.guest?.invitation_code || '',
             is_sudah_isi_konfirmasi_kehadiran: data?.guest?.status && data.guest.status !== 'pending',
+            is_hadir: data?.guest?.status === 'confirmed' || (data?.guest?.status as any) === 'hadir',
             flag_konfirmasi_kehadiran_dari_tamu: data?.guest?.status === 'confirmed',
             flag_sudah_isi_ucapan: data?.guest?.flag_sudah_isi_ucapan,
             is_sudah_isi_ucapan: getBool(data?.guest?.flag_sudah_isi_ucapan),
