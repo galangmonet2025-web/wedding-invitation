@@ -4,13 +4,32 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { format, parse } from 'date-fns';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import kosaIcon from '@/assets/img/kosa-icon.png';
+import bgRegister from '@/assets/img/bg-register.jpg';
 import { useAuthStore } from '../store/authStore';
 import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
-import { HiOutlineHeart, HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe } from 'react-icons/hi';
+import { HiOutlineHeart, HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe, HiOutlineMail, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
 import { LoadingOverlay } from '@/shared/components/Loading';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
+
+const BACKGROUND_PARTICLES = [
+    { size: 4, left: 12, delay: 0.5, duration: 12 },
+    { size: 6, left: 28, delay: 2.1, duration: 16 },
+    { size: 3, left: 45, delay: 0.0, duration: 10 },
+    { size: 5, left: 62, delay: 4.5, duration: 14 },
+    { size: 7, left: 81, delay: 1.2, duration: 18 },
+    { size: 4, left: 93, delay: 3.3, duration: 11 },
+    { size: 5, left: 5, delay: 5.0, duration: 15 },
+    { size: 3, left: 37, delay: 1.8, duration: 13 },
+    { size: 6, left: 54, delay: 6.2, duration: 17 },
+    { size: 4, left: 73, delay: 0.9, duration: 12 },
+    { size: 8, left: 88, delay: 2.7, duration: 19 },
+    { size: 3, left: 19, delay: 4.1, duration: 11 },
+    { size: 5, left: 67, delay: 5.5, duration: 14 },
+    { size: 4, left: 32, delay: 3.8, duration: 13 },
+    { size: 6, left: 78, delay: 0.2, duration: 15 }
+];
 
 export function RegisterPage() {
     const [form, setForm] = useState({
@@ -33,18 +52,19 @@ export function RegisterPage() {
     const [isCheckingSlug, setIsCheckingSlug] = useState(false);
     const [slugStatus, setSlugStatus] = useState({ message: '', isConflict: false });
     const [planTypes, setPlanTypes] = useState<any[]>([]);
+    const [showPassword, setShowPassword] = useState(false);
     const { setAuth } = useAuthStore();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { t } = useTranslation();
-    
+
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [siteName, setSiteName] = useState<string>('');
     const [siteDescription, setSiteDescription] = useState<string>('');
 
     const displaySiteName = siteName || t('auth.start_journey');
     const displaySiteDesc = siteDescription || t('auth.start_desc');
-    
+
     // Fetch Global Website Config for Favicon & branding data
     useEffect(() => {
         // Set default favicon immediately
@@ -108,7 +128,7 @@ export function RegisterPage() {
         const planFromUrl = searchParams.get('plan_type');
         if (planFromUrl && ['basic', 'pro', 'premium'].includes(planFromUrl.toLowerCase())) {
             setForm(prev => ({ ...prev, plan_type: planFromUrl.toLowerCase() }));
-            
+
             // Also sync guest_limit if plans are already loaded
             if (planTypes.length > 0) {
                 const selectedPlan = planTypes.find(p => p.plan_type === planFromUrl.toLowerCase());
@@ -316,7 +336,7 @@ export function RegisterPage() {
         // Required fields check (excluding nicknames which are auto-generated and hidden)
         const requiredFields = ['groom_name', 'bride_name', 'religion', 'wedding_date', 'domain_slug', 'username', 'password', 'plan_type'];
         const missingField = requiredFields.find(field => !String((form as any)[field] || '').trim());
-        
+
         if (missingField) {
             toast.error(t('auth.fill_all_fields'));
             return;
@@ -343,12 +363,41 @@ export function RegisterPage() {
         <div className="min-h-screen flex">
             {loading && <LoadingOverlay message={t('auth.creating_wedding')} />}
 
-            {/* Left Panel */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gold-600 via-gold-500 to-gold-700 relative overflow-hidden">
-                <div className="absolute inset-0">
-                    <div className="absolute top-10 right-10 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-                    <div className="absolute bottom-10 left-10 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
+            {/* Left Panel - Premium Layered & Animated Wedding Background */}
+            <div className="hidden lg:flex lg:flex-1 relative overflow-hidden bg-black">
+                {/* 1. Ken Burns Background Image */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+                    <img
+                        src={bgRegister}
+                        alt="Wedding Altar Background"
+                        className="w-full h-full object-cover opacity-80 scale-105 animate-slow-zoom"
+                    />
                 </div>
+
+                {/* 2. Dark Transparent Overlay */}
+                <div className="absolute inset-0 bg-black/60 z-[1] pointer-events-none" />
+
+
+
+                {/* 5. Floating Sparkle Particles */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2] select-none">
+                    {BACKGROUND_PARTICLES.map((p, idx) => (
+                        <div
+                            key={idx}
+                            className="absolute rounded-full bg-gradient-to-b from-gold-200 to-amber-300 blur-[0.5px] animate-drift"
+                            style={{
+                                width: `${p.size}px`,
+                                height: `${p.size}px`,
+                                left: `${p.left}%`,
+                                animationDelay: `${p.delay}s`,
+                                animationDuration: `${p.duration}s`,
+                                bottom: '-20px'
+                            }}
+                        />
+                    ))}
+                </div>
+
+                {/* 6. Foreground Content */}
                 <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
                     <Link to="/home" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group overflow-hidden p-3">
                         <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" />
@@ -379,7 +428,7 @@ export function RegisterPage() {
             </div>
 
             {/* Right Panel - Registration Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-wedding-dark overflow-y-auto relative">
+            <div className="w-full lg:w-[600px] lg:flex-shrink-0 flex items-center justify-center p-8 bg-white dark:bg-wedding-dark overflow-y-auto relative">
                 <div className="absolute top-8 right-8">
                     <LanguageSwitcher />
                 </div>
@@ -465,7 +514,7 @@ export function RegisterPage() {
                                     )}
                                 </select>
                             </div>
-                            
+
 
                         </div>
 
@@ -497,7 +546,6 @@ export function RegisterPage() {
                                 </label>
                             </div>
                             <div className="relative">
-                                <HiOutlineGlobe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     id="domain_slug"
                                     name="domain_slug"
@@ -505,9 +553,10 @@ export function RegisterPage() {
                                     value={form.domain_slug}
                                     onChange={handleChange}
                                     disabled={isAutoSlug}
-                                    className={`input-field pl-12 pr-10 ${isAutoSlug ? 'bg-gray-50/50 cursor-not-allowed opacity-80' : ''}`}
+                                    className={`peer input-field pl-12 pr-10 ${isAutoSlug ? 'bg-gray-50/50 cursor-not-allowed opacity-80' : ''}`}
                                     placeholder="bride-and-groom"
                                 />
+                                <HiOutlineGlobe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 peer-focus:text-gold-500 transition-colors duration-300 pointer-events-none" />
                                 {isCheckingSlug && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
                                         <div className="w-4 h-4 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin" />
@@ -531,38 +580,51 @@ export function RegisterPage() {
                         <div>
                             <label htmlFor="reg-username" className="label-field">{t('auth.username')}</label>
                             <div className="relative">
-                                <HiOutlineUser className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     id="reg-username"
                                     name="username"
                                     type="text"
                                     value={form.username}
                                     onChange={handleChange}
-                                    className="input-field pl-12"
+                                    className="peer input-field pl-12"
                                     placeholder={t('auth.username_placeholder')}
                                     autoComplete="username"
                                 />
+                                <HiOutlineUser className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 peer-focus:text-gold-500 transition-colors duration-300 pointer-events-none" />
                             </div>
                         </div>
 
                         <div>
                             <label htmlFor="reg-password" className="label-field">{t('auth.password')}</label>
                             <div className="relative">
-                                <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     id="reg-password"
                                     name="password"
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     value={form.password}
                                     onChange={handleChange}
-                                    className="input-field pl-12"
+                                    className="peer input-field pl-12 pr-12"
                                     placeholder={t('auth.password_hint')}
                                     autoComplete="new-password"
                                 />
+                                <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 peer-focus:text-gold-500 transition-colors duration-300 pointer-events-none" />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gold-500 transition-colors duration-300 focus:outline-none"
+                                >
+                                    {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
-                        <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base mt-2">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary w-full py-3 text-base mt-2 relative overflow-hidden group hover:scale-[1.01] hover:shadow-[0_0_20px_rgba(212,175,55,0.35)] transition-all duration-300"
+                        >
+                            {/* Shimmer reflection effect */}
+                            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none" />
                             {loading ? t('auth.creating_wedding') : t('auth.register_button')}
                         </button>
                     </form>
