@@ -38,7 +38,14 @@ export function RegisterPage() {
     const [searchParams] = useSearchParams();
     const { t } = useTranslation();
     
-    // Fetch Global Website Config for Favicon
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [siteName, setSiteName] = useState<string>('');
+    const [siteDescription, setSiteDescription] = useState<string>('');
+
+    const displaySiteName = siteName || t('auth.start_journey');
+    const displaySiteDesc = siteDescription || t('auth.start_desc');
+    
+    // Fetch Global Website Config for Favicon & branding data
     useEffect(() => {
         // Set default favicon immediately
         let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
@@ -53,15 +60,24 @@ export function RegisterPage() {
             try {
                 const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
                 const res = await publicApi.getWebsiteConfig();
-                if (res.success && res.data.site_logo) {
-                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
-                    let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                    if (fav) {
-                        fav.href = resolvedLogo;
+                if (res.success) {
+                    if (res.data.site_name) {
+                        setSiteName(res.data.site_name);
+                    }
+                    if (res.data.site_description) {
+                        setSiteDescription(res.data.site_description);
+                    }
+                    if (res.data.site_logo) {
+                        const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                        setLogoUrl(resolvedLogo);
+                        let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                        if (fav) {
+                            fav.href = resolvedLogo;
+                        }
                     }
                 }
             } catch (err) {
-                console.error('Failed to load website config for favicon:', err);
+                console.error('Failed to load website config:', err);
             }
         };
         fetchConfig();
@@ -334,12 +350,12 @@ export function RegisterPage() {
                     <div className="absolute bottom-10 left-10 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
                 </div>
                 <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
-                    <Link to="/home" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group">
-                        <HiOutlineHeart className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
+                    <Link to="/home" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group overflow-hidden p-3">
+                        <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" />
                     </Link>
-                    <h1 className="text-4xl font-display font-bold mb-4 text-center">{t('auth.start_journey')}</h1>
+                    <h1 className="text-4xl font-display font-bold mb-4 text-center">{displaySiteName}</h1>
                     <p className="text-lg text-white/80 text-center max-w-md leading-relaxed">
-                        {t('auth.start_desc')}
+                        {displaySiteDesc}
                     </p>
                     <div className="mt-12 grid grid-cols-2 gap-6 text-sm">
                         <div className="flex items-center gap-2 text-white/80">
@@ -370,8 +386,8 @@ export function RegisterPage() {
 
                 <div className="w-full max-w-md">
                     <Link to="/home" className="lg:hidden flex items-center justify-center gap-3 mb-6 group">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold group-hover:scale-105 transition-transform duration-300">
-                            <HiOutlineHeart className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold group-hover:scale-105 transition-transform duration-300 overflow-hidden p-2">
+                            <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain" />
                         </div>
                     </Link>
 

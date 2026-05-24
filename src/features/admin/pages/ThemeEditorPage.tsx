@@ -1140,13 +1140,21 @@ export function ThemeEditorPage() {
         }
     }, [loading, loadingPreview, updatePreview]);
 
-    // Keyboard Shortcut (CTRL+S) for manual preview update
+    const handleSaveRef = useRef(handleSave);
+    const flagDraftRef = useRef(flagDraft);
+
+    useEffect(() => {
+        handleSaveRef.current = handleSave;
+        flagDraftRef.current = flagDraft;
+    }, [handleSave, flagDraft]);
+
+    // Keyboard Shortcut (CTRL+S) for saving the theme
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 updatePreview();
-                toast.success('Preview Updated', { id: 'preview-update', duration: 1500 });
+                handleSaveRef.current(flagDraftRef.current);
             }
         };
 
@@ -1185,7 +1193,7 @@ export function ThemeEditorPage() {
     const handleEditorDidMount = (editor: any, monaco: any) => {
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             updatePreview();
-            toast.success('Preview Updated', { id: 'preview-update', duration: 1500 });
+            handleSaveRef.current(flagDraftRef.current);
         });
     };
 
@@ -1617,7 +1625,7 @@ export function ThemeEditorPage() {
                                     onClick={() => updatePreview()}
                                     disabled={loading || loadingPreview || isPreviewUpdating}
                                     className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom disabled:opacity-30 disabled:cursor-not-allowed"
-                                    title="Refresh Preview (CTRL+S)"
+                                    title="Refresh Preview"
                                 >
                                     <HiOutlineRefresh className={`w-4 h-4 ${(loading || loadingPreview || isPreviewUpdating) ? 'animate-spin' : ''}`} />
                                 </button>
