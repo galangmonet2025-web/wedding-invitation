@@ -14,6 +14,49 @@ import { fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
 import { generateGoogleCalendarUrl } from '@/utils/calendarUtils';
 import { RSVPSuccessModal } from '../components/RSVPSuccessModal';
 import kosaIcon from '@/assets/img/kosa-icon.png';
+import sampleStory1 from '@/assets/img/sample_story_1.jpg';
+import sampleStory2 from '@/assets/img/sample_story_2.jpg';
+import sampleStory3 from '@/assets/img/sample_story_3.jpg';
+import defaultFrame from '@/assets/img/frame.png';
+
+const isValidImageUrl = (url: any): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    const cleanUrl = url.includes('|') ? url.split('|')[1] : url;
+    if (!cleanUrl) return false;
+    const trimmed = cleanUrl.trim();
+    if (trimmed === '' || trimmed === 'undefined' || trimmed === 'null' || trimmed === 'none' || trimmed === 'default') return false;
+    if (trimmed.startsWith('[object')) return false;
+    return true;
+};
+
+const getDriveId = (url: string): string | null => {
+    if (!url) return null;
+    const cleanUrl = url.includes('|') ? url.split('|')[1] : url;
+    if (!cleanUrl) return null;
+    if (cleanUrl.match(/^[a-zA-Z0-9_-]{25,45}$/)) return cleanUrl; // Raw Drive ID
+    let match = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    match = cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    match = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    return null;
+};
+
+const resolveProxyUrl = (src: string): string => {
+    if (!src) return '';
+    const cleanSrc = src.includes('|') ? src.split('|')[1] : src;
+    if (!cleanSrc) return '';
+    if (cleanSrc.includes('action=imageProxy') || cleanSrc.startsWith('data:')) {
+        return cleanSrc;
+    }
+    const driveId = getDriveId(cleanSrc);
+    if (driveId) {
+        const baseUrl = import.meta.env.VITE_API_URL || '';
+        return `${baseUrl}?action=imageProxy&id=${driveId}`;
+    }
+    return cleanSrc;
+};
 
 interface TenantPublic {
     bride_name: string;
@@ -285,11 +328,29 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 await Promise.all(data.images!.map(async (img) => {
                     if (!img?.cdn_url) return;
                     try {
-                        const b64 = await fetchProxyImageBase64(img.cdn_url);
+                        const proxiedUrl = resolveProxyUrl(img.cdn_url);
+                        const b64 = await fetchProxyImageBase64(proxiedUrl);
                         resolved[img.image_type] = b64;
                         resolved[img.cdn_url] = b64; // Also index by URL to support multiple images of the same type (like gallery)
+                        if (proxiedUrl !== img.cdn_url) {
+                            resolved[proxiedUrl] = b64;
+                        }
                     } catch { }
                 }));
+            }
+
+            // Also pre-convert frame_balasan_instagram if present in content
+            const rawFrame = data.content?.frame_balasan_instagram;
+            if (isValidImageUrl(rawFrame)) {
+                const proxiedUrl = resolveProxyUrl(rawFrame!);
+                try {
+                    const b64 = await fetchProxyImageBase64(proxiedUrl);
+                    resolved['frame_balasan_instagram'] = b64;
+                    resolved[rawFrame!] = b64;
+                    if (proxiedUrl !== rawFrame) {
+                        resolved[proxiedUrl] = b64;
+                    }
+                } catch { }
             }
 
             setResolvedImages(resolved);
@@ -775,6 +836,17 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             flag_tampilkan_nama_orang_tua: getBool(activeContent.flag_tampilkan_nama_orang_tua),
             flag_tampilkan_sosial_media_mempelai: getBool(activeContent.flag_tampilkan_sosial_media_mempelai),
             is_link_umum_and_not_for_spesific_guest: !data?.guest,
+
+            // Instagram Story Reply Feature (ADD_FTR_STORY_IG)
+            flag_pakai_additional_feature_story_balasan_instagram: getBool(activeContent.flag_pakai_additional_feature_story_balasan_instagram),
+            frame_balasan_instagram: images['frame_balasan_instagram'] || 
+                                     (getImageUrl('frame_balasan_instagram') ? resolveProxyUrl(getImageUrl('frame_balasan_instagram')) : null) || 
+                                     (isValidImageUrl(activeContent.frame_balasan_instagram) ? resolveProxyUrl(activeContent.frame_balasan_instagram!) : null) || 
+                                     defaultFrame,
+            link_balasan_instagram: activeContent.link_balasan_instagram || '',
+            sample_story_1: sampleStory1,
+            sample_story_2: sampleStory2,
+            sample_story_3: sampleStory3,
 
             // Advanced features 
             has_gallery: (((activeContent.galleries?.length ?? 0) > 0) || (data?.images?.filter(img => img.image_type === 'gallery').length ?? 0) > 0),

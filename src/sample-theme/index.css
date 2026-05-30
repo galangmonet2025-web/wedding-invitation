@@ -247,6 +247,7 @@ body {
 .section-cover .the-wedding-of,
 .section-streaming .the-wedding-of,
 .section-story .the-wedding-of,
+.section-happiness .the-wedding-of,
 .section-gallery .the-wedding-of {
     font-size: .8em;
     font-weight: 500;
@@ -266,6 +267,7 @@ body {
 .section-wishes .groom-bride-name,
 .section-streaming .groom-bride-name,
 .section-story .groom-bride-name,
+.section-happiness .groom-bride-name,
 .section-gallery .groom-bride-name {
     font-weight: 600;
     font-size: 2em;
@@ -812,16 +814,16 @@ body {
     z-index: 1;
 }
 
-.section-gallery::before {
+/* .section-gallery::before {
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.2);
     z-index: -1;
-}
+} */
 
 .gallery-item {
     position: relative;
@@ -915,7 +917,7 @@ body {
     position: relative;
 }
 
-.section-wishes::before {
+/* .section-wishes::before {
     content: "";
     position: absolute;
     top: 0;
@@ -924,7 +926,7 @@ body {
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: -1;
-}
+} */
 
 .wishes-container {
     padding: 0 30px;
@@ -1658,5 +1660,215 @@ section:not(.section-cover) {
 
     100% {
         transform: scale(var(--leaf-scale, 1)) translateX(40px) rotate(45deg);
+    }
+}
+
+/* ==== Section Happiness (Berbagi Kebahagiaan) ==== */
+.section-happiness {
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    color: #C4C9CB;
+    padding: 60px 0;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    z-index: 1;
+}
+
+.section-happiness::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: -1;
+}
+
+.card-stack-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+    min-height: 450px;
+    position: relative;
+}
+
+.card-stack {
+    position: relative;
+    width: 240px;
+    height: 426px;
+    margin: 0 auto;
+}
+
+.stacked-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 9 / 16;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 5px;
+    padding: 8px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    box-sizing: border-box;
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), z-index 0.6s, opacity 0.6s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-inner {
+    position: relative;
+    width: 100%;
+    height: 90%;
+    overflow: hidden;
+    border-radius: 3px;
+}
+
+.card-photo {
+    position: absolute;
+    top: 2%;
+    left: 2%;
+    width: 96%;
+    height: 96%;
+    object-fit: cover;
+    border-radius: 4px;
+    z-index: 1;
+    transition: transform 0.5s ease;
+}
+
+.card-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.card-caption {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    margin-top: 10px;
+    font-family: "Comfortaa", sans-serif;
+    letter-spacing: 0.5px;
+}
+
+/* Instagram Share Button - Matches couples instagram button look & feel */
+#btn-share-instagram {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(5px);
+    color: #fff !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease !important;
+}
+
+#btn-share-instagram:hover {
+    background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 25px rgba(220, 39, 67, 0.4) !important;
+    border-color: transparent !important;
+}
+
+#btn-share-instagram:active {
+    transform: translateY(-1px) scale(0.95) !important;
+    box-shadow: 0 4px 10px rgba(220, 39, 67, 0.2) !important;
+}
+
+/* Card Stacking Slots (Spread by default) */
+.card-left {
+    transform: translate3d(-105px, 15px, 0) scale(0.8) rotate(-8deg);
+    z-index: 5;
+    opacity: 0.8;
+}
+
+.card-center {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    z-index: 10;
+    opacity: 1;
+}
+
+.card-right {
+    transform: translate3d(105px, 15px, 0) scale(0.8) rotate(8deg);
+    z-index: 5;
+    opacity: 0.8;
+}
+
+/* Individual Card Hover Effects */
+.stacked-card.card-left:hover {
+    transform: translate3d(-115px, 5px, 0) scale(0.85) rotate(-5deg);
+    opacity: 1;
+}
+
+.stacked-card.card-right:hover {
+    transform: translate3d(115px, 5px, 0) scale(0.85) rotate(5deg);
+    opacity: 1;
+}
+
+.stacked-card.card-center:hover {
+    transform: translate3d(0, -10px, 0) scale(1.05) rotate(0deg);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+}
+
+/* Zoom effect on card photo when hovering a single card */
+.stacked-card:hover .card-photo {
+    transform: scale(1.05);
+}
+
+@media (max-width: 480px) {
+    .card-stack {
+        width: 200px;
+        height: 290px;
+    }
+
+    .card-stack-wrapper {
+        min-height: 380px;
+    }
+
+    .card-left {
+        transform: translate3d(-75px, 10px, 0) scale(0.8) rotate(-6deg);
+        z-index: 5;
+        opacity: 0.8;
+    }
+
+    .card-center {
+        transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+        z-index: 10;
+        opacity: 1;
+    }
+
+    .card-right {
+        transform: translate3d(75px, 10px, 0) scale(0.8) rotate(6deg);
+        z-index: 5;
+        opacity: 0.8;
+    }
+
+    .stacked-card.card-left:hover {
+        transform: translate3d(-80px, 5px, 0) scale(0.83) rotate(-3deg);
+        opacity: 1;
+    }
+
+    .stacked-card.card-right:hover {
+        transform: translate3d(80px, 5px, 0) scale(0.83) rotate(3deg);
+        opacity: 1;
+    }
+
+    .stacked-card.card-center:hover {
+        transform: translate3d(0, -5px, 0) scale(1.03) rotate(0deg);
+    }
+
+    .card-caption {
+        font-size: 12px;
     }
 }

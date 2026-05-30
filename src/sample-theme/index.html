@@ -1,24 +1,19 @@
 <div class="uk-grid-collapse uk-height-viewport" uk-grid="">
 
-    <!-- SEBELAH KIRI (BESAR) - Hidden on Mobile -->
     <div class="uk-width-expand uk-visible@m preview-sidebar" id="desktop-bg-container"
         style="background: none; padding: 0; overflow: hidden; position: relative;">
-        <!-- Lapisan 1: Gambar Background -->
         <div id="layer-bg"
             style="position: absolute; top: -5%; left: -5%; width: 110%; height: 110%; background-image: url(&quot;{{photo_hero_cover}}&quot;); background-size: cover; background-position: center center; z-index: 1; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
         </div>
 
-        <!-- Lapisan 2: Hitam Transparan -->
         <div
-            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 2;">
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2;">
         </div>
 
-        <!-- Lapisan 3: Animasi Daun Jatuh -->
         <div id="layer-leaves"
             style="position: absolute; top: -10%; left: -10%; width: 120%; height: 120%; z-index: 3; pointer-events: none; overflow: hidden; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
         </div>
 
-        <!-- Konten: Pojok Kiri Bawah -->
         <div id="layer-text"
             style="position: absolute; bottom: 0; left: 0; padding: 60px; z-index: 4; width: 100%; transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
             <div
@@ -38,14 +33,12 @@
 
 
 
-    <!-- SEBELAH KANAN (UKURAN HANDPHONE) -->
     <div class="phone-container" id="content-body"
         style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_background}}&quot;);">
         <div class="mock-app-screen">
 
-            <!-- Cover page berisikan kata2 kpd yth nama tamu yang di undang, dan button buka undangan, buka QC code -->
             <section id="theme-cover" class="section-cover"
-                style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_cover}}&quot;);">
+                style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.2)), url(&quot;{{photo_cover}}&quot;);">
                 <div class="container-section-header">
                     <div class="the-wedding-of">
                         THE WEDDING OF
@@ -67,7 +60,7 @@
                         kami.</p>
 
                     <button class="btn" id="btn-open-invitation">Buka Undangan</button>
-                    <button class="btn" id="btn-show-qr" style="padding: 8px 20px;" uk-toggle="target: #qr-modal">
+                    <button class="btn" id="btn-show-qr" style="padding: 8px 20px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
                             style="vertical-align: middle;">
@@ -88,7 +81,6 @@
                 </div>
             </section>
 
-            <!-- Section 1 Hero page (nama, tanggal, quotes, background gambar hero) -->
             <section class="section-hero">
                 <div class="hero-bg"
                     style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url({{photo_hero_cover}});">
@@ -126,7 +118,6 @@
 
 
 
-            <!-- Section 2 perkenalan pasangan (nama, nama orang tua, akun sosmed) -->
             <section id="couples" class="section-couples" data-menu-label="Mempelai"
                 uk-scrollspy="cls: uk-animation-slide-bottom-medium; target: .couple-row; delay: 300; repeat: true">
                 <div class="container-section-header" style="padding-bottom: 0;">
@@ -145,7 +136,6 @@
                 </div>
 
                 <div class="couple-content">
-                    <!-- Journey Separator -->
                     <div class="couple-separator">
                         <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
                             <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50" fill="none"
@@ -156,7 +146,6 @@
                         </svg>
                     </div>
 
-                    <!-- Laki-laki (Groom) -->
                     <div class="couple-row">
                         <div class="couple-info">
                             <h3 class="couple-name">{{groom_name}}</h3>
@@ -175,7 +164,7 @@
 
                             {{#if flag_tampilkan_sosial_media_mempelai}}
                             <div>
-                                <a href="#" class="couple-instagram">
+                                <a class="couple-instagram">
                                     <span uk-icon="instagram" style="margin-right: 5px;"></span>
                                     <span>{{ig_laki_laki}}</span>
                                 </a>
@@ -190,7 +179,6 @@
 
                     <hr class="couple-divider">
 
-                    <!-- Perempuan (Bride) -->
                     <div class="couple-row reverse">
                         <div class="couple-info">
                             <h3 class="couple-name">{{bride_name}}</h3>
@@ -209,7 +197,7 @@
 
                             {{#if flag_tampilkan_sosial_media_mempelai}}
                             <div>
-                                <a href="#" class="couple-instagram">
+                                <a class="couple-instagram">
                                     <span uk-icon="instagram" style="margin-right: 5px;"></span>
                                     <span>{{ig_perempuan}}</span>
                                 </a>
@@ -224,7 +212,6 @@
                 </div>
             </section>
 
-            <!-- Section 3 waktu & tempat untuk akad & resepsi -->
             <section id="schedule" class="section-schedule" data-menu-label="Waktu &amp; tempat"
                 style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(&quot;{{photo_story_photo}}&quot;);"
                 uk-scrollspy="cls: uk-animation-scale-up; target: .schedule-card; delay: 300; repeat: true">
@@ -238,7 +225,6 @@
                 </div>
 
                 <div class="schedule-content" style="padding: 0 20px; margin-top: 20px;">
-                    <!-- Akad Nikah -->
                     <div class="schedule-card">
                         <div class="schedule-icon" style="margin-bottom: 15px; color: #fff;">
                             <span uk-icon="calendar" style="margin-right: 5px;"></span>
@@ -255,7 +241,6 @@
                         </a>
                     </div>
 
-                    <!-- Resepsi -->
 
                     {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
                     <div>
@@ -282,7 +267,6 @@
 
 
 
-            <!-- section 4 count down, input form konfirmasi kehadiran -->
             <section class="section-rsvp"
                 uk-scrollspy="cls: uk-animation-fade; target: .container-section-header &gt; *; delay: 300; repeat: true">
                 <div class="container-section-header">
@@ -382,11 +366,10 @@
             </section>
 
 
-            <!-- Section 5 Section untuk live streaming -->
             {{#if is_fitur_live_streaming}}
             <div>
                 <section class="section-streaming"
-                    style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(&quot;{{photo_background}}&quot;);"
+                    style="background-image: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), url(&quot;{{photo_background}}&quot;);"
                     data-menu-label="Streaming"
                     uk-scrollspy="cls: uk-animation-slide-top-medium; target: .streaming-container; delay: 300; repeat: true">
                     <div class="container-section-header">
@@ -420,7 +403,6 @@
             </div>
             {{/if}}
 
-            <!-- Section 6 Timeline kisah -->
 
             {{#if flag_pakai_timeline_kisah}}
             <div>
@@ -448,7 +430,6 @@
                             </div>
                         </div>
 
-                        <!-- Story Footer Animation (Fixed outside scroll) -->
                         <div class="story-footer">
                             <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
                                 <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50" fill="none"
@@ -465,7 +446,6 @@
             {{/if}}
 
 
-            <!-- Section 7 gallery foto -->
 
             {{#if is_fitur_gallery}}
             <div>
@@ -482,12 +462,11 @@
 
 
                     {{#if has_gallery}}
-                    <div class="gallery-container uk-padding" uk-lightbox="animation: slide">
+                    <div class="gallery-container uk-padding">
                         <div class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@m" uk-grid="">
                             {{#each galleries}}
                             <div>
-                                <a class="uk-inline gallery-item" href="../asset-img/D &amp; G-37.jpg"
-                                    caption="Prewedding 1">
+                                <a class="uk-inline gallery-item" caption="Prewedding 1">
                                     <img src="{{this.url}}" alt="" class="gallery-img lightbox-injection">
                                     <div class="gallery-overlay">
                                         <div class="overlay-content">
@@ -506,11 +485,67 @@
             </div>
             {{/if}}
 
+            {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+            <section id="happiness" class="section-happiness"
+                style="background-image: url('../asset-img/D & G-67.jpg');"
+                uk-scrollspy="cls: uk-animation-scale-up; target: .stacked-card; delay: 150; repeat: true">
+                <div class="container-section-header">
+                    <div class="the-wedding-of">Bagikan momen bahagia kita</div>
+                    <div class="groom-bride-name">Berbagi Kebahagiaan</div>
+                    <div class="quotes" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                        Kehangatan dan kebahagiaan kami yang terangkum dalam tumpukan memori indah.
+                    </div>
+                </div>
 
-            <!-- Section 8 Form input ucapan & list ucapan di bawahnya, data ucapan dari tamu undangan bisa sangat bayak, jika lebih dari 8 ucapan maka selebihnya bisa diakses via scroll kotak ucapannya -->
-            <!-- Section 8 Form input ucapan & list ucapan di bawahnya -->
+                <div class="happiness-container uk-padding" style="padding-bottom: 20px !important;">
+                    <div class="card-stack-wrapper">
+                        <div class="card-stack">
+                            <div class="stacked-card card-left">
+                                <div class="card-inner">
+                                    <img src="{{sample_story_1}}" alt="Memory 1" class="card-photo">
+                                    <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                </div>
+                                <div class="card-caption">Tawa & Ceria</div>
+                            </div>
+                            <div class="stacked-card card-center">
+                                <div class="card-inner">
+                                    <img src="{{sample_story_2}}" alt="Memory 2" class="card-photo">
+                                    <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                </div>
+                                <div class="card-caption">Langkah Bersama</div>
+                            </div>
+                            <div class="stacked-card card-right">
+                                <div class="card-inner">
+                                    <img src="{{sample_story_3}}" alt="Memory 3" class="card-photo">
+                                    <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                </div>
+                                <div class="card-caption">Janji Suci</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px; text-align: center; padding: 0 20px;">
+                        <a href="{{link_balasan_instagram}}" class="btn-konfirm" id="btn-share-instagram"
+                            target="_blank"
+                            style="min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-decoration: none; display: inline-block;">
+                            <span uk-icon="icon: instagram; ratio: 1.1"
+                                style="margin-right: 8px; vertical-align: middle;"></span>
+                            Bagikan Momen
+                        </a>
+                        <div class="quotes"
+                            style="font-size: 12px; margin-top: 15px; color: rgba(255,255,255,0.7); max-width: 320px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+                            Ambil tangkapan layar kartu kenangan di atas dan bagikan di Instagram Story Anda dengan
+                            menandai akun kami <strong>@galang</strong> & <strong>@dini</strong>! ✨
+                        </div>
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+
+
+
             <section id="wishes" class="section-wishes" data-menu-label="Doa &amp; Ucapan"
-                style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('../asset-img/D &amp; G-67.jpg');"
+                style="background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('../asset-img/D &amp; G-67.jpg');"
                 uk-scrollspy="cls: uk-animation-slide-bottom-small; target: .wish-item; delay: 150; repeat: true">
 
                 <div class="container-section-header">
@@ -523,7 +558,6 @@
                 </div>
 
                 <div class="wishes-container">
-                    <!-- Form Input Ucapan -->
                     <div class="wishes-form-wrapper" id="wish-container">
 
                         {{#unless is_sudah_isi_ucapan}}
@@ -558,7 +592,6 @@
 
                     </div>
 
-                    <!-- List Ucapan -->
                     <div class="wishes-list-wrapper">
                         <div class="wishes-scroll-box">
                             {{#each wishes}}
@@ -575,7 +608,6 @@
                 </div>
             </section>
 
-            <!-- Section 9 amplop online, berisikan no rekening / qris & alamat tempat untuk pengiriman kado -->
 
             {{#if tampilkan_amplop_online}}
             <section id="gift" class="section-gift" data-menu-label="Wedding gifts"
@@ -593,7 +625,6 @@
 
                 <div class="gift-content" style="padding: 0 30px; margin-top: 30px;">
                     <div class="gift-rekening-container">
-                        <!-- Rekening 1 -->
                         <div class="gift-card glass-card">
                             <div class="gift-bank-logo">{{bank_1}}</div>
 
@@ -612,7 +643,6 @@
                             </button>
                         </div>
 
-                        <!-- Rekening 2 -->
 
                         {{#if flag_pakai_2_rekening}}
                         <div class="gift-card glass-card">
@@ -636,7 +666,6 @@
 
                     </div>
 
-                    <!-- Alamat -->
 
                     {{#if flag_kirim_hadiah_offline}}
                     <div>
@@ -670,7 +699,6 @@
             {{/if}}
 
 
-            <!-- Section 10 Kata penutup bisa berisi informasi undangan by website ini -->
             <section class="section-closing"
                 uk-scrollspy="cls: uk-animation-scale-up; target: .container-section-header; delay: 300; repeat: true">
 
@@ -698,14 +726,14 @@
                     <div class="footer-name">{{site_name}}</div>
                     <div class="footer-info">Digital wedding invitation © 2026 | <span>{{site_url}}</span></div>
                     <div class="footer-social">
-                        <a href="#" aria-label="TikTok">
+                        <a aria-label="TikTok">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                                 stroke-linejoin="round">
                                 <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
                             </svg>
                         </a>
-                        <a href="#" aria-label="Instagram">
+                        <a aria-label="Instagram">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -714,11 +742,13 @@
                                 <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
                             </svg>
                         </a>
-                        <a href="#" aria-label="WhatsApp">
+                        <a aria-label="WhatsApp">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                                 stroke-linejoin="round">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.459h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"></path>
+                                <path
+                                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.704 1.459h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z">
+                                </path>
                             </svg>
                         </a>
                     </div>
@@ -729,21 +759,21 @@
 
 
 
-            <!-- Floating UI -->
             <div id="theme-fab-container" class="floating-ui-container" style="display: none;">
-                <!-- Top Right: Hamburger -->
-                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal" style="outline: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal"
+                    style="outline: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="4" x2="20" y1="12" y2="12"></line>
                         <line x1="4" x2="20" y1="6" y2="6"></line>
                         <line x1="4" x2="20" y1="18" y2="18"></line>
                     </svg>
                 </button>
 
-                <!-- Bottom Right: Music & QR -->
                 <div class="bottom-controls">
                     <button id="btn-scroll-up" class="floating-btn btn-scroll-up" style="display: none; outline: none;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="18 15 12 9 6 15"></polyline>
                         </svg>
                     </button>
@@ -781,7 +811,6 @@
                 </div>
             </div>
 
-            <!-- Menu Modal -->
             <div id="menu-modal" class="uk-modal-full" uk-modal="">
                 <div class="uk-modal-dialog uk-flex uk-flex-center uk-flex-middle transparent-dark-bg"
                     uk-height-viewport="">
@@ -813,22 +842,6 @@
                 </div>
             </div>
 
-            <!-- QR Modal -->
-            <div id="qr-modal" uk-modal="">
-                <div class="uk-modal-dialog uk-modal-body glass-card uk-text-center"
-                    style="max-width: 350px; margin: auto;">
-                    <button class="uk-modal-close-default" type="button" uk-close="" style="color: white;"></button>
-                    <h2 class="uk-modal-title" style="color: white; font-size: 1.5rem;">QR Code Undangan</h2>
-                    <div class="uk-margin">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=https://kundangan.id"
-                            alt="QR Code" style="border: 10px solid white; border-radius: 10px;">
-                    </div>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">Scan QR Code ini untuk masuk ke buku
-                        tamu digital</p>
-                </div>
-            </div>
-
-            <!-- Audio Element -->
             <audio id="bg-music" loop="">
                 <source src="https://www.bensound.com/bensound-music/bensound-memories.mp3" type="audio/mpeg">
             </audio>
@@ -836,13 +849,9 @@
     </div>
 
 </div>
-
-<!-- UIkit JS -->
 <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
 <script src="index.js"></script>
-
-<!-- Parallax Mouse Effect Script -->
 <script>
     document.addEventListener('mousemove', function (e) {
         const container = document.getElementById('desktop-bg-container');

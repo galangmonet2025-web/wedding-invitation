@@ -79,12 +79,18 @@ export function ThemeWrapper({
         if ((window as any).UIkit) {
             try {
                 (window as any).UIkit.update(container, 'update');
-            } catch (err) {}
+            } catch (err) { }
         }
     }, [isOpened, htmlBase]);
 
     useEffect(() => {
         const loadScript = (id: string, src: string) => {
+            // Guard clause to prevent reloading libraries that are already initialized in memory.
+            // Overwriting window.UIkit causes registered components and plugins (like icons) to be lost.
+            if (id === 'uikit-js' && (window as any).UIkit) return;
+            if (id === 'uikit-icons' && (window as any).UIkit && (window as any).UIkit.icon) return;
+            if (id === 'bootstrap-js' && (window as any).bootstrap) return;
+
             if (!document.getElementById(id)) {
                 const script = document.createElement('script');
                 script.id = id;
@@ -108,13 +114,13 @@ export function ThemeWrapper({
         loadCSS('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css');
         loadCSS('remix-icon', 'https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css');
 
-        // Load JS Frameworks (Locked Versions)
+        // Load JS Frameworks Sequentially (uikit-icons depends on uikit-js being ready)
         loadScript('uikit-js', 'https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js');
         loadScript('uikit-icons', 'https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js');
         loadScript('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js');
 
         return () => {
-            // Remove CSS to prevent bleeding into the admin dashboard or other react components
+            // Keep CSS and scripts loaded globally in index.html active// Remove CSS to prevent bleeding into the admin dashboard or other react components
             ['uikit-css', 'bootstrap-css', 'remix-icon'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.remove();
@@ -151,7 +157,7 @@ export function ThemeWrapper({
             if (el) el.remove();
         };
     }, [jsBase, isOpened, htmlBase]); // Re-run js execution if isOpened or htmlBase changes
- 
+
     // Sync music icon state for themes injected via dangerouslySetInnerHTML
     useEffect(() => {
         const container = containerRef.current;
@@ -172,10 +178,10 @@ export function ThemeWrapper({
                 const ratio = ukIconEl.getAttribute('uk-icon')?.includes('ratio: 1.2') ? '; ratio: 1.2' : '';
                 ukIconEl.setAttribute('uk-icon', isPlaying ? `icon: pause${ratio}` : `icon: play${ratio}`);
                 if ((window as any).UIkit) {
-                    try { (window as any).UIkit.icon(ukIconEl); } catch(e) {}
+                    try { (window as any).UIkit.icon(ukIconEl); } catch (e) { }
                 }
             }
-            
+
             // 2. Check for child with remix icon or font awesome classes
             const musicBtnIcon = musicBtn.querySelector('i, span:not([uk-icon])');
             if (musicBtnIcon) {
@@ -300,17 +306,17 @@ export function ThemeWrapper({
                             if (match && match[1]) {
                                 try {
                                     (window as any).UIkit.modal(match[1]).hide();
-                                } catch (err) {}
+                                } catch (err) { }
                             }
                         } else if ((window as any).UIkit) {
                             // Default fallback to close #menu-modal if present
                             try {
                                 (window as any).UIkit.modal('#menu-modal').hide();
-                            } catch (err) {}
+                            } catch (err) { }
                             // Also close any offcanvas drawers
                             try {
                                 (window as any).UIkit.offcanvas('.uk-offcanvas').hide();
-                            } catch (err) {}
+                            } catch (err) { }
                         }
 
                         // 3. Smooth scroll to the target section element globally
@@ -344,7 +350,7 @@ export function ThemeWrapper({
             if (href && (href.startsWith('#') || href.includes('#'))) {
                 const hashIndex = href.indexOf('#');
                 const hash = href.substring(hashIndex);
-                
+
                 // 1. Prevent default and stop propagation immediately so UIkit or native browser navigation
                 // doesn't hijack the hash URL and break React Router's HashRouter!
                 e.preventDefault();
@@ -360,13 +366,13 @@ export function ThemeWrapper({
                     if (match && match[1]) {
                         try {
                             (window as any).UIkit.modal(match[1]).hide();
-                        } catch (err) {}
+                        } catch (err) { }
                     }
                 } else if ((window as any).UIkit) {
                     // Default fallback to close #menu-modal if present
                     try {
                         (window as any).UIkit.modal('#menu-modal').hide();
-                    } catch (err) {}
+                    } catch (err) { }
                 }
 
                 // 3. Smooth scroll to the target section element globally
@@ -396,21 +402,21 @@ export function ThemeWrapper({
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
-            
+
             if (alertEl) alertEl.innerHTML = '';
 
             const res = await onSubmitRSVP({ status, guests, code });
 
             btn.innerHTML = originalText;
-            
+
             if (alertEl) {
                 alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
                 alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
             }
 
             if (res.success) {
-                btn.disabled = true; 
-                
+                btn.disabled = true;
+
                 const thanksEl = container?.querySelector('#rsvp-thanks, .rsvp-thanks, #rsvp-success');
                 const formEl = container?.querySelector('#rsvp-form, .rsvp-form');
                 if (thanksEl) thanksEl.classList.remove('hidden', 'uk-hidden');
@@ -440,7 +446,7 @@ export function ThemeWrapper({
             const res = await onSubmitWish({ name, message });
 
             btn.innerHTML = originalText;
-            
+
             if (alertEl) {
                 alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
                 alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
@@ -480,7 +486,7 @@ export function ThemeWrapper({
             const res = await onSubmitGift({ name, amount, bank });
 
             btn.innerHTML = originalText;
-            
+
             if (alertEl) {
                 alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
                 alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
@@ -502,7 +508,7 @@ export function ThemeWrapper({
         if (target.closest('#btn-open-invitation')) {
             setIsOpened(true);
             setIsPlaying(true);
-            
+
             const appScreen = document.querySelector('.mock-app-screen');
             if (appScreen) appScreen.classList.add('reveal-content');
 
@@ -510,7 +516,7 @@ export function ThemeWrapper({
                 document.body.style.overflow = 'auto';
                 const phoneContainer = document.querySelector('.phone-container') as HTMLElement;
                 if (phoneContainer) phoneContainer.style.overflowY = 'auto';
-                
+
                 if ((window as any).UIkit) {
                     (window as any).UIkit.update(document.body, 'update');
                 }
@@ -553,10 +559,10 @@ export function ThemeWrapper({
         // --- UNIVERSAL LIGHTBOX ---
         const galleryItem = target.closest('.gallery-item, .lightbox-injection') as HTMLElement;
         if (galleryItem) {
-            const imgEl = (galleryItem.tagName === 'IMG' 
-                ? galleryItem 
+            const imgEl = (galleryItem.tagName === 'IMG'
+                ? galleryItem
                 : galleryItem.querySelector('.lightbox-injection, img')) as HTMLImageElement;
-                
+
             if (imgEl) {
                 // Prevent default and stop propagation immediately to override UIkit's or theme's built-in lightboxes!
                 e.preventDefault();
@@ -586,7 +592,8 @@ export function ThemeWrapper({
             )}
 
             {/* Persistent Visibility State Overrides using Static CSS */}
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .is-closed #theme-fab-container { display: none !important; }
                 .is-closed #main-content { display: none !important; }
                 .is-opened #theme-cover { display: none !important; }
@@ -673,11 +680,10 @@ export function ThemeWrapper({
                     {/* Play/Pause Music */}
                     <button
                         id="btn-toggle-music"
-                        className={`w-12 h-12 rounded-full backdrop-blur-md shadow-lg border flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 ${
-                            isPlaying
-                                ? 'bg-gold-500 border-gold-400/50 text-white'
-                                : 'bg-white/85 dark:bg-gray-800/85 border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200'
-                        }`}
+                        className={`w-12 h-12 rounded-full backdrop-blur-md shadow-lg border flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 ${isPlaying
+                            ? 'bg-gold-500 border-gold-400/50 text-white'
+                            : 'bg-white/85 dark:bg-gray-800/85 border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200'
+                            }`}
                         title={isPlaying ? "Jeda Musik" : "Putar Musik"}
                     >
                         <i className={`text-lg ${isPlaying ? 'ri-music-2-fill' : 'ri-music-2-line'}`} style={{ animation: isPlaying ? 'spin 3s linear infinite' : 'none' }}></i>

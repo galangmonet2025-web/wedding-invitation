@@ -308,6 +308,7 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    - Kirim Kado Offline: data-var="nama_lokasi_kirim_hadiah_offline", data-var="alamat_lokasi_kirim_hadiah_offline", data-var="map_kirim_hadiah_offline" (taruh di href tombol maps)
    - Penutup: data-var="kalimat_penutup"
    - Teks Kustom: data-var="custom_kalimat_1", data-var="custom_kalimat_2", data-var="custom_kalimat_3", data-var="custom_kalimat_4"
+   - Instagram Story Reply: data-var="link_balasan_instagram" (taruh di href tombol/tautan)
    - Branding: data-var="site_name" (Nama Website), data-var="site_url" (URL), data-var="tagline", data-var="site_description"
 
 2. GAMBAR & BACKGROUND (Gunakan data-img="..." untuk <img>, dan data-bg="..." untuk background-image inline HTML):
@@ -317,6 +318,8 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    - Branding Logo: data-img="site_logo"
    - Foto Tambahan: data-img="photo_story_photo"
    - Gambar QRIS: data-img="gambar_qris_rekening_1", data-img="gambar_qris_rekening_2"
+   - Instagram Story Reply: data-img="frame_balasan_instagram"
+   - Gambar Sample Story Instagram: data-img="sample_story_1", data-img="sample_story_2", data-img="sample_story_3"
 
 3. KONDISIONAL / FITUR OPSIONAL (Gunakan data-if="..." pada elemen pembungkus / wrapper-nya):
    - Tampilkan Nama Orang Tua: data-if="flag_tampilkan_nama_orang_tua"
@@ -338,6 +341,7 @@ Website ini akan dikonversi ke sistem Handlebars otomatis milik saya. KAMU WAJIB
    - Status WhatsApp: data-if="flag_sudah_kirim_undangan_via_whatsapp"
    - Konfirmasi Kehadiran (Hadir): data-if="flag_konfirmasi_kehadiran_dari_tamu"
    - Bukan Link Tamu Spesifik: data-if="is_link_umum_and_not_for_spesific_guest"
+   - Fitur Instagram Story Reply: data-if="flag_pakai_additional_feature_story_balasan_instagram"
 
 4. NEGASI & IF-ELSE (PENTING):
    - Jika ingin kondisi "JIKA TIDAK", gunakan: data-unless="nama_variabel"

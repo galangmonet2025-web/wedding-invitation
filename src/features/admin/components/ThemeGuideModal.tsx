@@ -1,6 +1,10 @@
 import { Modal } from '@/shared/components/Modal';
 import { useState, useCallback } from 'react';
 import { Tenant } from '@/types';
+import sampleStory1 from '@/assets/img/sample_story_1.jpg';
+import sampleStory2 from '@/assets/img/sample_story_2.jpg';
+import sampleStory3 from '@/assets/img/sample_story_3.jpg';
+import defaultFrame from '@/assets/img/frame.png';
 
 interface ThemeGuideModalProps {
     isOpen: boolean;
@@ -184,6 +188,17 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                 { tag: '{{#if flag_tampilkan_nama_orang_tua}}', desc: 'Tampilkan Nama Orang Tua', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_nama_orang_tua}}\n  <!-- Nama Ortu -->\n{{/if}}' },
                 { tag: '{{#if flag_tampilkan_sosial_media_mempelai}}', desc: 'Tampilkan Sosmed Mempelai', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_tampilkan_sosial_media_mempelai}}\n  <!-- Ikon Sosmed -->\n{{/if}}' },
                 { tag: '{{#if is_fitur_live_streaming}}', desc: 'Fitur Live Streaming Aktif', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if is_fitur_live_streaming}}\n  <!-- Tombol Live -->\n{{/if}}' },
+            ]
+        },
+        {
+            title: '📸 Balasan Instagram (Additional Feature)',
+            vars: [
+                { tag: '{{#if flag_pakai_additional_feature_story_balasan_instagram}}', desc: 'Kondisi Instagram Story Reply Aktif (Dibeli Tenant)', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_pakai_additional_feature_story_balasan_instagram}}\n  <!-- Render IG Story Reply -->\n{{/if}}' },
+                { tag: '{{frame_balasan_instagram}}', desc: 'URL Gambar Frame Balasan Instagram', value: defaultFrame, type: 'URL String', code: '<img src="{{frame_balasan_instagram}}" />' },
+                { tag: '{{link_balasan_instagram}}', desc: 'URL Tautan Kirim Balasan Instagram', value: 'https://instagram.com/direct/...', type: 'URL String', code: '<a href="{{link_balasan_instagram}}">Kirim Balasan</a>' },
+                { tag: '{{sample_story_1}}', desc: 'Gambar Sample Story 1', value: sampleStory1, type: 'URL String', code: '<img src="{{sample_story_1}}" />' },
+                { tag: '{{sample_story_2}}', desc: 'Gambar Sample Story 2', value: sampleStory2, type: 'URL String', code: '<img src="{{sample_story_2}}" />' },
+                { tag: '{{sample_story_3}}', desc: 'Gambar Sample Story 3', value: sampleStory3, type: 'URL String', code: '<img src="{{sample_story_3}}" />' },
             ]
         },
         {

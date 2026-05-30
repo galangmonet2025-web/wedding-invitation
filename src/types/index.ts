@@ -393,6 +393,14 @@ export interface InvitationContent {
     is_fitur_cerita?: boolean | string;
     love_stories?: { title: string; date: string; content: string }[];
     wa_blast_template?: string;
+
+    // Instagram Story Reply Feature (ADD_FTR_STORY_IG)
+    flag_pakai_additional_feature_story_balasan_instagram?: boolean | string;
+    frame_balasan_instagram?: string;
+    link_balasan_instagram?: string;
+    sample_story_1?: string;
+    sample_story_2?: string;
+    sample_story_3?: string;
 }
 
 // =============================================
@@ -401,6 +409,7 @@ export interface InvitationContent {
 
 export interface MstAdditionalFeature {
     id: string;
+    feature_code: string;
     feature_name: string;
     description?: string;
     is_required_tenant_input: boolean;

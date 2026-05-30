@@ -18,6 +18,16 @@ const DATA_TYPES = [
 
 import { useAdditionalFeatureStore } from '../store/additionalFeatureStore';
 
+const generateFeatureCode = (name: string): string => {
+    if (!name) return '';
+    const simplified = name
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, '_') // spasi diubah jadi _
+        .replace(/[^A-Z0-9_]/g, ''); // keep only letters, numbers, and underscores
+    return `ADD_FTR_${simplified}`;
+};
+
 export function AdditionalFeaturePage() {
     const { features, loading, fetchFeatures, addFeature, updateFeature, removeFeature } = useAdditionalFeatureStore();
     const [showModal, setShowModal] = useState(false);
@@ -25,6 +35,7 @@ export function AdditionalFeaturePage() {
     const [featureToDelete, setFeatureToDelete] = useState<MstAdditionalFeature | null>(null);
 
     const initialForm: Partial<MstAdditionalFeature> = {
+        feature_code: '',
         feature_name: '',
         description: '',
         is_required_tenant_input: false,
@@ -43,6 +54,11 @@ export function AdditionalFeaturePage() {
         if (!form.feature_name) {
             toast.error('Nama fitur wajib diisi');
             return;
+        }
+
+        // Defensive check: ensure feature_code is populated
+        if (!form.feature_code) {
+            form.feature_code = generateFeatureCode(form.feature_name);
         }
 
         try {
@@ -90,6 +106,7 @@ export function AdditionalFeaturePage() {
     };
 
     const exportColumns = [
+        { header: 'Kode Fitur', key: 'feature_code' },
         { header: 'Nama Fitur', key: 'feature_name' },
         { header: 'Deskripsi', key: 'description' },
         { header: 'Perlu Input Tenant?', key: 'is_required_tenant_input', render: (f: MstAdditionalFeature) => f.is_required_tenant_input ? 'Ya' : 'Tidak' },
@@ -113,7 +130,14 @@ export function AdditionalFeaturePage() {
             header: 'Nama Fitur',
             render: (f) => (
                 <div className="flex flex-col">
-                    <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-800 dark:text-white">{f.feature_name}</span>
+                        {f.feature_code && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-100 dark:border-indigo-900/40 uppercase tracking-wider">
+                                {f.feature_code}
+                            </span>
+                        )}
+                    </div>
                     {f.description && <span className="text-[10px] text-gray-400 md:line-clamp-1 break-words">{f.description}</span>}
                 </div>
             ),
@@ -228,14 +252,35 @@ export function AdditionalFeaturePage() {
                 }
             >
                 <div className="space-y-4">
-                    <div>
-                        <label className="label-field">Nama Fitur *</label>
-                        <input
-                            type="text"
-                            value={form.feature_name || ''}
-                            onChange={(e) => setForm({ ...form, feature_name: e.target.value })}
-                            className="input-field"
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="label-field">Nama Fitur *</label>
+                            <input
+                                type="text"
+                                value={form.feature_name || ''}
+                                onChange={(e) => {
+                                    const name = e.target.value;
+                                    setForm({
+                                        ...form,
+                                        feature_name: name,
+                                        feature_code: generateFeatureCode(name)
+                                    });
+                                }}
+                                className="input-field"
+                                placeholder="Contoh: WhatsApp Blast"
+                            />
+                        </div>
+                        <div>
+                            <label className="label-field">Kode Fitur (Auto-generated)</label>
+                            <input
+                                type="text"
+                                value={form.feature_code || ''}
+                                readOnly
+                                disabled
+                                className="input-field bg-gray-50 dark:bg-gray-800/50 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 font-mono font-semibold"
+                                placeholder="ADD_FTR_..."
+                            />
+                        </div>
                     </div>
 
                     <div>

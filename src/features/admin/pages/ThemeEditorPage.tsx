@@ -17,6 +17,49 @@ import html2canvas from 'html2canvas';
 import { useThemeStore } from '../store/themeStore';
 import { useTenantStore } from '../store/tenantStore';
 import { usePreviewStore } from '../store/previewStore';
+import sampleStory1 from '@/assets/img/sample_story_1.jpg';
+import sampleStory2 from '@/assets/img/sample_story_2.jpg';
+import sampleStory3 from '@/assets/img/sample_story_3.jpg';
+import defaultFrame from '@/assets/img/frame.png';
+
+const isValidImageUrl = (url: any): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    const cleanUrl = url.includes('|') ? url.split('|')[1] : url;
+    if (!cleanUrl) return false;
+    const trimmed = cleanUrl.trim();
+    if (trimmed === '' || trimmed === 'undefined' || trimmed === 'null' || trimmed === 'none' || trimmed === 'default') return false;
+    if (trimmed.startsWith('[object')) return false;
+    return true;
+};
+
+const getDriveId = (url: string): string | null => {
+    if (!url) return null;
+    const cleanUrl = url.includes('|') ? url.split('|')[1] : url;
+    if (!cleanUrl) return null;
+    if (cleanUrl.match(/^[a-zA-Z0-9_-]{25,45}$/)) return cleanUrl; // Raw Drive ID
+    let match = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    match = cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    match = cleanUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    return null;
+};
+
+const resolveProxyUrl = (src: string): string => {
+    if (!src) return '';
+    const cleanSrc = src.includes('|') ? src.split('|')[1] : src;
+    if (!cleanSrc) return '';
+    if (cleanSrc.includes('action=imageProxy') || cleanSrc.startsWith('data:')) {
+        return cleanSrc;
+    }
+    const driveId = getDriveId(cleanSrc);
+    if (driveId) {
+        const baseUrl = import.meta.env.VITE_API_URL || '';
+        return `${baseUrl}?action=imageProxy&id=${driveId}`;
+    }
+    return cleanSrc;
+};
 
 const extractDriveId = (url: string) => {
     if (!url) return null;
@@ -376,12 +419,32 @@ export function ThemeEditorPage() {
                 await Promise.all(imgs.map(async (img) => {
                     if (img.cdn_url) {
                         try {
-                            const b64 = await fetchProxyImageBase64(img.cdn_url);
+                            const proxiedUrl = resolveProxyUrl(img.cdn_url);
+                            const b64 = await fetchProxyImageBase64(proxiedUrl);
                             b64map[img.image_type] = b64;
                             b64map[img.cdn_url] = b64;
+                            if (proxiedUrl !== img.cdn_url) {
+                                b64map[proxiedUrl] = b64;
+                            }
                         } catch { }
                     }
                 }));
+
+                // Also pre-convert frame_balasan_instagram if present in content
+                const rawFrame = content.frame_balasan_instagram;
+                if (isValidImageUrl(rawFrame)) {
+                    const proxiedUrl = resolveProxyUrl(rawFrame!);
+                    try {
+                        const b64 = await fetchProxyImageBase64(proxiedUrl);
+                        b64map['frame_balasan_instagram'] = b64;
+                        b64map[rawFrame!] = b64;
+                        if (proxiedUrl !== rawFrame) {
+                            b64map[proxiedUrl] = b64;
+                        }
+                    } catch (e) {
+                        console.error('Failed to proxy frame_balasan_instagram:', e);
+                    }
+                }
                 setPreviewImagesB64(b64map);
 
                 // Save to store for next time
@@ -574,7 +637,8 @@ export function ThemeEditorPage() {
             toast.success('Gambar pratinjau diperbarui!');
         } catch (err: any) {
             console.error('Preview upload error:', err);
-            toast.error('Gagal mengunggah pratinjau: ' + (err.message || 'Error tidak diketahui'));
+            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Error tidak diketahui';
+            toast.error('Gagal mengunggah pratinjau: ' + detailedMsg);
         } finally {
             setUploadingPreview(false);
             setPendingReplacePreviewFile(null);
@@ -624,7 +688,8 @@ export function ThemeEditorPage() {
             toast.success('Gambar pratinjau berhasil dihapus');
         } catch (err: any) {
             console.error('Preview delete error:', err);
-            toast.error('Gagal menghapus gambar: ' + (err.message || 'Error tidak diketahui'));
+            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Error tidak diketahui';
+            toast.error('Gagal menghapus gambar: ' + detailedMsg);
         } finally {
             setDeletingPreview(false);
         }
@@ -643,6 +708,18 @@ export function ThemeEditorPage() {
 
     const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
+
+        // Proactive Google Sheets Cell Character Limit Validation
+        const MAX_CELL_CHARS = 50000;
+        if (htmlCode.length > MAX_CELL_CHARS) {
+            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal Google Sheets adalah 50.000 karakter per kolom. Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
+        }
+        if (cssCode.length > MAX_CELL_CHARS) {
+            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal Google Sheets adalah 50.000 karakter per kolom. Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
+        }
+        if (jsCode.length > MAX_CELL_CHARS) {
+            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal Google Sheets adalah 50.000 karakter per kolom. Harap sederhanakan kode JS Anda.`, { duration: 10000 });
+        }
 
         setSaving(true);
         const loadingToast = toast.loading('Menyimpan tema...');
@@ -739,7 +816,27 @@ export function ThemeEditorPage() {
                 else toast.error(res.message, { id: loadingToast });
             }
         } catch (error: any) {
-            toast.error(error.message || 'Gagal menyimpan tema', { id: loadingToast });
+            console.error('Error saving theme:', error);
+            
+            // Extract the most detailed message possible from the server response or exception
+            let errMsg = 'Gagal menyimpan tema';
+            if (error.response?.data?.message) {
+                errMsg = error.response.data.message;
+            } else if (error.response?.data?.error) {
+                errMsg = error.response.data.error;
+            } else if (typeof error.response?.data === 'string' && error.response.data.trim()) {
+                errMsg = error.response.data.trim();
+            } else if (error.message) {
+                errMsg = error.message;
+            }
+            
+            // Format network or CORS/fetch failures with size context
+            if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('fetch') || !error.response) {
+                const totalChars = htmlCode.length + cssCode.length + jsCode.length;
+                errMsg = `Kesalahan Jaringan (Network Error) / Google Sheets limit. Jika total kode Anda besar (${totalChars.toLocaleString('id-ID')} karakter), pastikan tidak melampaui batas 50.000 karakter per kolom. Detail: ${errMsg}`;
+            }
+            
+            toast.error(errMsg, { id: loadingToast, duration: 10000 });
         } finally {
             setSaving(false);
         }
@@ -796,6 +893,14 @@ export function ThemeEditorPage() {
                         const imgRec = previewImages.find(i => i.image_type === type);
                         if (imgRec && imgRec.cdn_url) return imgRec.cdn_url;
                         return dummies[fallbackIdx % dummies.length];
+                    };
+
+                    const getFrameImg = () => {
+                        if (imgs['frame_balasan_instagram']) return imgs['frame_balasan_instagram'];
+                        const imgRec = previewImages.find(i => i.image_type === 'frame_balasan_instagram');
+                        if (imgRec && imgRec.cdn_url) return resolveProxyUrl(imgRec.cdn_url);
+                        if (isValidImageUrl(c.frame_balasan_instagram)) return resolveProxyUrl(c.frame_balasan_instagram!);
+                        return defaultFrame;
                     };
 
                     let timeline: any[] = [];
@@ -889,6 +994,14 @@ export function ThemeEditorPage() {
                             { url: dummies[1], caption: 'Prewedding 2' },
                             { url: dummies[2], caption: 'Prewedding 3' }
                         ],
+
+                        // Instagram Story Reply Additional Feature (ADD_FTR_STORY_IG)
+                        flag_pakai_additional_feature_story_balasan_instagram: c.flag_pakai_additional_feature_story_balasan_instagram !== undefined ? getBool(c.flag_pakai_additional_feature_story_balasan_instagram) : true,
+                        frame_balasan_instagram: getFrameImg(),
+                        link_balasan_instagram: c.link_balasan_instagram || 'https://instagram.com/direct/inbox/',
+                        sample_story_1: sampleStory1,
+                        sample_story_2: sampleStory2,
+                        sample_story_3: sampleStory3,
                         is_fitur_cerita: true,
                         is_fitur_live_streaming: !!(c.flag_pakai_live_streaming),
                         live_streaming: { url: c.link_live_streaming || 'https://youtube.com', platform: c.platform_live_streaming || 'YouTube' },
@@ -1554,15 +1667,35 @@ export function ThemeEditorPage() {
                             {/* Editor Tabs */}
                             <div className="flex bg-[#2d2d2d] justify-between items-center">
                                 <div className="flex">
-                                    {(['html', 'css', 'js'] as const).map(tab => (
-                                        <button
-                                            key={tab}
-                                            onClick={() => setActiveTab(tab)}
-                                            className={`px-4 py-2 text-xs font-mono border-t-2 ${activeTab === tab ? 'border-gold-500 bg-[#1e1e1e] text-white' : 'border-transparent text-gray-400 hover:bg-[#3d3d3d] hover:text-gray-200'}`}
-                                        >
-                                            index.{tab}
-                                        </button>
-                                    ))}
+                                    {(['html', 'css', 'js'] as const).map(tab => {
+                                        const codeLen = tab === 'html' ? htmlCode.length : tab === 'css' ? cssCode.length : jsCode.length;
+                                        const MAX_CELL_CHARS = 50000;
+                                        const isLimitWarning = codeLen > 45000;
+                                        const isLimitExceeded = codeLen > MAX_CELL_CHARS;
+                                        const remaining = MAX_CELL_CHARS - codeLen;
+
+                                        return (
+                                            <button
+                                                key={tab}
+                                                onClick={() => setActiveTab(tab)}
+                                                className={`px-4 py-2 text-xs font-mono border-t-2 flex items-center gap-2 transition-all ${activeTab === tab ? 'border-gold-500 bg-[#1e1e1e] text-white' : 'border-transparent text-gray-400 hover:bg-[#3d3d3d] hover:text-gray-200'}`}
+                                            >
+                                                <span>index.{tab}</span>
+                                                <span 
+                                                    title={`${remaining >= 0 ? `${remaining.toLocaleString('id-ID')} karakter tersisa` : `Kelebihan ${Math.abs(remaining).toLocaleString('id-ID')} karakter!`}`}
+                                                    className={`text-[9px] px-1 py-0.5 rounded transition-all select-none ${
+                                                        isLimitExceeded 
+                                                            ? 'bg-red-950 text-red-400 border border-red-700/60 font-bold animate-pulse' 
+                                                            : isLimitWarning 
+                                                                ? 'bg-yellow-950 text-yellow-400 border border-yellow-700/60 font-medium' 
+                                                                : 'bg-gray-800 text-gray-400 border border-gray-700/40'
+                                                    }`}
+                                                >
+                                                    {codeLen.toLocaleString('id-ID')} / {MAX_CELL_CHARS.toLocaleString('id-ID')}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                                 <div className="px-3">
                                     <input

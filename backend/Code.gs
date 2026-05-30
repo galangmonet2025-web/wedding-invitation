@@ -1751,6 +1751,46 @@
       wishes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
 
       var content = DB.findOne('InvitationContent', 'tenant_id', tenant.id);
+      if (!content) {
+        content = {};
+      }
+
+      // Check Instagram Story Reply Additional Feature (ADD_FTR_STORY_IG)
+      var flag_pakai_ig_story = false;
+      var frame_balasan_instagram = '';
+      var link_balasan_instagram = '';
+
+      var allMstFeatures = DB.getAll('MstAdditionalFeature') || [];
+      var igStoryFeature = null;
+      for (var k = 0; k < allMstFeatures.length; k++) {
+        if (allMstFeatures[k].feature_code === 'ADD_FTR_STORY_IG') {
+          igStoryFeature = allMstFeatures[k];
+          break;
+        }
+      }
+
+      if (igStoryFeature) {
+        var isFeatureMasterActive = (igStoryFeature.active === true || igStoryFeature.active === 'true' || igStoryFeature.active === 'TRUE');
+        if (isFeatureMasterActive) {
+          var tenantFeatures = DB.getByTenant('TenantActiveFeature', tenant.id) || [];
+          for (var j = 0; j < tenantFeatures.length; j++) {
+            var tf = tenantFeatures[j];
+            if (tf.additional_feature_id === igStoryFeature.id) {
+              var tfActive = (tf.active === true || tf.active === 'true' || tf.active === 'TRUE');
+              if (tfActive) {
+                flag_pakai_ig_story = true;
+                frame_balasan_instagram = tf.input_tenant_data || '';
+                link_balasan_instagram = tf.output_data || '';
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      content.flag_pakai_additional_feature_story_balasan_instagram = flag_pakai_ig_story;
+      content.frame_balasan_instagram = frame_balasan_instagram;
+      content.link_balasan_instagram = link_balasan_instagram;
 
       var theme = null;
       if (tenant.theme_id) {
@@ -2085,6 +2125,17 @@
       var css_template = payload.css_template || '';
       var js_template = payload.js_template || '';
 
+      var MAX_CELL_CHARS = 50000;
+      if (html_template.length > MAX_CELL_CHARS) {
+        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+      }
+      if (css_template.length > MAX_CELL_CHARS) {
+        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
+      }
+      if (js_template.length > MAX_CELL_CHARS) {
+        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil JS Anda.', 400);
+      }
+
       var theme = {
         id: DB.generateId(),
         name: sanitized.name,
@@ -2106,6 +2157,17 @@
 
     updateTheme: function(auth, payload) {
       Validator.required(payload, ['id']);
+      
+      var MAX_CELL_CHARS = 50000;
+      if (payload.html_template !== undefined && payload.html_template.length > MAX_CELL_CHARS) {
+        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+      }
+      if (payload.css_template !== undefined && payload.css_template.length > MAX_CELL_CHARS) {
+        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
+      }
+      if (payload.js_template !== undefined && payload.js_template.length > MAX_CELL_CHARS) {
+        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran JS Anda.', 400);
+      }
       
       var updates = {};
       if (payload.name !== undefined) updates.name = Validator.sanitizeObject({n: payload.name}).n;
@@ -2160,6 +2222,7 @@
       
       var feature = {
         id: DB.generateId(),
+        feature_code: sanitized.feature_code || '',
         feature_name: sanitized.feature_name,
         description: sanitized.description || '',
         is_required_tenant_input: payload.is_required_tenant_input ? 'TRUE' : 'FALSE',
@@ -2178,6 +2241,7 @@
       Validator.required(payload, ['id']);
       
       var updates = {};
+      if (payload.feature_code !== undefined) updates.feature_code = Validator.sanitizeObject({c: payload.feature_code}).c;
       if (payload.feature_name !== undefined) updates.feature_name = Validator.sanitizeObject({n: payload.feature_name}).n;
       if (payload.description !== undefined) updates.description = Validator.sanitizeObject({d: payload.description}).d;
       if (payload.is_required_tenant_input !== undefined) updates.is_required_tenant_input = payload.is_required_tenant_input ? 'TRUE' : 'FALSE';
@@ -2507,7 +2571,7 @@
         'site_code_html', 'site_code_css', 'site_code_js', 'primary_color', 'accent_color'
       ],
       'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at'],
-      'MstAdditionalFeature': ['id', 'feature_name', 'description', 'is_required_tenant_input', 'input_data_type', 'output_data_type', 'active', 'price', 'created_at'],
+      'MstAdditionalFeature': ['id', 'feature_code', 'feature_name', 'description', 'is_required_tenant_input', 'input_data_type', 'output_data_type', 'active', 'price', 'created_at'],
       'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active', 'payment_status'],
       'Transactions': ['id', 'tenant_id', 'item_type', 'item_description', 'item_id', 'amount', 'status', 'snap_token', 'payment_method', 'created_at', 'updated_at']
     };
