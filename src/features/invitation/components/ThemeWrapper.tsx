@@ -120,12 +120,8 @@ export function ThemeWrapper({
         loadScript('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js');
 
         return () => {
-            // Keep CSS and scripts loaded globally in index.html active// Remove CSS to prevent bleeding into the admin dashboard or other react components
+            // Remove CSS to prevent bleeding into the admin dashboard or other react components
             ['uikit-css', 'bootstrap-css', 'remix-icon'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.remove();
-            });
-            ['uikit-js', 'uikit-icons', 'bootstrap-js'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.remove();
             });

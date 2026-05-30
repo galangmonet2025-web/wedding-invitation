@@ -1792,6 +1792,21 @@
       content.frame_balasan_instagram = frame_balasan_instagram;
       content.link_balasan_instagram = link_balasan_instagram;
 
+      // Social media configurations based on WebsiteConfig sheet
+      var allConfigs = DB.getAll('WebsiteConfig') || [];
+      var websiteConfig = allConfigs.length > 0 ? allConfigs[0] : {};
+      var site_tiktok = websiteConfig.site_tiktok || '';
+      var site_youtube = websiteConfig.site_youtube || '';
+      var site_instagram = websiteConfig.site_instagram || '';
+
+      content.flag_use_tiktok_weconfig = (site_tiktok !== '' && site_tiktok !== null && site_tiktok !== undefined);
+      content.flag_use_youtube_webconfig = (site_youtube !== '' && site_youtube !== null && site_youtube !== undefined);
+      content.flag_use_instagram_webconfig = (site_instagram !== '' && site_instagram !== null && site_instagram !== undefined);
+
+      content.url_tiktok_webconfig = site_tiktok;
+      content.url_youtube_webconfig = site_youtube;
+      content.url_instagram_webconfig = site_instagram;
+
       var theme = null;
       if (tenant.theme_id) {
         theme = DB.findOne('Themes', 'id', tenant.theme_id);

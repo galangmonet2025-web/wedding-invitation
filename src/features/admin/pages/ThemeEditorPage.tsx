@@ -1065,6 +1065,14 @@ export function ThemeEditorPage() {
                         site_logo: 'https://galangmonet2025.com/logo.png',
                         tagline: 'Solusi Undangan Digital Modern',
                         site_description: 'Platform pembuatan undangan digital terbaik dengan fitur lengkap dan desain premium.',
+
+                        // Social media configurations from WebsiteConfig
+                        flag_use_tiktok_weconfig: c.flag_use_tiktok_weconfig !== undefined ? getBool(c.flag_use_tiktok_weconfig) : true,
+                        flag_use_youtube_webconfig: c.flag_use_youtube_webconfig !== undefined ? getBool(c.flag_use_youtube_webconfig) : true,
+                        flag_use_instagram_webconfig: c.flag_use_instagram_webconfig !== undefined ? getBool(c.flag_use_instagram_webconfig) : true,
+                        url_tiktok_webconfig: c.url_tiktok_webconfig || 'https://tiktok.com/@galangmonet',
+                        url_youtube_webconfig: c.url_youtube_webconfig || 'https://youtube.com/@galangmonet',
+                        url_instagram_webconfig: c.url_instagram_webconfig || 'https://instagram.com/galangmonet',
                     };
 
                     // Inject dynamic image type variables (real base64 or dummy fallback)

@@ -868,6 +868,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             site_url: websiteConfig?.site_url || window.location.origin,
             tagline: websiteConfig?.tagline || '',
             site_description: websiteConfig?.site_description || '',
+
+            // Social media configurations from WebsiteConfig
+            flag_use_tiktok_weconfig: !!(websiteConfig?.site_tiktok || activeContent?.url_tiktok_webconfig || activeContent?.flag_use_tiktok_weconfig),
+            flag_use_youtube_webconfig: !!(websiteConfig?.site_youtube || activeContent?.url_youtube_webconfig || activeContent?.flag_use_youtube_webconfig),
+            flag_use_instagram_webconfig: !!(websiteConfig?.site_instagram || activeContent?.url_instagram_webconfig || activeContent?.flag_use_instagram_webconfig),
+            url_tiktok_webconfig: websiteConfig?.site_tiktok || activeContent?.url_tiktok_webconfig || '',
+            url_youtube_webconfig: websiteConfig?.site_youtube || activeContent?.url_youtube_webconfig || '',
+            url_instagram_webconfig: websiteConfig?.site_instagram || activeContent?.url_instagram_webconfig || '',
             galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
