@@ -1845,7 +1845,8 @@
           religion: tenant.religion,
           wedding_date: tenant.wedding_date,
           domain_slug: tenant.domain_slug,
-          theme_id: tenant.theme_id
+          theme_id: tenant.theme_id,
+          status_payment: tenant.status_payment
         },
         wishes: wishes.slice(0, 50),
         content: content || {},

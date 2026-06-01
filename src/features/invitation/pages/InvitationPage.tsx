@@ -65,6 +65,7 @@ interface TenantPublic {
     groom_nickname?: string;
     wedding_date: string;
     domain_slug: string;
+    status_payment?: string;
 }
 
 interface InvitationData {
@@ -97,6 +98,30 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const [generatedUninvitedQR, setGeneratedUninvitedQR] = useState<string | null>(null);
     const [isCheckingGuest, setIsCheckingGuest] = useState(false);
 
+    // Dynamic Loading Messages State
+    const [loadingStep, setLoadingStep] = useState(0);
+
+    const loadingMessages = useMemo(() => [
+        'Menghubungkan dengan sistem...',
+        'Mengambil informasi mempelai...',
+        'Mengunduh aset & galeri foto...',
+        'Mempersiapkan daftar ucapan doa...',
+        'Menyelaraskan musik latar...',
+        'Menyusun tata letak undangan kustom...',
+        'Hampir selesai...',
+        'Menyajikan undangan indah untuk Anda...'
+    ], []);
+
+    useEffect(() => {
+        if (!loading && resolvedImages) return;
+
+        const interval = setInterval(() => {
+            setLoadingStep(prev => (prev < loadingMessages.length - 1 ? prev + 1 : prev));
+        }, 2500);
+
+        return () => clearInterval(interval);
+    }, [loading, resolvedImages, loadingMessages]);
+
     // Lightbox State
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
@@ -125,7 +150,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 groom_name: 'Galang',
                 groom_nickname: 'Galang',
                 wedding_date: '2026-10-20',
-                domain_slug: 'demo'
+                domain_slug: 'demo',
+                status_payment: 'Sudah dibayar'
             }
         };
     }, [data]);
@@ -265,7 +291,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             if (event.data && event.data.type === 'invitation-preview-update') {
                 const { content, images: newImages, theme: newTheme } = event.data;
                 console.log("Live Preview Update Received:", { content, newImages, newTheme });
-                
+
                 setData(prev => {
                     if (!prev) return prev;
                     return {
@@ -839,10 +865,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
             // Instagram Story Reply Feature (ADD_FTR_STORY_IG)
             flag_pakai_additional_feature_story_balasan_instagram: getBool(activeContent.flag_pakai_additional_feature_story_balasan_instagram),
-            frame_balasan_instagram: images['frame_balasan_instagram'] || 
-                                     (getImageUrl('frame_balasan_instagram') ? resolveProxyUrl(getImageUrl('frame_balasan_instagram')) : null) || 
-                                     (isValidImageUrl(activeContent.frame_balasan_instagram) ? resolveProxyUrl(activeContent.frame_balasan_instagram!) : null) || 
-                                     defaultFrame,
+            frame_balasan_instagram: images['frame_balasan_instagram'] ||
+                (getImageUrl('frame_balasan_instagram') ? resolveProxyUrl(getImageUrl('frame_balasan_instagram')) : null) ||
+                (isValidImageUrl(activeContent.frame_balasan_instagram) ? resolveProxyUrl(activeContent.frame_balasan_instagram!) : null) ||
+                defaultFrame,
             link_balasan_instagram: activeContent.link_balasan_instagram || '',
             sample_story_1: sampleStory1,
             sample_story_2: sampleStory2,
@@ -862,7 +888,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             link_live_streaming: activeContent.link_live_streaming || '',
             platform_live_streaming: activeContent.platform_live_streaming || '',
             flag_sudah_kirim_undangan_via_whatsapp: false,
-            
+
             // Site details
             site_name: websiteConfig?.site_name || 'Kundangan',
             site_url: websiteConfig?.site_url || window.location.origin,
@@ -936,9 +962,91 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     // LOADING - Moved after hooks
     if (loading || (!previewData && !resolvedImages)) {
         return (
-            <div className="inv-page inv-loading">
-                <div className="inv-spinner" />
-                <p>Memuat undangan...</p>
+            <div className="inv-page inv-loading" style={{
+                background: '#1A1A2E',
+                color: '#FFFFFF',
+                height: '100vh',
+                width: '100vw',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+            }}>
+                <div className="loader-container" style={{
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '2rem'
+                }}>
+                    {/* Pulsing Outer Rings */}
+                    <div style={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        border: '2px solid rgba(184, 149, 100, 0.2)',
+                        animation: 'spin 4s linear infinite'
+                    }} />
+                    <div style={{
+                        position: 'absolute',
+                        width: '80%',
+                        height: '80%',
+                        borderRadius: '50%',
+                        border: '2px dashed rgba(184, 149, 100, 0.4)',
+                        animation: 'spin-reverse 6s linear infinite'
+                    }} />
+                    {/* Glowing Heart/Envelope Core */}
+                    <div style={{
+                        fontSize: '2.5rem',
+                        animation: 'heartbeat 1.5s ease-in-out infinite',
+                        zIndex: 2
+                    }}>
+                        💌
+                    </div>
+                </div>
+
+                <div style={{ textTransform: 'uppercase', letterSpacing: '0.2em', fontSize: '0.75rem', color: '#b89564', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                    Mohon Menunggu
+                </div>
+
+                <div style={{ height: '24px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <p key={loadingStep} className="loading-message-text" style={{
+                        margin: 0,
+                        fontSize: '0.9rem',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontStyle: 'italic',
+                        animation: 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    }}>
+                        {loadingMessages[loadingStep]}
+                    </p>
+                </div>
+
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                    @keyframes spin-reverse {
+                        0% { transform: rotate(360deg); }
+                        100% { transform: rotate(0deg); }
+                    }
+                    @keyframes heartbeat {
+                        0% { transform: scale(1); }
+                        14% { transform: scale(1.12); }
+                        28% { transform: scale(1); }
+                        42% { transform: scale(1.12); }
+                        70% { transform: scale(1); }
+                    }
+                    @keyframes fadeInUp {
+                        0% { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+                        100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+                    }
+                `}} />
             </div>
         );
     }
@@ -954,178 +1062,247 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         );
     }
 
+    const showUnpaidOverlay = !previewData && tenant.status_payment === 'Menunggu pembayaran';
+
+    const unpaidOverlay = showUnpaidOverlay ? (
+        <div
+            style={{
+                position: 'fixed',
+                bottom: '1.5rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 99999,
+                width: 'calc(100% - 2rem)',
+                maxWidth: '420px',
+                pointerEvents: 'none'
+            }}
+        >
+            <div
+                style={{
+                    pointerEvents: 'auto',
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(220, 38, 38, 0.4)',
+                    borderRadius: '1.25rem',
+                    padding: '1rem 1.25rem',
+                    color: '#ffffff',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                }}
+            >
+                <div style={{
+                    fontSize: '1.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '3.25rem',
+                    height: '3.25rem',
+                    background: 'rgba(220, 38, 38, 0.2)',
+                    border: '1px solid rgba(220, 38, 38, 0.5)',
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                }}>
+                    💳
+                </div>
+                <div style={{ textAlign: 'left', flexGrow: 1 }}>
+                    <p style={{ margin: 0, fontWeight: '700', fontSize: '0.925rem', color: '#fca5a5', letterSpacing: '0.025em' }}>
+                        Undangan Menunggu Pembayaran
+                    </p>
+                    <p style={{ margin: '0.25rem 0 0 0', opacity: 0.85, fontSize: '0.75rem', lineHeight: '1.4', color: '#e2e8f0' }}>
+                        Silakan selesaikan pembayaran tagihan di Dashboard Admin Anda untuk mengaktifkan seluruh fitur undangan ini.
+                    </p>
+                </div>
+            </div>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: .7; transform: scale(1.05); }
+                }
+            `}} />
+        </div>
+    ) : null;
+
     if (activeTheme?.html_template) {
         return (
-            <ThemeWrapper
-                htmlBase={finalHtml}
-                cssBase={activeTheme.css_template}
-                jsBase={activeTheme.js_template}
-                isPlaying={isPlaying}
-                isOpened={isOpened}
-                setIsPlaying={setIsPlaying}
-                setIsOpened={setIsOpened}
-                weddingDate={tenant.wedding_date}
-                flagUseSystemActionButton={activeTheme?.flag_use_system_action_button !== false && activeTheme?.flag_use_system_action_button !== 'false'}
-                onShowQR={() => {
-                    if (data?.guest) setShowQRModal(true);
-                    else setShowGuestForm(true);
-                }}
-                onShowMenu={() => setShowMenuModal(true)}
-                onSubmitRSVP={(data) => handleRSVP(undefined, data)}
-                onSubmitWish={(data) => handleWish(undefined, data)}
-                onSubmitGift={(data) => handleGift(data)}
-                onOpenLightbox={openLightbox}
-            >
-                {guestQrModal}
-                {uninvitedGuestFormModal}
-                {youtubeId && isOpened && (
-                    <iframe
-                        ref={ytIframeRef}
-                        width="0"
-                        height="0"
-                        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
-                        title="YouTube Background Music"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        className="hidden"
-                    />
-                )}
-                {/* Full Screen Navigation Menu Modal */}
-                {showMenuModal && (
-                    <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
-                        {/* Backdrop */}
-                        <div
-                            className="absolute inset-0 bg-black/85 backdrop-blur-xl animate-fade-in"
-                            onClick={() => setShowMenuModal(false)}
+            <>
+                <ThemeWrapper
+                    htmlBase={finalHtml}
+                    cssBase={activeTheme.css_template}
+                    jsBase={activeTheme.js_template}
+                    isPlaying={isPlaying}
+                    isOpened={isOpened}
+                    setIsPlaying={setIsPlaying}
+                    setIsOpened={setIsOpened}
+                    weddingDate={tenant.wedding_date}
+                    flagUseSystemActionButton={activeTheme?.flag_use_system_action_button !== false && activeTheme?.flag_use_system_action_button !== 'false'}
+                    onShowQR={() => {
+                        if (data?.guest) setShowQRModal(true);
+                        else setShowGuestForm(true);
+                    }}
+                    onShowMenu={() => setShowMenuModal(true)}
+                    onSubmitRSVP={(data) => handleRSVP(undefined, data)}
+                    onSubmitWish={(data) => handleWish(undefined, data)}
+                    onSubmitGift={(data) => handleGift(data)}
+                    onOpenLightbox={openLightbox}
+                >
+                    {guestQrModal}
+                    {uninvitedGuestFormModal}
+                    {youtubeId && isOpened && (
+                        <iframe
+                            ref={ytIframeRef}
+                            width="0"
+                            height="0"
+                            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
+                            title="YouTube Background Music"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            className="hidden"
                         />
-
-                        {/* Content */}
-                        <div className="relative w-full max-w-lg bg-transparent text-center animate-scale-in">
-                            <button
+                    )}
+                    {/* Full Screen Navigation Menu Modal */}
+                    {showMenuModal && (
+                        <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
+                            {/* Backdrop */}
+                            <div
+                                className="absolute inset-0 bg-black/85 backdrop-blur-xl animate-fade-in"
                                 onClick={() => setShowMenuModal(false)}
-                                className="absolute -top-16 right-0 text-white/70 hover:text-white transition-colors"
-                            >
-                                <HiOutlineX className="w-8 h-8" />
-                            </button>
+                            />
 
-                            <h2 className="text-gold-400 font-serif text-3xl mb-12 tracking-widest uppercase">Menu Navigasi</h2>
-
-                            <div className="flex flex-col gap-6">
-                                {/* Link to Top/Sampul */}
+                            {/* Content */}
+                            <div className="relative w-full max-w-lg bg-transparent text-center animate-scale-in">
                                 <button
-                                    onClick={() => {
-                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        // Fallbacks for themes that use fixed containers
-                                        const cw1 = document.getElementById('main-content');
-                                        if (cw1) cw1.scrollTo({ top: 0, behavior: 'smooth' });
-                                        const cw2 = document.getElementById('content-body');
-                                        if (cw2) cw2.scrollTo({ top: 0, behavior: 'smooth' });
-
-                                        setShowMenuModal(false);
-                                    }}
-                                    className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
+                                    onClick={() => setShowMenuModal(false)}
+                                    className="absolute -top-16 right-0 text-white/70 hover:text-white transition-colors"
                                 >
-                                    Sampul
+                                    <HiOutlineX className="w-8 h-8" />
                                 </button>
 
-                                {sections.slice(1).map(s => (
+                                <h2 className="text-gold-400 font-serif text-3xl mb-12 tracking-widest uppercase">Menu Navigasi</h2>
+
+                                <div className="flex flex-col gap-6">
+                                    {/* Link to Top/Sampul */}
                                     <button
-                                        key={s.id}
                                         onClick={() => {
-                                            const el = document.getElementById(s.id);
-                                            if (el) {
-                                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                            }
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            // Fallbacks for themes that use fixed containers
+                                            const cw1 = document.getElementById('main-content');
+                                            if (cw1) cw1.scrollTo({ top: 0, behavior: 'smooth' });
+                                            const cw2 = document.getElementById('content-body');
+                                            if (cw2) cw2.scrollTo({ top: 0, behavior: 'smooth' });
+
                                             setShowMenuModal(false);
                                         }}
                                         className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
                                     >
-                                        {s.label}
+                                        Sampul
                                     </button>
-                                ))}
+
+                                    {sections.slice(1).map(s => (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => {
+                                                const el = document.getElementById(s.id);
+                                                if (el) {
+                                                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                }
+                                                setShowMenuModal(false);
+                                            }}
+                                            className="text-2xl font-serif text-white/90 hover:text-gold-400 transition-all hover:tracking-widest py-2"
+                                        >
+                                            {s.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mt-16 text-gold-500/50 font-serif italic">
+                                    {tenant.groom_name} & {tenant.bride_name}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Universal Lightbox Component */}
+                    {isLightboxOpen && (
+                        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in select-none">
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setIsLightboxOpen(false)}
+                                className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[2002]"
+                            >
+                                <HiX className="w-8 h-8 md:w-10 md:h-10" />
+                            </button>
+
+                            {/* Images Counter */}
+                            <div className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-light tracking-widest z-[2002]">
+                                {currentLightboxIndex + 1} / {lightboxImages.length}
                             </div>
 
-                            <div className="mt-16 text-gold-500/50 font-serif italic">
-                                {tenant.groom_name} & {tenant.bride_name}
+                            {/* Navigation - Left */}
+                            <button
+                                onClick={prevLightbox}
+                                className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
+                            >
+                                <HiChevronLeft className="w-8 h-8 md:w-12 md:h-12" />
+                            </button>
+
+                            {/* Navigation - Right */}
+                            <button
+                                onClick={nextLightbox}
+                                className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
+                            >
+                                <HiChevronRight className="w-8 h-8 md:w-12 md:h-12" />
+                            </button>
+
+                            {/* Main Image Container */}
+                            <div className="w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setIsLightboxOpen(false)}>
+                                <img
+                                    src={lightboxImages[currentLightboxIndex]}
+                                    alt="Lightbox"
+                                    className="max-w-full max-h-full object-contain animate-scale-in"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Universal Lightbox Component */}
-                {isLightboxOpen && (
-                    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in select-none">
-                        {/* Close Button */}
+                    {/* Universal Scroll Up Button */}
+                    {activeTheme?.flag_use_system_action_button !== false && activeTheme?.flag_use_system_action_button !== 'false' && isOpened && activeSectionIndex >= 1 && (
                         <button
-                            onClick={() => setIsLightboxOpen(false)}
-                            className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[2002]"
+                            id="btn-scroll-to-top"
+                            onClick={() => {
+                                const targetIndex = Math.max(0, activeSectionIndex - 1);
+                                const targetId = sections[targetIndex]?.id;
+                                if (targetId) {
+                                    const el = document.getElementById(targetId);
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                } else {
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
+                            }}
+                            className="fixed right-6 bottom-24 z-[900] w-12 h-12 flex items-center justify-center bg-[#b89564]/90 hover:bg-[#a68453] text-white rounded-full shadow-lg shadow-[#b89564]/20 backdrop-blur-sm transition-all animate-fade-in hover:scale-105 border border-white/20"
+                            title="Scroll ke Atas"
                         >
-                            <HiX className="w-8 h-8 md:w-10 md:h-10" />
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                         </button>
+                    )}
 
-                        {/* Images Counter */}
-                        <div className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-light tracking-widest z-[2002]">
-                            {currentLightboxIndex + 1} / {lightboxImages.length}
-                        </div>
-
-                        {/* Navigation - Left */}
-                        <button
-                            onClick={prevLightbox}
-                            className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
-                        >
-                            <HiChevronLeft className="w-8 h-8 md:w-12 md:h-12" />
-                        </button>
-
-                        {/* Navigation - Right */}
-                        <button
-                            onClick={nextLightbox}
-                            className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-2 md:p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all z-[2002]"
-                        >
-                            <HiChevronRight className="w-8 h-8 md:w-12 md:h-12" />
-                        </button>
-
-                        {/* Main Image Container */}
-                        <div className="w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setIsLightboxOpen(false)}>
-                            <img
-                                src={lightboxImages[currentLightboxIndex]}
-                                alt="Lightbox"
-                                className="max-w-full max-h-full object-contain animate-scale-in"
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Universal Scroll Up Button */}
-                {activeTheme?.flag_use_system_action_button !== false && activeTheme?.flag_use_system_action_button !== 'false' && isOpened && activeSectionIndex >= 1 && (
-                    <button
-                        id="btn-scroll-to-top"
-                        onClick={() => {
-                            const targetIndex = Math.max(0, activeSectionIndex - 1);
-                            const targetId = sections[targetIndex]?.id;
-                            if (targetId) {
-                                const el = document.getElementById(targetId);
-                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            } else {
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }
-                        }}
-                        className="fixed right-6 bottom-24 z-[900] w-12 h-12 flex items-center justify-center bg-[#b89564]/90 hover:bg-[#a68453] text-white rounded-full shadow-lg shadow-[#b89564]/20 backdrop-blur-sm transition-all animate-fade-in hover:scale-105 border border-white/20"
-                        title="Scroll ke Atas"
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                    </button>
-                )}
-
-                {/* RSVP Success Modal (Theme Agnostic) */}
-                <RSVPSuccessModal
-                    isOpen={isRSVPModalOpen}
-                    onClose={() => setIsRSVPModalOpen(false)}
-                    data={rsvpModalData}
-                />
-            </ThemeWrapper>
+                    {/* RSVP Success Modal (Theme Agnostic) */}
+                    <RSVPSuccessModal
+                        isOpen={isRSVPModalOpen}
+                        onClose={() => setIsRSVPModalOpen(false)}
+                        data={rsvpModalData}
+                    />
+                </ThemeWrapper>
+                {unpaidOverlay}
+            </>
         );
     }
 
@@ -1180,6 +1357,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 </div>
                 {guestQrModal}
                 {uninvitedGuestFormModal}
+                {unpaidOverlay}
             </>
         );
     }
@@ -1599,6 +1777,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 onClose={() => setIsRSVPModalOpen(false)}
                 data={rsvpModalData}
             />
+            {unpaidOverlay}
         </div>
     );
 }
