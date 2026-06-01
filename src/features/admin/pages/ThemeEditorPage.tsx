@@ -710,15 +710,15 @@ export function ThemeEditorPage() {
         if (!name.trim()) return toast.error('Theme Name is required');
 
         // Proactive Google Sheets Cell Character Limit Validation
-        const MAX_CELL_CHARS = 50000;
+        const MAX_CELL_CHARS = 150000;
         if (htmlCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal Google Sheets adalah 50.000 karakter per kolom. Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 150.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
         }
         if (cssCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal Google Sheets adalah 50.000 karakter per kolom. Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 150.000 karakter (karena dibagi ke kolom ekstra). Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
         }
         if (jsCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal Google Sheets adalah 50.000 karakter per kolom. Harap sederhanakan kode JS Anda.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 150.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan kode JS Anda.`, { duration: 10000 });
         }
 
         setSaving(true);
@@ -1269,13 +1269,13 @@ export function ThemeEditorPage() {
         flagDraftRef.current = flagDraft;
     }, [handleSave, flagDraft]);
 
-    // Keyboard Shortcut (CTRL+S) for saving the theme
+    // Keyboard Shortcut (CTRL+S) for refreshing preview
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 updatePreview();
-                handleSaveRef.current(flagDraftRef.current);
+                toast.success('Pratinjau diperbarui!', { id: 'preview-update-toast' });
             }
         };
 
@@ -1314,7 +1314,7 @@ export function ThemeEditorPage() {
     const handleEditorDidMount = (editor: any, monaco: any) => {
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             updatePreview();
-            handleSaveRef.current(flagDraftRef.current);
+            toast.success('Pratinjau diperbarui!', { id: 'preview-update-toast' });
         });
     };
 
@@ -1677,8 +1677,8 @@ export function ThemeEditorPage() {
                                 <div className="flex">
                                     {(['html', 'css', 'js'] as const).map(tab => {
                                         const codeLen = tab === 'html' ? htmlCode.length : tab === 'css' ? cssCode.length : jsCode.length;
-                                        const MAX_CELL_CHARS = 50000;
-                                        const isLimitWarning = codeLen > 45000;
+                                        const MAX_CELL_CHARS = 150000;
+                                        const isLimitWarning = codeLen > 135000;
                                         const isLimitExceeded = codeLen > MAX_CELL_CHARS;
                                         const remaining = MAX_CELL_CHARS - codeLen;
 

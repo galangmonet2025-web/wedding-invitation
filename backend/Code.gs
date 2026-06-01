@@ -451,6 +451,13 @@
         }
         rows.push(row);
       }
+      if (sheetName === 'Themes') {
+        rows.forEach(function(row) {
+          row.html_template = (row.html_template || '') + (row.html_extra_1 || '') + (row.html_extra_2 || '');
+          row.css_template = (row.css_template || '') + (row.css_extra_1 || '') + (row.css_extra_2 || '');
+          row.js_template = (row.js_template || '') + (row.js_extra_1 || '') + (row.js_extra_2 || '');
+        });
+      }
       return rows;
     },
 
@@ -2094,6 +2101,15 @@
   };
 
 
+  function splitStringIntoFields(str) {
+    var s = str || '';
+    return {
+      main: s.substring(0, 50000),
+      extra_1: s.substring(50000, 100000),
+      extra_2: s.substring(100000, 150000)
+    };
+  }
+
   // =====================================================================
   // THEME SERVICE
   // =====================================================================
@@ -2140,23 +2156,33 @@
       var css_template = payload.css_template || '';
       var js_template = payload.js_template || '';
 
-      var MAX_CELL_CHARS = 50000;
-      if (html_template.length > MAX_CELL_CHARS) {
-        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+      var MAX_TOTAL_CHARS = 150000;
+      if (html_template.length > MAX_TOTAL_CHARS) {
+        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
       }
-      if (css_template.length > MAX_CELL_CHARS) {
-        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
+      if (css_template.length > MAX_TOTAL_CHARS) {
+        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
       }
-      if (js_template.length > MAX_CELL_CHARS) {
-        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil JS Anda.', 400);
+      if (js_template.length > MAX_TOTAL_CHARS) {
+        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil JS Anda.', 400);
       }
+
+      var htmlSplits = splitStringIntoFields(html_template);
+      var cssSplits = splitStringIntoFields(css_template);
+      var jsSplits = splitStringIntoFields(js_template);
 
       var theme = {
         id: DB.generateId(),
         name: sanitized.name,
-        html_template: html_template,
-        css_template: css_template,
-        js_template: js_template,
+        html_template: htmlSplits.main,
+        html_extra_1: htmlSplits.extra_1,
+        html_extra_2: htmlSplits.extra_2,
+        css_template: cssSplits.main,
+        css_extra_1: cssSplits.extra_1,
+        css_extra_2: cssSplits.extra_2,
+        js_template: jsSplits.main,
+        js_extra_1: jsSplits.extra_1,
+        js_extra_2: jsSplits.extra_2,
         plan_type: sanitized.plan_type,
         style_category: sanitized.style_category || '',
         preview_image: sanitized.preview_image || '',
@@ -2167,28 +2193,57 @@
       };
 
       DB.insert('Themes', theme);
+
+      // Return combined representation so response matches client expectations
+      theme.html_template = html_template;
+      theme.css_template = css_template;
+      theme.js_template = js_template;
+      delete theme.html_extra_1;
+      delete theme.html_extra_2;
+      delete theme.css_extra_1;
+      delete theme.css_extra_2;
+      delete theme.js_extra_1;
+      delete theme.js_extra_2;
+
       return ResponseHelper.success(theme, 'Theme created successfully');
     },
 
     updateTheme: function(auth, payload) {
       Validator.required(payload, ['id']);
       
-      var MAX_CELL_CHARS = 50000;
-      if (payload.html_template !== undefined && payload.html_template.length > MAX_CELL_CHARS) {
-        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+      var MAX_TOTAL_CHARS = 150000;
+      if (payload.html_template !== undefined && payload.html_template.length > MAX_TOTAL_CHARS) {
+        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
       }
-      if (payload.css_template !== undefined && payload.css_template.length > MAX_CELL_CHARS) {
-        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
+      if (payload.css_template !== undefined && payload.css_template.length > MAX_TOTAL_CHARS) {
+        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
       }
-      if (payload.js_template !== undefined && payload.js_template.length > MAX_CELL_CHARS) {
-        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas kolom Google Sheets (maksimal 50.000 karakter). Harap perkecil ukuran JS Anda.', 400);
+      if (payload.js_template !== undefined && payload.js_template.length > MAX_TOTAL_CHARS) {
+        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran JS Anda.', 400);
       }
       
       var updates = {};
       if (payload.name !== undefined) updates.name = Validator.sanitizeObject({n: payload.name}).n;
-      if (payload.html_template !== undefined) updates.html_template = payload.html_template;
-      if (payload.css_template !== undefined) updates.css_template = payload.css_template;
-      if (payload.js_template !== undefined) updates.js_template = payload.js_template;
+      
+      if (payload.html_template !== undefined) {
+        var htmlSplits = splitStringIntoFields(payload.html_template);
+        updates.html_template = htmlSplits.main;
+        updates.html_extra_1 = htmlSplits.extra_1;
+        updates.html_extra_2 = htmlSplits.extra_2;
+      }
+      if (payload.css_template !== undefined) {
+        var cssSplits = splitStringIntoFields(payload.css_template);
+        updates.css_template = cssSplits.main;
+        updates.css_extra_1 = cssSplits.extra_1;
+        updates.css_extra_2 = cssSplits.extra_2;
+      }
+      if (payload.js_template !== undefined) {
+        var jsSplits = splitStringIntoFields(payload.js_template);
+        updates.js_template = jsSplits.main;
+        updates.js_extra_1 = jsSplits.extra_1;
+        updates.js_extra_2 = jsSplits.extra_2;
+      }
+      
       if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
       if (payload.style_category !== undefined) updates.style_category = Validator.sanitizeObject({s: payload.style_category}).s;
       if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
@@ -2554,7 +2609,7 @@
     var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
     var sheets = {
-      'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'image_types', 'created_at'],
+      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'css_template', 'css_extra_1', 'css_extra_2', 'js_template', 'js_extra_1', 'js_extra_2', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'image_types', 'created_at'],
       'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
       'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
