@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { paymentApi, additionalFeatureApi, dashboardApi } from '@/core/api/endpoints';
+import { paymentApi, additionalFeatureApi, dashboardApi, couponApi } from '@/core/api/endpoints';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import type { Transaction, TenantActiveFeature } from '@/types';
+import type { Transaction, TenantActiveFeature, Coupon } from '@/types';
 import toast from 'react-hot-toast';
 import { openSnapPayment, getStatusBadge } from '@/utils/midtrans';
 import {
@@ -13,7 +13,10 @@ import {
     HiOutlineExclamationCircle,
     HiOutlineInformationCircle,
     HiOutlineStar,
+    HiOutlineTicket,
+    HiOutlineX,
 } from 'react-icons/hi';
+import { Modal } from '@/shared/components/Modal';
 
 export function PaymentPage() {
     const { user } = useAuthStore();
@@ -23,14 +26,34 @@ export function PaymentPage() {
     const [loading, setLoading] = useState(true);
     const [payingId, setPayingId] = useState<string | null>(null);
     const [refreshingId, setRefreshingId] = useState<string | null>(null);
+    const [couponCode, setCouponCode] = useState('');
+    const [couponValidating, setCouponValidating] = useState(false);
+    const [appliedCoupon, setAppliedCoupon] = useState<Partial<Coupon> | null>(null);
+    const [couponError, setCouponError] = useState('');
+    const [checkoutPlan, setCheckoutPlan] = useState<any | null>(null);
+    const [cancelingId, setCancelingId] = useState<string | null>(null);
+    const [transactionToCancel, setTransactionToCancel] = useState<Transaction | null>(null);
+
+    const openCheckout = (plan: any) => {
+        const hasPendingPlan = transactions.some(tx => tx.item_type === 'plan' && tx.status === 'pending');
+        if (hasPendingPlan) {
+            toast.error('Ada transaksi pembelian paket yang masih tertunda. Silakan selesaikan atau batalkan transaksi tersebut terlebih dahulu.');
+            return;
+        }
+        setCheckoutPlan(plan);
+        setCouponCode('');
+        setAppliedCoupon(null);
+        setCouponError('');
+    };
 
     const fetchAll = useCallback(async (isSilent = false) => {
         if (!isSilent) setLoading(true);
+        const config = isSilent ? { skipLoader: true } : undefined;
         try {
             const [txRes, featRes, planRes, dashRes] = await Promise.all([
-                paymentApi.getTransactions(),
-                additionalFeatureApi.getTenantFeatures(),
-                paymentApi.getPlanTypes(),
+                paymentApi.getTransactions(undefined, config),
+                additionalFeatureApi.getTenantFeatures(undefined, config),
+                paymentApi.getPlanTypes(config),
                 dashboardApi.getTenantDashboard()
             ]);
             
@@ -109,28 +132,43 @@ export function PaymentPage() {
         const currentPrice = Number(currentPlanDetails?.price || 0);
         
         // Jika sudah bayar (upgrade), gunakan selisih. Jika belum (pembelian baru/pindah), gunakan harga penuh.
-        const amount = isPaid ? (Number(plan.price) - currentPrice) : Number(plan.price);
+        const baseAmount = isPaid ? (Number(plan.price) - currentPrice) : Number(plan.price);
 
-        if (!amount || amount <= 0) { 
+        if (!baseAmount || baseAmount <= 0) { 
             toast.error(isPaid ? 'Anda sudah memiliki paket ini atau yang lebih tinggi' : 'Paket ini gratis atau tidak valid'); 
             return; 
         }
         
         setPayingId(`plan-${plan.plan_type}`);
+
+        const capitalize = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+        const fromPlan = capitalize(user?.plan_type || 'basic');
+        const toPlan = capitalize(plan.plan_type);
+        const itemName = isPaid 
+            ? `Upgrade Paket dari ${fromPlan} ke ${toPlan}`
+            : `Pembelian Paket ${toPlan}`;
+
         try {
             const res = await paymentApi.createTransaction({
                 item_type: 'plan',
                 item_id: plan.plan_type,
-                item_name: `Paket ${plan.plan_type}${isPaid ? ' (Upgrade)' : ''}`,
-                amount: amount,
+                item_name: itemName,
+                amount: baseAmount,
+                coupon_code: appliedCoupon ? couponCode : undefined,
             });
             if (!res.success || !res.data?.snap_token) {
                 toast.error(res.message || 'Gagal membuat transaksi');
                 return;
             }
+            if (appliedCoupon && (res.data as any).discount_amount > 0) {
+                toast.success(`Kupon ${couponCode} diterapkan! Diskon: ${formatCurrency((res.data as any).discount_amount)}`);
+            }
+            setCheckoutPlan(null);
             const result = await openSnapPayment(res.data.snap_token);
             if (result.status === 'success' || result.status === 'pending') {
                 if (result.status === 'success') toast.success('Pembayaran paket berhasil!');
+                setAppliedCoupon(null);
+                setCouponCode('');
                 setTimeout(() => fetchAll(true), 2000);
             }
         } catch {
@@ -138,6 +176,42 @@ export function PaymentPage() {
         } finally {
             setPayingId(null);
         }
+    };
+
+    const handleValidateCoupon = async () => {
+        const code = couponCode.trim();
+        if (!code) { setCouponError('Masukkan kode kupon terlebih dahulu'); return; }
+        setCouponValidating(true);
+        setCouponError('');
+        setAppliedCoupon(null);
+        try {
+            const res = await couponApi.validateCoupon({ 
+                coupon_code: code, 
+                item_type: 'plan',
+                plan_id: checkoutPlan?.plan_type 
+            });
+            if (res.success) {
+                const coupon = res.data;
+                if (coupon.plan_id && coupon.plan_id.toLowerCase() !== checkoutPlan?.plan_type.toLowerCase()) {
+                    setCouponError(`Kupon hanya berlaku untuk paket ${coupon.plan_id}`);
+                } else {
+                    setAppliedCoupon(coupon);
+                    toast.success('Kode kupon valid!');
+                }
+            } else {
+                setCouponError(res.message || 'Kode kupon tidak valid');
+            }
+        } catch {
+            setCouponError('Gagal memvalidasi kupon');
+        } finally {
+            setCouponValidating(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCode('');
+        setCouponError('');
     };
 
     const handleRefreshStatus = async (orderId: string) => {
@@ -153,12 +227,69 @@ export function PaymentPage() {
                     toast.success('Status diperbarui: ' + res.data?.status);
                 }
             }
-        } catch {
-            toast.error('Gagal memperbarui status');
         } finally {
             setRefreshingId(null);
         }
     };
+
+    const handleCancelTransaction = async () => {
+        if (!transactionToCancel) return;
+        setCancelingId(transactionToCancel.id);
+        try {
+            const res = await paymentApi.cancelTransaction(transactionToCancel.id);
+            if (res.success) {
+                toast.success('Transaksi berhasil dibatalkan');
+                setTransactionToCancel(null);
+                fetchAll(true);
+            } else {
+                toast.error(res.message || 'Gagal membatalkan transaksi');
+            }
+        } catch {
+            toast.error('Terjadi kesalahan saat membatalkan transaksi');
+        } finally {
+            setCancelingId(null);
+        }
+    };
+
+    const handleContinuePayment = async (tx: Transaction) => {
+        if (!tx.snap_token) return;
+        setPayingId(tx.id);
+        try {
+            const res = await paymentApi.getTransactionStatus(tx.id);
+            if (res.success) {
+                setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, ...res.data } : t));
+                if (res.data?.status !== 'pending') {
+                    if (res.data?.status === 'settlement') {
+                        toast.success('Pembayaran Berhasil! Data diperbarui.');
+                        fetchAll(true);
+                    } else if (res.data?.status === 'expire' || res.data?.status === 'cancel' || res.data?.status === 'deny') {
+                        const statusLabel = res.data?.status === 'expire' ? 'kadaluarsa' : 'dibatalkan/ditolak';
+                        toast.error(`Transaksi ini sudah ${statusLabel} dan tidak dapat dilanjutkan.`);
+                        fetchAll(true);
+                    } else {
+                        toast.error(`Status transaksi: ${res.data?.status}`);
+                    }
+                    setPayingId(null);
+                    return;
+                }
+            }
+            
+            const result = await openSnapPayment(tx.snap_token);
+            if (result.status === 'success' || result.status === 'pending') {
+                if (result.status === 'success') {
+                    toast.success('Pembayaran berhasil!');
+                }
+                setTimeout(() => fetchAll(true), 2000);
+            } else {
+                handleRefreshStatus(tx.id);
+            }
+        } catch {
+            toast.error('Gagal memverifikasi status transaksi');
+        } finally {
+            setPayingId(null);
+        }
+    };
+
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -215,7 +346,7 @@ export function PaymentPage() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => handlePayPlan(currentPlanDetails)}
+                                            onClick={() => openCheckout(currentPlanDetails)}
                                             disabled={!!payingId}
                                             className="flex items-center gap-2 py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50"
                                         >
@@ -291,6 +422,16 @@ export function PaymentPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {availablePlans.map((plan) => {
                                 const displayPrice = isPaid ? (Number(plan.price) - currentPrice) : Number(plan.price);
+                                
+                                // Calculate discounted price if coupon applied
+                                let discountedPrice: number | null = null;
+                                if (appliedCoupon && (!appliedCoupon.plan_id || appliedCoupon.plan_id === plan.plan_type)) {
+                                    if (appliedCoupon.discount_type === 'percent') {
+                                        discountedPrice = Math.max(1, Math.round(displayPrice * (1 - Number(appliedCoupon.percent_discount) / 100)));
+                                    } else {
+                                        discountedPrice = Math.max(1, displayPrice - Number(appliedCoupon.nominal_discount));
+                                    }
+                                }
 
                                 return (
                                     <div key={plan.id}
@@ -300,14 +441,24 @@ export function PaymentPage() {
                                         )}
                                         <div className="mb-4">
                                             <h3 className="font-bold text-gray-800 dark:text-white text-lg uppercase">Paket {plan.plan_type}</h3>
-                                            <p className="text-3xl font-display font-bold text-gold-600 mt-1">
-                                                {formatCurrency(displayPrice)}
-                                                {isPaid && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-2 align-middle">SELISIH</span>}
-                                            </p>
+                                            {discountedPrice !== null ? (
+                                                <div className="mt-1">
+                                                    <p className="text-lg font-bold text-gray-400 line-through">{formatCurrency(displayPrice)}</p>
+                                                    <p className="text-3xl font-display font-bold text-violet-600">
+                                                        {formatCurrency(discountedPrice)}
+                                                        <span className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 px-2 py-0.5 rounded ml-2 align-middle">KUPON</span>
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <p className="text-3xl font-display font-bold text-gold-600 mt-1">
+                                                    {formatCurrency(displayPrice)}
+                                                    {isPaid && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-2 align-middle">SELISIH</span>}
+                                                </p>
+                                            )}
                                             <p className="text-[10px] text-gray-400 mt-1">Limit Tamu: {plan.guest_limit}</p>
                                         </div>
                                         <button
-                                            onClick={() => handlePayPlan(plan)}
+                                            onClick={() => openCheckout(plan)}
                                             disabled={!!payingId}
                                             className="w-full flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gold-500 hover:border-gold-500 hover:text-white text-gray-700 dark:text-gray-200 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
                                         >
@@ -342,7 +493,7 @@ export function PaymentPage() {
                         <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                             <HiOutlineCreditCard className="w-8 h-8 text-gray-300" />
                         </div>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">Belum ada transaksi</p>
+                        <p className="text-gray-500 dark:text-gray-450 font-medium">Belum ada transaksi</p>
                         <p className="text-sm text-gray-400 mt-1">Transaksi akan muncul setelah Anda melakukan pembelian</p>
                     </div>
                 ) : (
@@ -398,17 +549,23 @@ export function PaymentPage() {
                                                     <HiOutlineRefresh className={`w-3 h-3 ${refreshingId === tx.id ? 'animate-spin' : ''}`} />
                                                     Cek Status
                                                 </button>
+                                                
+                                                <button 
+                                                    onClick={() => setTransactionToCancel(tx)}
+                                                    disabled={cancelingId === tx.id}
+                                                    className="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-650 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-[10px] font-bold disabled:opacity-50"
+                                                >
+                                                    {cancelingId === tx.id ? (
+                                                        <div className="w-3 h-3 border border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+                                                    ) : (
+                                                        <HiOutlineX className="w-3 h-3" />
+                                                    )}
+                                                    Batalkan
+                                                </button>
+
                                                 {tx.snap_token && (
                                                     <button
-                                                        onClick={async () => {
-                                                            setPayingId(tx.id);
-                                                            const result = await openSnapPayment(tx.snap_token!);
-                                                            if (result.status === 'success') { 
-                                                                toast.success('Pembayaran berhasil!'); 
-                                                                fetchAll(true); 
-                                                            }
-                                                            setPayingId(null);
-                                                        }}
+                                                        onClick={() => handleContinuePayment(tx)}
                                                         disabled={!!payingId}
                                                         className="text-[10px] text-gold-600 hover:text-gold-700 font-bold flex items-center gap-1 bg-gold-50 dark:bg-gold-900/20 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
                                                     >
@@ -425,6 +582,204 @@ export function PaymentPage() {
                     </div>
                 )}
             </div>
+
+            {/* Modal Checkout Pembayaran */}
+            <Modal
+                isOpen={!!checkoutPlan}
+                onClose={() => setCheckoutPlan(null)}
+                title="Checkout Pembayaran Paket"
+                size="md"
+            >
+                {checkoutPlan && (() => {
+                    const statusStr = String(user?.status_payment || '').toLowerCase();
+                    const isPaid = statusStr === 'aktif' || statusStr === 'active' || statusStr === 'sudah dibayar';
+                    const currentPrice = Number(currentPlanDetails?.price || 0);
+                    const baseAmount = isPaid ? (Number(checkoutPlan.price) - currentPrice) : Number(checkoutPlan.price);
+
+                    let discountAmount = 0;
+                    if (appliedCoupon && (!appliedCoupon.plan_id || appliedCoupon.plan_id.toLowerCase() === checkoutPlan.plan_type.toLowerCase())) {
+                        if (appliedCoupon.discount_type === 'percent') {
+                            discountAmount = Math.round(baseAmount * (Number(appliedCoupon.percent_discount) / 100));
+                        } else {
+                            discountAmount = Number(appliedCoupon.nominal_discount);
+                        }
+                    }
+                    const finalAmount = Math.max(1, baseAmount - discountAmount);
+
+                    return (
+                        <div className="space-y-6 animate-in fade-in duration-200">
+                            {/* Rincian Paket */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Rincian Paket</p>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 dark:text-white uppercase text-base">
+                                            Paket {checkoutPlan.plan_type}
+                                            {isPaid && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded ml-2 align-middle font-semibold">UPGRADE</span>}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-1">Limit Tamu: {checkoutPlan.guest_limit} undangan</p>
+                                    </div>
+                                    <p className="font-bold text-gray-800 dark:text-white">{formatCurrency(baseAmount)}</p>
+                                </div>
+                            </div>
+
+                            {/* Kode Promosi Input */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+                                    Punya Kode Promo?
+                                </label>
+                                {appliedCoupon ? (
+                                    <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-255 dark:border-emerald-800 rounded-xl animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                                                <HiOutlineCheckCircle className="w-5 h-5 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-emerald-800 dark:text-emerald-300 font-mono text-sm">{couponCode.toUpperCase()}</p>
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                                    Diskon {appliedCoupon.discount_type === 'percent'
+                                                        ? `${appliedCoupon.percent_discount}%`
+                                                        : formatCurrency(Number(appliedCoupon.nominal_discount))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={handleRemoveCoupon} 
+                                            className="w-7 h-7 rounded-full bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 hover:text-red-500 transition-colors"
+                                        >
+                                            <HiOutlineX className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={couponCode}
+                                                onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                                                onKeyDown={e => e.key === 'Enter' && handleValidateCoupon()}
+                                                placeholder="Masukkan kode promo (contoh: PROMO50)"
+                                                className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-850 dark:text-white font-mono text-xs focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all"
+                                            />
+                                            <button
+                                                onClick={handleValidateCoupon}
+                                                disabled={couponValidating || !couponCode.trim()}
+                                                className="px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 disabled:opacity-50 hover:opacity-90 transition-all shadow-md active:scale-95"
+                                            >
+                                                {couponValidating ? (
+                                                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                ) : (
+                                                    <HiOutlineTicket className="w-3.5 h-3.5" />
+                                                )}
+                                                Gunakan
+                                            </button>
+                                        </div>
+                                        {couponError && (
+                                            <p className="flex items-center gap-1 text-[11px] text-red-650 dark:text-red-405 font-medium animate-in fade-in slide-in-from-top-1 duration-150">
+                                                <HiOutlineExclamationCircle className="w-3.5 h-3.5 shrink-0" />
+                                                {couponError}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Ringkasan Pembayaran */}
+                            <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-gray-150 dark:border-gray-700/50 rounded-2xl space-y-3">
+                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Ringkasan Pembayaran</p>
+                                
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between text-gray-650 dark:text-gray-400">
+                                        <span>Harga Paket</span>
+                                        <span>{formatCurrency(baseAmount)}</span>
+                                    </div>
+                                    
+                                    {discountAmount > 0 && (
+                                        <div className="flex justify-between text-emerald-600 dark:text-emerald-450 font-medium">
+                                            <span>Diskon Promo</span>
+                                            <span>-{formatCurrency(discountAmount)}</span>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="pt-2 border-t border-gray-255 dark:border-gray-700 flex justify-between items-center text-gray-850 dark:text-white font-bold">
+                                        <span>Total Bayar</span>
+                                        <span className="text-lg text-gold-600 dark:text-gold-500 font-display">{formatCurrency(finalAmount)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button
+                                    onClick={() => setCheckoutPlan(null)}
+                                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all"
+                                    disabled={!!payingId}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={() => handlePayPlan(checkoutPlan)}
+                                    disabled={!!payingId}
+                                    className="px-6 py-2.5 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-gold-500/10 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    {payingId ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <HiOutlineCreditCard className="w-4 h-4" />
+                                    )}
+                                    Bayar Sekarang
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </Modal>
+
+            {/* Modal Konfirmasi Batal Pembayaran */}
+            <Modal
+                isOpen={!!transactionToCancel}
+                onClose={() => setTransactionToCancel(null)}
+                title="Batalkan Transaksi Pembelian"
+            >
+                <div className="space-y-4">
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                        <div className="flex gap-3 text-red-800 dark:text-red-400">
+                            <HiOutlineExclamationCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="text-sm space-y-2">
+                                <p className="font-semibold text-base">Konfirmasi Pembatalan</p>
+                                <p>Anda akan membatalkan transaksi berikut:</p>
+                                <ul className="list-disc pl-4 space-y-1 opacity-90 text-[11px]">
+                                    <li>ID Transaksi: <span className="font-mono font-bold">{transactionToCancel?.id}</span></li>
+                                    <li>Item: <b>{transactionToCancel?.item_description}</b></li>
+                                    <li>Jumlah: <b>{transactionToCancel ? formatCurrency(Number(transactionToCancel.amount)) : ''}</b></li>
+                                    <li>Tanggal: <b>{transactionToCancel ? formatDate(transactionToCancel.created_at) : ''}</b></li>
+                                </ul>
+                                <p className="font-medium pt-2 text-xs">Setelah dibatalkan, status transaksi akan berubah menjadi permanen batal dan Anda dapat melakukan pembelian ulang.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setTransactionToCancel(null)}
+                            className="btn-ghost px-5 py-1.5 text-sm"
+                            disabled={!!cancelingId}
+                        >
+                            Kembali
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleCancelTransaction}
+                            disabled={!!cancelingId}
+                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
+                        >
+                            {cancelingId && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Ya, Batalkan Transaksi
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

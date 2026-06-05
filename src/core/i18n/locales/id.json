@@ -47,7 +47,8 @@
     "change_password": "Ubah Password",
     "menu": "Menu",
     "scanner_kehadiran": "Scanner Kehadiran",
-    "viewing_tenant": "Melihat sebagai Tenant"
+    "viewing_tenant": "Melihat sebagai Tenant",
+    "coupon": "Kode Promosi"
   },
   "topbar": {
     "staff_reception": "Resepsionis Pernikahan",

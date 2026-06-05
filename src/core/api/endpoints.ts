@@ -29,6 +29,7 @@ import type {
     CreateTransactionRequest,
     MstPlanType,
     MstPlanFeature,
+    Coupon,
 } from '@/types';
 
 // =============================================
@@ -389,10 +390,10 @@ export const additionalFeatureApi = {
         return res.data;
     },
 
-    getTenantFeatures: async (tenantId?: string): Promise<ApiResponse<TenantActiveFeature[]>> => {
+    getTenantFeatures: async (tenantId?: string, config?: any): Promise<ApiResponse<TenantActiveFeature[]>> => {
         const payload: any = { action: 'getTenantActiveFeatures' };
         if (tenantId) payload.tenant_id = tenantId;
-        const res = await apiClient.post('', payload);
+        const res = await apiClient.post('', payload, config);
         return res.data;
     },
     
@@ -461,6 +462,11 @@ export const paymentApi = {
         return res.data;
     },
 
+    cancelTransaction: async (orderId: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'cancelTransaction', order_id: orderId });
+        return res.data;
+    },
+
     getPlanTypes: async (config?: any): Promise<ApiResponse<any[]>> => {
         const res = await apiClient.post('', { action: 'getPlanTypes' }, config);
         return res.data;
@@ -493,6 +499,37 @@ export const paymentApi = {
 
     bulkUpdatePlanFeatures: async (updates: { id: string, order_number: number }[], config?: any): Promise<ApiResponse<null>> => {
         const res = await apiClient.post('', { action: 'bulkUpdatePlanFeatures', updates }, config);
+        return res.data;
+    },
+};
+
+// =============================================
+// COUPON API
+// =============================================
+
+export const couponApi = {
+    getCoupons: async (): Promise<ApiResponse<Coupon[]>> => {
+        const res = await apiClient.post('', { action: 'getCoupons' });
+        return res.data;
+    },
+
+    createCoupon: async (data: Partial<Coupon>): Promise<ApiResponse<Coupon>> => {
+        const res = await apiClient.post('', { action: 'createCoupon', ...data });
+        return res.data;
+    },
+
+    updateCoupon: async (data: Partial<Coupon> & { id: string }): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateCoupon', ...data });
+        return res.data;
+    },
+
+    deleteCoupon: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteCoupon', id });
+        return res.data;
+    },
+
+    validateCoupon: async (data: { coupon_code: string; plan_id?: string; item_type?: string }): Promise<ApiResponse<Partial<Coupon>>> => {
+        const res = await apiClient.post('', { action: 'validateCoupon', ...data }, { skipLoader: true } as any);
         return res.data;
     },
 };

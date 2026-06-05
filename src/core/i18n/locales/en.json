@@ -47,7 +47,8 @@
     "change_password": "Change Password",
     "menu": "Menu",
     "scanner_kehadiran": "Presence Scanner",
-    "viewing_tenant": "Viewing as Tenant"
+    "viewing_tenant": "Viewing as Tenant",
+    "coupon": "Coupon"
   },
   "topbar": {
     "staff_reception": "Wedding Receptionist",

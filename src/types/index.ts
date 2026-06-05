@@ -524,6 +524,29 @@ export interface CreateTransactionRequest {
     item_id: string;
     item_name: string;
     amount: number;
+    coupon_code?: string;
+}
+
+// =============================================
+// Coupon
+// =============================================
+
+export type CouponDiscountType = 'percent' | 'nominal';
+
+export interface Coupon {
+    id: string;
+    begin_date: string;
+    end_date: string;
+    plan_id: string;
+    coupon_code: string;
+    discount_type: CouponDiscountType;
+    percent_discount: number | string;
+    nominal_discount: number | string;
+    catatan: string;
+    user_id: string;
+    active: boolean | string;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface MstPlanType {

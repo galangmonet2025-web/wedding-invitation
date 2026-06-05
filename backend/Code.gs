@@ -296,6 +296,9 @@
       case 'getTransactionStatus':
         PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
         return PaymentService.getTransactionStatus(auth, payload);
+      case 'cancelTransaction':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return PaymentService.cancelTransaction(auth, payload);
       case 'getPlanTypes':
         return PaymentService.getPlanTypes();
       case 'updatePlanType':
@@ -325,6 +328,23 @@
         return PaymentService.getPlanTypes();
       case 'getPublicPlanFeatures':
         return PaymentService.getPlanFeatures(payload);
+
+      // Coupons
+      case 'getCoupons':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return CouponService.getCoupons(auth);
+      case 'createCoupon':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return CouponService.createCoupon(auth, payload);
+      case 'updateCoupon':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return CouponService.updateCoupon(auth, payload);
+      case 'deleteCoupon':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return CouponService.deleteCoupon(auth, payload);
+      case 'validateCoupon':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return CouponService.validateCoupon(auth, payload);
 
       default:
         return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -2875,9 +2895,31 @@
       var tenant = DB.findOne('Tenants', 'id', tenantId);
       if (!tenant) return ResponseHelper.error('Tenant not found', 404);
 
-      var amount = parseInt(payload.amount);
-      if (isNaN(amount) || amount <= 0) {
+      var originalAmount = parseInt(payload.amount);
+      if (isNaN(originalAmount) || originalAmount <= 0) {
         return ResponseHelper.error('Invalid amount', 400);
+      }
+
+      var amount = originalAmount;
+      var couponCode = payload.coupon_code ? String(payload.coupon_code).trim() : '';
+      var appliedCoupon = null;
+      var discountAmount = 0;
+
+      // Apply coupon if provided
+      if (couponCode) {
+        var couponResult = CouponService._validateAndGetCoupon(couponCode, payload.item_id, payload.item_type);
+        if (!couponResult.valid) {
+          return ResponseHelper.error(couponResult.message, 400);
+        }
+        appliedCoupon = couponResult.coupon;
+
+        if (appliedCoupon.discount_type === 'percent') {
+          discountAmount = Math.round(originalAmount * (parseFloat(appliedCoupon.percent_discount) / 100));
+        } else if (appliedCoupon.discount_type === 'nominal') {
+          discountAmount = parseInt(appliedCoupon.nominal_discount) || 0;
+        }
+
+        amount = Math.max(1, originalAmount - discountAmount);
       }
 
       var orderId = this._generateOrderId();
@@ -2888,30 +2930,40 @@
       if (payload.item_type === 'feature') {
         description = "Pembelian Fitur: " + payload.item_name;
       } else if (payload.item_type === 'plan') {
-        description = "Upgrade Paket ke: " + payload.item_name;
+        description = payload.item_name;
       } else {
         description = payload.item_name;
       }
+      if (appliedCoupon) {
+        description += ' [Kupon: ' + couponCode + ', Diskon: ' + discountAmount + ']';
+      }
 
       // Construct Midtrans Snap payload
+      var itemDetails = [{
+        id: String(payload.item_id),
+        price: originalAmount,
+        quantity: 1,
+        name: String(payload.item_name).substring(0, 50)
+      }];
+      if (appliedCoupon && discountAmount > 0) {
+        itemDetails.push({
+          id: 'DISCOUNT-' + couponCode,
+          price: -discountAmount,
+          quantity: 1,
+          name: ('Diskon Kupon ' + couponCode).substring(0, 50)
+        });
+      }
+
       var snapPayload = {
         transaction_details: {
           order_id: orderId,
           gross_amount: amount
         },
-        item_details: [{
-          id: String(payload.item_id),
-          price: amount,
-          quantity: 1,
-          name: String(payload.item_name).substring(0, 50)
-        }],
+        item_details: itemDetails,
         customer_details: {
           first_name: tenant.bride_name || 'Tenant',
           last_name: tenant.groom_name || '',
           email: 'noreply@wedding.com',
-        },
-        callbacks: {
-          finish: ScriptApp.getService().getUrl() + '?action=handleMidtransWebhook'
         }
       };
 
@@ -2939,8 +2991,6 @@
         return ResponseHelper.error('Gagal menghubungi Midtrans: ' + err.message, 502);
       }
 
-      // Record sesuai dengan urutan kolom baru Anda
-      // id | tenant_id | item_type | item_description | item_id | amount | status | snap_token | payment_method | created_at | updated_at
       var record = {
         id: orderId,
         tenant_id: tenantId,
@@ -2955,12 +3005,15 @@
         updated_at: now
       };
       
-      // Gunakan 'Transactions' atau ganti ke 'Transaksi' sesuai nama tab sheet Anda
       DB.insert('Transactions', record);
 
       return ResponseHelper.success({
         snap_token: response.token,
-        order_id: orderId
+        order_id: orderId,
+        original_amount: originalAmount,
+        discount_amount: discountAmount,
+        final_amount: amount,
+        coupon_applied: appliedCoupon ? couponCode : null
       }, 'Transaksi berhasil dibuat');
     },
 
@@ -3021,6 +3074,20 @@
         return ResponseHelper.error('Unauthorized', 403);
       }
 
+      // Check if expired locally due to time (24 hours default token validity)
+      var createdAt = new Date(transaction.created_at);
+      var now = new Date();
+      var diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+      if (transaction.status === 'pending' && diffHours >= 24) {
+        DB.update('Transactions', payload.order_id, {
+          status: 'expire',
+          updated_at: now.toISOString()
+        });
+        transaction.status = 'expire';
+        return ResponseHelper.success(transaction, 'Status retrieved (expired locally)');
+      }
+
       // Check live status from Midtrans
       try {
         var statusUrl = this._getStatusUrl(payload.order_id);
@@ -3031,18 +3098,23 @@
         });
         var statusData = JSON.parse(httpResponse.getContentText());
 
-        if (statusData.transaction_status && statusData.transaction_status !== transaction.status) {
+        var newStatus = statusData.transaction_status;
+        if (!newStatus && statusData.status_code === '407') {
+          newStatus = 'expire';
+        }
+
+        if (newStatus && newStatus !== transaction.status) {
           // Update local record if status changed
           DB.update('Transactions', payload.order_id, {
-            status: statusData.transaction_status,
+            status: newStatus,
             payment_method: statusData.payment_type || '',
             updated_at: new Date().toISOString()
           });
-          transaction.status = statusData.transaction_status;
+          transaction.status = newStatus;
           transaction.payment_method = statusData.payment_type || '';
 
           // Trigger activation if settled
-          if (statusData.transaction_status === 'settlement') {
+          if (newStatus === 'settlement') {
             this._activateItem(transaction);
           }
         }
@@ -3052,6 +3124,53 @@
       }
 
       return ResponseHelper.success(transaction, 'Status retrieved');
+    },
+
+    cancelTransaction: function(auth, payload) {
+      Validator.required(payload, ['order_id']);
+      var tenantId = PermissionService.getTenantId(auth);
+
+      var transaction = DB.findOne('Transactions', 'id', payload.order_id);
+      if (!transaction) return ResponseHelper.error('Transaction not found', 404);
+
+      // Security: tenant can only cancel own transaction
+      if (auth.role !== 'superadmin' && String(transaction.tenant_id) !== String(tenantId)) {
+        return ResponseHelper.error('Unauthorized', 403);
+      }
+
+      if (transaction.status !== 'pending') {
+        return ResponseHelper.error('Transaction is not in pending status', 400);
+      }
+
+      // Try cancelling live on Midtrans first
+      try {
+        var base = CONFIG.MIDTRANS_IS_PRODUCTION
+          ? 'https://api.midtrans.com/v2/'
+          : 'https://api.sandbox.midtrans.com/v2/';
+        var cancelUrl = base + payload.order_id + '/cancel';
+
+        var httpResponse = UrlFetchApp.fetch(cancelUrl, {
+          method: 'post',
+          headers: { 
+            'Authorization': this._getAuthHeader(),
+            'Content-Type': 'application/json'
+          },
+          muteHttpExceptions: true
+        });
+        
+        var responseData = JSON.parse(httpResponse.getContentText());
+        Logger.log('Midtrans cancel response: ' + JSON.stringify(responseData));
+      } catch (err) {
+        Logger.log('Cancel check error: ' + err.toString());
+      }
+
+      // Update local record to 'cancel'
+      DB.update('Transactions', payload.order_id, {
+        status: 'cancel',
+        updated_at: new Date().toISOString()
+      });
+
+      return ResponseHelper.success(null, 'Transaksi berhasil dibatalkan');
     },
 
     getPlanTypes: function() {
@@ -3259,5 +3378,172 @@
       } catch (err) {
         Logger.log('_activateItem error: ' + err.toString());
       }
+    }
+  };
+
+
+  // =====================================================================
+  // COUPON SERVICE
+  // =====================================================================
+
+  var CouponService = {
+
+    getCoupons: function(auth) {
+      var coupons = DB.getAll('Coupon');
+      coupons.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+      return ResponseHelper.success(coupons, 'Coupons retrieved');
+    },
+
+    createCoupon: function(auth, payload) {
+      Validator.required(payload, ['begin_date', 'coupon_code', 'discount_type']);
+
+      if (payload.discount_type !== 'percent' && payload.discount_type !== 'nominal') {
+        return ResponseHelper.error('discount_type harus percent atau nominal', 400);
+      }
+
+      if (payload.discount_type === 'percent') {
+        if (!payload.percent_discount || parseFloat(payload.percent_discount) <= 0) {
+          return ResponseHelper.error('percent_discount harus diisi untuk tipe percent', 400);
+        }
+        if (parseFloat(payload.percent_discount) > 100) {
+          return ResponseHelper.error('percent_discount tidak boleh lebih dari 100', 400);
+        }
+      } else {
+        if (!payload.nominal_discount || parseInt(payload.nominal_discount) <= 0) {
+          return ResponseHelper.error('nominal_discount harus diisi untuk tipe nominal', 400);
+        }
+      }
+
+      var code = String(payload.coupon_code).trim().toUpperCase();
+      var existing = DB.findOne('Coupon', 'coupon_code', code);
+      if (existing) {
+        return ResponseHelper.error('Kode kupon sudah digunakan', 400);
+      }
+
+      var now = new Date().toISOString();
+      var coupon = {
+        id: DB.generateId(),
+        begin_date: payload.begin_date,
+        end_date: payload.end_date || '',
+        plan_id: payload.plan_id || '',
+        coupon_code: code,
+        discount_type: payload.discount_type,
+        percent_discount: payload.discount_type === 'percent' ? (parseFloat(payload.percent_discount) || 0) : '',
+        nominal_discount: payload.discount_type === 'nominal' ? (parseInt(payload.nominal_discount) || 0) : '',
+        catatan: payload.catatan || '',
+        user_id: auth.user_id,
+        active: 'TRUE',
+        created_at: now,
+        updated_at: now
+      };
+
+      DB.insert('Coupon', coupon);
+      ActivityLogService.log(auth.tenant_id, auth.user_id, 'create_coupon');
+      return ResponseHelper.success(coupon, 'Kupon berhasil dibuat');
+    },
+
+    updateCoupon: function(auth, payload) {
+      Validator.required(payload, ['id']);
+      var existing = DB.findOne('Coupon', 'id', payload.id);
+      if (!existing) return ResponseHelper.error('Kupon tidak ditemukan', 404);
+
+      var updates = { updated_at: new Date().toISOString() };
+      if (payload.begin_date !== undefined) updates.begin_date = payload.begin_date;
+      if (payload.end_date !== undefined) updates.end_date = payload.end_date;
+      if (payload.plan_id !== undefined) updates.plan_id = payload.plan_id;
+      if (payload.catatan !== undefined) updates.catatan = payload.catatan;
+
+      if (payload.discount_type !== undefined) {
+        if (payload.discount_type !== 'percent' && payload.discount_type !== 'nominal') {
+          return ResponseHelper.error('discount_type harus percent atau nominal', 400);
+        }
+        updates.discount_type = payload.discount_type;
+        if (payload.discount_type === 'percent') {
+          updates.percent_discount = parseFloat(payload.percent_discount) || 0;
+          updates.nominal_discount = '';
+        } else {
+          updates.nominal_discount = parseInt(payload.nominal_discount) || 0;
+          updates.percent_discount = '';
+        }
+      }
+
+      if (payload.active !== undefined) {
+        updates.active = (payload.active === true || payload.active === 'TRUE' || payload.active === 'true') ? 'TRUE' : 'FALSE';
+      }
+
+      var success = DB.update('Coupon', payload.id, updates);
+      if (!success) return ResponseHelper.error('Gagal mengupdate kupon', 500);
+      ActivityLogService.log(auth.tenant_id, auth.user_id, 'update_coupon');
+      return ResponseHelper.success(null, 'Kupon berhasil diupdate');
+    },
+
+    deleteCoupon: function(auth, payload) {
+      Validator.required(payload, ['id']);
+      var success = DB.deleteRow('Coupon', payload.id);
+      if (!success) return ResponseHelper.error('Kupon tidak ditemukan', 404);
+      ActivityLogService.log(auth.tenant_id, auth.user_id, 'delete_coupon');
+      return ResponseHelper.success(null, 'Kupon berhasil dihapus');
+    },
+
+    validateCoupon: function(auth, payload) {
+      Validator.required(payload, ['coupon_code']);
+      var result = this._validateAndGetCoupon(
+        payload.coupon_code,
+        payload.plan_id || '',
+        payload.item_type || 'plan'
+      );
+      if (!result.valid) {
+        return ResponseHelper.error(result.message, 400);
+      }
+      var coupon = result.coupon;
+      return ResponseHelper.success({
+        coupon_code: coupon.coupon_code,
+        discount_type: coupon.discount_type,
+        percent_discount: coupon.percent_discount,
+        nominal_discount: coupon.nominal_discount,
+        plan_id: coupon.plan_id,
+        end_date: coupon.end_date
+      }, 'Kode kupon valid');
+    },
+
+    _validateAndGetCoupon: function(couponCode, planId, itemType) {
+      var code = String(couponCode).trim().toUpperCase();
+      var coupon = DB.findOne('Coupon', 'coupon_code', code);
+
+      if (!coupon) {
+        return { valid: false, message: 'Kode kupon tidak valid' };
+      }
+
+      var isActive = coupon.active === 'TRUE' || coupon.active === true || coupon.active === 'true';
+      if (!isActive) {
+        return { valid: false, message: 'Kode kupon sudah tidak berlaku (dinonaktifkan)' };
+      }
+
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (coupon.begin_date) {
+        var beginDate = new Date(coupon.begin_date);
+        beginDate.setHours(0, 0, 0, 0);
+        if (today < beginDate) {
+          var beginStr = Utilities.formatDate(beginDate, Session.getScriptTimeZone(), 'dd MMM yyyy');
+          var endStr = coupon.end_date ? Utilities.formatDate(new Date(coupon.end_date), Session.getScriptTimeZone(), 'dd MMM yyyy') : 'tanpa batas';
+          return { valid: false, message: 'Kode kupon baru berlaku mulai ' + beginStr + ' sampai ' + endStr };
+        }
+      }
+
+      if (coupon.end_date) {
+        var endDate = new Date(coupon.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (today > endDate) {
+          return { valid: false, message: 'Kode kupon sudah kadaluarsa' };
+        }
+      }
+
+      if (coupon.plan_id && planId && String(coupon.plan_id) !== String(planId)) {
+        return { valid: false, message: 'Kode kupon ini hanya berlaku untuk paket ' + coupon.plan_id };
+      }
+
+      return { valid: true, message: 'Kode kupon valid', coupon: coupon };
     }
   };
