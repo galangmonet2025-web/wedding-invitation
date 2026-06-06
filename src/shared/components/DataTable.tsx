@@ -108,8 +108,11 @@ export function DataTable<T extends Record<string, any>>({
     return (
         <div className="space-y-4">
             {/* Desktop Table View */}
-            <div className="hidden md:block card p-0 overflow-hidden">
-                <div className="overflow-x-auto no-scrollbar">
+            {/* overflow-x-clip prevents horizontal bleed but, unlike overflow-x-auto,
+                keeps overflow-y:visible so row tooltips can extend above/below a row
+                without being cut off by the adjacent row. */}
+            <div className="hidden md:block card p-0 overflow-x-clip rounded-2xl">
+                <div className="overflow-x-clip no-scrollbar">
                     <table className="w-full table-auto">
                         <thead>
                             <tr className="table-header">

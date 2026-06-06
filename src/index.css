@@ -151,6 +151,10 @@
     @apply left-full top-1/2 -translate-y-1/2 ml-2 -translate-x-1;
   }
 
+  .tooltip-bottom .tooltip-text {
+    @apply top-full left-1/2 -translate-x-1/2 mt-2 -translate-y-1;
+  }
+
   /* Tooltip Arrows */
   .tooltip-text::after {
     content: '';
@@ -163,6 +167,10 @@
 
   .tooltip-right .tooltip-text::after {
     @apply right-full top-1/2 -translate-y-1/2 border-r-gray-900 dark:border-r-gray-800;
+  }
+
+  .tooltip-bottom .tooltip-text::after {
+    @apply bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-gray-800;
   }
 }
 

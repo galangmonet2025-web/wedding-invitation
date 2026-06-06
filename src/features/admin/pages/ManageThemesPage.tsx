@@ -32,11 +32,13 @@ const STYLE_CATEGORIES = ['Modern', 'Tradisional', 'Minimalis', 'Floral', 'Rusti
 
 export function ManageThemesPage() {
     const navigate = useNavigate();
-    const { themes, loading, fetchThemes, deleteTheme } = useThemeStore();
+    const { themes, loading, fetchThemes, deleteTheme, updateTheme } = useThemeStore();
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [guideTab, setGuideTab] = useState<'guide' | 'variables' | 'logic'>('guide');
 
     const [themeToDelete, setThemeToDelete] = useState<Theme | null>(null);
+    // Row currently being saved (inline spinner) instead of a blocking dialog loader.
+    const [savingDraftId, setSavingDraftId] = useState<string | null>(null);
     const [selectedThemeForLightbox, setSelectedThemeForLightbox] = useState<Theme | null>(null);
 
     // Filters and View State
@@ -54,6 +56,40 @@ export function ManageThemesPage() {
         if (!themeToDelete) return;
         await deleteTheme(themeToDelete.id);
         setThemeToDelete(null);
+    };
+
+    const isDraft = (theme: Theme) =>
+        theme.flag_draft === true || theme.flag_draft === 'true' || theme.flag_draft === 'TRUE';
+
+    // Toggle draft status inline: no blocking loader, just mark the row as saving.
+    const handleToggleDraft = async (theme: Theme) => {
+        if (savingDraftId) return; // guard against double-clicks while saving
+        const nextValue = !isDraft(theme);
+        setSavingDraftId(theme.id);
+        // Optimistic update so the toggle flips immediately.
+        updateTheme(theme.id, { flag_draft: nextValue });
+        try {
+            const res = await themeApi.updateTheme(
+                {
+                    id: theme.id,
+                    name: theme.name,
+                    plan_type: theme.plan_type,
+                    flag_draft: nextValue,
+                },
+                { skipLoader: true } as any
+            );
+            if (res.success) {
+                toast.success(nextValue ? 'Tema ditandai sebagai draft' : 'Tema dipublikasikan');
+            } else {
+                updateTheme(theme.id, { flag_draft: !nextValue }); // revert
+                toast.error(res.message || 'Gagal memperbarui status draft');
+            }
+        } catch {
+            updateTheme(theme.id, { flag_draft: !nextValue }); // revert
+            toast.error('Gagal memperbarui status draft');
+        } finally {
+            setSavingDraftId(null);
+        }
     };
 
     const handleInjectPremiumTheme = async () => {
@@ -128,18 +164,49 @@ export function ManageThemesPage() {
 
     const columns = [
         { 
-            key: 'name', 
-            header: 'Nama Tema', 
+            key: 'name',
+            header: 'Nama Tema',
             render: (item: Theme) => (
-                <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800 dark:text-gray-300">{item.name}</span>
-                    {(item.flag_draft === true || item.flag_draft === 'true' || item.flag_draft === 'TRUE') && (
-                        <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
-                            Draft
-                        </span>
-                    )}
-                </div>
+                <span className="font-semibold text-gray-800 dark:text-gray-300">{item.name}</span>
             )
+        },
+        {
+            key: 'flag_draft',
+            header: 'Status',
+            render: (item: Theme) => {
+                const draft = isDraft(item);
+                const saving = savingDraftId === item.id;
+                return (
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={!draft}
+                            disabled={saving}
+                            onClick={(e) => { e.stopPropagation(); handleToggleDraft(item); }}
+                            title={draft ? 'Klik untuk publikasikan' : 'Klik untuk jadikan draft'}
+                            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed
+                                ${draft ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-600'}`}
+                        >
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform
+                                ${draft ? 'translate-x-1' : 'translate-x-[18px]'}`} />
+                        </button>
+                        {saving ? (
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                <span className="w-3.5 h-3.5 border-2 border-gold-300 border-t-gold-600 rounded-full animate-spin" />
+                                Menyimpan…
+                            </span>
+                        ) : (
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border
+                                ${draft
+                                    ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/30'
+                                    : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/20'}`}>
+                                {draft ? 'Draft' : 'Publik'}
+                            </span>
+                        )}
+                    </div>
+                );
+            }
         },
         {
             key: 'plan_type',
