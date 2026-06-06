@@ -529,7 +529,7 @@
                             target="_blank"
                             style="min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-decoration: none; display: inline-block;">
                             <span uk-icon="icon: instagram; ratio: 1.1"
-                                style="margin-right: 8px; vertical-align: middle;"></span>
+                                                style="margin-right: 8px; vertical-align: middle;"></span>
                             Bagikan Momen
                         </a>
                         <div class="quotes"
@@ -718,14 +718,13 @@
 
                     <div class="uk-text-bold">
                         <br>
-                        <span>{{groom_nickname}}</span>
-                        <&amp;> <span>{{bride_nickname}}</span>
+                        <span>{{groom_nickname}}</span> <&amp;> <span>{{bride_nickname}}</span>
                     </div>
                 </div>
 
                 <footer class="invitation-footer">
                     <div class="footer-name">{{site_name}}</div>
-                    <div class="footer-info"> {{site_url}} <br> <span>Digital wedding invitation © 2026</span></div>
+                    <div class="footer-info"><a href="{{site_url}}" style="text-decoration: unset; color: unset" target="_blank">  {{site_url}} <br> <span>Digital wedding invitation © 2026</span></a></div>
                     <div class="footer-social">
                         {{#if flag_use_tiktok_weconfig}}
                         <a aria-label="TikTok" href="{{url_tiktok_webconfig}}">
@@ -747,8 +746,8 @@
                             </svg>
                         </a>
                         {{/if}}
-
-
+                        
+                        
                     </div>
                 </footer>
 
@@ -758,10 +757,8 @@
 
 
             <div id="theme-fab-container" class="floating-ui-container" style="display: none;">
-                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal"
-                    style="outline: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal" style="outline: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="4" x2="20" y1="12" y2="12"></line>
                         <line x1="4" x2="20" y1="6" y2="6"></line>
                         <line x1="4" x2="20" y1="18" y2="18"></line>
@@ -770,8 +767,7 @@
 
                 <div class="bottom-controls">
                     <button id="btn-scroll-up" class="floating-btn btn-scroll-up" style="display: none; outline: none;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="18 15 12 9 6 15"></polyline>
                         </svg>
                     </button>
