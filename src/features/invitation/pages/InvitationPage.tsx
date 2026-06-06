@@ -75,6 +75,7 @@ interface InvitationData {
     guest?: import('@/types').Guest;
     theme?: import('@/types').Theme;
     images?: ImageRecord[];
+    quotes?: Partial<import('@/types').QuotesVariant> | null;
 }
 
 interface InvitationPageProps {
@@ -289,8 +290,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data && event.data.type === 'invitation-preview-update') {
-                const { content, images: newImages, theme: newTheme } = event.data;
-                console.log("Live Preview Update Received:", { content, newImages, newTheme });
+                const { content, images: newImages, theme: newTheme, quotes: newQuotes } = event.data;
+                console.log("Live Preview Update Received:", { content, newImages, newTheme, newQuotes });
 
                 setData(prev => {
                     if (!prev) return prev;
@@ -298,7 +299,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         ...prev,
                         content: { ...prev.content, ...content },
                         images: newImages || prev.images,
-                        theme: newTheme || prev.theme
+                        theme: newTheme || prev.theme,
+                        quotes: newQuotes !== undefined ? newQuotes : prev.quotes
                     };
                 });
             }
@@ -835,7 +837,23 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             is_sudah_kirim_hadiah: getBool(data?.guest?.flag_sudah_kirim_hadiah),
             kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
             kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
-            quote: activeContent.custom_kalimat_1 || '',
+            // Master Quotes: quote_1..7 + quote_by_1..7, with {{quote}}/{{quote_by}} aliases for legacy themes
+            quote: data?.quotes?.quote_1 || activeContent.custom_kalimat_1 || '',
+            quote_by: data?.quotes?.quote_by_1 || '',
+            quote_1: data?.quotes?.quote_1 || activeContent.custom_kalimat_1 || '',
+            quote_2: data?.quotes?.quote_2 || '',
+            quote_3: data?.quotes?.quote_3 || '',
+            quote_4: data?.quotes?.quote_4 || '',
+            quote_5: data?.quotes?.quote_5 || '',
+            quote_6: data?.quotes?.quote_6 || '',
+            quote_7: data?.quotes?.quote_7 || '',
+            quote_by_1: data?.quotes?.quote_by_1 || '',
+            quote_by_2: data?.quotes?.quote_by_2 || '',
+            quote_by_3: data?.quotes?.quote_by_3 || '',
+            quote_by_4: data?.quotes?.quote_by_4 || '',
+            quote_by_5: data?.quotes?.quote_by_5 || '',
+            quote_by_6: data?.quotes?.quote_by_6 || '',
+            quote_by_7: data?.quotes?.quote_by_7 || '',
             custom_kalimat_1: activeContent.custom_kalimat_1 || '',
             custom_kalimat_2: activeContent.custom_kalimat_2 || '',
             custom_kalimat_3: activeContent.custom_kalimat_3 || '',

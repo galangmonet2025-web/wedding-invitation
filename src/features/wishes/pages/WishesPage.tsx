@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { wishApi } from '@/core/api/endpoints';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Wish } from '@/types';
 import toast from 'react-hot-toast';
@@ -72,13 +75,12 @@ export function WishesPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400">{wishes.length} wishes received</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => fetchWishes(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                    <IconButton
+                        onClick={() => fetchWishes(true)}
                         title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+                        spinning={loading}
+                        icon={<HiOutlineRefresh className="w-5 h-5" />}
+                    />
                     <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700">
                         <button onClick={handleExportExcel} className="flex-1 lg:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
                             Excel
@@ -87,10 +89,9 @@ export function WishesPage() {
                             PDF
                         </button>
                     </div>
-                    <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
-                        <HiOutlinePlus className="w-4 h-4" />
+                    <Button onClick={() => setShowAddModal(true)} className="text-sm" icon={<HiOutlinePlus className="w-4 h-4" />}>
                         Add Wish
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -171,28 +172,15 @@ export function WishesPage() {
             </Modal>
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!wishToDelete}
                 onClose={() => setWishToDelete(null)}
+                onConfirm={handleDelete}
                 title="Hapus Ucapan"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus ucapan dari <b>{wishToDelete?.guest_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setWishToDelete(null)} className="btn-ghost">Batal</button>
-                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus</button>
-                    </div>
-                </div>
-            </Modal>
+                warningTitle="Konfirmasi Hapus"
+                confirmLabel="Ya, Hapus"
+                message={<p>Apakah Anda yakin ingin menghapus ucapan dari <b>{wishToDelete?.guest_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>}
+            />
         </div>
     );
 }

@@ -3,3 +3,7 @@ export * from './Modal';
 export * from './Loading';
 export * from './Lightbox';
 export * from './ApiLoader';
+export * from './Button';
+export * from './IconButton';
+export * from './Badge';
+export * from './ConfirmDialog';

@@ -10,7 +10,7 @@ import getCroppedImg from '../utils/cropImage';
 import { detectQRCodeBounds } from '../utils/detectQRCode';
 import { ProxyImage } from './ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
-import { Modal } from './Modal';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 
 interface QrisUploadProps {
     imageType: string;
@@ -475,36 +475,17 @@ export function QrisUpload({
             )}
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={confirmDelete}
                 title="Hapus QRIS"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus gambar QRIS ini? Tindakan ini tidak dapat dibatalkan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setShowDeleteModal(false)} className="btn-ghost" disabled={deleting}>Batal</button>
-                        <button 
-                            onClick={confirmDelete} 
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
-                            disabled={deleting}
-                        >
-                            {deleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            Ya, Hapus
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle="Konfirmasi Hapus"
+                message="Apakah Anda yakin ingin menghapus gambar QRIS ini? Tindakan ini tidak dapat dibatalkan."
+                confirmLabel="Ya, Hapus"
+                loading={deleting}
+            />
         </div>
     );
 }

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
 import { generateWhatsAppLink } from '@/utils/whatsappUtils';
 import type { Guest, Tenant } from '@/types';
 import { HiOutlineChat, HiOutlineCheckCircle, HiOutlinePlay, HiOutlineArrowRight } from 'react-icons/hi';
@@ -66,9 +67,9 @@ export function WhatsAppBlastModal({ isOpen, onClose, selectedGuests, tenant }: 
             size="2xl"
             footer={
                 <div className="flex justify-between items-center w-full">
-                    <button onClick={resetBlast} className="btn-ghost text-xs">Reset Progress</button>
+                    <Button variant="ghost" onClick={resetBlast} className="text-xs">Reset Progress</Button>
                     <div className="flex gap-2">
-                        <button onClick={onClose} className="btn-ghost">Tutup</button>
+                        <Button variant="ghost" onClick={onClose}>Tutup</Button>
                         <button 
                             onClick={handleSendNext} 
                             className="btn-primary flex items-center gap-2"

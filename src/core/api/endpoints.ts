@@ -30,6 +30,7 @@ import type {
     MstPlanType,
     MstPlanFeature,
     Coupon,
+    QuotesVariant,
 } from '@/types';
 
 // =============================================
@@ -530,6 +531,44 @@ export const couponApi = {
 
     validateCoupon: async (data: { coupon_code: string; plan_id?: string; item_type?: string }): Promise<ApiResponse<Partial<Coupon>>> => {
         const res = await apiClient.post('', { action: 'validateCoupon', ...data }, { skipLoader: true } as any);
+        return res.data;
+    },
+};
+
+// =============================================
+// MASTER QUOTES API (QuotesVariant)
+// =============================================
+
+export const quotesApi = {
+    getQuotes: async (config: any = {}): Promise<ApiResponse<QuotesVariant[]>> => {
+        const res = await apiClient.post('', { action: 'getQuotesVariants' }, config);
+        return res.data;
+    },
+
+    createQuote: async (data: Partial<QuotesVariant>): Promise<ApiResponse<QuotesVariant>> => {
+        const res = await apiClient.post('', { action: 'createQuotesVariant', ...data });
+        return res.data;
+    },
+
+    updateQuote: async (data: Partial<QuotesVariant> & { id: string }, config: any = {}): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateQuotesVariant', ...data }, config);
+        return res.data;
+    },
+
+    deleteQuote: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteQuotesVariant', id });
+        return res.data;
+    },
+
+    // Active quotes available to the current tenant (public + own)
+    getActiveQuotes: async (config: any = {}): Promise<ApiResponse<QuotesVariant[]>> => {
+        const res = await apiClient.post('', { action: 'getActiveQuotesVariants' }, config);
+        return res.data;
+    },
+
+    // Tenant saves quote selection (custom=true upserts a tenant-owned row)
+    saveTenantQuotes: async (data: Partial<QuotesVariant> & { custom?: boolean; quotes_id?: string }, config: any = {}): Promise<ApiResponse<{ quotes_id: string }>> => {
+        const res = await apiClient.post('', { action: 'saveTenantQuotes', ...data }, config);
         return res.data;
     },
 };

@@ -12,6 +12,9 @@ import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 
 import { useTenantFeatureStore } from '../store/tenantFeatureStore';
 
@@ -238,20 +241,19 @@ export function TenantAdditionalFeaturePage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400">Fitur tambahan kustom untuk undangan Anda</p>
                 </div>
                 <div className="flex gap-2">
-                    <button 
-                        onClick={() => setShowAddModal(true)} 
-                        className="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm"
+                    <Button
+                        onClick={() => setShowAddModal(true)}
+                        className="px-4 py-2.5 text-sm"
+                        icon={<HiOutlinePlus className="w-4 h-4" />}
                     >
-                        <HiOutlinePlus className="w-4 h-4" />
                         Tambah Fitur
-                    </button>
-                    <button 
-                        onClick={() => fetchFeatures(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                    </Button>
+                    <IconButton
+                        onClick={() => fetchFeatures(true)}
                         title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                        spinning={loading}
+                    />
                 </div>
             </div>
 
@@ -442,8 +444,8 @@ export function TenantAdditionalFeaturePage() {
                         </div>
                     </div>
                     <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setPurchaseConfirm(null)} className="btn-ghost">Batal</button>
-                        <button
+                        <Button variant="ghost" onClick={() => setPurchaseConfirm(null)}>Batal</Button>
+                        <Button
                             onClick={async () => {
                                 if (!purchaseConfirm) return;
                                 
@@ -479,97 +481,60 @@ export function TenantAdditionalFeaturePage() {
                                 // Step 3: Refresh data dengan delay agar GAS selesai memproses
                                 setTimeout(() => fetchFeatures(), 2000);
                             }}
-                            className="btn-primary"
                         >
                             Konfirmasi & Beli
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </Modal>
 
-            <Modal
+            <ConfirmDialog
                 isOpen={!!cancelConfirm}
-                onClose={() => !isCancelling && setCancelConfirm(null)}
+                onClose={() => setCancelConfirm(null)}
+                onConfirm={handleCancelPurchase}
                 title="Batalkan Pemesanan"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Batalkan Pesanan {cancelConfirm?.feature_name}?</p>
-                                <p>Apakah Anda yakin ingin membatalkan pemesanan fitur ini? Tindakan ini akan menghapus fitur dari daftar aktif Anda.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setCancelConfirm(null)} className="btn-ghost" disabled={isCancelling}>Tutup</button>
-                        <button
-                            onClick={handleCancelPurchase}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
-                            disabled={isCancelling}
-                        >
-                            {isCancelling ? (
-                                <HiOutlineRefresh className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <HiOutlineTrash className="w-4 h-4" />
-                            )}
-                            Ya, Batalkan Pesanan
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle={`Batalkan Pesanan ${cancelConfirm?.feature_name}?`}
+                message="Apakah Anda yakin ingin membatalkan pemesanan fitur ini? Tindakan ini akan menghapus fitur dari daftar aktif Anda."
+                confirmLabel="Ya, Batalkan Pesanan"
+                cancelLabel="Tutup"
+                loading={isCancelling}
+            />
 
-            <Modal
+            <ConfirmDialog
                 isOpen={!!deleteConfirm}
                 onClose={() => setDeleteConfirm(null)}
+                onConfirm={async () => {
+                    if (!deleteConfirm) return;
+                    const { id, featureId } = deleteConfirm;
+                    setDeleteConfirm(null);
+                    setIsDeletingImg(featureId);
+
+                    try {
+                        await additionalFeatureApi.updateTenantFeature({
+                            additional_feature_id: featureId,
+                            input_tenant_data: ''
+                        }, { skipLoader: true } as any);
+
+                        if (id) {
+                            await imageApi.deleteImage(id).catch(() => {});
+                        }
+
+                        handleSaveInput(featureId, '');
+                        toast.success('Gambar berhasil dihapus!');
+                    } catch (error) {
+                        toast.error('Gagal menghapus gambar');
+                    } finally {
+                        setIsDeletingImg(null);
+                    }
+                }}
                 title="Hapus Gambar"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost" disabled={!!isDeletingImg}>Batal</button>
-                        <button
-                            onClick={async () => {
-                                if (!deleteConfirm) return;
-                                const { id, featureId } = deleteConfirm;
-                                setDeleteConfirm(null);
-                                setIsDeletingImg(featureId);
-
-                                try {
-                                    await additionalFeatureApi.updateTenantFeature({
-                                        additional_feature_id: featureId,
-                                        input_tenant_data: ''
-                                    }, { skipLoader: true } as any);
-
-                                    if (id) {
-                                        await imageApi.deleteImage(id).catch(() => {});
-                                    }
-                                    
-                                    handleSaveInput(featureId, '');
-                                    toast.success('Gambar berhasil dihapus!');
-                                } catch (error) {
-                                    toast.error('Gagal menghapus gambar');
-                                } finally {
-                                    setIsDeletingImg(null);
-                                }
-                            }}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
-                            disabled={!!isDeletingImg}
-                        >
-                            Ya, Hapus
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle="Konfirmasi Hapus"
+                message="Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan."
+                confirmLabel="Ya, Hapus"
+                loading={!!isDeletingImg}
+            />
         </div>
     );
 }

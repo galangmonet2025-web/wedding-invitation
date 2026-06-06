@@ -3,6 +3,9 @@ import { useGuestStore } from '../store/guestStore';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Pagination } from '@/shared/components/Pagination';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { Guest, CreateGuestRequest, GuestStatus } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import toast from 'react-hot-toast';
@@ -345,13 +348,13 @@ export function GuestPage() {
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-                    <button 
-                        onClick={() => fetchGuests(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm shrink-0"
+                    <IconButton
+                        onClick={() => fetchGuests(true)}
+                        className="shrink-0"
                         title={t('common.refresh')}
-                    >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+                        spinning={loading}
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                    />
                     {!isStaff && (
                         <>
                             <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2 shrink-0">
@@ -367,17 +370,21 @@ export function GuestPage() {
                                     PDF
                                 </button>
                             </div>
-                            <button 
-                                onClick={() => setShowGoogleModal(true)} 
-                                className="btn-ghost text-sm flex items-center gap-2 text-blue-600 hover:text-blue-700 shrink-0"
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowGoogleModal(true)}
+                                className="text-sm text-blue-600 hover:text-blue-700 shrink-0"
+                                icon={<HiOutlineUserGroup className="w-4 h-4" />}
                             >
-                                <HiOutlineUserGroup className="w-4 h-4" />
                                 Google
-                            </button>
-                            <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2 shrink-0">
-                                <HiOutlinePlus className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                onClick={() => { resetForm(); setShowAddModal(true); }}
+                                className="text-sm shrink-0"
+                                icon={<HiOutlinePlus className="w-4 h-4" />}
+                            >
                                 {t('guests.add_new')}
-                            </button>
+                            </Button>
                         </>
                     )}
                 </div>
@@ -426,13 +433,17 @@ export function GuestPage() {
                     <span className="text-sm font-medium text-gold-700 dark:text-gold-400">
                         {t('guests.selected_count', { count: selectedIds.length })}
                     </span>
-                    <button onClick={handleBulkDelete} className="btn-danger text-sm py-1.5 px-4">
-                        <HiOutlineTrash className="w-4 h-4 inline mr-1" />
+                    <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        icon={<HiOutlineTrash className="w-4 h-4" />}
+                    >
                         {t('common.delete')}
-                    </button>
-                    <button onClick={() => setSelectedIds([])} className="btn-ghost text-sm py-1.5">
+                    </Button>
+                    <Button variant="ghost" onClick={() => setSelectedIds([])} className="text-sm py-1.5">
                         {t('common.clear')}
-                    </button>
+                    </Button>
                 </div>
             )}
 
@@ -461,8 +472,8 @@ export function GuestPage() {
                 title={t('guests.add_new')}
                 footer={
                     <>
-                        <button onClick={() => setShowAddModal(false)} className="btn-ghost">{t('common.cancel')}</button>
-                        <button onClick={handleAdd} className="btn-primary">{t('common.save')}</button>
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)}>{t('common.cancel')}</Button>
+                        <Button onClick={handleAdd}>{t('common.save')}</Button>
                     </>
                 }
             >
@@ -475,8 +486,8 @@ export function GuestPage() {
                 title={t('common.edit')}
                 footer={
                     <>
-                        <button onClick={() => { setShowEditModal(false); setSelectedGuest(null); }} className="btn-ghost">{t('common.cancel')}</button>
-                        <button onClick={handleEdit} className="btn-primary">{t('common.save')}</button>
+                        <Button variant="ghost" onClick={() => { setShowEditModal(false); setSelectedGuest(null); }}>{t('common.cancel')}</Button>
+                        <Button onClick={handleEdit}>{t('common.save')}</Button>
                     </>
                 }
             >
@@ -569,38 +580,17 @@ export function GuestPage() {
                 )}
             </Modal>
 
-            <Modal
+            <ConfirmDialog
                 isOpen={showDeleteConfirm}
                 onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+                onConfirm={handleDeleteConfirm}
                 title={t('guests.delete_confirm_title') || "Hapus Tamu"}
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">{t('guests.confirm_delete')}</p>
-                                <p>{t('guests.delete_confirm')}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button 
-                            onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} 
-                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 rounded-xl transition-colors"
-                        >
-                            {t('common.cancel')}
-                        </button>
-                        <button 
-                            onClick={handleDeleteConfirm} 
-                            className="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition-colors"
-                        >
-                            {t('common.delete')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle={t('guests.confirm_delete')}
+                message={t('guests.delete_confirm')}
+                confirmLabel={t('common.delete')}
+                cancelLabel={t('common.cancel')}
+            />
 
             <GoogleContactModal 
                 isOpen={showGoogleModal}

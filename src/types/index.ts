@@ -33,10 +33,51 @@ export interface Tenant {
     plan_type: PlanType;
     guest_limit: number;
     theme_id?: string;
+    quotes_id?: string;
     created_at: string;
     status_account: TenantStatus;
     payment_deadline: string;
     status_payment: 'Menunggu pembayaran' | 'Sudah dibayar';
+}
+
+// Religion options shared across register, master quotes & content settings
+export const RELIGION_OPTIONS = [
+    'Islam',
+    'Kristen Protestan',
+    'Katolik',
+    'Hindu',
+    'Buddha',
+    'Konghucu',
+] as const;
+
+export interface QuotesVariant {
+    id: string;
+    religion_enum: string;
+    title: string;
+    quote_1: string;
+    quote_2: string;
+    quote_3: string;
+    quote_4: string;
+    quote_5: string;
+    quote_6: string;
+    quote_7: string;
+    quote_by_1: string;
+    quote_by_2: string;
+    quote_by_3: string;
+    quote_by_4: string;
+    quote_by_5: string;
+    quote_by_6: string;
+    quote_by_7: string;
+    active: boolean | string;
+    flag_default_quotes: boolean | string;
+    tenant_id?: string;
+    user_id?: string;
+    created_at?: string;
+    update_at?: string;
+    // Enrichment from backend list endpoint
+    creator_username?: string;
+    tenant_slug?: string;
+    tenant_username?: string;
 }
 
 export interface User {

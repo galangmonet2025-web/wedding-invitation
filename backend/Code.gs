@@ -286,6 +286,22 @@
       case 'getReviewByTenant':
         return ReviewService.getReviewByTenant(auth);
 
+      // Master Quotes (QuotesVariant)
+      case 'getQuotesVariants':
+        return QuotesVariantService.getQuotesVariants(auth);
+      case 'createQuotesVariant':
+        return QuotesVariantService.createQuotesVariant(auth, payload);
+      case 'updateQuotesVariant':
+        return QuotesVariantService.updateQuotesVariant(auth, payload);
+      case 'deleteQuotesVariant':
+        return QuotesVariantService.deleteQuotesVariant(auth, payload);
+      case 'getActiveQuotesVariants':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return QuotesVariantService.getActiveQuotesVariants(auth);
+      case 'saveTenantQuotes':
+        PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+        return QuotesVariantService.saveTenantQuotes(auth, payload);
+
       // Payments (Midtrans)
       case 'createTransaction':
         PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
@@ -634,7 +650,8 @@
         created_at: now,
         status_account: 'active',
         payment_deadline: deadline,
-        status_payment: 'Menunggu pembayaran'
+        status_payment: 'Menunggu pembayaran',
+        quotes_id: QuotesVariantService.getDefaultOrTopQuoteId()
       };
       DB.insert('Tenants', tenant);
 
@@ -950,7 +967,8 @@
         created_at: now,
         status_account: 'active',
         payment_deadline: deadline,
-        status_payment: 'Menunggu pembayaran'
+        status_payment: 'Menunggu pembayaran',
+        quotes_id: QuotesVariantService.getDefaultOrTopQuoteId()
       };
       DB.insert('Tenants', tenant);
 
@@ -1856,6 +1874,9 @@
       // Fetch all images for this tenant
       var tenantImages = DB.getByTenant('Images', tenant.id) || [];
 
+      // Resolve quotes: use Tenants.quotes_id, fallback to default/top quote
+      var quotes = QuotesVariantService.resolveQuotes(tenant.quotes_id);
+
       return ResponseHelper.success({
         tenant: {
           bride_name: tenant.bride_name,
@@ -1872,7 +1893,8 @@
         content: content || {},
         guest: guest,
         theme: theme,
-        images: tenantImages
+        images: tenantImages,
+        quotes: quotes
       }, 'Invitation data retrieved');
     },
 
@@ -2625,13 +2647,252 @@
     }
   };
 
+  // =====================================================================
+  // QUOTES VARIANT SERVICE (Master Quotes)
+  // =====================================================================
+
+  var QUOTE_TEXT_FIELDS = ['quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7'];
+  var QUOTE_BY_FIELDS = ['quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7'];
+
+  var QuotesVariantService = {
+    // Normalize the various truthy representations stored in the sheet to a real boolean
+    isTrue: function(val) {
+      return val === true || val === 'TRUE' || val === 'true';
+    },
+
+    // Set flag_default_quotes = 'FALSE' on every row except exceptId
+    clearOtherDefaults: function(exceptId) {
+      var all = DB.getAll('QuotesVariant');
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].id !== exceptId && this.isTrue(all[i].flag_default_quotes)) {
+          DB.update('QuotesVariant', all[i].id, { flag_default_quotes: 'FALSE' });
+        }
+      }
+    },
+
+    // Returns id of the default quote, or the top-most row if none is default. '' if sheet empty.
+    getDefaultOrTopQuoteId: function() {
+      var all = DB.getAll('QuotesVariant');
+      if (all.length === 0) return '';
+      for (var i = 0; i < all.length; i++) {
+        if (this.isTrue(all[i].flag_default_quotes)) return all[i].id;
+      }
+      return all[0].id;
+    },
+
+    // Resolve a full quote object (7 quotes + 7 authors) for a given quotes_id, with fallback.
+    resolveQuotes: function(quotesId) {
+      var quote = null;
+      if (quotesId) {
+        quote = DB.findOne('QuotesVariant', 'id', quotesId);
+      }
+      if (!quote) {
+        var fallbackId = this.getDefaultOrTopQuoteId();
+        if (fallbackId) quote = DB.findOne('QuotesVariant', 'id', fallbackId);
+      }
+      if (!quote) return null;
+      return quote;
+    },
+
+    // Build creator_username + tenant_slug enrichment maps once for the whole list
+    enrichList: function(rows) {
+      var users = DB.getAll('Users');
+      var tenants = DB.getAll('Tenants');
+      var userMap = {};
+      for (var u = 0; u < users.length; u++) { userMap[users[u].id] = users[u].username; }
+      var tenantMap = {};
+      for (var t = 0; t < tenants.length; t++) { tenantMap[tenants[t].id] = tenants[t]; }
+
+      return rows.map(function(row) {
+        var enriched = {};
+        for (var k in row) { enriched[k] = row[k]; }
+        // Treat the superadmin pseudo-tenant ('system'/'system-admin') as "no tenant"
+        // so such rows display as "Berlaku umum" instead of a real tenant.
+        var tnt = row.tenant_id ? tenantMap[row.tenant_id] : null;
+        if (tnt && tnt.domain_slug === 'system-admin') { tnt = null; enriched.tenant_id = ''; }
+        enriched.creator_username = row.user_id ? (userMap[row.user_id] || '') : '';
+        enriched.tenant_slug = tnt ? (tnt.domain_slug || '') : '';
+        enriched.tenant_username = '';
+        if (tnt) {
+          // find a tenant_admin username for this tenant for display
+          for (var i = 0; i < users.length; i++) {
+            if (users[i].tenant_id === row.tenant_id && users[i].role === 'tenant_admin') {
+              enriched.tenant_username = users[i].username;
+              break;
+            }
+          }
+        }
+        return enriched;
+      });
+    },
+
+    getQuotesVariants: function(auth) {
+      PermissionService.requireRole(auth, ['superadmin']);
+      var rows = DB.getAll('QuotesVariant');
+      return ResponseHelper.success(this.enrichList(rows), 'Quotes retrieved');
+    },
+
+    // Active quotes available to a tenant: public (no tenant_id) + this tenant's own.
+    getActiveQuotesVariants: function(auth) {
+      var tenantId = auth.tenant_id;
+      var self = this;
+      var rows = DB.getAll('QuotesVariant').filter(function(q) {
+        if (!self.isTrue(q.active)) return false;
+        return !q.tenant_id || q.tenant_id === tenantId;
+      });
+      return ResponseHelper.success(rows, 'Active quotes retrieved');
+    },
+
+    buildRowFromPayload: function(payload) {
+      var row = {};
+      row.religion_enum = payload.religion_enum || '';
+      row.title = payload.title || '';
+      for (var i = 0; i < QUOTE_TEXT_FIELDS.length; i++) {
+        row[QUOTE_TEXT_FIELDS[i]] = payload[QUOTE_TEXT_FIELDS[i]] || '';
+        row[QUOTE_BY_FIELDS[i]] = payload[QUOTE_BY_FIELDS[i]] || '';
+      }
+      return row;
+    },
+
+    createQuotesVariant: function(auth, payload) {
+      PermissionService.requireRole(auth, ['superadmin']);
+      Validator.required(payload, ['title']);
+
+      var now = new Date().toISOString();
+      var id = DB.generateId();
+      var isDefault = this.isTrue(payload.flag_default_quotes);
+
+      var row = this.buildRowFromPayload(payload);
+      row.id = id;
+      row.active = this.isTrue(payload.active) ? 'TRUE' : 'FALSE';
+      row.flag_default_quotes = isDefault ? 'TRUE' : 'FALSE';
+      // Use quote_tenant_id (set explicitly by the form). Empty = "Berlaku umum".
+      // payload.tenant_id is unreliable here: the client interceptor injects the
+      // caller's tenant ('system' for superadmin) when it is blank.
+      row.tenant_id = payload.quote_tenant_id || '';
+      row.user_id = auth.user_id || '';
+      row.created_at = now;
+      row.update_at = now;
+
+      DB.insert('QuotesVariant', row);
+      if (isDefault) this.clearOtherDefaults(id);
+
+      return ResponseHelper.success(row, 'Quote created successfully');
+    },
+
+    updateQuotesVariant: function(auth, payload) {
+      PermissionService.requireRole(auth, ['superadmin']);
+      Validator.required(payload, ['id']);
+
+      var existing = DB.findOne('QuotesVariant', 'id', payload.id);
+      if (!existing) return ResponseHelper.error('Quote not found', 404);
+
+      var updates = {};
+      if (payload.religion_enum !== undefined) updates.religion_enum = payload.religion_enum;
+      if (payload.title !== undefined) updates.title = payload.title;
+      for (var i = 0; i < QUOTE_TEXT_FIELDS.length; i++) {
+        if (payload[QUOTE_TEXT_FIELDS[i]] !== undefined) updates[QUOTE_TEXT_FIELDS[i]] = payload[QUOTE_TEXT_FIELDS[i]];
+        if (payload[QUOTE_BY_FIELDS[i]] !== undefined) updates[QUOTE_BY_FIELDS[i]] = payload[QUOTE_BY_FIELDS[i]];
+      }
+      if (payload.active !== undefined) updates.active = this.isTrue(payload.active) ? 'TRUE' : 'FALSE';
+      // See createQuotesVariant: read the explicit quote_tenant_id, not payload.tenant_id
+      // (the latter is overwritten with the caller's tenant by the client interceptor).
+      if (payload.quote_tenant_id !== undefined) updates.tenant_id = payload.quote_tenant_id || '';
+
+      var becomingDefault = false;
+      if (payload.flag_default_quotes !== undefined) {
+        becomingDefault = this.isTrue(payload.flag_default_quotes);
+        updates.flag_default_quotes = becomingDefault ? 'TRUE' : 'FALSE';
+      }
+      updates.update_at = new Date().toISOString();
+
+      DB.update('QuotesVariant', payload.id, updates);
+      if (becomingDefault) this.clearOtherDefaults(payload.id);
+
+      return ResponseHelper.success(null, 'Quote updated successfully');
+    },
+
+    deleteQuotesVariant: function(auth, payload) {
+      PermissionService.requireRole(auth, ['superadmin']);
+      Validator.required(payload, ['id']);
+
+      var existing = DB.findOne('QuotesVariant', 'id', payload.id);
+      if (!existing) return ResponseHelper.error('Quote not found', 404);
+      if (this.isTrue(existing.flag_default_quotes)) {
+        return ResponseHelper.error('Quote default tidak dapat dihapus', 400);
+      }
+
+      DB.deleteRow('QuotesVariant', payload.id);
+      return ResponseHelper.success(null, 'Quote deleted');
+    },
+
+    // Tenant saves their content-setting quote choice.
+    // custom=true -> upsert a single tenant-owned row and point Tenants.quotes_id to it.
+    // custom=false -> just point Tenants.quotes_id to the chosen master quotes_id.
+    saveTenantQuotes: function(auth, payload) {
+      var tenantId = PermissionService.getTenantId(auth);
+      var isCustom = this.isTrue(payload.custom);
+
+      var tenant = DB.findOne('Tenants', 'id', tenantId);
+      if (!tenant) return ResponseHelper.error('Tenant not found', 404);
+
+      if (!isCustom) {
+        var chosenId = payload.quotes_id || '';
+        DB.update('Tenants', tenantId, { quotes_id: chosenId });
+        return ResponseHelper.success({ quotes_id: chosenId }, 'Quotes selection saved');
+      }
+
+      // Custom: find this tenant's own non-default row
+      var self = this;
+      var existing = DB.getAll('QuotesVariant').filter(function(q) {
+        return q.tenant_id === tenantId && q.user_id === auth.user_id && !self.isTrue(q.flag_default_quotes);
+      })[0];
+
+      var now = new Date().toISOString();
+      // Only the 7 quote + 7 author fields, never clobber title/religion on update
+      var quoteFields = {};
+      for (var i = 0; i < QUOTE_TEXT_FIELDS.length; i++) {
+        quoteFields[QUOTE_TEXT_FIELDS[i]] = payload[QUOTE_TEXT_FIELDS[i]] || '';
+        quoteFields[QUOTE_BY_FIELDS[i]] = payload[QUOTE_BY_FIELDS[i]] || '';
+      }
+
+      var quotesId;
+      if (existing) {
+        quotesId = existing.id;
+        var updates = {};
+        for (var key in quoteFields) { updates[key] = quoteFields[key]; }
+        updates.active = 'TRUE';
+        updates.update_at = now;
+        DB.update('QuotesVariant', quotesId, updates);
+      } else {
+        quotesId = DB.generateId();
+        var row = {};
+        for (var k in quoteFields) { row[k] = quoteFields[k]; }
+        row.id = quotesId;
+        row.religion_enum = payload.religion_enum || (tenant.religion || '');
+        row.title = payload.title || ('Custom - ' + (tenant.domain_slug || tenantId));
+        row.active = 'TRUE';
+        row.flag_default_quotes = 'FALSE';
+        row.tenant_id = tenantId;
+        row.user_id = auth.user_id || '';
+        row.created_at = now;
+        row.update_at = now;
+        DB.insert('QuotesVariant', row);
+      }
+
+      DB.update('Tenants', tenantId, { quotes_id: quotesId });
+      return ResponseHelper.success({ quotes_id: quotesId }, 'Custom quotes saved');
+    }
+  };
+
 
   function setupSpreadsheet() {
     var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
     var sheets = {
       'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'css_template', 'css_extra_1', 'css_extra_2', 'js_template', 'js_extra_1', 'js_extra_2', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'image_types', 'created_at'],
-      'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
+      'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
+      'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'active', 'flag_default_quotes', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
       'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
       'Wishes': ['id', 'tenant_id', 'guest_name', 'message', 'created_at'],

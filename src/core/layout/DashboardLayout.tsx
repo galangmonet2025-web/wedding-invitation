@@ -31,6 +31,7 @@ import {
     HiOutlineCreditCard,
     HiOutlineAdjustments,
     HiOutlineTicket,
+    HiOutlineAnnotation,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
@@ -289,6 +290,7 @@ export function DashboardLayout() {
             { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: t('sidebar.global_dashboard'), roles: ['superadmin'], desc: t('sidebar.global_dashboard_desc', 'Statistik platform, estimasi pendapatan, dan fitur tertunda') },
             { to: '/private/tenants', icon: HiOutlineOfficeBuilding, label: t('sidebar.manage_tenants'), roles: ['superadmin'], desc: t('sidebar.manage_tenants_desc', 'Kelola semua tenant pengguna, masa aktif, dan status data pernikahan') },
             { to: '/private/themes', icon: HiOutlineColorSwatch, label: t('sidebar.manage_themes'), roles: ['superadmin'], desc: t('sidebar.manage_themes_desc', 'Kelola database desain tema, template undangan, dan kategori plan') },
+            { to: '/private/master-quotes', icon: HiOutlineAnnotation, label: t('sidebar.master_quotes', 'Master Quotes'), roles: ['superadmin'], desc: t('sidebar.master_quotes_desc', 'Kelola katalog quotes undangan, atur quote default, dan status aktif') },
             { to: '/private/additional-features', icon: HiOutlinePuzzle, label: t('sidebar.additional_feature'), roles: ['superadmin'], desc: t('sidebar.additional_feature_desc', 'Konfigurasi add-on kustom, input tenant, dan hasil output admin') },
             { to: '/private/plan-config', icon: HiOutlineAdjustments, label: t('sidebar.plan_config', 'Konfigurasi Paket'), roles: ['superadmin'], desc: t('sidebar.plan_config_desc', 'Atur harga paket basic/pro/premium, guest limit, dan list fitur benefit') },
             { to: '/private/transactions', icon: HiOutlineCreditCard, label: t('sidebar.monitoring_transactions', 'Monitoring Transaksi'), roles: ['superadmin'], desc: t('sidebar.monitoring_transactions_desc', 'Pantau riwayat pembayaran invoice, nominal transfer, dan status order') },

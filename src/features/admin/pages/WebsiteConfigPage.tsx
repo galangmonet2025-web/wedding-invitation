@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { websiteConfigApi } from '@/core/api/endpoints';
 import { WebsiteConfig } from '@/types';
-import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { 
     HiOutlineSave, 
     HiOutlineRefresh, 
@@ -555,18 +556,15 @@ export function WebsiteConfigPage() {
                     >
                         <HiOutlineRefresh className={`w-5 h-5 ${saving ? 'animate-spin' : ''}`} />
                     </button>
-                    <button 
+                    <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="btn-primary flex items-center gap-2 group"
+                        loading={saving}
+                        icon={<HiOutlineSave className="w-5 h-5 group-hover:scale-110 transition-transform" />}
+                        className="group"
                     >
-                        {saving ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <HiOutlineSave className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        )}
                         <span className="hidden sm:inline">Simpan Konfigurasi</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -1203,39 +1201,20 @@ export function WebsiteConfigPage() {
             )}
 
             {/* Modal Konfirmasi Hapus Logo */}
-            <Modal
+            <ConfirmDialog
                 isOpen={showDeleteLogoModal}
                 onClose={() => setShowDeleteLogoModal(false)}
                 onConfirm={handleDeleteLogo}
                 title="Hapus Logo Website"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus logo website ini? Logo juga akan dihapus permanen dari Google Drive.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setShowDeleteLogoModal(false)} className="btn-ghost" disabled={deletingLogo}>Batal</button>
-                        <button
-                            onClick={handleDeleteLogo}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
-                            disabled={deletingLogo}
-                        >
-                            {deletingLogo && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {deletingLogo ? 'Menghapus...' : 'Ya, Hapus Logo'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle="Konfirmasi Hapus"
+                message="Apakah Anda yakin ingin menghapus logo website ini? Logo juga akan dihapus permanen dari Google Drive."
+                confirmLabel="Ya, Hapus Logo"
+                loading={deletingLogo}
+            />
 
             {/* Modal Konfirmasi Ganti Logo */}
-            <Modal
+            <ConfirmDialog
                 isOpen={showReplaceLogoModal}
                 onClose={() => {
                     setShowReplaceLogoModal(false);
@@ -1243,40 +1222,13 @@ export function WebsiteConfigPage() {
                 }}
                 onConfirm={() => pendingReplaceFile && uploadLogo(pendingReplaceFile)}
                 title="Ganti Logo Website"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
-                        <div className="flex gap-3 text-amber-800 dark:text-amber-400">
-                            <HiOutlineRefresh className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Ganti Logo</p>
-                                <p>Logo baru akan diunggah dan <b>logo lama akan dihapus permanen</b> dari Google Drive. Lanjutkan?</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button 
-                            onClick={() => {
-                                setShowReplaceLogoModal(false);
-                                setPendingReplaceFile(null);
-                            }} 
-                            className="btn-ghost" 
-                            disabled={uploadingLogo}
-                        >
-                            Batal
-                        </button>
-                        <button
-                            onClick={() => pendingReplaceFile && uploadLogo(pendingReplaceFile)}
-                            className="btn-primary py-2 px-6 flex items-center gap-2"
-                            disabled={uploadingLogo}
-                        >
-                            {uploadingLogo && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {uploadingLogo ? 'Memproses...' : 'Ya, Ganti Logo'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="primary"
+                warningTitle="Konfirmasi Ganti Logo"
+                icon={<HiOutlineRefresh className="w-5 h-5 shrink-0 mt-0.5" />}
+                message={<>Logo baru akan diunggah dan <b>logo lama akan dihapus permanen</b> dari Google Drive. Lanjutkan?</>}
+                confirmLabel="Ya, Ganti Logo"
+                loading={uploadingLogo}
+            />
             </div>
         </div>
     );

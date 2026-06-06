@@ -13,6 +13,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { invitationContentApi } from '@/core/api/endpoints';
 import { useTranslation } from 'react-i18next';
 import { InvitationContent } from '@/types';
+import { IconButton } from '@/shared/components/IconButton';
 
 // Helper: Convert WhatsApp Markdown to HTML for visual editor
 const whatsAppToHtml = (text: string) => {
@@ -410,13 +411,14 @@ export function WhatsAppBlastPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-end mb-1">
-                <button
+                <IconButton
                     onClick={() => { fetchGuests(true); fetchContent(true); }}
-                    className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                    icon={<HiOutlineRefresh className="w-4 h-4" />}
+                    spinning={loading}
+                    size="sm"
+                    className="gap-1.5 text-xs font-bold uppercase tracking-wider"
                     title="Refresh Data"
-                >
-                    <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

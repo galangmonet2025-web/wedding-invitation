@@ -18,6 +18,8 @@ import {
     HiOutlineX,
 } from 'react-icons/hi';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
 
 export function PaymentPage() {
     const { t } = useTranslation();
@@ -316,13 +318,12 @@ export function PaymentPage() {
                 <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{t('payments.subtitle', 'Kelola transaksi dan tagihan Anda')}</p>
                 </div>
-                <button
+                <IconButton
                     onClick={() => fetchAll(false)}
-                    className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                     title={t('common.refresh', 'Refresh')}
-                >
-                    <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+                    icon={<HiOutlineRefresh className="w-5 h-5" />}
+                    spinning={loading}
+                />
             </div>
 
             {/* Pending Payments Alert */}
@@ -761,23 +762,24 @@ export function PaymentPage() {
                     </div>
                     
                     <div className="flex items-center justify-end gap-3 pt-2">
-                        <button
+                        <Button
                             type="button"
+                            variant="ghost"
                             onClick={() => setTransactionToCancel(null)}
-                            className="btn-ghost px-5 py-1.5 text-sm"
+                            className="px-5 py-1.5 text-sm"
                             disabled={!!cancelingId}
                         >
                             {t('payments.back', 'Kembali')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
+                            variant="danger"
                             onClick={handleCancelTransaction}
-                            disabled={!!cancelingId}
-                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
+                            loading={!!cancelingId}
+                            className="px-6 py-1.5 text-sm"
                         >
-                            {cancelingId && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                             {t('payments.yes_cancel', 'Ya, Batalkan Transaksi')}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </Modal>

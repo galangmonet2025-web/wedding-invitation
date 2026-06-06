@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { paymentApi } from '@/core/api/endpoints';
 import { Modal } from '@/shared/components/Modal';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageLoader } from '@/shared/components/Loading';
 import { usePlanStore } from '@/features/admin/store/planStore';
 import type { MstPlanType, MstPlanFeature } from '@/types';
@@ -619,34 +620,15 @@ export function PlanConfigPage() {
             </Modal>
 
             {/* Delete Confirmation Modal */}
-            <Modal
+            <ConfirmDialog
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDeleteFeature}
                 title="Hapus Fitur Paket"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
-                                <p>Apakah Anda yakin ingin menghapus fitur ini?</p>
-                                <p className="mt-2 text-xs opacity-80">Fitur ini akan dihapus dari paket dan tidak dapat dikembalikan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setShowDeleteModal(false)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
-                        <button
-                            onClick={handleDeleteFeature}
-                            className="btn-danger py-1.5 px-6 text-sm"
-                        >
-                            Ya, Hapus Permanen
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                message={<p>Apakah Anda yakin ingin menghapus fitur ini?</p>}
+                description="Fitur ini akan dihapus dari paket dan tidak dapat dikembalikan."
+                confirmLabel="Ya, Hapus Permanen"
+            />
         </div>
     );
 }

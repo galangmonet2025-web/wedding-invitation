@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
 import { HiOutlineUpload, HiOutlineTrash, HiOutlineExclamationCircle } from 'react-icons/hi';
 import Papa from 'papaparse';
 import toast from 'react-hot-toast';
@@ -142,22 +143,17 @@ export function GoogleContactModal({ isOpen, onClose, onImport }: GoogleContactM
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={resetModal} className="btn-ghost" disabled={isSaving}>Batal</button>
+                        <Button variant="ghost" onClick={resetModal} disabled={isSaving}>Batal</Button>
                         {isUploaded && (
-                            <button 
-                                onClick={handleSave} 
-                                className="btn-primary flex items-center gap-2"
+                            <Button
+                                onClick={handleSave}
+                                loading={isSaving}
                                 disabled={contacts.length === 0 || isSaving}
                             >
-                                {isSaving ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        {isBackgroundSaving ? 'Memproses...' : 'Menyimpan...'}
-                                    </>
-                                ) : (
-                                    'Simpan ke Database'
-                                )}
-                            </button>
+                                {isSaving
+                                    ? (isBackgroundSaving ? 'Memproses...' : 'Menyimpan...')
+                                    : 'Simpan ke Database'}
+                            </Button>
                         )}
                     </div>
                 </div>

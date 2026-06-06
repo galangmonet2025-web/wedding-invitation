@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { giftApi } from '@/core/api/endpoints';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
+import { Badge } from '@/shared/components/Badge';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Gift } from '@/types';
 import toast from 'react-hot-toast';
@@ -88,7 +92,7 @@ export function GiftsPage() {
         {
             key: 'bank_name',
             header: t('gifts.table_bank', 'Bank'),
-            render: (g: Gift) => <span className="badge-info">{g.bank_name}</span>,
+            render: (g: Gift) => <Badge variant="info">{g.bank_name}</Badge>,
         },
         {
             key: 'created_at',
@@ -126,17 +130,19 @@ export function GiftsPage() {
                             PDF
                         </button>
                     </div>
-                    <button 
-                        onClick={() => fetchGifts(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                    <IconButton
+                        onClick={() => fetchGifts(true)}
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                        spinning={loading}
                         title={t('common.refresh', 'Segarkan')}
+                    />
+                    <Button
+                        onClick={() => setShowAddModal(true)}
+                        className="text-sm"
+                        icon={<HiOutlinePlus className="w-4 h-4" />}
                     >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm flex items-center gap-2">
-                        <HiOutlinePlus className="w-4 h-4" />
                         {t('gifts.record_button', 'Record Gift')}
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -213,28 +219,15 @@ export function GiftsPage() {
             </Modal>
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!giftToDelete}
                 onClose={() => setGiftToDelete(null)}
+                onConfirm={handleDelete}
                 title="Hapus Catatan Hadiah"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus catatan hadiah dari <b>{giftToDelete?.guest_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setGiftToDelete(null)} className="btn-ghost">Batal</button>
-                        <button onClick={handleDelete} className="btn-danger py-2 px-6">Ya, Hapus</button>
-                    </div>
-                </div>
-            </Modal>
+                warningTitle="Konfirmasi Hapus"
+                confirmLabel="Ya, Hapus"
+                message={<p>Apakah Anda yakin ingin menghapus catatan hadiah dari <b>{giftToDelete?.guest_name}</b>? Tindakan ini tidak dapat dibatalkan.</p>}
+            />
         </div>
     );
 }

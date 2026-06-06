@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from './Modal';
+import { Button } from '@/shared/components/Button';
 import { authApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 
@@ -101,21 +102,20 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
                         onClick={onClose}
-                        className="btn-ghost"
                         disabled={loading}
                     >
                         Batal
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="submit"
-                        className="btn-primary"
                         disabled={loading}
                     >
                         {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </Modal>

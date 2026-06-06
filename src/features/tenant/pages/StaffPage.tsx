@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { staffApi } from '@/core/api/endpoints';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { HiOutlinePlus, HiOutlineUserAdd, HiOutlineTrash, HiOutlineUserGroup, HiOutlineRefresh } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useStaffStore } from '../store/staffStore';
@@ -77,13 +79,13 @@ export function StaffPage() {
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
-                    <button
+                    <Button
                         onClick={() => setIsCreatingModalOpen(true)}
-                        className="btn-primary text-sm flex items-center gap-2 shrink-0"
+                        className="text-sm shrink-0"
+                        icon={<HiOutlinePlus className="w-4 h-4" />}
                     >
-                        <HiOutlinePlus className="w-4 h-4" />
-                        <span>{t('staff.create_title', 'Buat Akun Staff Baru')}</span>
-                    </button>
+                        {t('staff.create_title', 'Buat Akun Staff Baru')}
+                    </Button>
                 </div>
             </div>
 
@@ -275,28 +277,17 @@ export function StaffPage() {
             </Modal>
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!staffToDelete}
                 onClose={() => setStaffToDelete(null)}
+                onConfirm={handleDelete}
                 title={t('staff.delete_modal_title', 'Hapus Akun Staff')}
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">{t('staff.delete_modal_title', 'Hapus Akun Staff')}</p>
-                                <p>{t('staff.delete_warning', 'Apakah Anda yakin ingin menghapus akun staff')} <b>{staffToDelete?.username}</b>? {t('staff.delete_warning_desc', 'Tindakan ini tidak dapat dibatalkan dan akun staff tidak akan dapat digunakan lagi.')}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setStaffToDelete(null)} className="btn-ghost">{t('common.cancel', 'Batal')}</button>
-                        <button onClick={handleDelete} className="btn-danger py-2 px-6">{t('common.yes_delete', 'Ya, Hapus')}</button>
-                    </div>
-                </div>
-            </Modal>
+                warningTitle={t('staff.delete_modal_title', 'Hapus Akun Staff')}
+                variant="danger"
+                cancelLabel={t('common.cancel', 'Batal')}
+                confirmLabel={t('common.yes_delete', 'Ya, Hapus')}
+                message={<p>{t('staff.delete_warning', 'Apakah Anda yakin ingin menghapus akun staff')} <b>{staffToDelete?.username}</b>? {t('staff.delete_warning_desc', 'Tindakan ini tidak dapat dibatalkan dan akun staff tidak akan dapat digunakan lagi.')}</p>}
+            />
         </div>
     );
 }

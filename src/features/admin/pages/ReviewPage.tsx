@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { reviewApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
-import { Modal } from '@/shared/components/Modal';
+import { IconButton } from '@/shared/components/IconButton';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { ReviewAndRating } from '@/types';
 import toast from 'react-hot-toast';
 import { HiOutlineChatAlt2, HiOutlineExternalLink, HiOutlineStar, HiSave, HiOutlineRefresh, HiOutlineTrash } from 'react-icons/hi';
@@ -113,13 +114,12 @@ export function ReviewPage() {
                             PDF
                         </button>
                     </div>
-                    <button
+                    <IconButton
                         onClick={() => fetchReviews(true)}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                        spinning={loading}
+                    />
                 </div>
             </div>
 
@@ -376,36 +376,17 @@ export function ReviewPage() {
             </div>
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!reviewToDelete}
                 onClose={() => setReviewToDelete(null)}
+                onConfirm={handleDelete}
                 title="Hapus Review & Rating"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
-                                <p>Apakah Anda yakin ingin menghapus review dari <b>{reviewToDelete?.bride_name} & {reviewToDelete?.groom_name}</b>?</p>
-                                <p className="mt-2 text-xs opacity-80">Data review dan rating ini akan dihapus permanen dan tidak dapat dikembalikan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setReviewToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={isDeleting}>Batal</button>
-                        <button
-                            onClick={handleDelete}
-                            className="btn-danger py-1.5 px-6 text-sm flex items-center gap-2"
-                            disabled={isDeleting}
-                        >
-                            {isDeleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {isDeleting ? 'Menghapus...' : 'Ya, Hapus Permanen'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                confirmLabel="Ya, Hapus Permanen"
+                loading={isDeleting}
+                message={<p>Apakah Anda yakin ingin menghapus review dari <b>{reviewToDelete?.bride_name} & {reviewToDelete?.groom_name}</b>?</p>}
+                description="Data review dan rating ini akan dihapus permanen dan tidak dapat dikembalikan."
+            />
         </div>
     );
 }

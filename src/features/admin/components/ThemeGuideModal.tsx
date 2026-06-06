@@ -141,7 +141,10 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                 { tag: '{{custom_kalimat_2}}', desc: 'Teks Kustom 2 (Sambutan)', value: 'Teks Tambahan 2', type: 'String', code: '<p>{{custom_kalimat_2}}</p>' },
                 { tag: '{{custom_kalimat_3}}', desc: 'Teks Kustom 3 (Protokol)', value: 'Teks Tambahan 3', type: 'String', code: '<p>{{custom_kalimat_3}}</p>' },
                 { tag: '{{custom_kalimat_4}}', desc: 'Teks Kustom 4 (Footer)', value: 'Teks Tambahan 4', type: 'String', code: '<p>{{custom_kalimat_4}}</p>' },
-                { tag: '{{quote}}', desc: 'Quote Utama', value: 'Dan di antara tanda-tanda...', type: 'String', code: '<blockquote>{{quote}}</blockquote>' },
+                { tag: '{{quote}}', desc: 'Quote Utama (alias quote_1)', value: 'Dan di antara tanda-tanda...', type: 'String', code: '<blockquote>{{quote}}</blockquote>' },
+                { tag: '{{quote_by}}', desc: 'Penulis Quote Utama (alias quote_by_1)', value: 'QS. Ar-Rum: 21', type: 'String', code: '<cite>{{quote_by}}</cite>' },
+                { tag: '{{quote_1}} … {{quote_7}}', desc: 'Master Quotes 1-7', value: 'Quote ke-n', type: 'String', code: '<blockquote>{{quote_1}}</blockquote>' },
+                { tag: '{{quote_by_1}} … {{quote_by_7}}', desc: 'Penulis Quotes 1-7', value: 'Penulis ke-n', type: 'String', code: '<cite>{{quote_by_1}}</cite>' },
             ]
         },
         {

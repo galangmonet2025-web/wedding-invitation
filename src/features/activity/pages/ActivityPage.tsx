@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { activityApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
+import { IconButton } from '@/shared/components/IconButton';
 import type { ActivityLog } from '@/types';
 import toast from 'react-hot-toast';
 import { useActivityStore } from '../store/activityStore';
@@ -84,13 +85,12 @@ export function ActivityPage() {
                 <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Track all actions performed in the system</p>
                 </div>
-                <button 
-                    onClick={() => fetchLogs()} 
-                    className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                <IconButton
+                    onClick={() => fetchLogs()}
+                    icon={<HiOutlineRefresh className="w-5 h-5" />}
+                    spinning={loading}
                     title="Refresh Data"
-                >
-                    <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+                />
             </div>
 
             <div className="space-y-8">

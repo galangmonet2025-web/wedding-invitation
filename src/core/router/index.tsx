@@ -29,6 +29,8 @@ import { ReviewPage } from '@/features/admin/pages/ReviewPage';
 import { PaymentPage } from '@/features/payment/pages/PaymentPage';
 import { TransactionMonitoringPage } from '@/features/admin/pages/TransactionMonitoringPage';
 import { CouponPage } from '@/features/admin/pages/CouponPage';
+import { MasterQuotesListPage } from '@/features/admin/pages/MasterQuotesListPage';
+import { MasterQuotesFormPage } from '@/features/admin/pages/MasterQuotesFormPage';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 function AdditionalFeatureRouter() {
@@ -196,6 +198,30 @@ export const router = createHashRouter([
                                 element: (
                                     <ProtectedRoute allowedRoles={['superadmin']}>
                                         <ReviewPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'master-quotes',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <MasterQuotesListPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'master-quotes/new',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <MasterQuotesFormPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'master-quotes/edit/:id',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <MasterQuotesFormPage />
                                     </ProtectedRoute>
                                 ),
                             },

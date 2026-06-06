@@ -4,7 +4,8 @@ import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload } from 'react-icons/hi';
-import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { AiThemeModal } from '../components/AiThemeModal';
@@ -956,6 +957,13 @@ export function ThemeEditorPage() {
                         kalimat_pembuka: c.kalimat_pembuka_undangan || 'Dengan memohon rahmat dan ridho Allah SWT...',
                         kalimat_penutup: c.kalimat_penutup_undangan || 'Merupakan suatu kehormatan dan kebahagiaan bagi kami...',
                         quote: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
+                        quote_by: 'QS. Ar-Rum: 21',
+                        quote_1: c.custom_kalimat_1 || 'Dan di antara tanda-tanda kekuasaan-Nya...',
+                        quote_2: 'Maka nikmat Tuhanmu manakah yang kamu dustakan?',
+                        quote_3: '', quote_4: '', quote_5: '', quote_6: '', quote_7: '',
+                        quote_by_1: 'QS. Ar-Rum: 21',
+                        quote_by_2: 'QS. Ar-Rahman: 13',
+                        quote_by_3: '', quote_by_4: '', quote_by_5: '', quote_by_6: '', quote_by_7: '',
                         custom_kalimat_1: c.custom_kalimat_1 || '',
                         custom_kalimat_2: c.custom_kalimat_2 || '',
                         custom_kalimat_3: c.custom_kalimat_3 || '',
@@ -1646,7 +1654,7 @@ export function ThemeEditorPage() {
                                             placeholder="hero_cover"
                                             className="input-field"
                                         />
-                                        <button
+                                        <Button
                                             onClick={() => {
                                                 const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
                                                 if (val && !imageTypes.includes(val)) {
@@ -1654,8 +1662,7 @@ export function ThemeEditorPage() {
                                                     setNewImageType('');
                                                 }
                                             }}
-                                            className="btn-primary"
-                                        >Tambah</button>
+                                        >Tambah</Button>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {Array.isArray(imageTypes) && imageTypes.map(it => (
@@ -1863,39 +1870,20 @@ export function ThemeEditorPage() {
             />
 
             {/* Modal Konfirmasi Hapus Pratinjau */}
-            <Modal
+            <ConfirmDialog
                 isOpen={showDeletePreviewModal}
                 onClose={() => setShowDeletePreviewModal(false)}
                 onConfirm={handleDeletePreview}
                 title="Hapus Gambar Pratinjau"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus gambar pratinjau tema ini? Gambar juga akan dihapus permanen dari Google Drive.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setShowDeletePreviewModal(false)} className="btn-ghost" disabled={deletingPreview}>Batal</button>
-                        <button
-                            onClick={handleDeletePreview}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
-                            disabled={deletingPreview}
-                        >
-                            {deletingPreview && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {deletingPreview ? 'Menghapus...' : 'Ya, Hapus Gambar'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle="Konfirmasi Hapus"
+                message="Apakah Anda yakin ingin menghapus gambar pratinjau tema ini? Gambar juga akan dihapus permanen dari Google Drive."
+                confirmLabel="Ya, Hapus Gambar"
+                loading={deletingPreview}
+            />
 
             {/* Modal Konfirmasi Ganti Pratinjau */}
-            <Modal
+            <ConfirmDialog
                 isOpen={showReplacePreviewModal}
                 onClose={() => {
                     setShowReplacePreviewModal(false);
@@ -1903,40 +1891,13 @@ export function ThemeEditorPage() {
                 }}
                 onConfirm={() => pendingReplacePreviewFile && uploadPreview(pendingReplacePreviewFile)}
                 title="Ganti Gambar Pratinjau"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
-                        <div className="flex gap-3 text-amber-800 dark:text-amber-400">
-                            <HiOutlineRefresh className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Ganti Gambar</p>
-                                <p>Gambar baru akan diunggah dan <b>gambar lama akan dihapus permanen</b> dari Google Drive. Lanjutkan?</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button
-                            onClick={() => {
-                                setShowReplacePreviewModal(false);
-                                setPendingReplacePreviewFile(null);
-                            }}
-                            className="btn-ghost"
-                            disabled={uploadingPreview}
-                        >
-                            Batal
-                        </button>
-                        <button
-                            onClick={() => pendingReplacePreviewFile && uploadPreview(pendingReplacePreviewFile)}
-                            className="btn-primary py-2 px-6 flex items-center gap-2"
-                            disabled={uploadingPreview}
-                        >
-                            {uploadingPreview && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {uploadingPreview ? 'Memproses...' : 'Ya, Ganti Gambar'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                variant="primary"
+                icon={<HiOutlineRefresh className="w-5 h-5 shrink-0 mt-0.5" />}
+                warningTitle="Konfirmasi Ganti Gambar"
+                message={<>Gambar baru akan diunggah dan <b>gambar lama akan dihapus permanen</b> dari Google Drive. Lanjutkan?</>}
+                confirmLabel="Ya, Ganti Gambar"
+                loading={uploadingPreview}
+            />
         </div>
     );
 }

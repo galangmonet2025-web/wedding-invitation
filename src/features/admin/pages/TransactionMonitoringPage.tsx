@@ -3,6 +3,7 @@ import { useTransactionStore } from '@/features/admin/store/transactionStore';
 import toast from 'react-hot-toast';
 import { getStatusBadge } from '@/utils/midtrans';
 import { PageLoader } from '@/shared/components/Loading';
+import { IconButton } from '@/shared/components/IconButton';
 import {
     HiOutlineRefresh,
     HiOutlineCreditCard,
@@ -72,13 +73,12 @@ export function TransactionMonitoringPage() {
                 <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Semua transaksi pembayaran di platform</p>
                 </div>
-                <button
+                <IconButton
                     onClick={() => fetchTransactions(true)}
-                    className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                     title="Refresh"
-                >
-                    <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+                    icon={<HiOutlineRefresh className="w-5 h-5" />}
+                    spinning={loading}
+                />
             </div>
 
             {/* Stats Cards */}

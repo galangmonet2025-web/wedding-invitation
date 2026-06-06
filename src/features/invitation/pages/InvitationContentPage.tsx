@@ -3,11 +3,13 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format, parse } from 'date-fns';
 import { useBlocker } from 'react-router-dom';
-import { tenantApi } from '@/core/api/endpoints';
+import { tenantApi, quotesApi } from '@/core/api/endpoints';
 import { useInvitationContentStore } from '../store/invitationContentStore';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
 import { PageLoader } from '@/shared/components/Loading';
-import type { InvitationContent, Theme } from '@/types';
+import type { InvitationContent, Theme, QuotesVariant } from '@/types';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
@@ -101,6 +103,12 @@ export function InvitationContentPage() {
     const { themes, fetchThemes } = useThemeStore();
     const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+
+    // Master Quotes
+    const [activeQuotes, setActiveQuotes] = useState<QuotesVariant[]>([]);
+    const [selectedQuotesId, setSelectedQuotesId] = useState<string>('');
+    const [customQuotesEnabled, setCustomQuotesEnabled] = useState(false);
+    const [customQuotes, setCustomQuotes] = useState<Record<string, string>>({});
     const { tenant, updateTenant: updateAuthTenant } = useAuthStore();
     const [iframeKey, setIframeKey] = useState(0);
     const { t } = useTranslation();
@@ -202,9 +210,47 @@ export function InvitationContentPage() {
         fetchThemes();
         fetchContent(false, tenant);
         fetchImages();
-        
+
         if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
     }, [tenant]);
+
+    // Load active quotes (master + tenant own) and initialize selection
+    useEffect(() => {
+        let mounted = true;
+        quotesApi.getActiveQuotes({ skipLoader: true } as any).then((res) => {
+            if (!mounted || !res.success) return;
+            const list = res.data || [];
+            setActiveQuotes(list);
+
+            // Determine initial selection: tenant.quotes_id -> default -> first
+            const isDefault = (q: QuotesVariant) => q.flag_default_quotes === true || q.flag_default_quotes === 'TRUE' || q.flag_default_quotes === 'true';
+            let initial = tenant?.quotes_id && list.find((q) => q.id === tenant.quotes_id);
+            if (!initial) initial = list.find(isDefault);
+            if (!initial) initial = list[0];
+
+            if (initial) {
+                setSelectedQuotesId(initial.id);
+                // If the tenant's current quote is their own custom row, pre-fill custom editor
+                const ownsCustom = !!tenant?.id && initial.tenant_id === tenant.id;
+                if (ownsCustom) {
+                    setCustomQuotesEnabled(true);
+                    const c: Record<string, string> = {};
+                    for (let i = 1; i <= 7; i++) {
+                        c[`quote_${i}`] = (initial as any)[`quote_${i}`] || '';
+                        c[`quote_by_${i}`] = (initial as any)[`quote_by_${i}`] || '';
+                    }
+                    setCustomQuotes(c);
+                }
+            }
+        }).catch(() => {});
+        return () => { mounted = false; };
+    }, [tenant?.id]);
+
+    // The quote object currently driving the preview / read-only table
+    const selectedQuote = useMemo<Partial<QuotesVariant>>(() => {
+        if (customQuotesEnabled) return customQuotes as Partial<QuotesVariant>;
+        return activeQuotes.find((q) => q.id === selectedQuotesId) || {};
+    }, [customQuotesEnabled, customQuotes, activeQuotes, selectedQuotesId]);
 
     // Live Preview Synchronization
     useEffect(() => {
@@ -219,7 +265,8 @@ export function InvitationContentPage() {
                     type: 'invitation-preview-update',
                     content: content,
                     images: images,
-                    theme: selectedThemeObj
+                    theme: selectedThemeObj,
+                    quotes: selectedQuote
                 }, '*');
             }
         };
@@ -240,7 +287,7 @@ export function InvitationContentPage() {
             clearTimeout(timeout);
             window.removeEventListener('blur', handleBlur, true);
         };
-    }, [content, images, selectedThemeId, themes]);
+    }, [content, images, selectedThemeId, themes, selectedQuote]);
 
 
 
@@ -263,6 +310,29 @@ export function InvitationContentPage() {
                     ...tenant,
                     theme_id: selectedThemeId || undefined
                 });
+            }
+
+            // Save quotes selection (custom upsert or master pick)
+            try {
+                if (customQuotesEnabled) {
+                    const res = await quotesApi.saveTenantQuotes({
+                        custom: true,
+                        ...customQuotes,
+                    } as any, { skipLoader: true } as any);
+                    if (res.success && res.data?.quotes_id) {
+                        updateAuthTenant({ ...tenant, quotes_id: res.data.quotes_id });
+                    }
+                } else if (selectedQuotesId && selectedQuotesId !== tenant.quotes_id) {
+                    const res = await quotesApi.saveTenantQuotes({
+                        custom: false,
+                        quotes_id: selectedQuotesId,
+                    } as any, { skipLoader: true } as any);
+                    if (res.success) {
+                        updateAuthTenant({ ...tenant, quotes_id: selectedQuotesId });
+                    }
+                }
+            } catch (e) {
+                console.error('Save quotes error:', e);
             }
 
             if (success) {
@@ -408,29 +478,25 @@ export function InvitationContentPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400">{t('invitation_content.description')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
+                    <IconButton
                         onClick={async () => {
                             toast.loading(t('invitation_content.refresh_loading'), { id: 'refresh-data' });
                             await Promise.all([fetchContent(true), fetchImages(true)]);
                             toast.success(t('invitation_content.refresh_success'), { id: 'refresh-data' });
                         }}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
                         title={t('invitation_content.refresh_tooltip')}
-                    >
-                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button
+                        spinning={loading}
+                        icon={<HiOutlineRefresh className="w-5 h-5" />}
+                    />
+                    <Button
                         onClick={handleSave}
                         disabled={saving || isUploadingGallery}
-                        className="btn-primary flex items-center justify-center gap-2 px-6 disabled:opacity-50 disabled:grayscale"
+                        loading={saving || isUploadingGallery}
+                        className="px-6 disabled:opacity-50 disabled:grayscale"
+                        icon={<HiOutlineSave className="w-5 h-5" />}
                     >
-                        {saving || isUploadingGallery ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <HiOutlineSave className="w-5 h-5" />
-                        )}
                         {saving ? t('invitation_content.saving') : isUploadingGallery ? t('invitation_content.uploading') : t('invitation_content.save_settings')}
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -1210,6 +1276,107 @@ export function InvitationContentPage() {
                                         })()}
                                     </div>
                                 </div>
+
+                                {/* QUOTES PICKER */}
+                                <div className="card p-6 border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-rose-600">
+                                            <HiOutlineChatAlt2 className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{t('invitation_content.quotes_title', 'Pilih Quotes')}</h2>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="label-field">{t('invitation_content.quotes_select', 'Pilihan Quotes')}</label>
+                                            <select
+                                                value={selectedQuotesId}
+                                                onChange={(e) => { setSelectedQuotesId(e.target.value); setIsDirty(true); }}
+                                                disabled={customQuotesEnabled}
+                                                className="input-field disabled:opacity-60"
+                                            >
+                                                {activeQuotes.length === 0 && <option value="">{t('invitation_content.quotes_empty', 'Belum ada quotes tersedia')}</option>}
+                                                {activeQuotes.map((q) => (
+                                                    <option key={q.id} value={q.id}>
+                                                        {q.title}{q.religion_enum ? ` — ${q.religion_enum}` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="w-5 h-5 rounded text-gold-600 focus:ring-gold-500 accent-gold-600"
+                                                checked={customQuotesEnabled}
+                                                onChange={(e) => {
+                                                    const enabled = e.target.checked;
+                                                    // When turning custom on for the first time, seed from the selected master quote
+                                                    if (enabled && Object.keys(customQuotes).length === 0) {
+                                                        const base = activeQuotes.find((q) => q.id === selectedQuotesId);
+                                                        if (base) {
+                                                            const seed: Record<string, string> = {};
+                                                            for (let i = 1; i <= 7; i++) {
+                                                                seed[`quote_${i}`] = (base as any)[`quote_${i}`] || '';
+                                                                seed[`quote_by_${i}`] = (base as any)[`quote_by_${i}`] || '';
+                                                            }
+                                                            setCustomQuotes(seed);
+                                                        }
+                                                    }
+                                                    setCustomQuotesEnabled(enabled);
+                                                    setIsDirty(true);
+                                                }}
+                                            />
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{t('invitation_content.quotes_custom', 'Buat quotes sendiri (custom)')}</span>
+                                        </label>
+
+                                        {/* Quotes table: read-only when not custom, editable when custom */}
+                                        <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                        <th className="px-3 py-2 w-10">#</th>
+                                                        <th className="px-3 py-2">{t('invitation_content.quotes_quote', 'Quote')}</th>
+                                                        <th className="px-3 py-2 w-1/3">{t('invitation_content.quotes_by', 'Penulis / Sumber')}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                                        <tr key={i} className="align-top">
+                                                            <td className="px-3 py-2 text-gray-400 font-medium">{i}</td>
+                                                            <td className="px-3 py-2">
+                                                                {customQuotesEnabled ? (
+                                                                    <textarea
+                                                                        rows={2}
+                                                                        value={customQuotes[`quote_${i}`] || ''}
+                                                                        onChange={(e) => { setCustomQuotes(prev => ({ ...prev, [`quote_${i}`]: e.target.value })); setIsDirty(true); }}
+                                                                        className="input-field resize-none text-sm"
+                                                                        placeholder={t('invitation_content.quotes_quote_placeholder', 'Isi quote...') as string}
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-gray-700 dark:text-gray-200">{(selectedQuote as any)[`quote_${i}`] || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                {customQuotesEnabled ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={customQuotes[`quote_by_${i}`] || ''}
+                                                                        onChange={(e) => { setCustomQuotes(prev => ({ ...prev, [`quote_by_${i}`]: e.target.value })); setIsDirty(true); }}
+                                                                        className="input-field text-sm"
+                                                                        placeholder={t('invitation_content.quotes_by_placeholder', 'Penulis...') as string}
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-gray-600 dark:text-gray-300">{(selectedQuote as any)[`quote_by_${i}`] || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -1217,15 +1384,15 @@ export function InvitationContentPage() {
 
                     {/* Navigation Footer */}
                     <div className="flex items-center justify-between p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mt-auto">
-                        <button
-                            type="button"
+                        <Button
+                            variant="secondary"
                             disabled={currentStep === 1}
                             onClick={() => setCurrentStep(prev => prev - 1)}
-                            className={`btn-secondary flex items-center gap-2 px-6 ${currentStep === 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            className={`px-6 ${currentStep === 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            icon={<HiOutlineChevronLeft className="w-5 h-5" />}
                         >
-                            <HiOutlineChevronLeft className="w-5 h-5" />
                             {t('common.previous')}
-                        </button>
+                        </Button>
                         <button
                             type="button"
                             onClick={() => {

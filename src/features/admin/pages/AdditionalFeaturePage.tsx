@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { additionalFeatureApi } from '@/core/api/endpoints';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
+import { Badge } from '@/shared/components/Badge';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { PageLoader } from '@/shared/components/Loading';
 import type { MstAdditionalFeature } from '@/types';
 import toast from 'react-hot-toast';
@@ -165,9 +169,9 @@ export function AdditionalFeaturePage() {
             key: 'active',
             header: 'Status',
             render: (f) => (
-                <span className={f.active ? 'badge-success' : 'badge-danger'}>
+                <Badge variant={f.active ? 'success' : 'danger'}>
                     {f.active ? 'Aktif' : 'Nonaktif'}
-                </span>
+                </Badge>
             ),
         },
         {
@@ -215,20 +219,21 @@ export function AdditionalFeaturePage() {
                             PDF
                         </button>
                     </div>
-                    <button
+                    <IconButton
                         onClick={() => fetchFeatures(true)}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm tooltip tooltip-bottom"
+                        className="tooltip tooltip-bottom"
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                        spinning={loading}
                     >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         <span className="tooltip-text">Refresh Data</span>
-                    </button>
-                    <button
+                    </IconButton>
+                    <Button
                         onClick={() => { setForm(initialForm); setIsEditing(false); setShowModal(true); }}
-                        className="btn-primary text-sm flex items-center gap-2"
+                        className="text-sm"
+                        icon={<HiOutlinePlus className="w-4 h-4" />}
                     >
-                        <HiOutlinePlus className="w-4 h-4" />
                         Tambah Fitur
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -377,29 +382,17 @@ export function AdditionalFeaturePage() {
             </Modal>
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!featureToDelete}
                 onClose={() => setFeatureToDelete(null)}
+                onConfirm={handleDelete}
                 title="Hapus Fitur Tambahan"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
-                                <p>Apakah Anda yakin ingin menghapus fitur <b>{featureToDelete?.feature_name}</b>?</p>
-                                <p className="mt-2 text-xs opacity-80">Semua data terkait fitur ini di seluruh tenant akan ikut terhapus permanen.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setFeatureToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
-                        <button onClick={handleDelete} className="btn-danger py-1.5 px-6 text-sm">Ya, Hapus Permanen</button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                warningTitle="Peringatan Penting!"
+                confirmLabel="Ya, Hapus Permanen"
+                message={<p>Apakah Anda yakin ingin menghapus fitur <b>{featureToDelete?.feature_name}</b>?</p>}
+                description="Semua data terkait fitur ini di seluruh tenant akan ikut terhapus permanen."
+            />
         </div>
     );
 }

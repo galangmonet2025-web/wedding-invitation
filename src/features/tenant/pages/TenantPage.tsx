@@ -14,6 +14,10 @@ import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import { exportToExcel, exportToPdf } from '@/shared/utils/exportUtils';
 import { useThemeStore } from '@/features/admin/store/themeStore';
 import { useTenantStore } from '@/features/admin/store/tenantStore';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
+import { Badge } from '@/shared/components/Badge';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 
 export function TenantPage() {
     const { tenants, fetchTenants: fetchTenantsFromStore, addTenant, updateTenant: updateTenantInStore, tenantFeaturesCache, setTenantFeatures } = useTenantStore();
@@ -24,7 +28,6 @@ export function TenantPage() {
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
     const [tenantFeatures, setTenantFeaturesLocal] = useState<TenantActiveFeature[]>([]);
     const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
@@ -176,7 +179,6 @@ export function TenantPage() {
 
         // Close modal immediately
         setTenantToDelete(null);
-        setDeleteConfirmText('');
 
         try {
             const res = await tenantApi.deleteTenant(tenantId);
@@ -246,12 +248,12 @@ export function TenantPage() {
     };
 
     const planBadge = (plan: PlanType) => {
-        const classes: Record<string, string> = {
-            basic: 'badge-info',
-            pro: 'badge-warning',
-            premium: 'badge-gold',
+        const variants: Record<string, 'info' | 'warning' | 'gold'> = {
+            basic: 'info',
+            pro: 'warning',
+            premium: 'gold',
         };
-        return <span className={`${classes[plan]} uppercase`}>{plan}</span>;
+        return <Badge variant={variants[plan]} className="uppercase">{plan}</Badge>;
     };
 
     const exportColumns = [
@@ -324,7 +326,7 @@ export function TenantPage() {
             key: 'status',
             header: 'Account Status',
             render: (t: Tenant) => (
-                <span className={t.status_account === 'active' ? 'badge-success' : 'badge-danger'}>{t.status_account}</span>
+                <Badge variant={t.status_account === 'active' ? 'success' : 'danger'}>{t.status_account}</Badge>
             ),
         },
         {
@@ -378,7 +380,6 @@ export function TenantPage() {
                         <button
                             onClick={() => {
                                 setTenantToDelete(t);
-                                setDeleteConfirmText('');
                             }}
                             disabled={isDeletingRow}
                             className={`p-1.5 rounded-lg transition-colors ${isDeletingRow ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600'}`}
@@ -418,17 +419,15 @@ export function TenantPage() {
                             PDF
                         </button>
                     </div>
-                    <button 
-                        onClick={() => fetchTenants(true)} 
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                    <IconButton
+                        onClick={() => fetchTenants(true)}
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                        spinning={loading}
                         title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button onClick={() => { resetForm(); setShowAddModal(true); }} className="btn-primary text-sm flex items-center gap-2">
-                        <HiOutlinePlus className="w-4 h-4" />
+                    />
+                    <Button onClick={() => { resetForm(); setShowAddModal(true); }} size="sm" icon={<HiOutlinePlus className="w-4 h-4" />}>
                         New Tenant
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -447,8 +446,8 @@ export function TenantPage() {
                 size="lg"
                 footer={
                     <>
-                        <button onClick={() => setShowAddModal(false)} className="btn-ghost">Cancel</button>
-                        <button onClick={handleCreateTenant} className="btn-primary">Create Tenant</button>
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Button>
+                        <Button onClick={handleCreateTenant}>Create Tenant</Button>
                     </>
                 }
             >
@@ -522,8 +521,8 @@ export function TenantPage() {
                 size="2xl"
                 footer={
                     <>
-                        <button onClick={() => setShowEditModal(false)} className="btn-ghost">Batal</button>
-                        <button onClick={() => handleUpdateTenant(editForm)} className="btn-primary">Simpan</button>
+                        <Button variant="ghost" onClick={() => setShowEditModal(false)}>Batal</Button>
+                        <Button onClick={() => handleUpdateTenant(editForm)}>Simpan</Button>
                     </>
                 }
             >
@@ -851,65 +850,29 @@ export function TenantPage() {
             </Modal>
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!tenantToDelete}
                 onClose={() => setTenantToDelete(null)}
+                onConfirm={handleDeleteTenantAction}
                 title="Hapus Data Tenant"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm space-y-2">
-                                <p className="font-semibold text-base">Peringatan Penting!</p>
-                                <p>Anda akan menghapus tenant <b>{tenantToDelete?.domain_slug}</b> beserta <b>semua data terkaitnya</b>:</p>
-                                <ul className="list-disc pl-4 space-y-1 opacity-90 text-[11px]">
-                                    <li>Data Tenant & Akun Admin</li>
-                                    <li>Data Tamu Undangan</li>
-                                    <li>Data Ucapan & Hadiah</li>
-                                    <li>Konfigurasi Fitur Tambahan</li>
-                                    <li>Log Aktivitas</li>
-                                    <li><b>Semua File Gambar di Google Drive</b></li>
-                                </ul>
-                                <p className="font-medium pt-2 text-xs">Tindakan ini tidak dapat dibatalkan!</p>
-                            </div>
-                        </div>
-                    </div>
-                    
+                variant="danger"
+                confirmLabel="Ya, Hapus Permanen"
+                requireText="DELETE"
+                message={
                     <div className="space-y-2">
-                        <label className="label-field text-red-600 dark:text-red-400 text-xs font-bold">Ketik <b>DELETE</b> untuk mengkonfirmasi:</label>
-                        <input 
-                            type="text" 
-                            className="input-field border-red-200 focus:ring-red-500 focus:border-transparent dark:border-red-900/30 text-sm py-2" 
-                            placeholder="DELETE"
-                            value={deleteConfirmText}
-                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                            autoComplete="off"
-                        />
+                        <p>Anda akan menghapus tenant <b>{tenantToDelete?.domain_slug}</b> beserta <b>semua data terkaitnya</b>:</p>
+                        <ul className="list-disc pl-4 space-y-1 opacity-90 text-[11px]">
+                            <li>Data Tenant & Akun Admin</li>
+                            <li>Data Tamu Undangan</li>
+                            <li>Data Ucapan & Hadiah</li>
+                            <li>Konfigurasi Fitur Tambahan</li>
+                            <li>Log Aktivitas</li>
+                            <li><b>Semua File Gambar di Google Drive</b></li>
+                        </ul>
+                        <p className="font-medium pt-2 text-xs">Tindakan ini tidak dapat dibatalkan!</p>
                     </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setTenantToDelete(null);
-                                setDeleteConfirmText('');
-                            }}
-                            className="btn-ghost px-5 py-1.5 text-sm"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleDeleteTenantAction}
-                            disabled={deleteConfirmText !== 'DELETE'}
-                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
-                        >
-                            Ya, Hapus Permanen
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                }
+            />
 
             {lightboxUrl && (
                 <Lightbox
@@ -918,117 +881,82 @@ export function TenantPage() {
                     onClose={() => setLightboxUrl(null)}
                 />
             )}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!deleteConfirm}
                 onClose={() => setDeleteConfirm(null)}
+                onConfirm={async () => {
+                    if (!deleteConfirm) return;
+                    const { id, featureId } = deleteConfirm;
+                    setDeleteConfirm(null);
+                    setIsDeletingImg(featureId);
+
+                    try {
+                        await additionalFeatureApi.updateTenantFeature({
+                            tenant_id: selectedTenant!.id,
+                            additional_feature_id: featureId,
+                            output_data: ''
+                        }, { skipLoader: true } as any);
+
+                        if (id) {
+                            await imageApi.deleteImage(id).catch(() => {});
+                        }
+
+                        handleFeatureUpdateLocal(featureId, { output_data: '' });
+                        toast.success('Gambar berhasil dihapus!');
+                    } catch (error) {
+                        toast.error('Gagal menghapus gambar');
+                    } finally {
+                        setIsDeletingImg(null);
+                    }
+                }}
                 title="Hapus Gambar"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
-                                <p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={!!isDeletingImg}>Batal</button>
-                        <button
-                            onClick={async () => {
-                                if (!deleteConfirm) return;
-                                const { id, featureId } = deleteConfirm;
-                                setDeleteConfirm(null);
-                                setIsDeletingImg(featureId);
-
-                                try {
-                                    await additionalFeatureApi.updateTenantFeature({
-                                        tenant_id: selectedTenant!.id,
-                                        additional_feature_id: featureId,
-                                        output_data: ''
-                                    }, { skipLoader: true } as any);
-
-                                    if (id) {
-                                        await imageApi.deleteImage(id).catch(() => {});
-                                    }
-                                    
-                                    handleFeatureUpdateLocal(featureId, { output_data: '' });
-                                    toast.success('Gambar berhasil dihapus!');
-                                } catch (error) {
-                                    toast.error('Gagal menghapus gambar');
-                                } finally {
-                                    setIsDeletingImg(null);
-                                }
-                            }}
-                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
-                            disabled={!!isDeletingImg}
-                        >
-                            Ya, Hapus
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-            <Modal
+                variant="danger"
+                confirmLabel="Ya, Hapus"
+                loading={!!isDeletingImg}
+                message={<p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>}
+            />
+            <ConfirmDialog
                 isOpen={!!featureToRemove}
                 onClose={() => setFeatureToRemove(null)}
-                title="Hapus Fitur Tenant"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
-                                <p>Apakah Anda yakin ingin menghapus fitur <b>{featureToRemove?.featureName}</b> dari tenant ini?</p>
-                                <p className="mt-2 text-xs opacity-80">Seluruh data dan hasil pengaturan fitur ini untuk tenant ini akan terhapus secara permanen.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setFeatureToRemove(null)} className="btn-ghost px-5 py-1.5 text-sm" disabled={isRemovingFeature}>Batal</button>
-                        <button
-                            onClick={async () => {
-                                if (!featureToRemove || !selectedTenant) return;
-                                setIsRemovingFeature(true);
-                                try {
-                                    await additionalFeatureApi.deleteTenantFeature(selectedTenant.id, featureToRemove.featureId);
-                                    
-                                    setTenantFeaturesLocal(prev => {
-                                        const newFeatures = prev.map(f => {
-                                            if (f.additional_feature_id === featureToRemove.featureId) {
-                                                    return {
-                                                        ...f,
-                                                        id: null,
-                                                        active: false,
-                                                        input_tenant_data: '',
-                                                        output_data: '',
-                                                        payment_status: 'Menunggu pembayaran'
-                                                    } as TenantActiveFeature;
-                                            }
-                                            return f;
-                                        });
-                                        setTenantFeatures(selectedTenant.id, newFeatures);
-                                        return newFeatures;
-                                    });
-                                    
-                                    toast.success('Fitur berhasil dihapus dari tenant');
-                                    setFeatureToRemove(null);
-                                } catch (error) {
-                                    toast.error('Gagal menghapus fitur');
-                                } finally {
-                                    setIsRemovingFeature(false);
+                onConfirm={async () => {
+                    if (!featureToRemove || !selectedTenant) return;
+                    setIsRemovingFeature(true);
+                    try {
+                        await additionalFeatureApi.deleteTenantFeature(selectedTenant.id, featureToRemove.featureId);
+
+                        setTenantFeaturesLocal(prev => {
+                            const newFeatures = prev.map(f => {
+                                if (f.additional_feature_id === featureToRemove.featureId) {
+                                        return {
+                                            ...f,
+                                            id: null,
+                                            active: false,
+                                            input_tenant_data: '',
+                                            output_data: '',
+                                            payment_status: 'Menunggu pembayaran'
+                                        } as TenantActiveFeature;
                                 }
-                            }}
-                            className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
-                            disabled={isRemovingFeature}
-                        >
-                            {isRemovingFeature && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {isRemovingFeature ? 'Menghapus...' : 'Ya, Hapus Fitur'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                                return f;
+                            });
+                            setTenantFeatures(selectedTenant.id, newFeatures);
+                            return newFeatures;
+                        });
+
+                        toast.success('Fitur berhasil dihapus dari tenant');
+                        setFeatureToRemove(null);
+                    } catch (error) {
+                        toast.error('Gagal menghapus fitur');
+                    } finally {
+                        setIsRemovingFeature(false);
+                    }
+                }}
+                title="Hapus Fitur Tenant"
+                variant="danger"
+                confirmLabel="Ya, Hapus Fitur"
+                loading={isRemovingFeature}
+                message={<p>Apakah Anda yakin ingin menghapus fitur <b>{featureToRemove?.featureName}</b> dari tenant ini?</p>}
+                description="Seluruh data dan hasil pengaturan fitur ini untuk tenant ini akan terhapus secara permanen."
+            />
         </div>
     );
 }

@@ -25,6 +25,7 @@ import {
     Legend,
 } from 'recharts';
 import { Modal } from '@/shared/components/Modal';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { tenantApi, themeApi, additionalFeatureApi } from '@/core/api/endpoints';
 import { imageApi } from '@/core/api/imageApi';
 import { ImageUpload } from '@/shared/components/ImageUpload';
@@ -681,57 +682,40 @@ export function GlobalDashboardPage() {
                     </ul>
                 </div>
             )}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!deleteConfirm}
                 onClose={() => setDeleteConfirm(null)}
                 title="Hapus Gambar"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Konfirmasi Hapus</p>
-                                <p>Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setDeleteConfirm(null)} className="btn-ghost" disabled={!!isDeletingImg}>Batal</button>
-                        <button
-                            onClick={async () => {
-                                if (!deleteConfirm) return;
-                                const { id, featureId } = deleteConfirm;
-                                setDeleteConfirm(null);
-                                setIsDeletingImg(featureId);
+                warningTitle="Konfirmasi Hapus"
+                message="Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan."
+                confirmLabel="Ya, Hapus"
+                loading={!!isDeletingImg}
+                onConfirm={async () => {
+                    if (!deleteConfirm) return;
+                    const { id, featureId } = deleteConfirm;
+                    setDeleteConfirm(null);
+                    setIsDeletingImg(featureId);
 
-                                try {
-                                    await additionalFeatureApi.updateTenantFeature({
-                                        tenant_id: selectedTenant!.id,
-                                        additional_feature_id: featureId,
-                                        output_data: ''
-                                    }, { skipLoader: true } as any);
+                    try {
+                        await additionalFeatureApi.updateTenantFeature({
+                            tenant_id: selectedTenant!.id,
+                            additional_feature_id: featureId,
+                            output_data: ''
+                        }, { skipLoader: true } as any);
 
-                                    if (id) {
-                                        await imageApi.deleteImage(id).catch(() => {});
-                                    }
-                                    
-                                    handleFeatureUpdateLocal(featureId, { output_data: '' });
-                                    toast.success('Gambar berhasil dihapus!');
-                                } catch (error) {
-                                    toast.error('Gagal menghapus gambar');
-                                } finally {
-                                    setIsDeletingImg(null);
-                                }
-                            }}
-                            className="btn-danger py-2 px-6 flex items-center gap-2"
-                            disabled={!!isDeletingImg}
-                        >
-                            Ya, Hapus
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                        if (id) {
+                            await imageApi.deleteImage(id).catch(() => {});
+                        }
+
+                        handleFeatureUpdateLocal(featureId, { output_data: '' });
+                        toast.success('Gambar berhasil dihapus!');
+                    } catch (error) {
+                        toast.error('Gagal menghapus gambar');
+                    } finally {
+                        setIsDeletingImg(null);
+                    }
+                }}
+            />
         </div>
     );
 }

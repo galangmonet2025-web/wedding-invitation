@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { themeApi } from '@/core/api/endpoints';
-import { Modal } from '@/shared/components/Modal';
 import { Theme } from '@/types';
 import { DataTable } from '@/shared/components';
+import { Button } from '@/shared/components/Button';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { 
     HiOutlinePlus, 
     HiOutlinePencilAlt, 
@@ -250,8 +251,8 @@ export function ManageThemesPage() {
                     </button>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    <button 
-                        onClick={() => fetchThemes(true)} 
+                    <button
+                        onClick={() => fetchThemes(true)}
                         className="p-2.5 bg-white dark:bg-wedding-dark-card border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm flex items-center justify-center"
                         title="Refresh Data"
                     >
@@ -261,10 +262,13 @@ export function ManageThemesPage() {
                         <i className="ri-flashlight-fill"></i>
                         <span>Inject Premium Theme</span>
                     </button>
-                    <button onClick={() => navigate('/private/themes/editor/new')} className="btn-primary text-xs flex items-center gap-2">
-                        <HiOutlinePlus className="w-4 h-4" />
-                        <span>Tambah Tema Baru</span>
-                    </button>
+                    <Button
+                        onClick={() => navigate('/private/themes/editor/new')}
+                        className="text-xs"
+                        icon={<HiOutlinePlus className="w-4 h-4" />}
+                    >
+                        Tambah Tema Baru
+                    </Button>
                 </div>
             </div>
 
@@ -614,29 +618,16 @@ export function ManageThemesPage() {
             )}
 
             {/* Modal Konfirmasi Hapus */}
-            <Modal
+            <ConfirmDialog
                 isOpen={!!themeToDelete}
                 onClose={() => setThemeToDelete(null)}
+                onConfirm={handleDelete}
                 title="Hapus Tema"
-            >
-                <div className="space-y-4">
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
-                        <div className="flex gap-3 text-red-800 dark:text-red-400">
-                            <HiOutlineTrash className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-semibold text-base mb-1">Peringatan Penting!</p>
-                                <p>Apakah Anda yakin ingin menghapus tema <b>{themeToDelete?.name}</b>?</p>
-                                <p className="mt-2 text-xs opacity-80">Tema ini akan dihapus secara permanen dari sistem dan tidak dapat dikembalikan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => setThemeToDelete(null)} className="btn-ghost px-5 py-1.5 text-sm">Batal</button>
-                        <button onClick={handleDelete} className="btn-danger py-1.5 px-6 text-sm">Ya, Hapus Permanen</button>
-                    </div>
-                </div>
-            </Modal>
+                variant="danger"
+                confirmLabel="Ya, Hapus Permanen"
+                message={<p>Apakah Anda yakin ingin menghapus tema <b>{themeToDelete?.name}</b>?</p>}
+                description="Tema ini akan dihapus secara permanen dari sistem dan tidak dapat dikembalikan."
+            />
         </div>
     );
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { dashboardApi, reviewApi } from '@/core/api/endpoints';
 import { Modal } from '@/shared/components/Modal';
+import { Button } from '@/shared/components/Button';
+import { IconButton } from '@/shared/components/IconButton';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useTranslation } from 'react-i18next';
 import { StatCard } from '@/shared/components/StatCard';
@@ -168,13 +170,12 @@ export function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
+                    <IconButton
                         onClick={() => fetchDashboard(true)}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
+                        icon={<HiOutlineRefresh className="w-5 h-5" />}
+                        spinning={loading}
                         title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+                    />
                 </div>
             </div>
 
@@ -319,12 +320,12 @@ export function DashboardPage() {
                                 <p className="text-sm text-gold-700/70 dark:text-gold-500/70">{t('dashboard.experience_description')}</p>
                             </div>
                         </div>
-                        <button 
+                        <Button
                             onClick={() => setShowReviewModal(true)}
-                            className="btn-primary whitespace-nowrap"
+                            className="whitespace-nowrap"
                         >
                             {t('dashboard.write_review')}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}

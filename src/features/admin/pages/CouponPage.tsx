@@ -8,6 +8,7 @@ import {
     HiOutlineCalendar, HiOutlineSwitchHorizontal,
 } from 'react-icons/hi';
 import { Modal } from '@/shared/components/Modal';
+import { IconButton } from '@/shared/components/IconButton';
 
 const EMPTY_FORM: Partial<Coupon> = {
     begin_date: '',
@@ -434,13 +435,14 @@ export function CouponPage() {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <button
+                                                    <IconButton
+                                                        shape="ghost"
+                                                        color="gold"
+                                                        size="sm"
                                                         onClick={() => setModal({ mode: 'edit', data: c })}
-                                                        className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gray-400 hover:text-gold-600 transition-colors"
                                                         title="Edit"
-                                                    >
-                                                        <HiOutlinePencil className="w-4 h-4" />
-                                                    </button>
+                                                        icon={<HiOutlinePencil className="w-4 h-4" />}
+                                                    />
                                                     <button
                                                         onClick={() => handleDelete(c.id)}
                                                         disabled={deletingId === c.id}
