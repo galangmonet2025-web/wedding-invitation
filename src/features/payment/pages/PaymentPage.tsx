@@ -4,6 +4,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import type { Transaction, TenantActiveFeature, Coupon } from '@/types';
 import toast from 'react-hot-toast';
 import { openSnapPayment, getStatusBadge } from '@/utils/midtrans';
+import { useTranslation } from 'react-i18next';
 import {
     HiOutlineRefresh,
     HiOutlineCreditCard,
@@ -19,6 +20,7 @@ import {
 import { Modal } from '@/shared/components/Modal';
 
 export function PaymentPage() {
+    const { t } = useTranslation();
     const { user } = useAuthStore();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [pendingFeatures, setPendingFeatures] = useState<TenantActiveFeature[]>([]);
@@ -312,12 +314,12 @@ export function PaymentPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Kelola transaksi dan tagihan Anda</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('payments.subtitle', 'Kelola transaksi dan tagihan Anda')}</p>
                 </div>
                 <button
                     onClick={() => fetchAll(false)}
                     className="p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm"
-                    title="Refresh"
+                    title={t('common.refresh', 'Refresh')}
                 >
                     <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
@@ -330,7 +332,7 @@ export function PaymentPage() {
                         <HiOutlineExclamationCircle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                             <p className="font-semibold text-amber-800 dark:text-amber-400 mb-3">
-                                { (pendingFeatures.length + (isPlanPaymentRequired ? 1 : 0)) } Item Menunggu Pembayaran
+                                {t('payments.pending_payment_items', { count: pendingFeatures.length + (isPlanPaymentRequired ? 1 : 0), defaultValue: '{{count}} Item Menunggu Pembayaran' })}
                             </p>
                             <div className="space-y-3">
                                 {/* Plan Payment Alert */}
@@ -341,7 +343,7 @@ export function PaymentPage() {
                                                 <HiOutlineStar className="w-5 h-5 text-amber-600" />
                                             </div>
                                             <div>
-                                                <p className="font-bold text-gray-800 dark:text-white text-sm">Pembayaran Paket {user?.plan_type}</p>
+                                                <p className="font-bold text-gray-800 dark:text-white text-sm">{t('payments.plan_payment', { planType: user?.plan_type, defaultValue: 'Pembayaran Paket {{planType}}' })}</p>
                                                 <p className="text-xs text-amber-600 font-semibold">{formatCurrency(currentPlanDetails.price)}</p>
                                             </div>
                                         </div>
@@ -355,7 +357,7 @@ export function PaymentPage() {
                                             ) : (
                                                 <HiOutlineCreditCard className="w-4 h-4" />
                                             )}
-                                            Bayar Paket
+                                            {t('payments.pay_plan', 'Bayar Paket')}
                                         </button>
                                     </div>
                                 )}
@@ -378,7 +380,7 @@ export function PaymentPage() {
                                             ) : (
                                                 <HiOutlineCreditCard className="w-4 h-4" />
                                             )}
-                                            Bayar Sekarang
+                                            {t('payments.pay_now', 'Bayar Sekarang')}
                                         </button>
                                     </div>
                                 ))}
@@ -412,10 +414,10 @@ export function PaymentPage() {
                             </div>
                             <div>
                                 <h2 className="font-bold text-gray-800 dark:text-white">
-                                    {isPaid ? 'Upgrade Paket' : 'Ubah Paket'}
+                                    {isPaid ? t('payments.upgrade_plan', 'Upgrade Paket') : t('payments.change_plan', 'Ubah Paket')}
                                 </h2>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {isPaid ? 'Tingkatkan paket untuk fitur lebih lengkap' : 'Pilih paket yang sesuai untuk undangan Anda'}
+                                    {isPaid ? t('payments.upgrade_desc', 'Tingkatkan paket untuk fitur lebih lengkap') : t('payments.change_desc', 'Pilih paket yang sesuai untuk undangan Anda')}
                                 </p>
                             </div>
                         </div>
@@ -437,25 +439,25 @@ export function PaymentPage() {
                                     <div key={plan.id}
                                         className="relative p-5 rounded-2xl border-2 border-gray-100 dark:border-gray-800 hover:border-gold-300 dark:hover:border-gold-700 transition-all bg-gray-50/50 dark:bg-gray-800/30 group">
                                         {plan.plan_type === 'premium' && (
-                                            <span className="absolute top-3 right-3 text-[10px] bg-gold-500 text-white px-2 py-0.5 rounded-full font-bold">REKOMENDASI</span>
+                                            <span className="absolute top-3 right-3 text-[10px] bg-gold-500 text-white px-2 py-0.5 rounded-full font-bold">{t('payments.recommended', 'REKOMENDASI')}</span>
                                         )}
                                         <div className="mb-4">
-                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg uppercase">Paket {plan.plan_type}</h3>
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg uppercase">{t('payments.plan_name', { planType: plan.plan_type, defaultValue: 'Paket {{planType}}' })}</h3>
                                             {discountedPrice !== null ? (
                                                 <div className="mt-1">
                                                     <p className="text-lg font-bold text-gray-400 line-through">{formatCurrency(displayPrice)}</p>
                                                     <p className="text-3xl font-display font-bold text-violet-600">
                                                         {formatCurrency(discountedPrice)}
-                                                        <span className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 px-2 py-0.5 rounded ml-2 align-middle">KUPON</span>
+                                                        <span className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 px-2 py-0.5 rounded ml-2 align-middle">{t('payments.coupon_badge', 'KUPON')}</span>
                                                     </p>
                                                 </div>
                                             ) : (
                                                 <p className="text-3xl font-display font-bold text-gold-600 mt-1">
                                                     {formatCurrency(displayPrice)}
-                                                    {isPaid && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-2 align-middle">SELISIH</span>}
+                                                    {isPaid && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-2 align-middle">{t('payments.difference_badge', 'SELISIH')}</span>}
                                                 </p>
                                             )}
-                                            <p className="text-[10px] text-gray-400 mt-1">Limit Tamu: {plan.guest_limit}</p>
+                                            <p className="text-[10px] text-gray-400 mt-1">{t('payments.guest_limit', { limit: plan.guest_limit, defaultValue: 'Limit Tamu: {{limit}}' })}</p>
                                         </div>
                                         <button
                                             onClick={() => openCheckout(plan)}
@@ -467,7 +469,7 @@ export function PaymentPage() {
                                             ) : (
                                                 <HiOutlineCreditCard className="w-4 h-4" />
                                             )}
-                                            {isPaid ? `Upgrade ke ${plan.plan_type}` : `Pindah ke ${plan.plan_type}`}
+                                            {isPaid ? t('payments.upgrade_to', { planType: plan.plan_type, defaultValue: 'Upgrade ke {{planType}}' }) : t('payments.switch_to', { planType: plan.plan_type, defaultValue: 'Pindah ke {{planType}}' })}
                                         </button>
                                     </div>
                                 );
@@ -483,8 +485,8 @@ export function PaymentPage() {
                         <HiOutlineInformationCircle className="w-5 h-5 text-blue-500" />
                     </div>
                     <div>
-                        <h2 className="font-bold text-gray-800 dark:text-white">Riwayat Transaksi</h2>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Log semua transaksi pembayaran Anda</p>
+                        <h2 className="font-bold text-gray-800 dark:text-white">{t('payments.transaction_history', 'Riwayat Transaksi')}</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('payments.transaction_history_desc', 'Log semua transaksi pembayaran Anda')}</p>
                     </div>
                 </div>
 
@@ -493,13 +495,13 @@ export function PaymentPage() {
                         <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                             <HiOutlineCreditCard className="w-8 h-8 text-gray-300" />
                         </div>
-                        <p className="text-gray-500 dark:text-gray-450 font-medium">Belum ada transaksi</p>
-                        <p className="text-sm text-gray-400 mt-1">Transaksi akan muncul setelah Anda melakukan pembelian</p>
+                        <p className="text-gray-500 dark:text-gray-455 font-medium">{t('payments.no_transactions', 'Belum ada transaksi')}</p>
+                        <p className="text-sm text-gray-400 mt-1">{t('payments.no_transactions_desc', 'Transaksi akan muncul setelah Anda melakukan pembelian')}</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {transactions.map(tx => {
-                            const badge = getStatusBadge(tx.status);
+                            const badge = getStatusBadge(tx.status, t);
                             return (
                                 <div key={tx.id}
                                     className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600 transition-all">
@@ -547,20 +549,20 @@ export function PaymentPage() {
                                                     className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 transition-colors text-[10px] font-bold disabled:opacity-50"
                                                 >
                                                     <HiOutlineRefresh className={`w-3 h-3 ${refreshingId === tx.id ? 'animate-spin' : ''}`} />
-                                                    Cek Status
+                                                    {t('payments.check_status', 'Cek Status')}
                                                 </button>
                                                 
                                                 <button 
                                                     onClick={() => setTransactionToCancel(tx)}
                                                     disabled={cancelingId === tx.id}
-                                                    className="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-650 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-[10px] font-bold disabled:opacity-50"
+                                                    className="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-655 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-[10px] font-bold disabled:opacity-50"
                                                 >
                                                     {cancelingId === tx.id ? (
                                                         <div className="w-3 h-3 border border-red-500/30 border-t-red-500 rounded-full animate-spin" />
                                                     ) : (
                                                         <HiOutlineX className="w-3 h-3" />
                                                     )}
-                                                    Batalkan
+                                                    {t('payments.cancel_btn', 'Batalkan')}
                                                 </button>
 
                                                 {tx.snap_token && (
@@ -570,7 +572,7 @@ export function PaymentPage() {
                                                         className="text-[10px] text-gold-600 hover:text-gold-700 font-bold flex items-center gap-1 bg-gold-50 dark:bg-gold-900/20 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
                                                     >
                                                         {payingId === tx.id ? <div className="w-3 h-3 border border-gold-500/30 border-t-gold-500 rounded-full animate-spin" /> : <HiOutlineCreditCard className="w-3 h-3" />}
-                                                        Lanjutkan
+                                                        {t('payments.continue_btn', 'Lanjutkan')}
                                                     </button>
                                                 )}
                                             </div>
@@ -583,11 +585,10 @@ export function PaymentPage() {
                 )}
             </div>
 
-            {/* Modal Checkout Pembayaran */}
             <Modal
                 isOpen={!!checkoutPlan}
                 onClose={() => setCheckoutPlan(null)}
-                title="Checkout Pembayaran Paket"
+                title={t('payments.checkout_title', 'Checkout Pembayaran Paket')}
                 size="md"
             >
                 {checkoutPlan && (() => {
@@ -610,14 +611,14 @@ export function PaymentPage() {
                         <div className="space-y-6 animate-in fade-in duration-200">
                             {/* Rincian Paket */}
                             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Rincian Paket</p>
+                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">{t('payments.plan_details', 'Rincian Paket')}</p>
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h3 className="font-bold text-gray-800 dark:text-white uppercase text-base">
-                                            Paket {checkoutPlan.plan_type}
-                                            {isPaid && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded ml-2 align-middle font-semibold">UPGRADE</span>}
+                                            {t('payments.plan_name', { planType: checkoutPlan.plan_type, defaultValue: 'Paket {{planType}}' })}
+                                            {isPaid && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded ml-2 align-middle font-semibold">{t('payments.upgrade_tag', 'UPGRADE')}</span>}
                                         </h3>
-                                        <p className="text-xs text-gray-500 mt-1">Limit Tamu: {checkoutPlan.guest_limit} undangan</p>
+                                        <p className="text-xs text-gray-500 mt-1">{t('payments.guest_limit_desc', { limit: checkoutPlan.guest_limit, defaultValue: 'Limit Tamu: {{limit}} undangan' })}</p>
                                     </div>
                                     <p className="font-bold text-gray-800 dark:text-white">{formatCurrency(baseAmount)}</p>
                                 </div>
@@ -626,7 +627,7 @@ export function PaymentPage() {
                             {/* Kode Promosi Input */}
                             <div className="space-y-2">
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
-                                    Punya Kode Promo?
+                                    {t('payments.coupon_question', 'Punya Kode Promo?')}
                                 </label>
                                 {appliedCoupon ? (
                                     <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-255 dark:border-emerald-800 rounded-xl animate-in fade-in zoom-in-95 duration-200">
@@ -637,7 +638,7 @@ export function PaymentPage() {
                                             <div>
                                                 <p className="font-bold text-emerald-800 dark:text-emerald-300 font-mono text-sm">{couponCode.toUpperCase()}</p>
                                                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                                                    Diskon {appliedCoupon.discount_type === 'percent'
+                                                    {t('payments.discount', 'Diskon')} {appliedCoupon.discount_type === 'percent'
                                                         ? `${appliedCoupon.percent_discount}%`
                                                         : formatCurrency(Number(appliedCoupon.nominal_discount))}
                                                 </p>
@@ -658,7 +659,7 @@ export function PaymentPage() {
                                                 value={couponCode}
                                                 onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
                                                 onKeyDown={e => e.key === 'Enter' && handleValidateCoupon()}
-                                                placeholder="Masukkan kode promo (contoh: PROMO50)"
+                                                placeholder={t('payments.coupon_placeholder', 'Masukkan kode promo (contoh: PROMO50)')}
                                                 className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-850 dark:text-white font-mono text-xs focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all"
                                             />
                                             <button
@@ -671,7 +672,7 @@ export function PaymentPage() {
                                                 ) : (
                                                     <HiOutlineTicket className="w-3.5 h-3.5" />
                                                 )}
-                                                Gunakan
+                                                {t('payments.apply_coupon', 'Gunakan')}
                                             </button>
                                         </div>
                                         {couponError && (
@@ -686,23 +687,23 @@ export function PaymentPage() {
 
                             {/* Ringkasan Pembayaran */}
                             <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-gray-150 dark:border-gray-700/50 rounded-2xl space-y-3">
-                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Ringkasan Pembayaran</p>
+                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('payments.payment_summary', 'Ringkasan Pembayaran')}</p>
                                 
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between text-gray-650 dark:text-gray-400">
-                                        <span>Harga Paket</span>
+                                        <span>{t('payments.plan_price', 'Harga Paket')}</span>
                                         <span>{formatCurrency(baseAmount)}</span>
                                     </div>
                                     
                                     {discountAmount > 0 && (
                                         <div className="flex justify-between text-emerald-600 dark:text-emerald-450 font-medium">
-                                            <span>Diskon Promo</span>
+                                            <span>{t('payments.promo_discount', 'Diskon Promo')}</span>
                                             <span>-{formatCurrency(discountAmount)}</span>
                                         </div>
                                     )}
                                     
                                     <div className="pt-2 border-t border-gray-255 dark:border-gray-700 flex justify-between items-center text-gray-850 dark:text-white font-bold">
-                                        <span>Total Bayar</span>
+                                        <span>{t('payments.total_payment', 'Total Bayar')}</span>
                                         <span className="text-lg text-gold-600 dark:text-gold-500 font-display">{formatCurrency(finalAmount)}</span>
                                     </div>
                                 </div>
@@ -715,7 +716,7 @@ export function PaymentPage() {
                                     className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all"
                                     disabled={!!payingId}
                                 >
-                                    Batal
+                                    {t('common.cancel', 'Batal')}
                                 </button>
                                 <button
                                     onClick={() => handlePayPlan(checkoutPlan)}
@@ -727,7 +728,7 @@ export function PaymentPage() {
                                     ) : (
                                         <HiOutlineCreditCard className="w-4 h-4" />
                                     )}
-                                    Bayar Sekarang
+                                    {t('payments.pay_now', 'Bayar Sekarang')}
                                 </button>
                             </div>
                         </div>
@@ -739,22 +740,22 @@ export function PaymentPage() {
             <Modal
                 isOpen={!!transactionToCancel}
                 onClose={() => setTransactionToCancel(null)}
-                title="Batalkan Transaksi Pembelian"
+                title={t('payments.cancel_modal_title', 'Batalkan Transaksi Pembelian')}
             >
                 <div className="space-y-4">
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
                         <div className="flex gap-3 text-red-800 dark:text-red-400">
                             <HiOutlineExclamationCircle className="w-5 h-5 shrink-0 mt-0.5" />
                             <div className="text-sm space-y-2">
-                                <p className="font-semibold text-base">Konfirmasi Pembatalan</p>
-                                <p>Anda akan membatalkan transaksi berikut:</p>
+                                <p className="font-semibold text-base">{t('payments.cancel_confirm_title', 'Konfirmasi Pembatalan')}</p>
+                                <p>{t('payments.cancel_confirm_desc', 'Anda akan membatalkan transaksi berikut:')}</p>
                                 <ul className="list-disc pl-4 space-y-1 opacity-90 text-[11px]">
-                                    <li>ID Transaksi: <span className="font-mono font-bold">{transactionToCancel?.id}</span></li>
-                                    <li>Item: <b>{transactionToCancel?.item_description}</b></li>
-                                    <li>Jumlah: <b>{transactionToCancel ? formatCurrency(Number(transactionToCancel.amount)) : ''}</b></li>
-                                    <li>Tanggal: <b>{transactionToCancel ? formatDate(transactionToCancel.created_at) : ''}</b></li>
+                                    <li>{t('payments.transaction_id', 'ID Transaksi')}: <span className="font-mono font-bold">{transactionToCancel?.id}</span></li>
+                                    <li>{t('payments.item', 'Item')}: <b>{transactionToCancel?.item_description}</b></li>
+                                    <li>{t('payments.amount', 'Jumlah')}: <b>{transactionToCancel ? formatCurrency(Number(transactionToCancel.amount)) : ''}</b></li>
+                                    <li>{t('payments.date', 'Tanggal')}: <b>{transactionToCancel ? formatDate(transactionToCancel.created_at) : ''}</b></li>
                                 </ul>
-                                <p className="font-medium pt-2 text-xs">Setelah dibatalkan, status transaksi akan berubah menjadi permanen batal dan Anda dapat melakukan pembelian ulang.</p>
+                                <p className="font-medium pt-2 text-xs">{t('payments.cancel_confirm_note', 'Setelah dibatalkan, status transaksi akan berubah menjadi permanen batal dan Anda dapat melakukan pembelian ulang.')}</p>
                             </div>
                         </div>
                     </div>
@@ -766,7 +767,7 @@ export function PaymentPage() {
                             className="btn-ghost px-5 py-1.5 text-sm"
                             disabled={!!cancelingId}
                         >
-                            Kembali
+                            {t('payments.back', 'Kembali')}
                         </button>
                         <button
                             type="button"
@@ -775,7 +776,7 @@ export function PaymentPage() {
                             className="btn-danger px-6 py-1.5 text-sm flex items-center gap-2"
                         >
                             {cancelingId && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            Ya, Batalkan Transaksi
+                            {t('payments.yes_cancel', 'Ya, Batalkan Transaksi')}
                         </button>
                     </div>
                 </div>

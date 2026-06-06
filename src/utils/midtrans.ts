@@ -60,20 +60,21 @@ export function openSnapPayment(snapToken: string): Promise<{
 /**
  * Maps Midtrans transaction_status to a user-friendly label and color.
  */
-export function getStatusBadge(status: string): { label: string; color: string } {
+export function getStatusBadge(status: string, t?: any): { label: string; color: string } {
+    const translate = t || ((key: string, fallback: string) => fallback);
     switch (status) {
         case 'settlement':
-            return { label: 'Berhasil', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+            return { label: translate('payments.status.settlement', 'Berhasil'), color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
         case 'pending':
-            return { label: 'Menunggu Pembayaran', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
+            return { label: translate('payments.status.pending', 'Menunggu Pembayaran'), color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
         case 'expire':
-            return { label: 'Kadaluarsa', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' };
+            return { label: translate('payments.status.expire', 'Kadaluarsa'), color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' };
         case 'cancel':
-            return { label: 'Dibatalkan', color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' };
+            return { label: translate('payments.status.cancel', 'Dibatalkan'), color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' };
         case 'deny':
-            return { label: 'Ditolak', color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' };
+            return { label: translate('payments.status.deny', 'Ditolak'), color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' };
         case 'refund':
-            return { label: 'Refund', color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' };
+            return { label: translate('payments.status.refund', 'Refund'), color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' };
         default:
             return { label: status, color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' };
     }
