@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 interface ThemeWrapperProps {
     htmlBase: string;
@@ -40,14 +40,48 @@ export function ThemeWrapper({
     const containerRef = useRef<HTMLDivElement>(null);
     const [showScrollUp, setShowScrollUp] = useState(false);
 
+    // Remember the last scroll position of whatever element actually scrolls
+    // (the phone container on desktop, the window on mobile). When htmlBase
+    // changes (e.g. after submitting RSVP/wish, the template re-renders to show
+    // the thank-you state), React re-injects the theme DOM and the scroll
+    // resets to top — which feels like a full page refresh. We capture the
+    // position on scroll and restore it right after the DOM is replaced.
+    const lastScroll = useRef<{ el: HTMLElement | Window; top: number }>({ el: window, top: 0 });
+
     useEffect(() => {
         const handleScroll = (e: any) => {
-            const scrollTop = e.target.scrollTop || window.scrollY || document.documentElement.scrollTop;
+            const tgt = e.target;
+            const scrollTop = (tgt && typeof tgt.scrollTop === 'number' ? tgt.scrollTop : 0)
+                || window.scrollY || document.documentElement.scrollTop;
             setShowScrollUp(scrollTop > 200);
+
+            // Track the active scroller + position for restoration
+            if (tgt instanceof HTMLElement && tgt.scrollTop > 0) {
+                lastScroll.current = { el: tgt, top: tgt.scrollTop };
+            } else {
+                lastScroll.current = { el: window, top: window.scrollY || document.documentElement.scrollTop };
+            }
         };
         window.addEventListener('scroll', handleScroll, true);
         return () => window.removeEventListener('scroll', handleScroll, true);
     }, []);
+
+    // Restore scroll position synchronously after the theme DOM is re-injected
+    // due to an htmlBase change, so submitting a form doesn't jump to the top.
+    useLayoutEffect(() => {
+        const { el, top } = lastScroll.current;
+        if (!top) return;
+        // restore on the next frame too, in case layout settles late
+        const restore = () => {
+            try {
+                if (el === window) window.scrollTo(0, top);
+                else (el as HTMLElement).scrollTop = top;
+            } catch { /* ignore */ }
+        };
+        restore();
+        const raf = requestAnimationFrame(restore);
+        return () => cancelAnimationFrame(raf);
+    }, [htmlBase]);
 
     // Sync open/envelope state when isOpened is true OR htmlBase changes (re-renders fresh HTML)
     useEffect(() => {

@@ -451,7 +451,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const guests = manualData?.guests || rsvpGuests;
         const code = manualData?.code || rsvpCode;
 
-        if (!code.trim()) return { success: false, message: t('invitation.rsvp_code_required') };
+        if (!code.trim()) {
+            toast.error(t('invitation.rsvp_code_required'), { duration: 4000 });
+            return { success: false, message: t('invitation.rsvp_code_required') };
+        }
 
         setRsvpLoading(true);
         setRsvpResult(null);
@@ -511,10 +514,16 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
             const result = { success: res.success, message: res.message, calendarUrl };
             setRsvpResult(result);
+            if (res.success) {
+                toast.success(res.message || t('invitation.rsvp_success_toast'), { duration: 4000 });
+            } else {
+                toast.error(res.message || t('invitation.rsvp_failed'), { duration: 4000 });
+            }
             return result;
         } catch {
             const errorResult = { success: false, message: t('invitation.system_error') };
             setRsvpResult(errorResult);
+            toast.error(t('invitation.system_error'), { duration: 4000 });
             return errorResult;
         } finally {
             setRsvpLoading(false);
@@ -527,7 +536,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         const name = manualData?.name || wishName;
         const message = manualData?.message || wishMessage;
 
-        if (!name.trim() || !message.trim()) return { success: false, message: t('invitation.wish_required') };
+        if (!name.trim() || !message.trim()) {
+            toast.error(t('invitation.wish_required'), { duration: 4000 });
+            return { success: false, message: t('invitation.wish_required') };
+        }
 
         setWishLoading(true);
         try {
@@ -548,10 +560,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         guest: { ...data.guest, flag_sudah_isi_ucapan: true }
                     });
                 }
+                toast.success(t('invitation.wish_success'), { duration: 4000 });
                 return { success: true, message: t('invitation.wish_success'), data: newWish };
             }
-            return { success: false, message: res.message || t('invitation.wish_failed') };
+            const failMsg = res.message || t('invitation.wish_failed');
+            toast.error(failMsg, { duration: 4000 });
+            return { success: false, message: failMsg };
         } catch {
+            toast.error(t('invitation.system_error'), { duration: 4000 });
             return { success: false, message: t('invitation.system_error') };
         } finally {
             setWishLoading(false);
@@ -601,6 +617,74 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const prevLightbox = () => {
         setCurrentLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
     };
+
+    // --- Lightbox swipe / drag gesture (left = next, right = prev) ---
+    const lbDragStart = useRef<{ x: number; y: number } | null>(null);
+    const LB_SWIPE_THRESHOLD = 50;
+
+    const lbStart = (x: number, y: number) => { lbDragStart.current = { x, y }; };
+    const lbEnd = (x: number, y: number) => {
+        const start = lbDragStart.current;
+        lbDragStart.current = null;
+        if (!start || lightboxImages.length <= 1) return;
+        const dx = x - start.x;
+        const dy = y - start.y;
+        if (Math.abs(dx) > LB_SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) nextLightbox();
+            else prevLightbox();
+        }
+    };
+
+    // --- Auto-fill RSVP/wish form when a valid guest is resolved from the params ---
+    useEffect(() => {
+        const guest = data?.guest;
+
+        // Name/code can come from a resolved guest (?guestid=...) OR from a guest
+        // who just registered themselves via the "Isi Data Kehadiran" dialog
+        // (generatedUninvitedQR = "NEW_GUEST:<name>:<category>").
+        let guestName = guest?.name || '';
+        let guestCode = guest?.invitation_code || '';
+
+        if (!guestName && generatedUninvitedQR?.startsWith('NEW_GUEST:')) {
+            const parts = generatedUninvitedQR.split(':');
+            guestName = (parts[1] || '').trim();
+        }
+
+        if (!guestName) return;
+
+        const fill = () => {
+            // invitation code fields used by themes / wrapper
+            const codeEls = document.querySelectorAll<HTMLInputElement>('#rsvp-code, #guest-code, [name="rsvp-code"]');
+            codeEls.forEach((el) => {
+                if (el && !el.value) el.value = guestCode;
+            });
+
+            // guest name fields used by themes (RSVP form + wishes form)
+            const nameEls = document.querySelectorAll<HTMLInputElement>('#guest-name-input, #rsvp-name, #wish-name, [name="guest-name-input"], [name="wish-name"]');
+            nameEls.forEach((el) => {
+                if (el && !el.value) el.value = guestName;
+            });
+
+            // default number of guests = 1
+            const guestsEls = document.querySelectorAll<HTMLSelectElement | HTMLInputElement>('#rsvp-guests, [name="rsvp-guests"]');
+            guestsEls.forEach((el) => {
+                if (el && (!el.value || el.value === '')) {
+                    el.value = '1';
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+
+            // re-validate any "enable submit when filled" listeners themes may use
+            codeEls.forEach((el) => el.dispatchEvent(new Event('input', { bubbles: true })));
+            nameEls.forEach((el) => el.dispatchEvent(new Event('input', { bubbles: true })));
+        };
+
+        // Run now and again shortly after, since the theme HTML/JS may render slightly later
+        fill();
+        const t1 = setTimeout(fill, 400);
+        const t2 = setTimeout(fill, 1200);
+        return () => { clearTimeout(t1); clearTimeout(t2); };
+    }, [data?.guest, isOpened, generatedUninvitedQR]);
 
     const scrollToSection = (index: number) => {
         if (index < 0 || index >= sections.length) return;
@@ -1283,12 +1367,20 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                             </button>
 
                             {/* Main Image Container */}
-                            <div className="w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setIsLightboxOpen(false)}>
+                            <div
+                                className="w-full h-full flex items-center justify-center p-4 md:p-12"
+                                onClick={() => setIsLightboxOpen(false)}
+                                onTouchStart={(e) => lbStart(e.touches[0].clientX, e.touches[0].clientY)}
+                                onTouchEnd={(e) => lbEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY)}
+                            >
                                 <img
                                     src={lightboxImages[currentLightboxIndex]}
                                     alt="Lightbox"
-                                    className="max-w-full max-h-full object-contain animate-scale-in"
+                                    className="max-w-full max-h-full object-contain animate-scale-in select-none"
+                                    draggable={false}
                                     onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => { e.stopPropagation(); lbStart(e.clientX, e.clientY); }}
+                                    onMouseUp={(e) => { e.stopPropagation(); lbEnd(e.clientX, e.clientY); }}
                                 />
                             </div>
                         </div>

@@ -19,14 +19,60 @@ interface LightboxProps {
 export function Lightbox({ images, initialIndex = 0, onClose }: LightboxProps) {
     const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
 
+    const goNext = React.useCallback(() => {
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, [images.length]);
+
+    const goPrev = React.useCallback(() => {
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    }, [images.length]);
+
     const next = (e: React.MouseEvent) => {
         e.stopPropagation();
-        setCurrentIndex((prev) => (prev + 1) % images.length);
+        goNext();
     };
 
     const prev = (e: React.MouseEvent) => {
         e.stopPropagation();
-        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+        goPrev();
+    };
+
+    // --- Swipe / drag gesture (left = next, right = prev) ---
+    const dragStartX = React.useRef<number | null>(null);
+    const dragStartY = React.useRef<number | null>(null);
+    const SWIPE_THRESHOLD = 50; // px
+
+    const onPointerDown = (clientX: number, clientY: number) => {
+        dragStartX.current = clientX;
+        dragStartY.current = clientY;
+    };
+
+    const onPointerUp = (clientX: number, clientY: number) => {
+        if (dragStartX.current === null || dragStartY.current === null) return;
+        const dx = clientX - dragStartX.current;
+        const dy = clientY - dragStartY.current;
+        dragStartX.current = null;
+        dragStartY.current = null;
+        // Only treat as swipe if mostly horizontal and past threshold
+        if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) && images.length > 1) {
+            if (dx < 0) goNext();
+            else goPrev();
+        }
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        const t = e.touches[0];
+        onPointerDown(t.clientX, t.clientY);
+    };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        const t = e.changedTouches[0];
+        onPointerUp(t.clientX, t.clientY);
+    };
+    const handleMouseDown = (e: React.MouseEvent) => {
+        onPointerDown(e.clientX, e.clientY);
+    };
+    const handleMouseUp = (e: React.MouseEvent) => {
+        onPointerUp(e.clientX, e.clientY);
     };
 
     React.useEffect(() => {
@@ -105,15 +151,20 @@ export function Lightbox({ images, initialIndex = 0, onClose }: LightboxProps) {
                 </>
             )}
 
-            <div 
+            <div
                 className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center justify-center"
                 onClick={(e) => e.stopPropagation()}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
             >
                 <div className="relative group overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
                     <ProxyImage
                         src={currentImg.url}
                         alt={currentImg.caption || currentImg.file_name || "Lightbox image"}
                         className="max-w-full max-h-[75vh] object-contain select-none"
+                        draggable={false}
                     />
                 </div>
                 

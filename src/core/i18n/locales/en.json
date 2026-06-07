@@ -444,6 +444,8 @@
     "page_title": "The Wedding of {{bride}} & {{groom}} | Wedding Invitation",
     "default_title": "Digital Wedding Invitation - You are Invited!",
     "rsvp_code_required": "Invitation code is required",
+    "rsvp_success_toast": "RSVP submitted successfully!",
+    "rsvp_failed": "Failed to submit RSVP",
     "wish_required": "Name and message are required",
     "wish_success": "Wish sent successfully!",
     "wish_failed": "Failed to send wish",

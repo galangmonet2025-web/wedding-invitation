@@ -298,6 +298,8 @@
 
                     <div class="rsvp-form-container" id="rsvp-container">
 
+                        {{#unless is_link_umum_and_not_for_spesific_guest}}
+
                         {{#unless is_sudah_isi_konfirmasi_kehadiran}}
                         <div>
                             <div class="glass-form" id="rsvp-form">
@@ -358,6 +360,8 @@
                             </div>
                         </div>
                         {{/if}}
+
+                        {{/unless}}
 
                     </div>
                 </div>

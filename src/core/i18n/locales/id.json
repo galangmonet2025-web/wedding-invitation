@@ -444,6 +444,8 @@
     "page_title": "Pernikahan {{bride}} & {{groom}} | Undangan Pernikahan",
     "default_title": "Undangan Pernikahan Digital - Anda Diundang!",
     "rsvp_code_required": "Kode undangan wajib diisi",
+    "rsvp_success_toast": "Konfirmasi kehadiran berhasil terkirim!",
+    "rsvp_failed": "Gagal mengirim konfirmasi kehadiran",
     "wish_required": "Nama dan pesan wajib diisi",
     "wish_success": "Ucapan berhasil terkirim!",
     "wish_failed": "Gagal mengirim ucapan",
