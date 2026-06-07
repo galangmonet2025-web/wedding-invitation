@@ -978,7 +978,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     }, [activeTheme?.html_template, tenant.wedding_date, dataContext]);
 
     // LOADING - Moved after hooks
-    if (loading || (!previewData && !resolvedImages)) {
+    // Guard against the not-found case: when the fetch fails, `data` stays null
+    // so the image-resolve effect early-returns and `resolvedImages` is never
+    // set. Without checking `error`/`!data` here, the old `!resolvedImages`
+    // condition stayed true forever and the loader spun endlessly instead of
+    // falling through to the error screen below.
+    if (!error && (loading || (!previewData && !data) || (!previewData && !resolvedImages))) {
         return (
             <div className="inv-page inv-loading" style={{
                 background: '#1A1A2E',

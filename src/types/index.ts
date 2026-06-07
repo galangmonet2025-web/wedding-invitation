@@ -538,6 +538,24 @@ export interface ReviewAndRating {
 }
 
 // =============================================
+// Archive & Restore
+// =============================================
+
+// One row of the ArchiveAndRestore sheet (a tenant whose data has been archived).
+export interface ArchiveRecord {
+    id: string;
+    tenant_id: string;
+    slug: string;
+    wedding_date: string;
+    groom_name: string;
+    bride_name: string;
+    plan_type: string;
+    status_payment: string;
+    tanggal_archive: string;
+    url_json: string;
+}
+
+// =============================================
 // Payment / Transaction
 // =============================================
 

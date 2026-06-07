@@ -31,6 +31,7 @@ import type {
     MstPlanFeature,
     Coupon,
     QuotesVariant,
+    ArchiveRecord,
 } from '@/types';
 
 // =============================================
@@ -569,6 +570,39 @@ export const quotesApi = {
     // Tenant saves quote selection (custom=true upserts a tenant-owned row)
     saveTenantQuotes: async (data: Partial<QuotesVariant> & { custom?: boolean; quotes_id?: string }, config: any = {}): Promise<ApiResponse<{ quotes_id: string }>> => {
         const res = await apiClient.post('', { action: 'saveTenantQuotes', ...data }, config);
+        return res.data;
+    },
+};
+
+// =============================================
+// ARCHIVE & RESTORE API
+// All long-running actions are called with skipLoader: true so the page is not
+// blocked — progress is surfaced via the global background-task indicator.
+// =============================================
+
+export const archiveApi = {
+    // List of already-archived tenants (rows of the ArchiveAndRestore sheet)
+    getArchives: async (config: any = {}): Promise<ApiResponse<ArchiveRecord[]>> => {
+        const res = await apiClient.post('', { action: 'getArchives' }, config);
+        return res.data;
+    },
+
+    // Collect all tenant data -> store JSON in Drive -> write ArchiveAndRestore -> delete rows from every sheet.
+    // Rejected by backend if ReviewAndRating.flag_show_review === true.
+    archiveTenant: async (tenantId: string, config: any = {}): Promise<ApiResponse<ArchiveRecord>> => {
+        const res = await apiClient.post('', { action: 'archiveTenant', tenant_id: tenantId }, config);
+        return res.data;
+    },
+
+    // Read JSON -> write rows back to every sheet -> delete JSON file + ArchiveAndRestore row (does NOT touch ReviewAndRating).
+    restoreTenant: async (tenantId: string, config: any = {}): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'restoreTenant', tenant_id: tenantId }, config);
+        return res.data;
+    },
+
+    // Permanently delete: ArchiveAndRestore row + physical Drive folder + JSON backup. Restore impossible after this.
+    deleteArchivePermanent: async (tenantId: string, config: any = {}): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteArchivePermanent', tenant_id: tenantId }, config);
         return res.data;
     },
 };

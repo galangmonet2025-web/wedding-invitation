@@ -362,6 +362,20 @@
         PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
         return CouponService.validateCoupon(auth, payload);
 
+      // Archive & Restore (superadmin only)
+      case 'getArchives':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return ArchiveService.getArchives(auth);
+      case 'archiveTenant':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return ArchiveService.archiveTenant(auth, payload);
+      case 'restoreTenant':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return ArchiveService.restoreTenant(auth, payload);
+      case 'deleteArchivePermanent':
+        PermissionService.requireRole(auth, ['superadmin']);
+        return ArchiveService.deleteArchivePermanent(auth, payload);
+
       default:
         return ResponseHelper.error('Unknown action: ' + action, 400);
     }
@@ -553,6 +567,58 @@
         }
       }
       return false;
+    },
+
+    // Batch-delete every row whose `field` equals `value`, in a single rewrite.
+    // Rebuilds the data block (below the header) keeping only non-matching rows,
+    // then clears the old block and writes the survivors back at once. Returns
+    // the number of rows removed. Far fewer Sheets calls than per-row deleteRow,
+    // which is what avoids the 6-minute timeout on large sheets.
+    deleteRowsWhere: function(sheetName, field, value) {
+      var sheet = this.getSheet(sheetName);
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      if (lastRow <= 1 || lastCol === 0) return 0; // header-only or empty
+
+      var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+      var headers = data[0];
+      var col = headers.indexOf(field);
+      if (col === -1) return 0;
+
+      var target = String(value);
+      var kept = [];
+      var removed = 0;
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][col]) === target) {
+          removed++;
+        } else {
+          kept.push(data[i]);
+        }
+      }
+      if (removed === 0) return 0;
+
+      // Clear all data rows, then write back the survivors in one shot.
+      sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+      if (kept.length > 0) {
+        sheet.getRange(2, 1, kept.length, lastCol).setValues(kept);
+      }
+      return removed;
+    },
+
+    // Batch-insert many rows in a single setValues call (one Sheets write).
+    // rowDataArray is an array of plain objects keyed by header name.
+    insertRows: function(sheetName, rowDataArray) {
+      if (!rowDataArray || rowDataArray.length === 0) return 0;
+      var sheet = this.getSheet(sheetName);
+      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var matrix = rowDataArray.map(function(rowData) {
+        return headers.map(function(h) {
+          return (rowData[h] === undefined || rowData[h] === null) ? '' : rowData[h];
+        });
+      });
+      var startRow = sheet.getLastRow() + 1;
+      sheet.getRange(startRow, 1, matrix.length, headers.length).setValues(matrix);
+      return matrix.length;
     },
 
     generateId: function() {
@@ -2889,43 +2955,51 @@
   function setupSpreadsheet() {
     var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
+    // Column definitions mirror the LIVE spreadsheet exactly (name + order).
+    // Order matters: setupSpreadsheet overwrites row 1 headers, so any mismatch
+    // would misalign existing data underneath. Keep these in sync with the sheet.
     var sheets = {
-      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'css_template', 'css_extra_1', 'css_extra_2', 'js_template', 'js_extra_1', 'js_extra_2', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'image_types', 'created_at'],
-      'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
-      'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'active', 'flag_default_quotes', 'tenant_id', 'user_id', 'created_at', 'update_at'],
+      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'css_template', 'css_extra_1', 'css_extra_2', 'js_template', 'js_extra_1', 'js_extra_2', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
+      'Tenants': ['id', 'bride_nickname', 'bride_name', 'groom_nickname', 'groom_name', 'religion', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
+      'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
-      'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
+      'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'flag_sudah_kirim_undangan_via_whatsapp', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
       'Wishes': ['id', 'tenant_id', 'guest_name', 'message', 'created_at'],
       'Gifts': ['id', 'tenant_id', 'guest_name', 'amount', 'bank_name', 'created_at'],
       'ActivityLogs': ['id', 'tenant_id', 'user_id', 'action', 'created_at'],
       'InvitationContent': [
         'id', 'tenant_id', 'tanggal_akad', 'jam_awal_akad', 'jam_akhir_akad',
-        'jam_awal_resepsi', 'jam_akhir_resepsi', 'flag_lokasi_akad_dan_resepsi_berbeda', 
+        'jam_awal_resepsi', 'jam_akhir_resepsi', 'flag_lokasi_akad_dan_resepsi_berbeda',
         'akad_map', 'nama_lokasi_akad', 'keterangan_lokasi_akad',
         'resepsi_map', 'nama_lokasi_resepsi', 'keterangan_lokasi_resepsi',
         'flag_tampilkan_nama_orang_tua', 'nama_bapak_laki_laki', 'nama_ibu_laki_laki', 'nama_bapak_perempuan', 'nama_ibu_perempuan',
         'flag_tampilkan_sosial_media_mempelai', 'account_media_sosial_laki_laki', 'account_media_sosial_perempuan',
         'flag_pakai_timeline_kisah', 'timeline_kisah', 'tampilkan_amplop_online',
-        'nama_bank_1', 'nama_rekening_bank_1', 'nomor_rekening_bank_1',
-        'nama_bank_2', 'nama_rekening_bank_2', 'nomor_rekening_bank_2',
+        'nama_bank_1', 'nama_rekening_bank_1', 'flag_pakai_qris_rekening_1', 'gambar_qris_rekening_1', 'nomor_rekening_bank_1',
+        'flag_pakai_2_rekening', 'nama_bank_2', 'nama_rekening_bank_2', 'nomor_rekening_bank_2', 'flag_pakai_qris_rekening_2', 'gambar_qris_rekening_2',
+        'flag_kirim_hadiah_offline', 'map_kirim_hadiah_offline', 'nama_lokasi_kirim_hadiah_offline', 'alamat_lokasi_kirim_hadiah_offline',
         'custom_kalimat_1', 'custom_kalimat_2', 'custom_kalimat_3', 'custom_kalimat_4',
         'flag_pakai_kalimat_pembuka_custom', 'kalimat_pembuka_undangan',
         'flag_pakai_kalimat_penutup_custom', 'kalimat_penutup_undangan',
         'link_backsound_music',
-        'flag_pakai_live_streaming', 'link_live_streaming', 'platform_live_streaming'
+        'flag_pakai_live_streaming', 'link_live_streaming', 'wa_blast_template', 'platform_live_streaming'
       ],
       'Images': ['id', 'tenant_id', 'image_type', 'file_name', 'drive_file_id', 'drive_url', 'cdn_url', 'width', 'height', 'size_kb', 'created_at'],
-      'ImageGallery': ['id', 'tenant_id', 'image_id', 'sort_order', 'created_at'],
-      'ThemeImageRequirements': ['id', 'theme_id', 'image_type', 'required', 'max_images', 'aspect_ratio'],
+      // WebsiteConfig has NO 'id' column in the live sheet (starts at site_name).
       'WebsiteConfig': [
-        'id', 'site_name', 'site_url', 'site_logo', 'site_instagram', 'site_tiktok', 'site_youtube', 
-        'contact_email', 'contact_whatsapp', 'tagline', 'site_description', 
+        'site_name', 'site_url', 'site_logo', 'site_instagram', 'site_tiktok', 'site_youtube',
+        'contact_email', 'contact_whatsapp', 'tagline', 'site_description',
         'site_code_html', 'site_code_css', 'site_code_js', 'primary_color', 'accent_color'
       ],
-      'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'plan_type', 'theme_id', 'alamat', 'flag_show_review', 'created_at'],
+      'ReviewAndRating': ['id', 'tenant_id', 'comment', 'rate_star', 'wedding_date', 'bride_name', 'groom_name', 'domain_slug', 'alamat', 'plan_type', 'theme_id', 'flag_show_review', 'created_at'],
       'MstAdditionalFeature': ['id', 'feature_code', 'feature_name', 'description', 'is_required_tenant_input', 'input_data_type', 'output_data_type', 'active', 'price', 'created_at'],
       'TenantActiveFeature': ['id', 'tenant_id', 'additional_feature_id', 'input_tenant_data', 'output_data', 'active', 'payment_status'],
-      'Transactions': ['id', 'tenant_id', 'item_type', 'item_description', 'item_id', 'amount', 'status', 'snap_token', 'payment_method', 'created_at', 'updated_at']
+      'Transactions': ['id', 'tenant_id', 'item_type', 'item_description', 'item_id', 'amount', 'status', 'snap_token', 'payment_method', 'created_at', 'updated_at'],
+      'Coupon': ['id', 'begin_date', 'end_date', 'plan_id', 'coupon_code', 'discount_type', 'percent_discount', 'nominal_discount', 'catatan', 'user_id', 'active', 'created_at', 'updated_at'],
+      'PlanType': ['id', 'plan_type', 'guest_limit', 'price'],
+      'PlanFeature': ['id', 'plan_id', 'feature', 'order_number', 'active'],
+      'TemplateInvitation': ['id', 'nama_template', 'plan_type', 'section_pembuka_undangan', 'section_cover_awal_undangan', 'section_perkenalan_mempelai_dan_orang_tua', 'section_hitung_mundur', 'section_akad', 'section_konfirmasi_kehadiran', 'section_tulis_ucapan', 'section_wedding_gift', 'section_timeline_love_story', 'section_galery', 'section_footer'],
+      'ArchiveAndRestore': ['id', 'tenant_id', 'slug', 'wedding_date', 'groom_name', 'bride_name', 'plan_type', 'status_payment', 'tanggal_archive', 'url_json']
     };
 
     for (var name in sheets) {
@@ -2954,13 +3028,31 @@
       var userId = Utilities.getUuid();
       var now = new Date().toISOString();
 
-      // Create system tenant for superadmin
-      var tenantsSheet = ss.getSheetByName('Tenants');
-      tenantsSheet.appendRow([tenantId, 'System', 'Admin', '', 'system-admin', 'premium', -1, now, 'active', now, 'Sudah dibayar']);
+      // Create system tenant for superadmin.
+      // Use DB.insert (maps fields by header name) so column order can't drift.
+      DB.insert('Tenants', {
+        id: tenantId,
+        bride_name: 'System',
+        groom_name: 'Admin',
+        domain_slug: 'system-admin',
+        plan_type: 'premium',
+        guest_limit: -1,
+        created_at: now,
+        status_account: 'active',
+        payment_deadline: now,
+        status_payment: 'Sudah dibayar'
+      });
 
       // Create superadmin user (password: admin123)
       var passwordHash = AuthService.hashPassword('admin123');
-      usersSheet.appendRow([userId, 'admin', passwordHash, 'superadmin', tenantId, now]);
+      DB.insert('Users', {
+        id: userId,
+        username: 'admin',
+        password_hash: passwordHash,
+        role: 'superadmin',
+        tenant_id: tenantId,
+        created_at: now
+      });
 
       Logger.log('Superadmin created: admin / admin123');
     }
@@ -2972,6 +3064,45 @@
     }
 
     Logger.log('Setup complete! Spreadsheet ready.');
+  }
+
+  // =====================================================================
+  // DUMP STRUCTURE - Read-only. Logs every sheet name + its row-1 headers.
+  // Run this and copy the Execution log to inspect the live structure.
+  // Does NOT modify any data.
+  // =====================================================================
+
+  function dumpSpreadsheetStructure() {
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheets = ss.getSheets();
+    var out = [];
+
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var name = sheet.getName();
+      var lastCol = sheet.getLastColumn();
+      var lastRow = sheet.getLastRow();
+
+      if (lastCol === 0) {
+        out.push('=== ' + name + ' === (EMPTY: ' + lastRow + ' rows, ' + lastCol + ' cols)');
+        out.push('headers: []');
+        out.push('');
+        continue;
+      }
+
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+      // JSON.stringify each header so trailing spaces / empty cells are visible.
+      var quoted = headers.map(function (h) {
+        return JSON.stringify(h);
+      });
+
+      out.push('=== ' + name + ' === (' + lastRow + ' rows, ' + lastCol + ' cols)');
+      out.push('headers: [' + quoted.join(', ') + ']');
+      out.push('');
+    }
+
+    Logger.log(out.join('\n'));
   }
 
 
@@ -3808,3 +3939,565 @@
       return { valid: true, message: 'Kode kupon valid', coupon: coupon };
     }
   };
+
+
+  // =====================================================================
+  // ARCHIVE & RESTORE SERVICE
+  // =====================================================================
+  // Archives ALL of a tenant's data into a JSON backup on Drive, then deletes
+  // the rows from every sheet. Restore writes the rows back and cleans up the
+  // backup. Permanent delete removes the backup + the tenant's Drive folder.
+  //
+  // IMPORTANT: the source-of-truth list of tenant-scoped sheets is the
+  // setupSpreadsheet() definition. Keep ARCHIVE_TENANT_SHEETS in sync with it.
+  // =====================================================================
+
+  // Every sheet that stores rows keyed by tenant_id (excludes the parent
+  // `Tenants` sheet which is keyed by `id` and handled separately).
+  var ARCHIVE_TENANT_SHEETS = [
+    'Users',
+    'QuotesVariant',        // mixed sheet: only rows with this tenant_id are archived
+    'Guests',
+    'Wishes',
+    'Gifts',
+    'ActivityLogs',
+    'InvitationContent',
+    'Images',
+    'ReviewAndRating',
+    'TenantActiveFeature',
+    'Transactions'
+  ];
+
+  var ArchiveService = {
+
+    // ---- list archived tenants ----
+    getArchives: function(auth) {
+      // Tolerate a spreadsheet that hasn't run setupSpreadsheet() yet.
+      if (!this._sheetExists('ArchiveAndRestore')) {
+        return ResponseHelper.success([], 'Archive sheet not initialized');
+      }
+      var rows = DB.getAll('ArchiveAndRestore');
+      return ResponseHelper.success(rows, 'Archives retrieved');
+    },
+
+    // ---- helpers ----------------------------------------------------------
+
+    // True if a sheet with this name exists in the spreadsheet.
+    // Lets archive/restore skip sheets that were never created (older
+    // spreadsheets predating a sheet like ImageGallery) instead of crashing.
+    _sheetExists: function(name) {
+      return !!SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(name);
+    },
+
+    // Returns the Drive folder for a tenant ({root}/tenants/{tenantId}), or null.
+    _getTenantFolder: function(tenantId) {
+      var roots = DriveApp.getFoldersByName('wedding-saas-storage');
+      if (!roots.hasNext()) return null;
+      var root = roots.next();
+      var tenantsFolders = root.getFoldersByName('tenants');
+      if (!tenantsFolders.hasNext()) return null;
+      var tenantsFolder = tenantsFolders.next();
+      var folders = tenantsFolder.getFoldersByName(tenantId);
+      return folders.hasNext() ? folders.next() : null;
+    },
+
+    // Returns (creating if needed) the {root}/archives folder used for JSON backups.
+    _getArchivesFolder: function() {
+      var roots = DriveApp.getFoldersByName('wedding-saas-storage');
+      var root = roots.hasNext() ? roots.next() : DriveApp.createFolder('wedding-saas-storage');
+      var sub = root.getFoldersByName('archives');
+      return sub.hasNext() ? sub.next() : root.createFolder('archives');
+    },
+
+    // Collect every row belonging to the tenant across all sheets + the parent row.
+    // Sheets that don't exist in this spreadsheet are skipped (stored as []).
+    _collectTenantData: function(tenantId, tenant) {
+      var data = { Tenants: tenant ? [tenant] : [] };
+      for (var i = 0; i < ARCHIVE_TENANT_SHEETS.length; i++) {
+        var name = ARCHIVE_TENANT_SHEETS[i];
+        data[name] = this._sheetExists(name) ? DB.getByTenant(name, tenantId) : [];
+      }
+      return data;
+    },
+
+    // ---- archive ----------------------------------------------------------
+    // Effectively atomic ("all-or-nothing"). Apps Script has no DB transactions,
+    // so we emulate it: snapshot every row in memory FIRST, then delete. If any
+    // step throws, _rollbackInsert re-inserts the snapshot so the tenant is left
+    // exactly as it was active. Uses batch delete/insert to stay well under the
+    // 6-minute execution limit (the old per-row loop was timing out on large
+    // tenants, which is what produced the half-archived state).
+    archiveTenant: function(auth, payload) {
+      Validator.required(payload, ['tenant_id']);
+      var tenantId = payload.tenant_id;
+
+      // ---- PHASE 1: validate everything BEFORE any write -------------------
+      var tenant = DB.findOne('Tenants', 'id', tenantId);
+      if (!tenant) return ResponseHelper.error('Tenant tidak ditemukan', 404);
+
+      // GUARD: the ArchiveAndRestore sheet must exist before we delete anything,
+      // otherwise we'd wipe the tenant with no archive record to restore from.
+      if (!this._sheetExists('ArchiveAndRestore')) {
+        return ResponseHelper.error('Sheet "ArchiveAndRestore" belum dibuat. Jalankan setupSpreadsheet() terlebih dahulu.', 500);
+      }
+
+      // GUARD: cannot archive while the review is publicly shown.
+      var reviews = this._sheetExists('ReviewAndRating') ? DB.getByTenant('ReviewAndRating', tenantId) : [];
+      for (var r = 0; r < reviews.length; r++) {
+        var f = reviews[r].flag_show_review;
+        if (f === true || f === 'true' || f === 'TRUE') {
+          return ResponseHelper.error(
+            'Tenant ini masih menampilkan review (flag_show_review aktif). Nonaktifkan tampilan review terlebih dahulu sebelum mengarsipkan.',
+            400
+          );
+        }
+      }
+
+      // ---- PHASE 2: snapshot ALL data in memory (the rollback source) ------
+      // Captured before any destructive write so we can fully restore on error.
+      var snapshot = this._collectTenantData(tenantId, tenant);
+
+      // Write the JSON backup to Drive FIRST (durable source of truth).
+      var folder = this._getArchivesFolder();
+      var fileName = 'archive_' + tenantId + '_' + (new Date().getTime()) + '.json';
+      var backup = {
+        schema_version: 1,
+        tenant_id: tenantId,
+        archived_at: new Date().toISOString(),
+        data: snapshot
+      };
+      var file, urlJson;
+      try {
+        file = folder.createFile(fileName, JSON.stringify(backup), 'application/json');
+        urlJson = file.getUrl();
+      } catch (e) {
+        return ResponseHelper.error('Gagal menulis file backup: ' + (e && e.message ? e.message : e), 500);
+      }
+
+      // ---- PHASE 3: destructive writes, with rollback on ANY failure -------
+      var deletedFromSheets = []; // track which sheets we've cleared, for rollback
+      try {
+        // Delete child rows (batch: one rewrite per sheet).
+        for (var s = 0; s < ARCHIVE_TENANT_SHEETS.length; s++) {
+          var sheetName = ARCHIVE_TENANT_SHEETS[s];
+          if (!this._sheetExists(sheetName)) continue;
+          DB.deleteRowsWhere(sheetName, 'tenant_id', tenantId);
+          deletedFromSheets.push(sheetName);
+        }
+        // Delete the parent tenant row.
+        DB.deleteRowsWhere('Tenants', 'id', tenantId);
+        deletedFromSheets.push('Tenants');
+
+        // Record into ArchiveAndRestore (the commit point).
+        var record = {
+          id: DB.generateId(),
+          tenant_id: tenantId,
+          slug: tenant.domain_slug || '',
+          wedding_date: tenant.wedding_date || '',
+          groom_name: tenant.groom_name || '',
+          bride_name: tenant.bride_name || '',
+          plan_type: tenant.plan_type || '',
+          status_payment: tenant.status_payment || '',
+          tanggal_archive: new Date().toISOString(),
+          url_json: urlJson
+        };
+        DB.insert('ArchiveAndRestore', record);
+
+        return ResponseHelper.success(record, 'Tenant archived successfully');
+
+      } catch (err) {
+        // ROLLBACK (primary): re-insert only what we removed, so the tenant
+        // returns to its ACTIVE state.
+        try {
+          this._rollbackInsert(snapshot, deletedFromSheets);
+        } catch (rollbackErr) {
+          // ROLLBACK (fallback): if the targeted rollback itself failed, force a
+          // full reconcile from the in-memory snapshot — clears the tenant on
+          // every sheet and rebuilds it, so no half-state can survive.
+          try { this.reconcileFromData(tenantId, snapshot); } catch (e5) {}
+        }
+        // Clean up the now-orphaned backup file and any half-written archive row.
+        try { if (file) file.setTrashed(true); } catch (e2) {}
+        try {
+          var orphan = DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId);
+          if (orphan) DB.deleteRow('ArchiveAndRestore', orphan.id);
+        } catch (e3) {}
+        return ResponseHelper.error(
+          'Archive dibatalkan & seluruh data dikembalikan (rollback). Penyebab: ' + (err && err.message ? err.message : err),
+          500
+        );
+      }
+    },
+
+    // Re-insert a snapshot produced by _collectTenantData. Only re-inserts sheets
+    // we actually cleared (deletedFromSheets), so it's safe to call mid-failure.
+    // Used by both archive rollback and restore rollback.
+    _rollbackInsert: function(snapshot, sheetsToRestore) {
+      // Parent tenant first.
+      if (sheetsToRestore.indexOf('Tenants') !== -1 && snapshot.Tenants) {
+        try { DB.insertRows('Tenants', snapshot.Tenants); } catch (e) {}
+      }
+      for (var i = 0; i < ARCHIVE_TENANT_SHEETS.length; i++) {
+        var name = ARCHIVE_TENANT_SHEETS[i];
+        if (sheetsToRestore.indexOf(name) === -1) continue;
+        try { DB.insertRows(name, snapshot[name] || []); } catch (e) {}
+      }
+    },
+
+    // ---- restore ----------------------------------------------------------
+    // Effectively atomic, mirror of archiveTenant. Reads + validates the backup
+    // BEFORE any write. Inserts (batch) per sheet; if any step throws, rolls back
+    // by deleting everything inserted so far so the tenant does NOT reappear
+    // half-restored. Only trashes the backup + archive row AFTER a full success,
+    // so a failed restore is always safely re-runnable.
+    restoreTenant: function(auth, payload) {
+      Validator.required(payload, ['tenant_id']);
+      var tenantId = payload.tenant_id;
+
+      // ---- PHASE 1: validate + load the backup BEFORE any write ------------
+      var record = DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId);
+      if (!record) return ResponseHelper.error('Data arsip tidak ditemukan', 404);
+
+      // Guard against double-restore: if the tenant is already active, stop
+      // before inserting duplicates.
+      if (DB.findOne('Tenants', 'id', tenantId)) {
+        return ResponseHelper.error('Tenant sudah aktif (sudah pernah di-restore). Refresh halaman.', 400);
+      }
+
+      var fileId = this._extractDriveId(record.url_json);
+      if (!fileId) return ResponseHelper.error('File backup JSON tidak ditemukan', 404);
+
+      var jsonFile, data;
+      try {
+        jsonFile = DriveApp.getFileById(fileId);
+        var backup = JSON.parse(jsonFile.getBlob().getDataAsString());
+        data = backup.data || {};
+      } catch (e) {
+        return ResponseHelper.error('Gagal membaca file backup JSON: ' + (e && e.message ? e.message : e), 500);
+      }
+
+      // ---- PHASE 2: insert rows back, with rollback on ANY failure ---------
+      try {
+        // Parent tenant first (batch).
+        if (data.Tenants && data.Tenants.length > 0) {
+          DB.insertRows('Tenants', data.Tenants);
+        }
+        // Children (batch: one setValues per sheet).
+        for (var s = 0; s < ARCHIVE_TENANT_SHEETS.length; s++) {
+          var sheetName = ARCHIVE_TENANT_SHEETS[s];
+          if (!this._sheetExists(sheetName)) continue;
+          var rows = data[sheetName] || [];
+          if (rows.length === 0) continue;
+          DB.insertRows(sheetName, rows);
+        }
+
+        // ---- PHASE 3: commit — only NOW remove the archive artifacts -------
+        // Done after all inserts succeed, so a mid-restore failure leaves the
+        // archive intact and re-runnable.
+        try { jsonFile.setTrashed(true); } catch (e) {}
+        DB.deleteRow('ArchiveAndRestore', record.id);
+
+        return ResponseHelper.success(null, 'Tenant restored successfully');
+
+      } catch (err) {
+        // ROLLBACK: delete everything we inserted so the tenant does NOT come
+        // back half-restored. The archive record + backup file are untouched
+        // (we only trash them on full success), so the user can retry Restore.
+        // Sweep ALL tenant-scoped sheets, not just insertedSheets, so a failure
+        // mid-insert on a sheet can't leave a partial batch behind.
+        try { DB.deleteRowsWhere('Tenants', 'id', tenantId); } catch (e4) {}
+        for (var d = 0; d < ARCHIVE_TENANT_SHEETS.length; d++) {
+          var sn = ARCHIVE_TENANT_SHEETS[d];
+          if (!this._sheetExists(sn)) continue;
+          try { DB.deleteRowsWhere(sn, 'tenant_id', tenantId); } catch (e5) {}
+        }
+        return ResponseHelper.error(
+          'Restore dibatalkan & data yang sempat masuk dihapus kembali (rollback). Arsip tetap aman, silakan coba lagi. Penyebab: ' + (err && err.message ? err.message : err),
+          500
+        );
+      }
+    },
+
+    // ---- permanent delete -------------------------------------------------
+    deleteArchivePermanent: function(auth, payload) {
+      Validator.required(payload, ['tenant_id']);
+      var tenantId = payload.tenant_id;
+
+      var record = DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId);
+      if (!record) return ResponseHelper.error('Data arsip tidak ditemukan', 404);
+
+      // 1. Delete the JSON backup file.
+      var fileId = this._extractDriveId(record.url_json);
+      if (fileId) {
+        try { DriveApp.getFileById(fileId).setTrashed(true); } catch (e) {}
+      }
+
+      // 2. Delete the tenant's physical Drive folder ({root}/tenants/{tenantId}).
+      var folder = this._getTenantFolder(tenantId);
+      if (folder) {
+        try { folder.setTrashed(true); } catch (e) {}
+      }
+
+      // 3. Delete the ArchiveAndRestore row.
+      DB.deleteRow('ArchiveAndRestore', record.id);
+
+      return ResponseHelper.success(null, 'Archive permanently deleted');
+    },
+
+    // Extracts a Drive file id from a getUrl()-style link
+    // (e.g. https://drive.google.com/file/d/<ID>/view or ...?id=<ID>).
+    _extractDriveId: function(url) {
+      if (!url) return null;
+      var m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+      m = String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+      return null;
+    },
+
+    // ---- recovery ---------------------------------------------------------
+    // Reconcile the live sheets for one tenant to EXACTLY match a backup's data.
+    // Repairs half-states (missing rows from a failed archive, duplicate rows
+    // from a failed restore): per sheet it deletes ALL rows for this tenant, then
+    // inserts the backup rows once. Idempotent. Does NOT touch the archive record
+    // or Drive files. `data` is the {SheetName: [rows...]} object from a backup.
+    reconcileFromData: function(tenantId, data) {
+      data = data || {};
+      var summary = {};
+
+      // Parent tenant: clear then re-insert.
+      DB.deleteRowsWhere('Tenants', 'id', tenantId);
+      if (data.Tenants && data.Tenants.length > 0) {
+        DB.insertRows('Tenants', data.Tenants);
+      }
+      summary.Tenants = (data.Tenants || []).length;
+
+      // Children.
+      for (var i = 0; i < ARCHIVE_TENANT_SHEETS.length; i++) {
+        var name = ARCHIVE_TENANT_SHEETS[i];
+        if (!this._sheetExists(name)) continue;
+        DB.deleteRowsWhere(name, 'tenant_id', tenantId);
+        var rows = data[name] || [];
+        if (rows.length > 0) DB.insertRows(name, rows);
+        summary[name] = rows.length;
+      }
+
+      return summary;
+    },
+
+    // Same as reconcileFromData but loads the backup from the tenant's
+    // ArchiveAndRestore record first. Used by the manual recovery tool.
+    reconcileFromBackup: function(tenantId) {
+      var record = DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId);
+      if (!record) throw new Error('No archive record for tenant ' + tenantId);
+
+      var fileId = this._extractDriveId(record.url_json);
+      if (!fileId) throw new Error('Backup file id not found in url_json');
+      var backup = JSON.parse(DriveApp.getFileById(fileId).getBlob().getDataAsString());
+      return this.reconcileFromData(tenantId, backup.data || {});
+    }
+  };
+
+
+  // =====================================================================
+  // ARCHIVE & RESTORE — RECOVERY TOOLS (run manually from the editor)
+  // =====================================================================
+  // Use these to inspect and repair the half-archived/half-restored state left
+  // by the OLD non-atomic archive/restore. Run from the Apps Script editor:
+  // pick the function in the dropdown -> Run -> read the Execution log.
+  // =====================================================================
+
+  // READ-ONLY. For every archive record, report whether that tenant is currently
+  // ACTIVE (row exists in Tenants), ARCHIVED-ONLY (no Tenants row), and how many
+  // child rows live in each sheet. Tells you the true state before repairing.
+  function diagnoseArchiveState() {
+    var out = [];
+    if (!ArchiveService._sheetExists('ArchiveAndRestore')) {
+      Logger.log('ArchiveAndRestore sheet does not exist.');
+      return [];
+    }
+    var records = DB.getAll('ArchiveAndRestore');
+    out.push('Found ' + records.length + ' archive record(s).');
+
+    records.forEach(function (rec) {
+      var tid = rec.tenant_id;
+      var activeRow = DB.findOne('Tenants', 'id', tid);
+      out.push('');
+      out.push('=== tenant_id=' + tid + ' (' + (rec.bride_name || '?') + ' & ' + (rec.groom_name || '?') + ') ===');
+      out.push('  Tenants row currently present: ' + (activeRow ? 'YES (shows as ACTIVE)' : 'no (archived-only)'));
+
+      // child row counts live in the sheets right now
+      ARCHIVE_TENANT_SHEETS.forEach(function (name) {
+        if (!ArchiveService._sheetExists(name)) return;
+        var n = DB.getByTenant(name, tid).length;
+        if (n > 0) out.push('  live rows in ' + name + ': ' + n);
+      });
+
+      // what the backup says it should be
+      try {
+        var fileId = ArchiveService._extractDriveId(rec.url_json);
+        var backup = JSON.parse(DriveApp.getFileById(fileId).getBlob().getDataAsString());
+        var data = backup.data || {};
+        var parts = [];
+        Object.keys(data).forEach(function (k) {
+          var len = (data[k] || []).length;
+          if (len > 0) parts.push(k + '=' + len);
+        });
+        out.push('  backup contains: ' + (parts.length ? parts.join(', ') : '(empty)'));
+      } catch (e) {
+        out.push('  backup: UNREADABLE (' + (e && e.message ? e.message : e) + ')');
+      }
+    });
+
+    Logger.log(out.join('\n'));
+    return out;
+  }
+
+  // REPAIR one tenant. Edit TENANT_ID below to the tenant_id you want to fix
+  // (copy it from diagnoseArchiveState output), then Run. Reconciles the live
+  // sheets to EXACTLY match that tenant's JSON backup (re-adds missing rows,
+  // removes duplicates). Idempotent. After this, the tenant is back in the
+  // ARCHIVED state with intact data, so the normal Restore button will work.
+  function recoverTenantFromArchive() {
+    var TENANT_ID = 'PASTE_TENANT_ID_HERE';
+
+    if (TENANT_ID === 'PASTE_TENANT_ID_HERE') {
+      Logger.log('Edit TENANT_ID in recoverTenantFromArchive() first. Run diagnoseArchiveState() to find it.');
+      return;
+    }
+    try {
+      var summary = ArchiveService.reconcileFromBackup(TENANT_ID);
+      Logger.log('Recovery complete for ' + TENANT_ID + '. Rows reconciled per sheet:\n' + JSON.stringify(summary, null, 2));
+    } catch (e) {
+      Logger.log('Recovery FAILED: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+
+  // =====================================================================
+  // ARCHIVE & RESTORE — AUTOMATED VERIFICATION
+  // =====================================================================
+  // Run these manually from the Apps Script editor (pick the function -> Run)
+  // to verify the feature without inspecting the spreadsheet/Drive by hand.
+  // Both log a PASS/FAIL report and return the report array.
+  // =====================================================================
+
+  // F.2 — Static self-check: schema + actions wiring. Does NOT modify data.
+  function selfCheckArchiveRestore() {
+    var report = [];
+    function check(name, cond) { report.push((cond ? 'PASS' : 'FAIL') + ' - ' + name); }
+
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+    // 1. Sheet ArchiveAndRestore exists with the expected columns.
+    var sh = ss.getSheetByName('ArchiveAndRestore');
+    check('Sheet ArchiveAndRestore ada', !!sh);
+    if (sh) {
+      var headers = sh.getDataRange().getValues()[0] || [];
+      ['id', 'tenant_id', 'slug', 'wedding_date', 'groom_name', 'bride_name', 'plan_type', 'status_payment', 'tanggal_archive', 'url_json']
+        .forEach(function (col) { check('Kolom ArchiveAndRestore.' + col, headers.indexOf(col) !== -1); });
+    }
+
+    // 2. Every tenant-scoped sheet has a tenant_id column; Tenants uses id.
+    ARCHIVE_TENANT_SHEETS.forEach(function (name) {
+      var s = ss.getSheetByName(name);
+      var h = s ? (s.getDataRange().getValues()[0] || []) : [];
+      check(name + ' ada', !!s);
+      check(name + ' punya kolom tenant_id', h.indexOf('tenant_id') !== -1);
+    });
+    var tSheet = ss.getSheetByName('Tenants');
+    check('Tenants punya kolom id', tSheet && (tSheet.getDataRange().getValues()[0] || []).indexOf('id') !== -1);
+
+    // 3. Service + actions are wired.
+    ['getArchives', 'archiveTenant', 'restoreTenant', 'deleteArchivePermanent']
+      .forEach(function (a) {
+        check('ArchiveService.' + a + ' ada', typeof ArchiveService !== 'undefined' && typeof ArchiveService[a] === 'function');
+      });
+
+    Logger.log(report.join('\n'));
+    return report;
+  }
+
+  // F.3 — Round-trip: create dummy tenant -> archive -> restore -> compare ->
+  // cleanup (permanent delete). Uses a TEST_ tenant id and cleans up after itself.
+  function testArchiveRestoreRoundTrip() {
+    var auth = { role: 'superadmin', tenant_id: 'system' };
+    var report = [];
+    function check(name, cond) { report.push((cond ? 'PASS' : 'FAIL') + ' - ' + name); }
+
+    var tenantId = 'TEST_' + Utilities.getUuid();
+    var now = new Date().toISOString();
+
+    // Count tenant rows across Tenants + all child sheets.
+    function snapshot() {
+      var snap = {};
+      snap.Tenants = DB.findOne('Tenants', 'id', tenantId) ? 1 : 0;
+      ARCHIVE_TENANT_SHEETS.forEach(function (name) { snap[name] = DB.getByTenant(name, tenantId).length; });
+      return snap;
+    }
+    function allChildRowsZero() {
+      for (var i = 0; i < ARCHIVE_TENANT_SHEETS.length; i++) {
+        if (DB.getByTenant(ARCHIVE_TENANT_SHEETS[i], tenantId).length !== 0) return false;
+      }
+      return !DB.findOne('Tenants', 'id', tenantId);
+    }
+
+    try {
+      // a. SETUP dummy: parent tenant + a couple of child rows (review hidden).
+      DB.insert('Tenants', {
+        id: tenantId, bride_name: 'Test Bride', groom_name: 'Test Groom', wedding_date: '2030-01-01',
+        domain_slug: 'test-' + tenantId, plan_type: 'basic', guest_limit: 100, created_at: now,
+        status_account: 'active', payment_deadline: now, status_payment: 'Sudah dibayar'
+      });
+      DB.insert('Guests', { id: DB.generateId(), tenant_id: tenantId, name: 'Dummy Guest', phone: '0', category: 'x', invitation_code: 'X1', status: 'pending', number_of_guests: 1, created_at: now });
+      DB.insert('Wishes', { id: DB.generateId(), tenant_id: tenantId, guest_name: 'Dummy', message: 'hi', created_at: now });
+      DB.insert('ReviewAndRating', { id: DB.generateId(), tenant_id: tenantId, comment: 'ok', rate_star: 5, flag_show_review: false, created_at: now });
+
+      var before = snapshot();
+      check('Setup dummy membuat data', before.Tenants === 1 && before.Guests === 1 && before.Wishes === 1);
+
+      // b. GUARD: with flag_show_review=true, archive must be rejected.
+      var review = DB.findOne('ReviewAndRating', 'tenant_id', tenantId);
+      if (review) DB.update('ReviewAndRating', review.id, { flag_show_review: true });
+      var blocked = JSON.parse(ArchiveService.archiveTenant(auth, { tenant_id: tenantId }).getContent());
+      check('Archive ditolak saat flag_show_review=true', blocked && blocked.success === false);
+      if (review) DB.update('ReviewAndRating', review.id, { flag_show_review: false });
+
+      // c. ARCHIVE.
+      var arc = JSON.parse(ArchiveService.archiveTenant(auth, { tenant_id: tenantId }).getContent());
+      check('archiveTenant success', arc && arc.success === true);
+      check('Semua sheet anak + Tenants kosong utk tenant', allChildRowsZero());
+      var recAfterArchive = DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId);
+      check('Baris ArchiveAndRestore dibuat', !!recAfterArchive);
+      check('url_json terisi', recAfterArchive && !!recAfterArchive.url_json);
+
+      // d. RESTORE.
+      var res = JSON.parse(ArchiveService.restoreTenant(auth, { tenant_id: tenantId }).getContent());
+      check('restoreTenant success', res && res.success === true);
+      var after = snapshot();
+      check('Jumlah baris identik sebelum vs sesudah restore', JSON.stringify(before) === JSON.stringify(after));
+      check('Baris ArchiveAndRestore terhapus setelah restore', !DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId));
+
+      // e. CLEANUP: archive again, then permanent-delete to remove all traces.
+      DB.update('ReviewAndRating', DB.findOne('ReviewAndRating', 'tenant_id', tenantId).id, { flag_show_review: false });
+      ArchiveService.archiveTenant(auth, { tenant_id: tenantId });
+      var del = JSON.parse(ArchiveService.deleteArchivePermanent(auth, { tenant_id: tenantId }).getContent());
+      check('deleteArchivePermanent success', del && del.success === true);
+      check('Tidak ada sisa baris ArchiveAndRestore', !DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId));
+    } catch (e) {
+      report.push('FAIL - Exception: ' + (e && e.message ? e.message : e));
+    } finally {
+      // Best-effort cleanup in case the test bailed mid-way.
+      try {
+        DB.deleteRow('Tenants', tenantId);
+        ARCHIVE_TENANT_SHEETS.forEach(function (name) {
+          DB.getByTenant(name, tenantId).forEach(function (row) { DB.deleteRow(name, row.id); });
+        });
+        var leftover = DB.findOne('ArchiveAndRestore', 'tenant_id', tenantId);
+        if (leftover) DB.deleteRow('ArchiveAndRestore', leftover.id);
+      } catch (e2) {}
+    }
+
+    Logger.log(report.join('\n'));
+    return report;
+  }

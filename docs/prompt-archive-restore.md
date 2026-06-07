@@ -576,3 +576,148 @@ Hapus baris `ArchiveAndRestore` + **folder fisik tenant di Drive** (`{root}/tena
 | Store Zustand (state + CRUD + cache) | `themeStore`, `masterQuotesStore` | `src/features/admin/store/*` |
 | Endpoint pattern | semua `*Api` | `src/core/api/endpoints.ts` |
 | Tombol/badge/tooltip/warna | komponen + `index.css` | `src/shared/components/*`, `src/index.css` |
+
+---
+
+## F. Verifikasi Otomatis (jangan cek manual)
+
+> **Konteks tooling (terverifikasi dari `package.json`):** project ini **belum punya** framework test (tidak ada vitest/jest, tidak ada script `test`). Yang tersedia: `tsc` (type-check), `eslint`, `vite build`. Backend Apps Script juga tanpa test runner. Maka verifikasi otomatis dibagi 2: **(F.1) yang bisa langsung jalan tanpa instalasi**, dan **(F.2) yang butuh setup ringan (opsional)**. Tujuannya: setelah implementasi, kebenaran fitur dicek lewat **perintah/script yang dijalankan**, bukan inspeksi mata di spreadsheet/Drive/UI.
+
+### F.1. Cek otomatis yang LANGSUNG bisa (gunakan ini minimal)
+
+Jalankan berurutan; semua harus lulus sebelum dianggap selesai:
+
+```bash
+# 1. Type-check seluruh project (paling penting — menangkap salah tipe/props)
+npx tsc --noEmit -p tsconfig.json        # harus exit 0
+
+# 2. Lint (gaya & error statis)
+npm run lint                             # harus tanpa error
+
+# 3. Build penuh (memastikan tidak ada yang putus saat bundling)
+npm run build                            # harus sukses
+```
+
+- [ ] **F.1.1** `tsc --noEmit` exit 0 — tidak ada error tipe (mis. `ArchiveRecord`, props `ConfirmDialog`, signature store).
+- [ ] **F.1.2** `npm run lint` bersih untuk file baru (`ArchiveRestorePage.tsx`, `archiveStore.ts`, `endpoints.ts`).
+- [ ] **F.1.3** `npm run build` sukses.
+
+### F.2. Self-check Backend Apps Script (OTOMATIS via fungsi GAS)
+
+Karena GAS tidak punya unit-test runner, buat **satu fungsi self-test** di `backend/` yang dijalankan sekali dari editor Apps Script (atau via `clasp run`). Fungsi ini memverifikasi integritas tanpa kamu membuka spreadsheet/Drive manual. **Tulis sebagai bagian dari implementasi.**
+
+```js
+/**
+ * Jalankan manual dari editor Apps Script: pilih fungsi -> Run.
+ * Mengembalikan/log laporan PASS/FAIL untuk tiap cek. Tidak mengubah data.
+ */
+function selfCheckArchiveRestore() {
+  var report = [];
+  function check(name, cond) { report.push((cond ? 'PASS' : 'FAIL') + ' - ' + name); }
+
+  // 1. Sheet ArchiveAndRestore ada + kolom sesuai spesifikasi
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sh = ss.getSheetByName('ArchiveAndRestore');
+  check('Sheet ArchiveAndRestore ada', !!sh);
+  if (sh) {
+    var headers = sh.getDataRange().getValues()[0] || [];
+    ['id','tenant_id','slug','wedding_date','groom_name','bride_name','plan_type','status_payment','tanggal_archive','url_json']
+      .forEach(function(col){ check('Kolom ArchiveAndRestore.' + col, headers.indexOf(col) !== -1); });
+  }
+
+  // 2. Daftar 13 sheet tenant-scoped semuanya punya kolom tenant_id (kecuali Tenants pakai id)
+  var tenantSheets = ['Users','QuotesVariant','Guests','Wishes','Gifts','ActivityLogs',
+    'InvitationContent','Images','ImageGallery','ReviewAndRating','TenantActiveFeature','Transactions'];
+  tenantSheets.forEach(function(name){
+    var s = ss.getSheetByName(name);
+    var h = s ? (s.getDataRange().getValues()[0] || []) : [];
+    check(name + ' punya kolom tenant_id', h.indexOf('tenant_id') !== -1);
+  });
+  check('Tenants pakai kolom id', (ss.getSheetByName('Tenants').getDataRange().getValues()[0] || []).indexOf('id') !== -1);
+
+  // 3. Semua action terdaftar di router doPost (cek string action di handler)
+  ['archiveTenant','restoreTenant','deleteArchivePermanent','getArchives']
+    .forEach(function(a){ check('Action terdaftar: ' + a, typeof ArchiveService !== 'undefined' && typeof ArchiveService[a] === 'function'); });
+
+  Logger.log(report.join('\n'));
+  return report;
+}
+```
+
+- [ ] **F.2.1** Buat `selfCheckArchiveRestore()` (atau sejenis) di backend; semua baris laporan **PASS**.
+- [ ] **F.2.2** Cek otomatis mencakup: sheet `ArchiveAndRestore` + 10 kolomnya, 12 sheet anak punya `tenant_id`, `Tenants` punya `id`, dan 4 action terdaftar.
+
+### F.3. Test round-trip Archive→Restore di backend (OTOMATIS, pakai tenant dummy)
+
+Fungsi GAS kedua yang **benar-benar menjalankan** archive lalu restore pada **tenant dummy** dan memverifikasi data kembali utuh — sehingga kamu tidak perlu membandingkan baris manual.
+
+```js
+/**
+ * Buat tenant dummy + beberapa baris anak -> archive -> restore -> bandingkan.
+ * Bersihkan dummy di akhir. Log PASS/FAIL.
+ */
+function testArchiveRestoreRoundTrip() {
+  var auth = { role: 'superadmin' };            // sesuaikan dgn bentuk auth internal
+  var report = [];
+  function check(n, c){ report.push((c?'PASS':'FAIL')+' - '+n); }
+
+  // a. SETUP dummy: 1 Tenant + N baris di tiap sheet anak (flag_show_review = false)
+  var tenantId = 'TEST_' + Utilities.getUuid();
+  // ... insert dummy rows via DB.insert(...) ...
+  var before = snapshotTenantRowCounts_(tenantId);   // helper: {sheet: jumlahBaris}
+
+  // b. GUARD: set ReviewAndRating.flag_show_review=true -> archive HARUS ditolak
+  // ... set flag true ...
+  var blocked = ArchiveService.archiveTenant(auth, { tenant_id: tenantId });
+  check('Archive ditolak saat flag_show_review=true', blocked && blocked.success === false);
+  // ... set flag false lagi ...
+
+  // c. ARCHIVE -> semua baris di sheet harus 0, baris ArchiveAndRestore harus ada, url_json terisi, file Drive tetap ada
+  var arc = ArchiveService.archiveTenant(auth, { tenant_id: tenantId });
+  check('archiveTenant success', arc && arc.success === true);
+  check('Semua sheet anak kosong utk tenant', allTenantRowsZero_(tenantId));
+  check('Baris ArchiveAndRestore dibuat', !!DB.findOne('ArchiveAndRestore','tenant_id',tenantId));
+  check('Folder Drive tenant MASIH ada', driveTenantFolderExists_(tenantId));
+
+  // d. RESTORE -> jumlah baris tiap sheet harus sama dgn 'before', JSON & baris arsip terhapus, ReviewAndRating tidak disentuh khusus
+  var res = ArchiveService.restoreTenant(auth, { tenant_id: tenantId });
+  check('restoreTenant success', res && res.success === true);
+  var after = snapshotTenantRowCounts_(tenantId);
+  check('Jumlah baris identik sebelum vs sesudah restore', JSON.stringify(before) === JSON.stringify(after));
+  check('Baris ArchiveAndRestore terhapus stlh restore', !DB.findOne('ArchiveAndRestore','tenant_id',tenantId));
+
+  // e. CLEANUP dummy (archive lalu deleteArchivePermanent, atau hapus langsung)
+  // ... cleanup ...
+  check('Drive folder dummy terhapus stlh deletePermanent', !driveTenantFolderExists_(tenantId));
+
+  Logger.log(report.join('\n'));
+  return report;
+}
+```
+
+- [ ] **F.3.1** Round-trip dummy: archive → semua sheet anak 0 baris, `ArchiveAndRestore` terisi, `url_json` valid, **folder Drive tetap ada**.
+- [ ] **F.3.2** Restore → jumlah baris tiap sheet **identik** dengan sebelum archive; JSON + baris arsip terhapus; `ReviewAndRating` tidak diperlakukan khusus.
+- [ ] **F.3.3** Guard: archive ditolak saat `flag_show_review=true`.
+- [ ] **F.3.4** `deleteArchivePermanent` → folder Drive + JSON + baris arsip benar-benar hilang.
+- [ ] **F.3.5** Test memakai **tenant dummy** & membersihkan dirinya sendiri (idempoten, aman diulang).
+
+### F.4. (Opsional) Unit test frontend dengan Vitest
+
+Kalau mau cek otomatis logika frontend (bukan cuma tipe), pasang Vitest (ringan, native untuk Vite):
+
+```bash
+npm i -D vitest @testing-library/react @testing-library/jest-dom jsdom
+```
+Tambah ke `package.json`: `"test": "vitest run"`, lalu tulis test untuk:
+- [ ] **F.4.1** `archiveStore`: `archiveTenant` sukses → tenant hilang dari list lokal & masuk ke `archives`; gagal → revert (optimistic).
+- [ ] **F.4.2** Helper `isReviewShown(tenant)` benar untuk `true/'true'/'TRUE'/false`.
+- [ ] **F.4.3** `ConfirmDialog` hapus permanen: tombol confirm tetap **disabled** sampai input == `requireText` (slug).
+
+> Jika tidak ingin menambah dependency, **F.1 + F.2 + F.3 sudah cukup** sebagai jaring pengaman otomatis. F.4 hanya nilai tambah.
+
+### F.5. Definisi "Selesai" (semua harus tercentang)
+
+- [ ] F.1.1–F.1.3 lulus (tsc, lint, build).
+- [ ] F.2 self-check backend semua **PASS**.
+- [ ] F.3 round-trip backend semua **PASS**.
+- [ ] Aturan bisnis di §D (uji) terverifikasi lewat F.2/F.3 — **bukan** cek manual.

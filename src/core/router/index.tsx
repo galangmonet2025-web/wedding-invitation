@@ -31,6 +31,7 @@ import { TransactionMonitoringPage } from '@/features/admin/pages/TransactionMon
 import { CouponPage } from '@/features/admin/pages/CouponPage';
 import { MasterQuotesListPage } from '@/features/admin/pages/MasterQuotesListPage';
 import { MasterQuotesFormPage } from '@/features/admin/pages/MasterQuotesFormPage';
+import { ArchiveRestorePage } from '@/features/admin/pages/ArchiveRestorePage';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 function AdditionalFeatureRouter() {
@@ -286,6 +287,14 @@ export const router = createHashRouter([
                                 element: (
                                     <ProtectedRoute allowedRoles={['superadmin']}>
                                         <CouponPage />
+                                    </ProtectedRoute>
+                                ),
+                            },
+                            {
+                                path: 'archive-restore',
+                                element: (
+                                    <ProtectedRoute allowedRoles={['superadmin']}>
+                                        <ArchiveRestorePage />
                                     </ProtectedRoute>
                                 ),
                             },

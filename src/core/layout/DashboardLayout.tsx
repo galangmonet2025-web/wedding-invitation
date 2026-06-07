@@ -32,6 +32,7 @@ import {
     HiOutlineAdjustments,
     HiOutlineTicket,
     HiOutlineAnnotation,
+    HiOutlineArchive,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
@@ -295,6 +296,7 @@ export function DashboardLayout() {
             { to: '/private/plan-config', icon: HiOutlineAdjustments, label: t('sidebar.plan_config', 'Konfigurasi Paket'), roles: ['superadmin'], desc: t('sidebar.plan_config_desc', 'Atur harga paket basic/pro/premium, guest limit, dan list fitur benefit') },
             { to: '/private/transactions', icon: HiOutlineCreditCard, label: t('sidebar.monitoring_transactions', 'Monitoring Transaksi'), roles: ['superadmin'], desc: t('sidebar.monitoring_transactions_desc', 'Pantau riwayat pembayaran invoice, nominal transfer, dan status order') },
             { to: '/private/coupons', icon: HiOutlineTicket, label: t('sidebar.coupon', 'Coupon'), roles: ['superadmin'], desc: t('sidebar.coupon_desc', 'Buat dan kelola kode promo diskon untuk pembayaran paket tenant') },
+            { to: '/private/archive-restore', icon: HiOutlineArchive, label: t('sidebar.archive_restore', 'Archive & Restore'), roles: ['superadmin'], desc: t('sidebar.archive_restore_desc', 'Arsipkan data tenant untuk menghemat database, lalu pulihkan kapan saja') },
             { to: '/private/reviews', icon: HiOutlineChatAlt2, label: t('sidebar.review_rating'), roles: ['superadmin'], desc: t('sidebar.review_rating_desc', 'Moderasi ulasan bintang, komentar feedback, dan testimoni pengguna') },
             { to: '/private/website-config', icon: HiOutlineCog, label: t('sidebar.website_config'), roles: ['superadmin'], desc: t('sidebar.website_config_desc', 'Atur identitas web, logo platform, kontak support, dan banner landing page') },
             { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.system_activity'), roles: ['superadmin'], desc: t('sidebar.system_activity_desc', 'Audit log sistem dan rekaman aktivitas administratif platform') },
