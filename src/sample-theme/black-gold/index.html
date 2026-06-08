@@ -312,11 +312,11 @@
 
 
 
-            <!-- ===== RSVP + COUNTDOWN ===== -->
-            <section class="section-rsvp scroll-scene">
+            <!-- ===== COUNTDOWN + CALENDAR ===== -->
+            <section class="section-countdown scroll-scene">
                 <div class="container-section-header reveal-group">
                     <div class="the-wedding-of reveal-item">HITUNG MUNDUR</div>
-                    <div class="groom-bride-name reveal-item">Menuju Hari bahagia</div>
+                    <div class="groom-bride-name reveal-item">Menuju Hari Bahagia</div>
                     <div class="countdown-container reveal-item" id="countdown">
                         <div class="countdown-item">
                             <div class="countdown-box" id="days">{{countdown_hari}}</div>
@@ -336,66 +336,80 @@
                         </div>
                     </div>
 
-                    <div class="rsvp-form-container reveal-item" id="rsvp-container">
-                        {{#unless is_link_umum_and_not_for_spesific_guest}}
-                        {{#unless is_sudah_isi_konfirmasi_kehadiran}}
-                        <div>
-                            <div class="glass-form" id="rsvp-form">
-                                <div class="the-wedding-of">Konfirmasi Kehadiran</div>
-                                <div class="uk-margin-small">
-                                    <input class="uk-input custom-input" type="text" id="rsvp-code"
-                                        placeholder="Kode Undangan">
-                                </div>
-                                <div class="uk-margin-small">
-                                    <input class="uk-input custom-input" type="text" id="guest-name-input"
-                                        placeholder="Nama Tamu">
-                                </div>
-                                <div class="uk-margin-small">
-                                    <select class="uk-select custom-input" id="rsvp-guests">
-                                        <option value="" disabled="" selected="">Jumlah Kehadiran</option>
-                                        <option value="1">1 Orang</option>
-                                        <option value="2">2 Orang</option>
-                                    </select>
-                                </div>
-                                <div class="uk-margin-small">
-                                    <select class="uk-select custom-input" id="rsvp-status">
-                                        <option value="" disabled="" selected="">Konfirmasi Kehadiran</option>
-                                        <option value="hadir">Hadir</option>
-                                        <option value="tidak-hadir">Tidak Hadir</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-konfirm" id="btn-submit-kehadiran"
-                                    style="margin-top: 10px; width: 100%;">Konfirmasi</button>
-                            </div>
-                        </div>
-                        {{/unless}}
-
-                        {{#if is_sudah_isi_konfirmasi_kehadiran}}
-                        <div>
-                            <div id="alert-submit-kehadiran" style="padding: 20px;"
-                                class="thank-you-message glass-card">
-                                {{#if is_hadir}}
-                                <div>
-                                    <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
-                                    Terima kasih <strong>{{guest_name}}</strong>!<br>
-                                    Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
-                                </div>
-                                {{/if}}
-
-                                {{#unless is_hadir}}
-                                <div>
-                                    <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
-                                    Terima kasih <strong>{{guest_name}}</strong>.<br>
-                                    Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
-                                </div>
-                                {{/unless}}
-                            </div>
-                        </div>
-                        {{/if}}
-                        {{/unless}}
-                    </div>
+                    <!-- Calendar with the wedding date highlighted (rendered by index.js) -->
+                    <div class="wedding-calendar reveal-item" id="wedding-calendar" data-wedding-date="{{wedding_date_iso}}"></div>
                 </div>
             </section>
+
+
+            <!-- ===== RSVP (Konfirmasi Kehadiran) ===== -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
+            <section class="section-rsvp scroll-scene" id="rsvp">
+                <div class="container-section-header reveal-group">
+                    <div class="the-wedding-of reveal-item">KONFIRMASI</div>
+                    <div class="groom-bride-name reveal-item">Kehadiran Anda</div>
+                    <div class="schedule-ornament reveal-item">
+                        <span></span><span uk-icon="icon: heart; ratio: 0.9"></span><span></span>
+                    </div>
+                </div>
+
+                <div class="rsvp-form-container reveal-item" id="rsvp-container">
+                    {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                    <div>
+                        <div class="glass-form" id="rsvp-form">
+                            <div class="uk-margin-small">
+                                <input class="uk-input custom-input" type="text" id="rsvp-code"
+                                    placeholder="Kode Undangan">
+                            </div>
+                            <div class="uk-margin-small">
+                                <input class="uk-input custom-input" type="text" id="guest-name-input"
+                                    placeholder="Nama Tamu">
+                            </div>
+                            <div class="uk-margin-small">
+                                <select class="uk-select custom-input" id="rsvp-guests">
+                                    <option value="" disabled="" selected="">Jumlah Kehadiran</option>
+                                    <option value="1">1 Orang</option>
+                                    <option value="2">2 Orang</option>
+                                </select>
+                            </div>
+                            <div class="uk-margin-small">
+                                <select class="uk-select custom-input" id="rsvp-status">
+                                    <option value="" disabled="" selected="">Konfirmasi Kehadiran</option>
+                                    <option value="hadir">Hadir</option>
+                                    <option value="tidak-hadir">Tidak Hadir</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-konfirm" id="btn-submit-kehadiran"
+                                style="margin-top: 10px; width: 100%;">Konfirmasi</button>
+                        </div>
+                    </div>
+                    {{/unless}}
+
+                    {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                    <div>
+                        <div id="alert-submit-kehadiran" style="padding: 20px;"
+                            class="thank-you-message glass-card">
+                            {{#if is_hadir}}
+                            <div>
+                                <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                                Terima kasih <strong>{{guest_name}}</strong>!<br>
+                                Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
+                            </div>
+                            {{/if}}
+
+                            {{#unless is_hadir}}
+                            <div>
+                                <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
+                                Terima kasih <strong>{{guest_name}}</strong>.<br>
+                                Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
+                            </div>
+                            {{/unless}}
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{/unless}}
 
 
             {{#if is_fitur_live_streaming}}
@@ -572,6 +586,7 @@
 
 
             <!-- ===== WISHES ===== -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
             <section id="wishes" class="section-wishes scroll-scene" data-menu-label="Doa &amp; Ucapan">
                 <div class="container-section-header reveal-group">
                     <div class="groom-bride-name reveal-item">Ucapan &amp; Doa</div>
@@ -626,6 +641,7 @@
                     </div>
                 </div>
             </section>
+            {{/unless}}
 
 
             {{#if tampilkan_amplop_online}}
@@ -830,7 +846,9 @@
                             <li><a href="#couples" uk-scroll="" uk-toggle="target: #menu-modal">Mempelai</a></li>
                             <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Waktu &amp; Tempat</a></li>
                             <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Gallery</a></li>
+                            {{#unless is_link_umum_and_not_for_spesific_guest}}
                             <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Ucapan &amp; Doa</a></li>
+                            {{/unless}}
                             <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Amplop &amp; Gift</a></li>
                         </ul>
                     </div>

@@ -39,6 +39,8 @@ export function ManageThemesPage() {
     const [themeToDelete, setThemeToDelete] = useState<Theme | null>(null);
     // Row currently being saved (inline spinner) instead of a blocking dialog loader.
     const [savingDraftId, setSavingDraftId] = useState<string | null>(null);
+    // Row currently being deleted (inline spinner) instead of a block-screen loader.
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectedThemeForLightbox, setSelectedThemeForLightbox] = useState<Theme | null>(null);
 
     // Filters and View State
@@ -46,6 +48,7 @@ export function ManageThemesPage() {
     const [selectedPlan, setSelectedPlan] = useState('all');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedPreview, setSelectedPreview] = useState('all');
+    const [selectedStatus, setSelectedStatus] = useState('all');
     const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
 
     useEffect(() => {
@@ -54,8 +57,15 @@ export function ManageThemesPage() {
 
     const handleDelete = async () => {
         if (!themeToDelete) return;
-        await deleteTheme(themeToDelete.id);
+        const id = themeToDelete.id;
+        // Tutup dialog langsung; tampilkan loading inline di baris yang dihapus (tanpa block screen).
         setThemeToDelete(null);
+        setDeletingId(id);
+        try {
+            await deleteTheme(id);
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     const isDraft = (theme: Theme) =>
@@ -116,11 +126,16 @@ export function ManageThemesPage() {
         const matchesCategory = selectedCategory === 'all' || (theme.style_category || 'Lainnya') === selectedCategory;
         
         const hasPreview = !!theme.preview_image;
-        const matchesPreview = selectedPreview === 'all' || 
-                               (selectedPreview === 'uploaded' && hasPreview) || 
+        const matchesPreview = selectedPreview === 'all' ||
+                               (selectedPreview === 'uploaded' && hasPreview) ||
                                (selectedPreview === 'empty' && !hasPreview);
-        
-        return matchesSearch && matchesPlan && matchesCategory && matchesPreview;
+
+        const draft = isDraft(theme);
+        const matchesStatus = selectedStatus === 'all' ||
+                              (selectedStatus === 'draft' && draft) ||
+                              (selectedStatus === 'published' && !draft);
+
+        return matchesSearch && matchesPlan && matchesCategory && matchesPreview && matchesStatus;
     });
 
     const themesWithPreview = filteredThemes.filter(t => !!t.preview_image);
@@ -273,34 +288,46 @@ export function ManageThemesPage() {
         {
             key: 'actions',
             header: 'Actions',
-            render: (item: Theme) => (
-                <div className="flex items-center gap-1.5">
-                    <button 
-                        onClick={() => navigate(`/private/themes/editor/${item.id}`)} 
-                        className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors tooltip tooltip-top"
-                        title="Edit Theme"
-                    >
-                        <HiOutlinePencilAlt className="w-4 h-4" />
-                        <span className="tooltip-text">Edit</span>
-                    </button>
-                    <button 
-                        onClick={() => navigate('/private/themes/editor/new', { state: { copiedTheme: item } })} 
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors tooltip tooltip-top"
-                        title="Copy Theme"
-                    >
-                        <HiOutlineDuplicate className="w-4 h-4" />
-                        <span className="tooltip-text">Salin</span>
-                    </button>
-                    <button 
-                        onClick={() => setThemeToDelete(item)} 
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors tooltip tooltip-top"
-                        title="Delete Theme"
-                    >
-                        <HiOutlineTrash className="w-4 h-4" />
-                        <span className="tooltip-text">Hapus</span>
-                    </button>
-                </div>
-            )
+            render: (item: Theme) => {
+                const deleting = deletingId === item.id;
+                return (
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => navigate(`/private/themes/editor/${item.id}`)}
+                            disabled={deleting}
+                            className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors tooltip tooltip-top disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Edit Theme"
+                        >
+                            <HiOutlinePencilAlt className="w-4 h-4" />
+                            <span className="tooltip-text">Edit</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/private/themes/editor/new', { state: { copiedTheme: item } })}
+                            disabled={deleting}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors tooltip tooltip-top disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Copy Theme"
+                        >
+                            <HiOutlineDuplicate className="w-4 h-4" />
+                            <span className="tooltip-text">Salin</span>
+                        </button>
+                        <button
+                            onClick={() => setThemeToDelete(item)}
+                            disabled={deleting}
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors tooltip tooltip-top disabled:cursor-not-allowed"
+                            title="Delete Theme"
+                        >
+                            {deleting ? (
+                                <span className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <HiOutlineTrash className="w-4 h-4" />
+                                    <span className="tooltip-text">Hapus</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                );
+            }
         }
     ];
 
@@ -341,7 +368,7 @@ export function ManageThemesPage() {
 
             {/* Filter and View Selection Panel */}
             <div className="bg-white dark:bg-wedding-dark-card p-4 rounded-2xl border border-gray-100 dark:border-gray-805 shadow-sm space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     {/* Search Input */}
                     <div className="relative">
                         <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -396,6 +423,19 @@ export function ManageThemesPage() {
                             <option value="empty">Belum Upload Preview</option>
                         </select>
                     </div>
+
+                    {/* Filter Status Draft/Publish */}
+                    <div>
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                            className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
+                        >
+                            <option value="all">Semua Status</option>
+                            <option value="published">Publik</option>
+                            <option value="draft">Draft</option>
+                        </select>
+                    </div>
                 </div>
 
                 {/* View Mode Toggle Switch */}
@@ -436,10 +476,11 @@ export function ManageThemesPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 animate-fade-in">
                     {filteredThemes.map((item) => {
                         const hasPreview = !!item.preview_image;
+                        const deleting = deletingId === item.id;
                         return (
                             <div
                                 key={item.id}
-                                className="group relative flex flex-col bg-white dark:bg-wedding-dark-card rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-xl hover:border-gold-300/50 dark:hover:border-gold-500/30 transition-all duration-300"
+                                className={`group relative flex flex-col bg-white dark:bg-wedding-dark-card rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-xl hover:border-gold-300/50 dark:hover:border-gold-500/30 transition-all duration-300 ${deleting ? 'opacity-60 pointer-events-none' : ''}`}
                             >
                                 {/* Preview Thumbnail / Image */}
                                 <div 
@@ -514,10 +555,15 @@ export function ManageThemesPage() {
                                             </button>
                                             <button
                                                 onClick={() => setThemeToDelete(item)}
-                                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                                                disabled={deleting}
+                                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors disabled:cursor-not-allowed"
                                                 title="Delete Theme"
                                             >
-                                                <HiOutlineTrash className="w-4 h-4" />
+                                                {deleting ? (
+                                                    <span className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                                                ) : (
+                                                    <HiOutlineTrash className="w-4 h-4" />
+                                                )}
                                             </button>
                                         </div>
                                     </div>

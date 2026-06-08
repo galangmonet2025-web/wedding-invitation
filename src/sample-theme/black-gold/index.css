@@ -422,7 +422,39 @@ body {
     background-color: transparent;
     position: relative;
     padding: 80px 20px;
+    overflow: hidden;
 }
+
+/* Subtle radial gold glow top-center */
+.section-couples::before {
+    content: '';
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, rgba(201,168,106,0.10) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Diamond lattice bottom-right corner accent */
+.section-couples::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 160px;
+    height: 160px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='13' y='1' width='10' height='10' rx='0' transform='rotate(45 18 6)' fill='none' stroke='rgba(201%2C168%2C106%2C0.18)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 28px 28px;
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.section-couples > * { position: relative; z-index: 1; }
 
 .section-couples .quotes {
     font-size: 13px;
@@ -551,6 +583,33 @@ body {
     position: relative;
     padding: 90px 0;
     overflow: hidden;
+}
+
+/* Top-left corner diamond lattice */
+.section-schedule::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 140px;
+    height: 140px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='13' y='1' width='10' height='10' rx='0' transform='rotate(45 18 6)' fill='none' stroke='rgba(201%2C168%2C106%2C0.20)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Centered deep gold radial glow */
+.section-schedule::after {
+    content: '';
+    position: absolute;
+    bottom: -60px;
+    right: 0;
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(201,168,106,0.09) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .section-schedule > * { position: relative; z-index: 1; }
@@ -1049,7 +1108,35 @@ body {
     color: var(--ink);
     padding: 80px 0;
     position: relative;
+    overflow: hidden;
 }
+
+/* Top separator + left diamond lattice */
+.section-wishes::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+    pointer-events: none;
+}
+
+.section-wishes::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 130px;
+    height: 130px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='13' y='1' width='10' height='10' rx='0' transform='rotate(45 18 6)' fill='none' stroke='rgba(201%2C168%2C106%2C0.18)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.section-wishes > * { position: relative; z-index: 1; }
 
 .wishes-container { padding: 0 30px; margin-top: 30px; }
 
@@ -1076,7 +1163,37 @@ body {
     text-align: center;
     color: var(--ink);
     padding: 80px 0;
+    position: relative;
+    overflow: hidden;
 }
+
+/* Centered gold glow + bottom-left lattice */
+.section-gift::before {
+    content: '';
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 200px;
+    background: radial-gradient(ellipse, rgba(201,168,106,0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.section-gift::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 140px;
+    height: 140px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='13' y='1' width='10' height='10' rx='0' transform='rotate(45 18 6)' fill='none' stroke='rgba(201%2C168%2C106%2C0.18)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.section-gift > * { position: relative; z-index: 1; }
 
 .gift-rekening-container {
     display: flex;
@@ -1140,13 +1257,89 @@ body {
 }
 .uk-notification-message-success { border-color: var(--gold); }
 
-/* ============ SECTION RSVP / COUNTDOWN ============ */
-.section-rsvp {
+/* ============ SECTION COUNTDOWN ============ */
+.section-countdown {
     text-align: center;
     color: var(--ink);
     width: 100%;
     padding: 80px 0;
     background-color: transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Horizontal thin gold rule top */
+.section-countdown::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+    pointer-events: none;
+}
+
+/* Gold glow bottom */
+.section-countdown::after {
+    content: '';
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    height: 200px;
+    background: radial-gradient(ellipse, rgba(201,168,106,0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.section-countdown > * { position: relative; z-index: 1; }
+
+/* ============ SECTION RSVP (Konfirmasi Kehadiran) ============ */
+.section-rsvp {
+    text-align: center;
+    color: var(--ink);
+    width: 100%;
+    padding: 60px 0 80px;
+    background: linear-gradient(180deg, rgba(12,10,9,0) 0%, rgba(201,168,106,0.04) 40%, rgba(12,10,9,0) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Corner diamond lattice top-right */
+.section-rsvp::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 130px;
+    height: 130px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='13' y='1' width='10' height='10' rx='0' transform='rotate(45 18 6)' fill='none' stroke='rgba(201%2C168%2C106%2C0.18)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Gold separator line bottom */
+.section-rsvp::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+    pointer-events: none;
+}
+
+.section-rsvp > * { position: relative; z-index: 1; }
+
+.section-rsvp .rsvp-form-container {
+    padding: 0 24px;
+    max-width: 420px;
+    margin: 28px auto 0;
 }
 
 .countdown-container { display: flex; justify-content: center; gap: 12px; margin-top: 25px; }
@@ -1178,7 +1371,79 @@ body {
     font-weight: 400;
 }
 
-.rsvp-form-container { margin-top: 50px; padding: 0 30px; }
+/* ===== Wedding-date calendar ===== */
+.wedding-calendar {
+    max-width: 320px;
+    margin: 36px auto 0;
+    padding: 22px 20px 24px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--gold-soft);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+}
+
+.wedding-calendar .cal-title {
+    font-family: var(--serif);
+    font-size: 1.4em;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+}
+
+.wedding-calendar .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.wedding-calendar .cal-dow {
+    text-align: center;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding-bottom: 8px;
+}
+
+.wedding-calendar .cal-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--ink);
+    font-family: var(--serif);
+}
+
+.wedding-calendar .cal-empty { visibility: hidden; }
+
+.wedding-calendar .cal-num { position: relative; z-index: 2; }
+
+/* highlighted wedding day — hand-drawn heart ring (like the reference) */
+.wedding-calendar .cal-active {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+/* hand-drawn heart outline circling the wedding day (like the reference) */
+.wedding-calendar .cal-heart {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 38px;
+    height: 38px;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 30' fill='none' stroke='%23c9a86a' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M16 28C16 28 2 19 2 9.5 2 4.8 5.8 2 9.5 2 12.8 2 16 5 16 5s3.2-3 6.5-3C26.2 2 30 4.8 30 9.5 30 19 16 28 16 28z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: drop-shadow(0 0 6px var(--gold-soft));
+}
+
 
 .glass-form {
     background: rgba(255, 255, 255, 0.04);
@@ -1246,7 +1511,35 @@ body {
     padding: 80px 0;
     position: relative;
     z-index: 1;
+    overflow: hidden;
 }
+
+/* Separator top + diamond lattice bottom-left */
+.section-happiness::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+    pointer-events: none;
+}
+
+.section-happiness::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 130px;
+    height: 130px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='13' y='1' width='10' height='10' rx='0' transform='rotate(45 18 6)' fill='none' stroke='rgba(201%2C168%2C106%2C0.18)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 28px 28px;
+    pointer-events: none;
+}
+
+.section-happiness > * { position: relative; z-index: 1; }
 
 .story-carousel-wrapper {
     padding: 30px 0 10px;

@@ -872,7 +872,8 @@ export function ThemeEditorPage() {
                     groom_name: 'Galang',
                     groom_nickname: 'Galang',
                     religion: 'Islam',
-                    wedding_date: '2026-10-20'
+                    wedding_date: '2026-10-20',
+                    wedding_date_iso: '2026-10-20'
                 };
 
                 let finalHtml = htmlCodeRef.current;
@@ -928,6 +929,7 @@ export function ThemeEditorPage() {
                         groom_nickname: t.groom_nickname || 'Galang',
                         religion: t.religion || 'Islam',
                         wedding_date: t.wedding_date ? new Date(t.wedding_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Senin, 10 Agustus 2026',
+                        wedding_date_iso: t.wedding_date || '2026-08-10',
                         tanggal_akad: c.tanggal_akad ? new Date(c.tanggal_akad).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Minggu, 9 Agustus 2026',
                         jam_akad: `${c.jam_awal_akad || '08:00'} - ${c.jam_akhir_akad || 'Selesai'}`,
                         jam_resepsi: `${c.jam_awal_resepsi || '11:00'} - ${c.jam_akhir_resepsi || '14:00'}`,

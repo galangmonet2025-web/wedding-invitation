@@ -57,7 +57,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
     deleteTheme: async (id: string) => {
         try {
-            const res = await themeApi.deleteTheme(id);
+            // skipLoader: hapus pakai inline spinner di baris, bukan block-screen loader.
+            const res = await themeApi.deleteTheme(id, { skipLoader: true });
             if (res.success) {
                 set((state) => ({
                     themes: state.themes.filter((t) => t.id !== id)

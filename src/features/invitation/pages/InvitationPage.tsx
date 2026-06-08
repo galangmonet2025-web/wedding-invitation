@@ -893,6 +893,8 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             groom_nickname: activeContent.groom_nickname || tenant.groom_nickname || activeContent.groom_name || tenant.groom_name || 'Pria',
             religion: activeContent.religion || '',
             wedding_date: formatDate(activeContent.wedding_date || tenant.wedding_date),
+            // Raw ISO date (YYYY-MM-DD) for themes that need to build a calendar / parse the date
+            wedding_date_iso: activeContent.wedding_date || tenant.wedding_date || '',
             tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
             jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
             nama_lokasi_akad: activeContent.nama_lokasi_akad || '',

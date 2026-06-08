@@ -266,6 +266,54 @@ function initBlackGoldTheme() {
         syncActive();
     }
 
+    // ---- 4b. Wedding-date calendar with the day highlighted ----
+    const calEl = document.getElementById('wedding-calendar');
+    if (calEl && !calEl.dataset.rendered) {
+        const raw = (calEl.getAttribute('data-wedding-date') || '').trim();
+
+        // Parse YYYY-MM-DD (preferred) or fall back to Date() parsing
+        let target = null;
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+            target = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+        } else if (raw) {
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) target = d;
+        }
+
+        if (target && !isNaN(target.getTime())) {
+            const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+            const year = target.getFullYear();
+            const month = target.getMonth();
+            const weddingDay = target.getDate();
+
+            const firstDow = new Date(year, month, 1).getDay();       // 0=Sunday
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let html = '';
+            html += '<div class="cal-title">' + monthNames[month] + ' ' + year + '</div>';
+            html += '<div class="cal-grid cal-head">';
+            dayNames.forEach(function (d) { html += '<span class="cal-dow">' + d + '</span>'; });
+            html += '</div>';
+            html += '<div class="cal-grid cal-body">';
+            for (let i = 0; i < firstDow; i++) html += '<span class="cal-cell cal-empty"></span>';
+            for (let d = 1; d <= daysInMonth; d++) {
+                const isWed = d === weddingDay;
+                html += '<span class="cal-cell' + (isWed ? ' cal-active' : '') + '">'
+                    + (isWed ? '<span class="cal-heart"></span>' : '')
+                    + '<span class="cal-num">' + d + '</span>'
+                    + '</span>';
+            }
+            html += '</div>';
+
+            calEl.innerHTML = html;
+            calEl.dataset.rendered = 'true';
+        }
+    }
+
     // ---- 5. Music state UI ----
     const btnMusic = document.getElementById('btn-toggle-music');
     const bgMusic = document.getElementById('bg-music');

@@ -267,8 +267,8 @@ export const themeApi = {
         return res.data;
     },
 
-    deleteTheme: async (id: string): Promise<ApiResponse<null>> => {
-        const res = await apiClient.post('', { action: 'deleteTheme', id });
+    deleteTheme: async (id: string, config: any = {}): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteTheme', id }, config);
         return res.data;
     },
 };
