@@ -223,6 +223,7 @@ body {
 .reveal-group .reveal-item:nth-child(3) { transition-delay: 0.24s; }
 .reveal-group .reveal-item:nth-child(4) { transition-delay: 0.36s; }
 .reveal-group .reveal-item:nth-child(5) { transition-delay: 0.48s; }
+.reveal-group .reveal-item:nth-child(6) { transition-delay: 0.60s; }
 
 /* Each scene fades/zooms slightly as it enters the viewport (smooth section transition) */
 .scroll-scene {
@@ -1712,65 +1713,115 @@ body {
     position: absolute;
     inset: 0;
     z-index: 0;
-    background: linear-gradient(to top,
-        rgba(13,19,14,0.96) 0%,
-        rgba(13,19,14,0.7) 35%,
-        rgba(13,19,14,0.35) 65%,
-        rgba(13,19,14,0.55) 100%);
+    background:
+        radial-gradient(ellipse 80% 55% at 50% 42%,
+            rgba(13,19,14,0.25) 0%,
+            rgba(13,19,14,0.6) 100%),
+        linear-gradient(to top,
+            rgba(13,19,14,0.97) 0%,
+            rgba(13,19,14,0.78) 28%,
+            rgba(13,19,14,0.5) 60%,
+            rgba(13,19,14,0.6) 100%);
 }
 
-/* Thank-you block anchored to the TOP (middle stays empty) */
+/* Thank-you block centered as a soft glass card */
 .closing-stage {
     position: relative;
     z-index: 1;
-    padding: 90px 28px 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 110px 26px 40px;
 }
 
-.section-closing .the-wedding-of { margin-bottom: 14px; }
-
-.section-closing .quotes {
-    font-size: 13px;
-    line-height: 1.8;
-    color: rgba(238, 243, 230, 0.85);
-    margin: 18px auto 0;
-    max-width: 340px;
+.closing-card {
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+    padding: 44px 30px 40px;
+    border-radius: 26px;
+    background: linear-gradient(180deg,
+        rgba(245, 248, 239, 0.07),
+        rgba(245, 248, 239, 0.03));
+    border: 1px solid rgba(245, 248, 239, 0.14);
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(245, 248, 239, 0.12);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
 }
 
-.section-closing .header {
+/* Botanical sprig — fits the matcha theme */
+.closing-sprig {
+    width: 58px;
+    margin: 0 auto 18px;
+    color: var(--gold);
+    filter: drop-shadow(0 0 12px var(--gold-soft));
+}
+.closing-sprig svg { display: block; width: 100%; height: auto; }
+
+.section-closing .the-wedding-of {
+    margin-bottom: 12px;
+    font-size: .68em;
+    letter-spacing: 4px;
+    color: rgba(245, 248, 239, 0.7);
+}
+
+.closing-title {
     font-family: var(--serif);
     font-weight: 500;
-    font-size: 2.3em;
-    line-height: 1.2;
+    font-style: italic;
+    font-size: 3.1em;
+    line-height: 1.05;
     color: var(--light-on-photo);
-    letter-spacing: 1px;
-    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+    letter-spacing: 0.5px;
+    text-shadow: 0 4px 26px rgba(0, 0, 0, 0.6);
 }
 
-.closing-ornament {
+.closing-divider {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    margin: 24px 0 18px;
+    margin: 18px 0 16px;
     color: var(--gold);
 }
-.closing-ornament span:first-child,
-.closing-ornament span:last-child {
-    width: 50px;
+.closing-divider span:first-child,
+.closing-divider span:last-child {
+    width: 46px;
     height: 1px;
     background: linear-gradient(to right, transparent, var(--gold-soft), var(--gold));
 }
-.closing-ornament span:last-child {
+.closing-divider span:last-child {
     background: linear-gradient(to left, transparent, var(--gold-soft), var(--gold));
 }
 
-.section-closing .uk-text-bold {
+.closing-message {
+    font-size: 13px;
+    line-height: 1.85;
+    color: rgba(238, 243, 230, 0.82);
+    margin: 0 auto 26px;
+    max-width: 300px;
+}
+
+.closing-signature {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
     font-family: var(--serif);
-    font-size: 1.6em;
+    font-size: 1.7em;
     color: var(--gold);
     text-shadow: 0 0 22px var(--gold-soft);
 }
-.section-closing .uk-text-bold span { font-family: var(--serif); }
+.closing-signature span { font-family: var(--serif); }
+.closing-signature em {
+    font-style: italic;
+    font-size: 0.7em;
+    color: rgba(245, 248, 239, 0.7);
+    text-shadow: none;
+}
 
 /* ============ FOOTER ============ */
 .invitation-footer {

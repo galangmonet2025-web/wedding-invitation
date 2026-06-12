@@ -1909,14 +1909,23 @@
       var site_tiktok = websiteConfig.site_tiktok || '';
       var site_youtube = websiteConfig.site_youtube || '';
       var site_instagram = websiteConfig.site_instagram || '';
+      var contact_whatsapp = websiteConfig.contact_whatsapp || '';
 
-      content.flag_use_tiktok_weconfig = (site_tiktok !== '' && site_tiktok !== null && site_tiktok !== undefined);
+      // Build a wa.me link from the raw WhatsApp number (handles 0.../+62.../8... → 62...)
+      var wa_number = ('' + contact_whatsapp).replace(/[^\d+]/g, '');
+      if (wa_number.charAt(0) === '+') wa_number = wa_number.substring(1);
+      if (wa_number.charAt(0) === '0') wa_number = '62' + wa_number.substring(1);
+      else if (wa_number.charAt(0) === '8' && wa_number.length >= 9) wa_number = '62' + wa_number;
+
+      content.flag_use_tiktok_webconfig = (site_tiktok !== '' && site_tiktok !== null && site_tiktok !== undefined);
       content.flag_use_youtube_webconfig = (site_youtube !== '' && site_youtube !== null && site_youtube !== undefined);
       content.flag_use_instagram_webconfig = (site_instagram !== '' && site_instagram !== null && site_instagram !== undefined);
+      content.flag_use_whatsapp_webconfig = (wa_number !== '');
 
       content.url_tiktok_webconfig = site_tiktok;
       content.url_youtube_webconfig = site_youtube;
       content.url_instagram_webconfig = site_instagram;
+      content.url_whatsapp_webconfig = wa_number !== '' ? ('https://wa.me/' + wa_number) : '';
 
       var theme = null;
       if (tenant.theme_id) {

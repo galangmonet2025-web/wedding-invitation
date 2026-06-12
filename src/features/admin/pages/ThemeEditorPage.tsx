@@ -292,6 +292,22 @@ export function ThemeEditorPage() {
     // One real tenant for preview context (derived from selection)
     const [previewTenant, setPreviewTenant] = useState<Tenant | null>(null);
 
+    // WebsiteConfig branding for the preview (site_name, site_url, etc.) — same source as the live invitation page
+    const [websiteConfig, setWebsiteConfig] = useState<any>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await publicApi.getWebsiteConfig();
+                if (!cancelled && res.success) setWebsiteConfig(res.data);
+            } catch (e) {
+                console.error('Failed to load WebsiteConfig for theme preview:', e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
     const loadData = async () => {
         try {
             // Background fetch tenants if not loaded
@@ -1069,20 +1085,22 @@ export function ThemeEditorPage() {
                         countdown_menit: 30,
                         countdown_detik: 45,
 
-                        // Website Config Branding
-                        site_name: 'GalangMonet2025',
-                        site_url: 'https://galangmonet2025.com',
-                        site_logo: 'https://galangmonet2025.com/logo.png',
-                        tagline: 'Solusi Undangan Digital Modern',
-                        site_description: 'Platform pembuatan undangan digital terbaik dengan fitur lengkap dan desain premium.',
+                        // Website Config Branding (from WebsiteConfig sheet, same as the live invitation page)
+                        site_name: websiteConfig?.site_name || 'GalangMonet2025',
+                        site_url: websiteConfig?.site_url || 'https://galangmonet2025.com',
+                        site_logo: websiteConfig?.site_logo || 'https://galangmonet2025.com/logo.png',
+                        tagline: websiteConfig?.tagline || 'Solusi Undangan Digital Modern',
+                        site_description: websiteConfig?.site_description || 'Platform pembuatan undangan digital terbaik dengan fitur lengkap dan desain premium.',
 
-                        // Social media configurations from WebsiteConfig
-                        flag_use_tiktok_weconfig: c.flag_use_tiktok_weconfig !== undefined ? getBool(c.flag_use_tiktok_weconfig) : true,
-                        flag_use_youtube_webconfig: c.flag_use_youtube_webconfig !== undefined ? getBool(c.flag_use_youtube_webconfig) : true,
-                        flag_use_instagram_webconfig: c.flag_use_instagram_webconfig !== undefined ? getBool(c.flag_use_instagram_webconfig) : true,
-                        url_tiktok_webconfig: c.url_tiktok_webconfig || 'https://tiktok.com/@galangmonet',
-                        url_youtube_webconfig: c.url_youtube_webconfig || 'https://youtube.com/@galangmonet',
-                        url_instagram_webconfig: c.url_instagram_webconfig || 'https://instagram.com/galangmonet',
+                        // Social media configurations from WebsiteConfig (real values when available, else dummy)
+                        flag_use_tiktok_webconfig: websiteConfig?.site_tiktok ? true : (c.flag_use_tiktok_webconfig !== undefined ? getBool(c.flag_use_tiktok_webconfig) : true),
+                        flag_use_youtube_webconfig: websiteConfig?.site_youtube ? true : (c.flag_use_youtube_webconfig !== undefined ? getBool(c.flag_use_youtube_webconfig) : true),
+                        flag_use_instagram_webconfig: websiteConfig?.site_instagram ? true : (c.flag_use_instagram_webconfig !== undefined ? getBool(c.flag_use_instagram_webconfig) : true),
+                        flag_use_whatsapp_webconfig: websiteConfig?.contact_whatsapp ? true : (c.flag_use_whatsapp_webconfig !== undefined ? getBool(c.flag_use_whatsapp_webconfig) : true),
+                        url_tiktok_webconfig: websiteConfig?.site_tiktok || c.url_tiktok_webconfig || 'https://tiktok.com/@galangmonet',
+                        url_youtube_webconfig: websiteConfig?.site_youtube || c.url_youtube_webconfig || 'https://youtube.com/@galangmonet',
+                        url_instagram_webconfig: websiteConfig?.site_instagram || c.url_instagram_webconfig || 'https://instagram.com/galangmonet',
+                        url_whatsapp_webconfig: (websiteConfig?.contact_whatsapp ? `https://wa.me/${String(websiteConfig.contact_whatsapp).replace(/[^\d]/g, '').replace(/^0/, '62')}` : '') || c.url_whatsapp_webconfig || 'https://wa.me/628123456789',
                     };
 
                     // Inject dynamic image type variables (real base64 or dummy fallback)
@@ -1255,7 +1273,7 @@ export function ThemeEditorPage() {
                 setIsPreviewUpdating(false);
             }
         }, 300); // 300ms debounce
-    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes, mockGuestData]);
+    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes, mockGuestData, websiteConfig]);
 
     // Clean up timer on unmount
     useEffect(() => {

@@ -212,12 +212,14 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
                 { tag: '{{site_logo}}', desc: 'URL Logo Website', value: 'https://galangmonet2025.com/logo.png', type: 'URL String', code: '<img src="{{site_logo}}" alt="Logo" />' },
                 { tag: '{{tagline}}', desc: 'Tagline Website', value: 'Solusi Undangan Digital Modern', type: 'String', code: '<p>{{tagline}}</p>' },
                 { tag: '{{site_description}}', desc: 'Deskripsi SEO Website', value: 'Platform pembuatan undangan digital terbaik...', type: 'String', code: '<meta name="description" content="{{site_description}}">' },
-                { tag: '{{#if flag_use_tiktok_weconfig}}', desc: 'Kondisi Akun TikTok dikonfigurasi di WebsiteConfig', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_use_tiktok_weconfig}}\n  <a href="{{url_tiktok_webconfig}}">TikTok</a>\n{{/if}}' },
+                { tag: '{{#if flag_use_tiktok_webconfig}}', desc: 'Kondisi Akun TikTok dikonfigurasi di WebsiteConfig', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_use_tiktok_webconfig}}\n  <a href="{{url_tiktok_webconfig}}">TikTok</a>\n{{/if}}' },
                 { tag: '{{#if flag_use_youtube_webconfig}}', desc: 'Kondisi Akun YouTube dikonfigurasi di WebsiteConfig', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_use_youtube_webconfig}}\n  <a href="{{url_youtube_webconfig}}">YouTube</a>\n{{/if}}' },
                 { tag: '{{#if flag_use_instagram_webconfig}}', desc: 'Kondisi Akun Instagram dikonfigurasi di WebsiteConfig', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_use_instagram_webconfig}}\n  <a href="{{url_instagram_webconfig}}">Instagram</a>\n{{/if}}' },
+                { tag: '{{#if flag_use_whatsapp_webconfig}}', desc: 'Kondisi Nomor WhatsApp dikonfigurasi di WebsiteConfig', value: '(Block Logic)', type: 'Boolean Logic', code: '{{#if flag_use_whatsapp_webconfig}}\n  <a href="{{url_whatsapp_webconfig}}">WhatsApp</a>\n{{/if}}' },
                 { tag: '{{url_tiktok_webconfig}}', desc: 'URL TikTok dari WebsiteConfig', value: 'https://tiktok.com/@galangmonet', type: 'URL String', code: '<a href="{{url_tiktok_webconfig}}">TikTok</a>' },
                 { tag: '{{url_youtube_webconfig}}', desc: 'URL YouTube dari WebsiteConfig', value: 'https://youtube.com/@galangmonet', type: 'URL String', code: '<a href="{{url_youtube_webconfig}}">YouTube</a>' },
                 { tag: '{{url_instagram_webconfig}}', desc: 'URL Instagram dari WebsiteConfig', value: 'https://instagram.com/galangmonet', type: 'URL String', code: '<a href="{{url_instagram_webconfig}}">Instagram</a>' },
+                { tag: '{{url_whatsapp_webconfig}}', desc: 'URL WhatsApp (wa.me) dari WebsiteConfig', value: 'https://wa.me/628123456789', type: 'URL String', code: '<a href="{{url_whatsapp_webconfig}}">WhatsApp</a>' },
             ]
         },
     ];

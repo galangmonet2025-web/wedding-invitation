@@ -18,6 +18,14 @@ import sampleStory1 from '@/assets/img/sample_story_1.jpg';
 import sampleStory2 from '@/assets/img/sample_story_2.jpg';
 import sampleStory3 from '@/assets/img/sample_story_3.jpg';
 import defaultFrame from '@/assets/img/frame.png';
+import { formatPhoneForWhatsApp } from '@/utils/whatsappUtils';
+
+// Build a wa.me link from a raw WhatsApp number (returns '' when no number is set)
+const buildWaMeUrl = (phone: any): string => {
+    if (!phone) return '';
+    const num = formatPhoneForWhatsApp(String(phone));
+    return num ? `https://wa.me/${num}` : '';
+};
 
 const isValidImageUrl = (url: any): boolean => {
     if (!url || typeof url !== 'string') return false;
@@ -1000,12 +1008,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             site_description: websiteConfig?.site_description || '',
 
             // Social media configurations from WebsiteConfig
-            flag_use_tiktok_weconfig: !!(websiteConfig?.site_tiktok || activeContent?.url_tiktok_webconfig || activeContent?.flag_use_tiktok_weconfig),
+            flag_use_tiktok_webconfig: !!(websiteConfig?.site_tiktok || activeContent?.url_tiktok_webconfig || activeContent?.flag_use_tiktok_webconfig),
             flag_use_youtube_webconfig: !!(websiteConfig?.site_youtube || activeContent?.url_youtube_webconfig || activeContent?.flag_use_youtube_webconfig),
             flag_use_instagram_webconfig: !!(websiteConfig?.site_instagram || activeContent?.url_instagram_webconfig || activeContent?.flag_use_instagram_webconfig),
+            flag_use_whatsapp_webconfig: !!(websiteConfig?.contact_whatsapp || activeContent?.url_whatsapp_webconfig || activeContent?.flag_use_whatsapp_webconfig),
             url_tiktok_webconfig: websiteConfig?.site_tiktok || activeContent?.url_tiktok_webconfig || '',
             url_youtube_webconfig: websiteConfig?.site_youtube || activeContent?.url_youtube_webconfig || '',
             url_instagram_webconfig: websiteConfig?.site_instagram || activeContent?.url_instagram_webconfig || '',
+            url_whatsapp_webconfig: buildWaMeUrl(websiteConfig?.contact_whatsapp) || activeContent?.url_whatsapp_webconfig || '',
             galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
                 .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),

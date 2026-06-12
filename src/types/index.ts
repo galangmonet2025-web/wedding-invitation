@@ -444,12 +444,14 @@ export interface InvitationContent {
     sample_story_3?: string;
 
     // Social Media configurations from WebsiteConfig
-    flag_use_tiktok_weconfig?: boolean | string;
+    flag_use_tiktok_webconfig?: boolean | string;
     flag_use_youtube_webconfig?: boolean | string;
     flag_use_instagram_webconfig?: boolean | string;
+    flag_use_whatsapp_webconfig?: boolean | string;
     url_tiktok_webconfig?: string;
     url_youtube_webconfig?: string;
     url_instagram_webconfig?: string;
+    url_whatsapp_webconfig?: string;
 }
 
 // =============================================

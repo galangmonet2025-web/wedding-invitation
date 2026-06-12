@@ -39,7 +39,7 @@
         style="background-color: #f3f6ea;">
         <!-- Fixed cinematic backdrop that all sections scroll over (parallax base) -->
         <div class="story-backdrop" data-bg-img="{{photo_background}}"
-            style="background-image: linear-gradient(rgba(243,246,234,0.90), rgba(243,246,234,0.95)), url(&quot;{{photo_background}}&quot;);"></div>
+            style="background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.25)), url(&quot;{{photo_background}}&quot;);"></div>
         <div class="story-grain"></div>
         <div class="scroll-progress" id="scroll-progress"></div>
 
@@ -576,7 +576,7 @@
                         <div class="quotes"
                             style="font-size: 12px; margin-top: 15px; color: rgba(255,255,255,0.7); max-width: 320px; margin-left: auto; margin-right: auto; line-height: 1.6;">
                             Ambil tangkapan layar kartu kenangan di atas dan bagikan di Instagram Story Anda dengan
-                            menandai akun kami <strong>@galang</strong> &amp; <strong>@dini</strong>! ✨
+                            menandai akun kami <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong>! ✨
                         </div>
                     </div>
                 </div>
@@ -728,18 +728,31 @@
                 style="background-image: url(&quot;{{photo_closing}}&quot;);">
                 <div class="closing-overlay"></div>
 
-                <div class="closing-stage container-section-header reveal-group">
-                    <div class="the-wedding-of reveal-item">With Love</div>
-                    <div class="header reveal-item">Terima kasih <br> atas kehadirannya</div>
-                    <div class="quotes reveal-item">
-                        Merupakan suatu kebahagiaan dan kehormatan bagi kami, apabila Bapak/Ibu/Saudara/i berkenan
-                        hadir di hari bahagia kami.
-                    </div>
-                    <div class="closing-ornament reveal-item">
-                        <span></span><span uk-icon="icon: heart; ratio: 0.9"></span><span></span>
-                    </div>
-                    <div class="uk-text-bold reveal-item">
-                        <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
+                <div class="closing-stage reveal-group">
+                    <div class="closing-card">
+                        <div class="closing-sprig reveal-item" aria-hidden="true">
+                            <svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M32 38 C32 22 32 10 32 4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                                <path d="M32 14 C24 10 18 12 13 8 C20 9 26 6 32 14Z" fill="currentColor" opacity="0.85"/>
+                                <path d="M32 14 C40 10 46 12 51 8 C44 9 38 6 32 14Z" fill="currentColor" opacity="0.85"/>
+                                <path d="M32 24 C25 21 20 23 16 19 C22 20 27 18 32 24Z" fill="currentColor" opacity="0.7"/>
+                                <path d="M32 24 C39 21 44 23 48 19 C42 20 37 18 32 24Z" fill="currentColor" opacity="0.7"/>
+                                <path d="M32 32 C27 30 23 31 20 28 C25 29 28 27 32 32Z" fill="currentColor" opacity="0.55"/>
+                                <path d="M32 32 C37 30 41 31 44 28 C39 29 36 27 32 32Z" fill="currentColor" opacity="0.55"/>
+                            </svg>
+                        </div>
+                        <div class="the-wedding-of reveal-item">With Love &amp; Gratitude</div>
+                        <div class="closing-title reveal-item">Terima Kasih</div>
+                        <div class="closing-divider reveal-item"><span></span><span uk-icon="icon: heart; ratio: 0.8"></span><span></span></div>
+                        <div class="closing-message reveal-item">
+                            Merupakan suatu kebahagiaan dan kehormatan bagi kami, apabila Bapak/Ibu/Saudara/i
+                            berkenan hadir di hari bahagia kami.
+                        </div>
+                        <div class="closing-signature reveal-item">
+                            <span>{{groom_nickname}}</span>
+                            <em>&amp;</em>
+                            <span>{{bride_nickname}}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -747,8 +760,8 @@
                     <div class="footer-name">{{site_name}}</div>
                     <div class="footer-info"><a href="{{site_url}}" style="text-decoration: unset; color: unset" target="_blank">  {{site_url}} <br> <span>Digital wedding invitation © 2026</span></a></div>
                     <div class="footer-social">
-                        {{#if flag_use_tiktok_weconfig}}
-                        <a aria-label="TikTok" href="{{url_tiktok_webconfig}}">
+                        {{#if flag_use_tiktok_webconfig}}
+                        <a aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -756,14 +769,34 @@
                             </svg>
                         </a>
                         {{/if}}
-                        {{#if flag_use_instagram_weconfig}}
-                        <a aria-label="Instagram" href="{{url_instagram_webconfig}}">
+                        {{#if flag_use_instagram_webconfig}}
+                        <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                                 stroke-linejoin="round">
                                 <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
                                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                                 <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+                            </svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_youtube_webconfig}}
+                        <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                            </svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_whatsapp_webconfig}}
+                        <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                                <path d="M8.5 9.3c0-.3.3-.5.5-.5h.8c.2 0 .4.1.5.4l.6 1.4c.1.2 0 .4-.1.5l-.5.6c.5 1 1.3 1.8 2.3 2.3l.6-.5c.1-.1.3-.2.5-.1l1.4.6c.3.1.4.3.4.5v.8c0 .3-.2.5-.5.5-3.4 0-6.6-2.8-6.6-6.5z"></path>
                             </svg>
                         </a>
                         {{/if}}
