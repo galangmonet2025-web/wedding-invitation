@@ -37,6 +37,7 @@ import {
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
 import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 
 function MobileMenuOverlay({
     isOpen,
@@ -49,7 +50,9 @@ function MobileMenuOverlay({
     t,
     isDark,
     toggleTheme,
-    isSuperAdmin
+    isSuperAdmin,
+    siteName,
+    siteLogo
 }: any) {
     if (!isOpen) return null;
 
@@ -65,12 +68,22 @@ function MobileMenuOverlay({
             <div className="relative h-full flex flex-col p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
-                            <span className="text-white font-display font-bold text-lg">W</span>
-                        </div>
-                        <h1 className="font-display font-bold text-lg text-gray-800 dark:text-white">
-                            Wedding<span className="text-gradient-gold">SaaS</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                        {siteLogo ? (
+                            <img
+                                src={siteLogo}
+                                alt={siteName || 'Logo'}
+                                className="w-10 h-10 rounded-xl object-contain shadow-gold shrink-0 p-1 bg-gradient-to-br from-gold-400 to-gold-600"
+                            />
+                        ) : (
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
+                                <span className="text-white font-display font-bold text-lg">
+                                    {siteName ? siteName[0].toUpperCase() : 'W'}
+                                </span>
+                            </div>
+                        )}
+                        <h1 className="font-display font-bold text-lg text-gray-800 dark:text-white truncate">
+                            {siteName || <>Wedding<span className="text-gradient-gold">SaaS</span></>}
                         </h1>
                     </div>
                     <button
@@ -205,6 +218,9 @@ export function DashboardLayout() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+    const [siteName, setSiteName] = useState('');
+    const [siteLogo, setSiteLogo] = useState('');
     const location = useLocation();
 
     const getHeaderTitle = () => {
@@ -259,11 +275,17 @@ export function DashboardLayout() {
                 const { publicApi } = await import('@/core/api/endpoints');
                 const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
                 const res = await publicApi.getWebsiteConfig();
-                if (res.success && res.data.site_logo) {
-                    const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
-                    let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                    if (fav) {
-                        fav.href = resolvedLogo;
+                if (res.success) {
+                    if (res.data.site_name) {
+                        setSiteName(res.data.site_name);
+                    }
+                    if (res.data.site_logo) {
+                        const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
+                        setSiteLogo(resolvedLogo);
+                        let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+                        if (fav) {
+                            fav.href = resolvedLogo;
+                        }
                     }
                 }
             } catch (err) {
@@ -326,59 +348,71 @@ export function DashboardLayout() {
                 items={filteredNavItems}
                 user={user}
                 tenant={tenant}
-                onLogout={handleLogout}
+                onLogout={() => setLogoutConfirmOpen(true)}
                 onChangePassword={() => setPasswordModalOpen(true)}
                 t={t}
                 isDark={isDark}
                 toggleTheme={toggleTheme}
                 isSuperAdmin={isSuperAdmin}
+                siteName={siteName}
+                siteLogo={siteLogo}
             />
 
             {/* Desktop Sidebar (Only visible on LG up) */}
             <aside
-                className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700 
+                className="fixed inset-y-0 left-0 z-50 w-60 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700
         hidden lg:flex flex-col"
             >
                 {/* Logo */}
-                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
-                            <span className="text-white font-display font-bold text-lg">W</span>
-                        </div>
-                        <div>
-                            <h1 className="font-display font-bold text-lg text-gray-800 dark:text-white">
-                                Wedding<span className="text-gradient-gold">SaaS</span>
+                <div className="px-4 py-3.5 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2.5">
+                        {siteLogo ? (
+                            <img
+                                src={siteLogo}
+                                alt={siteName || 'Logo'}
+                                className="w-8 h-8 rounded-lg object-contain shadow-gold shrink-0 p-1 bg-gradient-to-br from-gold-400 to-gold-600"
+                            />
+                        ) : (
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
+                                <span className="text-white font-display font-bold text-base">
+                                    {siteName ? siteName[0].toUpperCase() : 'W'}
+                                </span>
+                            </div>
+                        )}
+                        <div className="min-w-0">
+                            <h1 className="font-display font-bold text-base text-gray-800 dark:text-white leading-tight truncate">
+                                {siteName || <>Wedding<span className="text-gradient-gold">SaaS</span></>}
                             </h1>
-                            <p className="text-xs text-gray-400">Platform Management</p>
+                            <p className="text-[10px] text-gray-400 leading-tight">Platform Management</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Tenant Info */}
                 {tenant && showTenantMenu && (
-                    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
                         {isImpersonating && (
-                            <div className="mb-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-xs text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1">
+                            <div className="mb-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-[10px] text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1">
                                 <span>👤</span> {t('sidebar.viewing_tenant', 'Viewing as Tenant')}
                             </div>
                         )}
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gold-100 dark:bg-gold-900/30 flex items-center justify-center">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-gold-100 dark:bg-gold-900/30 flex items-center justify-center shrink-0">
                                 <HiOutlineHeart className="w-4 h-4 text-gold-600" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                                <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">
                                     {tenant.bride_name} & {tenant.groom_name}
                                 </p>
-                                <p className="text-xs text-gray-400">{tenant.domain_slug}</p>
+                                <p className="text-[10px] text-gray-400 truncate">{tenant.domain_slug}</p>
                             </div>
                         </div>
                     </div>
                 )}
 
                 {/* Navigation */}
-                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.menu')}</p>
+                <nav className="flex-1 px-2.5 py-2 space-y-0.5 overflow-y-auto">
+                    <p className="px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.menu')}</p>
                     {filteredNavItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -388,44 +422,44 @@ export function DashboardLayout() {
                                 `sidebar-link ${isActive ? 'active' : ''}`
                             }
                         >
-                            <item.icon className="w-5 h-5 flex-shrink-0" />
+                            <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
                             <span>{item.label}</span>
                         </NavLink>
                     ))}
                 </nav>
 
                 {/* User Info & Actions */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3 px-4 py-3 mb-2">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">{user?.username?.[0]?.toUpperCase()}</span>
+                <div className="px-2.5 py-2.5 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2.5 px-2.5 py-2 mb-1">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shrink-0">
+                            <span className="text-white font-bold text-xs">{user?.username?.[0]?.toUpperCase()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{user?.username}</p>
-                            <p className="text-xs text-gold-500 capitalize">{user?.role?.replace('_', ' ')}</p>
+                            <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{user?.username}</p>
+                            <p className="text-[10px] text-gold-500 capitalize truncate">{user?.role?.replace('_', ' ')}</p>
                         </div>
                     </div>
                     <button
                         onClick={() => setPasswordModalOpen(true)}
-                        className="sidebar-link w-full mb-1 text-gray-600 dark:text-gray-300"
+                        className="sidebar-link w-full mb-0.5 text-gray-600 dark:text-gray-300"
                     >
-                        <HiOutlineKey className="w-5 h-5" />
+                        <HiOutlineKey className="w-[18px] h-[18px]" />
                         <span>{t('sidebar.change_password')}</span>
                     </button>
                     <button
-                        onClick={handleLogout}
+                        onClick={() => setLogoutConfirmOpen(true)}
                         className="sidebar-link w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
                     >
-                        <HiOutlineLogout className="w-5 h-5" />
+                        <HiOutlineLogout className="w-[18px] h-[18px]" />
                         <span>{t('sidebar.logout')}</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 lg:ml-72 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden">
+            <div className="flex-1 lg:ml-60 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden">
                 {/* Topbar */}
-                <header className="fixed top-0 left-0 lg:left-72 right-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
+                <header className="fixed top-0 left-0 lg:left-60 right-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between px-4 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button
@@ -521,6 +555,23 @@ export function DashboardLayout() {
             <ChangePasswordModal
                 isOpen={passwordModalOpen}
                 onClose={() => setPasswordModalOpen(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={logoutConfirmOpen}
+                onClose={() => setLogoutConfirmOpen(false)}
+                onConfirm={() => {
+                    setLogoutConfirmOpen(false);
+                    handleLogout();
+                }}
+                variant="danger"
+                icon={<HiOutlineLogout className="w-5 h-5 shrink-0 mt-0.5" />}
+                warningTitle={t('sidebar.logout_confirm_title', 'Keluar dari Akun')}
+                title={t('sidebar.logout_confirm_title', 'Keluar dari Akun')}
+                message={t('sidebar.logout_confirm_message', 'Apakah Anda yakin ingin keluar dari akun ini?')}
+                description={t('sidebar.logout_confirm_desc', 'Anda perlu login kembali untuk mengakses dashboard.')}
+                confirmLabel={t('sidebar.logout_confirm_button', 'Ya, Keluar')}
+                cancelLabel={t('common.cancel', 'Batal')}
             />
         </div>
     );
