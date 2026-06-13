@@ -1,0 +1,937 @@
+<!--
+  ============================================================================
+  TEMA: ADAT MINANG
+  Asset ornamen yang perlu di-upload di editor (tab Setup → Asset Media Tema):
+    image_1  → ornamen header cover (songket/gonjong)        → {{asset_image_1}}
+    image_2  → ornamen divider section Mempelai              → {{asset_image_2}}
+    image_3  → ornamen divider section Waktu & Tampek        → {{asset_image_3}}
+    image_4  → band kain songket (section Wedding Gift)       → {{asset_image_4}}
+  Disarankan PNG transparan berwarna emas. Foto mempelai/cover/background
+  tetap diisi tenant lewat pengaturan konten ({{photo_*}}).
+  ============================================================================
+-->
+<div class="uk-grid-collapse uk-height-viewport" uk-grid="">
+
+    <!-- ============ DESKTOP PARALLAX SIDEBAR (mouse-reactive layers) ============ -->
+    <div class="uk-width-expand uk-visible@m preview-sidebar" id="desktop-bg-container"
+        style="background: none; padding: 0; overflow: hidden; position: relative;">
+        <div id="layer-bg"
+            style="position: absolute; top: -5%; left: -5%; width: 110%; height: 110%; background-image: url(&quot;{{photo_hero_cover}}&quot;); background-size: cover; background-position: center center; z-index: 1; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
+        </div>
+
+        <div
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% 35%, rgba(74,18,18,0.25), rgba(46,8,8,0.78)); z-index: 2;">
+        </div>
+
+        <!-- songket gold weave overlay -->
+        <div class="sidebar-songket" style="position: absolute; inset: 0; z-index: 3; pointer-events: none;"></div>
+
+        <div id="layer-particles"
+            style="position: absolute; top: -10%; left: -10%; width: 120%; height: 120%; z-index: 4; pointer-events: none; overflow: hidden; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
+        </div>
+
+        <div id="layer-text"
+            style="position: absolute; bottom: 0; left: 0; padding: 60px; z-index: 5; width: 100%; transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
+            <!-- rumah gadang gonjong silhouette -->
+            <svg class="sidebar-gonjong" viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M10,58 C40,18 50,8 60,2 C66,16 64,34 60,50 C90,16 100,8 120,2 C126,18 124,36 120,50 C150,16 160,8 180,2 C186,16 184,34 180,50 C190,30 210,22 230,58 Z"
+                    fill="none" stroke="rgba(212,170,90,0.85)" stroke-width="1.5" stroke-linejoin="round"></path>
+            </svg>
+            <div
+                style="text-transform: uppercase; letter-spacing: 6px; font-size: 13px; color: rgba(238,221,188,0.8); font-weight: 400;">
+                Baralek Gadang</div>
+            <h1 class="sidebar-couple"
+                style="font-size: 4.5rem; font-weight: 400; color: #f4e7cf; margin: 0; line-height: 1.05; letter-spacing: -1px;">
+                <span>{{groom_nickname}}</span> <span style="font-style: italic; opacity: 0.7;">&amp;</span> <span>{{bride_nickname}}</span>
+            </h1>
+            <div
+                style="margin-top: 14px; letter-spacing: 2px; font-size: 1rem; color: rgba(238,221,188,0.85); font-weight: 300; display: flex; align-items: center; gap: 10px; text-transform: uppercase;">
+                <span uk-icon="icon: calendar; ratio: 1.1"></span>
+                <span>{{wedding_date}}</span>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- ============ MAIN STORY (full-page scrolling phone) ============ -->
+    <div class="phone-container" id="content-body"
+        style="background-color: #2e0808;">
+        <!-- Fixed cinematic backdrop that all sections scroll over (parallax base) -->
+        <div class="story-backdrop" data-bg-img="{{photo_background}}"
+            style="background-image: linear-gradient(rgba(46,8,8,0.6), rgba(46,8,8,0.35)), url(&quot;{{photo_background}}&quot;);"></div>
+        <div class="story-grain"></div>
+        <div class="scroll-progress" id="scroll-progress"></div>
+
+        <div class="mock-app-screen">
+
+            <!-- ===== COVER ===== -->
+            <section id="theme-cover" class="section-cover"
+                style="background-image: linear-gradient(rgba(46,8,8,0.55), rgba(46,8,8,0.35)), url(&quot;{{photo_cover}}&quot;);">
+                <div class="cover-zoom" style="background-image: url(&quot;{{photo_cover}}&quot;);"></div>
+
+                <!-- songket carved frame corners -->
+                <span class="minang-frame-corner tl"></span>
+                <span class="minang-frame-corner tr"></span>
+                <span class="minang-frame-corner bl"></span>
+                <span class="minang-frame-corner br"></span>
+
+                <div class="container-section-header">
+                    <img src="{{asset_image_1}}" class="minang-ornament minang-ornament-gold" alt="" aria-hidden="true">
+                    <div class="the-wedding-of">Baralek Gadang</div>
+                    <div class="groom-bride-name">
+                        <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
+                    </div>
+                    <div class="the-wedding-of">{{wedding_date}}</div>
+                </div>
+
+                <div class="container-section-cover-guest">
+                    <span>Kepada Yth.</span><br>
+                    <label>Bapak/Ibu/Sanak Saudara</label>
+                    <p class="guest-name">{{nama_tamu}}</p>
+                    <br>
+                    <p>Tanpo mangurangi raso hormat, <br>kami mengundang Bapak/Ibu/Saudara/i <br>untuk hadir di
+                        baralek kami.</p>
+
+                    <button class="btn" id="btn-open-invitation">Buka Undangan</button>
+                    <button class="btn" id="btn-show-qr" style="padding: 8px 20px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                            style="vertical-align: middle;">
+                            <rect width="5" height="5" x="3" y="3" rx="1"></rect>
+                            <rect width="5" height="5" x="16" y="3" rx="1"></rect>
+                            <rect width="5" height="5" x="3" y="16" rx="1"></rect>
+                            <path d="M21 16h-3a2 2 0 0 0-2 2v3"></path>
+                            <path d="M21 21v.01"></path>
+                            <path d="M12 7v3a2 2 0 0 1-2 2H7"></path>
+                            <path d="M3 12h.01"></path>
+                            <path d="M12 3h.01"></path>
+                            <path d="M12 16v.01"></path>
+                            <path d="M16 12h1"></path>
+                            <path d="M21 12v.01"></path>
+                            <path d="M12 21v-1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ===== HERO (parallax photo + Ken Burns) ===== -->
+            <section class="section-hero scroll-scene">
+                <div class="hero-bg parallax-layer" data-speed="0.3"
+                    style="background-image: linear-gradient(rgba(46,8,8,0.45), rgba(46,8,8,0.65)), url({{photo_hero_cover}});">
+                </div>
+
+                <div class="container-section-header reveal-group">
+                    <div class="the-wedding-of reveal-item">THE WEDDING OF</div>
+                    <div class="groom-bride-name reveal-item">
+                        <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
+                    </div>
+                    <div class="the-wedding-of reveal-item">{{wedding_date}}</div>
+                </div>
+
+                <div class="container-section-hero-quotes reveal-item">
+                    <span>{{kalimat_pembuka}}</span>
+                </div>
+
+                <div class="scroll-indicator">
+                    <div class="mouse">
+                        <div class="wheel"></div>
+                    </div>
+                    <span>turun ka bawah</span>
+                </div>
+            </section>
+
+
+
+            <!-- ===== COUPLES ===== -->
+            <section id="couples" class="section-couples scroll-scene" data-menu-label="Mempelai">
+                <div class="container-section-header reveal-group" style="padding-bottom: 0;">
+                    <div class="the-wedding-of reveal-item">Bismillahirrahmanirrahim</div>
+                    <div class="groom-bride-name reveal-item"><span>Mempelai</span></div>
+                    <div class="quotes reveal-item" style="margin-top: 20px; line-height: 1.6; text-transform: none;">
+                        {{custom_kalimat_1}}
+                    </div>
+                    <img src="{{asset_image_2}}" class="minang-ornament minang-ornament-gold reveal-item" style="margin-top: 24px;" alt="" aria-hidden="true">
+                </div>
+
+                <div class="couple-content">
+                    <div class="couple-separator reveal-item">
+                        <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+                            <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50" fill="none"
+                                stroke="currentColor" stroke-width="2"></path>
+                            <path class="heart-icon" d="M90,45 Q100,35 110,45 T100,65 T90,45" fill="none" stroke="currentColor"
+                                stroke-width="2"></path>
+                            <circle class="end-dot" cx="180" cy="50" r="3" fill="currentColor"></circle>
+                        </svg>
+                    </div>
+
+                    <div class="couple-duo reveal-item">
+                        <!-- GROOM -->
+                        <div class="couple-card">
+                            <div class="couple-img-wrapper">
+                                <span class="couple-songket-ring" aria-hidden="true"></span>
+                                <img src="{{photo_groom_photo}}" alt="Groom" class="couple-img">
+                            </div>
+                            <h3 class="couple-name">{{groom_name}}</h3>
+
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div>
+                                <p class="couple-parents">
+                                    Putra dari <br>
+                                    Bapak <span>{{nama_bapak_laki_laki}}</span> <br>
+                                    &amp; Ibu <span>{{nama_ibu_laki_laki}}</span>
+                                </p>
+                            </div>
+                            {{/if}}
+
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <div>
+                                <a class="couple-instagram">
+                                    <span uk-icon="instagram" style="margin-right: 5px;"></span>
+                                    <span>{{ig_laki_laki}}</span>
+                                </a>
+                            </div>
+                            {{/if}}
+                        </div>
+
+                        <div class="couple-amp">&amp;</div>
+
+                        <!-- BRIDE -->
+                        <div class="couple-card">
+                            <div class="couple-img-wrapper">
+                                <span class="couple-songket-ring" aria-hidden="true"></span>
+                                <img src="{{photo_bride_photo}}" alt="Bride" class="couple-img">
+                            </div>
+                            <h3 class="couple-name">{{bride_name}}</h3>
+
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div>
+                                <p class="couple-parents">
+                                    Putri dari <br>
+                                    Bapak <span>{{nama_bapak_perempuan}}</span> <br>
+                                    &amp; Ibu <span>{{nama_ibu_perempuan}}</span>
+                                </p>
+                            </div>
+                            {{/if}}
+
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <div>
+                                <a class="couple-instagram">
+                                    <span uk-icon="instagram" style="margin-right: 5px;"></span>
+                                    <span>{{ig_perempuan}}</span>
+                                </a>
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== SCHEDULE (cinematic venue cards) ===== -->
+            <section id="schedule" class="section-schedule scroll-scene" data-menu-label="Waktu &amp; tempat">
+                <div class="container-section-schedule reveal-group">
+                    <div class="the-wedding-of reveal-item">Save The Date</div>
+                    <div class="groom-bride-name reveal-item">Waktu &amp; Tampek</div>
+                    <img src="{{asset_image_3}}" class="minang-ornament minang-ornament-gold is-divider reveal-item" alt="" aria-hidden="true">
+                </div>
+
+                <div class="schedule-content">
+                    <!-- AKAD -->
+                    <div class="venue-card reveal-item">
+                        <div class="venue-head venue-head-akad">
+                            <div class="venue-head-glow"></div>
+                            <div class="venue-illustration">
+                                <!-- two interlocking rings (neutral) -->
+                                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.8"
+                                    stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="25" cy="36" r="14"></circle>
+                                    <circle cx="39" cy="36" r="14"></circle>
+                                    <path d="M28 12l4 5 4-5"></path>
+                                    <path d="M32 17v6"></path>
+                                </svg>
+                            </div>
+                            <div class="venue-head-label">
+                                <span class="venue-eyebrow">Ijab Kabul</span>
+                                <h3 class="schedule-title">Akad Nikah</h3>
+                            </div>
+                        </div>
+                        <div class="venue-body">
+                            <div class="venue-datetime">
+                                <div class="venue-dt-block">
+                                    <span class="venue-dt-value">{{tanggal_akad}}</span>
+                                    <span class="venue-dt-label">Tanggal</span>
+                                </div>
+                                <span class="venue-dt-sep"></span>
+                                <div class="venue-dt-block">
+                                    <span class="venue-dt-value">{{jam_akad}}</span>
+                                    <span class="venue-dt-label">Waktu</span>
+                                </div>
+                            </div>
+                            <div class="venue-place">
+                                <span uk-icon="icon: location; ratio: 0.9"></span>
+                                <div>
+                                    <div class="schedule-venue">{{nama_lokasi_akad}}</div>
+                                    <div class="schedule-address">{{keterangan_lokasi_akad}}</div>
+                                </div>
+                            </div>
+                            <a href="{{akad_map}}" target="_blank" class="btn btn-schedule">
+                                <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
+                            </a>
+                        </div>
+                    </div>
+
+                    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                    <!-- RESEPSI -->
+                    <div class="venue-card reveal-item">
+                        <div class="venue-head venue-head-resepsi">
+                            <div class="venue-head-glow"></div>
+                            <div class="venue-illustration">
+                                <!-- rumah gadang gonjong (celebration / baralek) -->
+                                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.8"
+                                    stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 40 C16 18 18 12 22 9 C24 18 23 30 21 36 C28 18 30 12 34 9 C36 18 35 30 33 36 C40 18 42 12 46 9 C48 18 47 30 45 36 C50 24 56 22 58 40"></path>
+                                    <path d="M10 40 H54 V52 H10 Z"></path>
+                                    <path d="M24 52 V40 M40 52 V40"></path>
+                                </svg>
+                            </div>
+                            <div class="venue-head-label">
+                                <span class="venue-eyebrow">Baralek Gadang</span>
+                                <h3 class="schedule-title">Resepsi</h3>
+                            </div>
+                        </div>
+                        <div class="venue-body">
+                            <div class="venue-datetime">
+                                <div class="venue-dt-block">
+                                    <span class="venue-dt-value">{{tanggal_resepsi}}</span>
+                                    <span class="venue-dt-label">Tanggal</span>
+                                </div>
+                                <span class="venue-dt-sep"></span>
+                                <div class="venue-dt-block">
+                                    <span class="venue-dt-value">{{jam_resepsi}}</span>
+                                    <span class="venue-dt-label">Waktu</span>
+                                </div>
+                            </div>
+                            <div class="venue-place">
+                                <span uk-icon="icon: location; ratio: 0.9"></span>
+                                <div>
+                                    <div class="schedule-venue">{{nama_lokasi_resepsi}}</div>
+                                    <div class="schedule-address">{{keterangan_lokasi_resepsi}}</div>
+                                </div>
+                            </div>
+                            <a href="{{resepsi_map}}" target="_blank" class="btn btn-schedule">
+                                <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
+                            </a>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+
+
+
+            <!-- ===== COUNTDOWN + CALENDAR ===== -->
+            <section class="section-countdown scroll-scene">
+                <div class="container-section-header reveal-group">
+                    <div class="the-wedding-of reveal-item">HITUNG MUNDUR</div>
+                    <div class="groom-bride-name reveal-item">Manuju Hari Bahagia</div>
+                    <div class="countdown-container reveal-item" id="countdown">
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="days">{{countdown_hari}}</div>
+                            <div class="countdown-label">Hari</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="hours">{{countdown_jam}}</div>
+                            <div class="countdown-label">Jam</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="minutes">{{countdown_menit}}</div>
+                            <div class="countdown-label">Menit</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-box" id="seconds">{{countdown_detik}}</div>
+                            <div class="countdown-label">Detik</div>
+                        </div>
+                    </div>
+
+                    <!-- Calendar with the wedding date highlighted (rendered by index.js) -->
+                    <div class="wedding-calendar reveal-item" id="wedding-calendar" data-wedding-date="{{wedding_date_iso}}"></div>
+                </div>
+            </section>
+
+
+            <!-- ===== RSVP (Konfirmasi Kehadiran) ===== -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
+            <section class="section-rsvp scroll-scene" id="rsvp">
+                <div class="container-section-header reveal-group">
+                    <div class="the-wedding-of reveal-item">KONFIRMASI</div>
+                    <div class="groom-bride-name reveal-item">Kehadiran Anda</div>
+                    <div class="schedule-ornament reveal-item">
+                        <span></span><span uk-icon="icon: heart; ratio: 0.9"></span><span></span>
+                    </div>
+                </div>
+
+                <div class="rsvp-form-container reveal-item" id="rsvp-container">
+                    {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                    <div>
+                        <div class="glass-form" id="rsvp-form">
+                            <div class="uk-margin-small">
+                                <input class="uk-input custom-input" type="text" id="rsvp-code"
+                                    placeholder="Kode Undangan">
+                            </div>
+                            <div class="uk-margin-small">
+                                <input class="uk-input custom-input" type="text" id="guest-name-input"
+                                    placeholder="Nama Tamu">
+                            </div>
+                            <div class="uk-margin-small">
+                                <select class="uk-select custom-input" id="rsvp-guests">
+                                    <option value="" disabled="" selected="">Jumlah Kehadiran</option>
+                                    <option value="1">1 Orang</option>
+                                    <option value="2">2 Orang</option>
+                                </select>
+                            </div>
+                            <div class="uk-margin-small">
+                                <select class="uk-select custom-input" id="rsvp-status">
+                                    <option value="" disabled="" selected="">Konfirmasi Kehadiran</option>
+                                    <option value="hadir">Hadir</option>
+                                    <option value="tidak-hadir">Tidak Hadir</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-konfirm" id="btn-submit-kehadiran"
+                                style="margin-top: 10px; width: 100%;">Konfirmasi</button>
+                            <div id="alert-submit-kehadiran" style="display:none;"></div>
+                        </div>
+                    </div>
+                    {{/unless}}
+
+                    {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                    <div>
+                        <div id="alert-submit-kehadiran" style="padding: 20px;"
+                            class="thank-you-message glass-card">
+                            {{#if is_hadir}}
+                            <div>
+                                <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                                Tarimo kasih <strong>{{guest_name}}</strong>!<br>
+                                Kami sangaik bahagia Anda dapat hadir di hari bahagia kami. Sampai jumpo di lokasi!
+                            </div>
+                            {{/if}}
+
+                            {{#unless is_hadir}}
+                            <div>
+                                <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
+                                Tarimo kasih <strong>{{guest_name}}</strong>.<br>
+                                Kami mangarati Anda balun dapat hadir. Tarimo kasih ateh doa restunyo!
+                            </div>
+                            {{/unless}}
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{/unless}}
+
+
+            {{#if is_fitur_live_streaming}}
+            <div>
+                <section class="section-streaming scroll-scene"
+                    style="background-image: linear-gradient(rgba(46,8,8,0.7), rgba(46,8,8,0.85)), url(&quot;{{photo_background}}&quot;);"
+                    data-menu-label="Streaming">
+                    <div class="container-section-header reveal-group">
+                        <div class="the-wedding-of reveal-item">LIVE STREAMING</div>
+                        <div class="groom-bride-name reveal-item">Momen Bahagia</div>
+                        <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                            Bagi Bapak/Ibu/Sanak Saudara yang indak dapat hadir secara langsung, kami mengundang Anda
+                            untuk menyaksikan momen bahagia kami melalui siaran langsung.
+                        </div>
+                    </div>
+
+                    <div class="streaming-container uk-padding">
+                        <div class="glass-card streaming-card reveal-item" style="text-align: center; padding: 30px;">
+                            <div class="streaming-icon uk-margin-bottom">
+                                <span uk-icon="icon: video-camera; ratio: 2.5"></span>
+                            </div>
+                            <div class="streaming-info">
+                                <h4 style="font-weight: 700; margin-bottom: 10px;">LIVE</h4>
+                                <p style="font-size: 12px; margin-bottom: 20px;">
+                                    Saksikan rangkaian acara baralek kami secara live dari mana saja Anda barado.
+                                </p>
+                                <a href="{{link_live_streaming}}" target="_blank" class="btn-schedule"
+                                    style="text-decoration: none;">
+                                    BUKA STREAMING
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            {{/if}}
+
+
+            {{#if flag_pakai_timeline_kisah}}
+            <div>
+                <section class="section-story scroll-scene">
+                    <div class="container-section-header reveal-group">
+                        <div class="the-wedding-of reveal-item">OUR JOURNEY</div>
+                        <div class="groom-bride-name reveal-item">Kisah Kami</div>
+                        <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                            Parjalanan cinto kami dari mulo batamu hinggo akhianyo mamutuihkan untuak basatu.
+                        </div>
+                    </div>
+
+                    <div class="story-container uk-padding uk-padding-remove-bottom uk-padding-remove-top">
+                        <div class="story-scroll-box">
+                            <div class="story-timeline">
+                                {{#each timeline_kisah}}
+                                <div class="story-item reveal-item">
+                                    <div class="story-dot"></div>
+                                    <div class="story-date">{{this.tanggal}}</div>
+                                    <h4 class="story-title">{{this.judul}}</h4>
+                                    <p class="story-text">{{this.deskripsi}}</p>
+                                </div>
+                                {{/each}}
+                            </div>
+                        </div>
+
+                        <div class="story-footer">
+                            <svg class="journey-line-art" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+                                <path class="line-path" d="M20,50 C60,50 60,20 100,50 C140,80 140,50 180,50" fill="none"
+                                    stroke="currentColor" stroke-width="2"></path>
+                                <path class="heart-icon" d="M90,45 Q100,35 110,45 T100,65 T90,45" fill="none"
+                                    stroke="currentColor" stroke-width="2"></path>
+                                <circle class="end-dot" cx="180" cy="50" r="3" fill="currentColor"></circle>
+                            </svg>
+                            <div class="journey-text">Dan parjalanan indah pun dimulai...</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            {{/if}}
+
+
+
+            {{#if is_fitur_gallery}}
+            <div>
+                <section id="gallery" class="section-gallery scroll-scene">
+                    <div class="container-section-header reveal-group" style="margin-top: -50px;">
+                        <div class="the-wedding-of reveal-item">OUR MOMENTS</div>
+                        <div class="groom-bride-name reveal-item">Galeri Foto</div>
+                        <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                            Momen-momen indah nan kami abadikan dalam lensa kamera.
+                        </div>
+                    </div>
+
+                    {{#if has_gallery}}
+                    <div class="gallery-container">
+                        <div class="gallery-mosaic">
+                            {{#each galleries}}
+                            <a class="gallery-item reveal-item" caption="Prewedding">
+                                <img src="{{this.url}}" alt="" class="gallery-img lightbox-injection">
+                                <div class="gallery-overlay">
+                                    <div class="overlay-content">
+                                        <span uk-icon="icon: plus; ratio: 1.3"></span>
+                                        <div class="overlay-label">Lihat Foto</div>
+                                    </div>
+                                </div>
+                                <div class="gallery-corner"></div>
+                            </a>
+                            {{/each}}
+                        </div>
+                    </div>
+                    {{/if}}
+                </section>
+            </div>
+            {{/if}}
+
+            {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+            <section id="happiness" class="section-happiness scroll-scene">
+                <div class="container-section-header reveal-group">
+                    <div class="the-wedding-of reveal-item">Bagikan momen bahagia kito</div>
+                    <div class="groom-bride-name reveal-item">Berbagi Kebahagiaan</div>
+                    <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                        Kahangatan dan kabahagiaan kami nan tarangkum dalam tumpukan memori indah.
+                    </div>
+                </div>
+
+                <div class="happiness-container uk-padding" style="padding-bottom: 20px !important;">
+                    <div class="story-carousel-wrapper reveal-item">
+                        <div class="story-carousel" id="story-carousel">
+                            <div class="story-slide">
+                                <div class="card-inner">
+                                    <img src="{{sample_story_1}}" alt="Memory 1" class="card-photo">
+                                    <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                </div>
+                                <div class="card-caption">Tawa &amp; Ceria</div>
+                            </div>
+                            <div class="story-slide">
+                                <div class="card-inner">
+                                    <img src="{{sample_story_2}}" alt="Memory 2" class="card-photo">
+                                    <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                </div>
+                                <div class="card-caption">Langkah Basamo</div>
+                            </div>
+                            <div class="story-slide">
+                                <div class="card-inner">
+                                    <img src="{{sample_story_3}}" alt="Memory 3" class="card-photo">
+                                    <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                </div>
+                                <div class="card-caption">Janji Suci</div>
+                            </div>
+                        </div>
+                        <div class="story-dots" id="story-dots">
+                            <span class="story-dot-nav is-active"></span>
+                            <span class="story-dot-nav"></span>
+                            <span class="story-dot-nav"></span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px; text-align: center; padding: 0 20px;">
+                        <a href="{{link_balasan_instagram}}" class="btn-konfirm" id="btn-share-instagram"
+                            target="_blank"
+                            style="min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-decoration: none; display: inline-block;">
+                            <span uk-icon="icon: instagram; ratio: 1.1"
+                                style="margin-right: 8px; vertical-align: middle;"></span>
+                            Bagikan Momen
+                        </a>
+                        <div class="quotes"
+                            style="font-size: 12px; margin-top: 15px; max-width: 320px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+                            Ambil tangkapan layar kartu kenangan di ateh dan bagikan di Instagram Story Anda dengan
+                            menandai akun kami <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong>! ✨
+                        </div>
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+
+
+
+            <!-- ===== WISHES ===== -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
+            <section id="wishes" class="section-wishes scroll-scene" data-menu-label="Doa &amp; Ucapan">
+                <div class="container-section-header reveal-group">
+                    <div class="groom-bride-name reveal-item">Ucapan &amp; Doa</div>
+                    <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
+                        Barikan ucapan manih dan doa restu Anda untuak kaduo mempelai.
+                    </div>
+                </div>
+
+                <div class="wishes-container">
+                    <div class="wishes-form-wrapper reveal-item" id="wish-container">
+                        {{#unless is_sudah_isi_ucapan}}
+                        <div>
+                            <form class="glass-form" id="wish-form">
+                                <div class="uk-margin-small">
+                                    <input class="uk-input custom-input" type="text" id="wish-name"
+                                        placeholder="Nama Anda">
+                                </div>
+                                <div class="uk-margin-small">
+                                    <textarea class="uk-textarea custom-input" rows="3" id="wish-message"
+                                        placeholder="Tulis Ucapan &amp; Doa..."
+                                        style="height: auto !important; padding: 12px !important;"></textarea>
+                                </div>
+                                <button type="button" id="btn-submit-ucapan" class="btn-konfirm"
+                                    style="width: 100%; margin-top: 5px;">KIRIM UCAPAN</button>
+                                <div id="alert-submit-ucapan" style="display:none;"></div>
+                            </form>
+                        </div>
+                        {{/unless}}
+
+                        {{#if is_sudah_isi_ucapan}}
+                        <div>
+                            <div id="alert-submit-ucapan" class="thank-you-message glass-card uk-margin-top uk-padding">
+                                <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                                Tarimo kasih ateh ucapan dan doanyo!<br>
+                                Samogo doa baiak Anda kembali kapado Anda.
+                            </div>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <div class="wishes-list-wrapper">
+                        <div class="wishes-scroll-box">
+                            {{#each wishes}}
+                            <div class="wish-item glass-card reveal-item">
+                                <div class="wish-header">
+                                    <span class="wish-author">{{this.guest_name}}</span>
+                                    <span class="wish-time">{{this.guest_comment_time}}</span>
+                                </div>
+                                <div class="wish-text">{{this.guest_message}}</div>
+                            </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            {{/unless}}
+
+
+            {{#if tampilkan_amplop_online}}
+            <section id="gift" class="section-gift scroll-scene" data-menu-label="Wedding gifts">
+                <div class="container-section-header reveal-group">
+                    <div class="groom-bride-name reveal-item" style="margin-bottom: 20px;">WEDDING GIFT</div>
+                    <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; line-height: 1.6;">
+                        Doa restu Anda marupokan karunia nan sangaik barati bagi kami. Namun, apobilo Anda
+                        ingin mambari kado, kami sadiokan fitur ko.
+                    </div>
+                    <img src="{{asset_image_4}}" class="songket-photo-band reveal-item" alt="" aria-hidden="true">
+                </div>
+
+                <div class="gift-content" style="padding: 0 30px; margin-top: 30px;">
+                    <div class="gift-rekening-container">
+                        <div class="gift-card glass-card reveal-item">
+                            <div class="gift-bank-logo">{{bank_1}}</div>
+
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <div>
+                                <div class="gift-qris-wrapper">
+                                    <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="gift-qris-img">
+                                </div>
+                            </div>
+                            {{/if}}
+
+                            <div class="gift-number" id="acc-1">{{rek_1}}</div>
+                            <div class="gift-name">{{nama_rek_1}}</div>
+                            <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
+                                <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
+                            </button>
+                        </div>
+
+                        {{#if flag_pakai_2_rekening}}
+                        <div class="gift-card glass-card reveal-item">
+                            <div class="gift-bank-logo">{{bank_2}}</div>
+
+                            {{#if flag_pakai_qris_rekening_2}}
+                            <div>
+                                <div class="gift-qris-wrapper">
+                                    <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="gift-qris-img">
+                                </div>
+                            </div>
+                            {{/if}}
+
+                            <div class="gift-number" id="acc-2">{{rek_2}}</div>
+                            <div class="gift-name">{{nama_rek_2}}</div>
+                            <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
+                                <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN NOMOR REKENING
+                            </button>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    {{#if flag_kirim_hadiah_offline}}
+                    <div>
+                        <div class="gift-instruction reveal-item"
+                            style="text-align: center; margin-bottom: 15px; font-size: 13px; font-style: italic;">
+                            "Bagi Bapak/Ibu/Sanak Saudara nan ingin mangirimkan kado fisik barupo barang, dapek
+                            dikirimkan malalui alamaik di bawah ko:"
+                        </div>
+                        <div class="gift-card glass-card reveal-item">
+                            <div class="gift-icon" style="margin-bottom: 15px;">
+                                <span uk-icon="icon: home; ratio: 1.5"></span>
+                            </div>
+                            <div class="gift-title"
+                                style="font-weight: 700; font-size: 1.2em; margin-bottom: 10px;">
+                                {{nama_lokasi_kirim_hadiah_offline}}</div>
+                            <div class="gift-address" id="gift-addr"
+                                style="font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
+                                {{alamat_lokasi_kirim_hadiah_offline}}</div>
+                            <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
+                                <span uk-icon="copy" style="margin-right: 5px;"></span> SALIN ALAMAT
+                            </button>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{/if}}
+
+
+            <!-- ===== CLOSING (full-screen photo + overlay text) ===== -->
+            <section class="section-closing scroll-scene"
+                style="background-image: url(&quot;{{photo_closing}}&quot;);">
+                <div class="closing-overlay"></div>
+
+                <div class="closing-stage reveal-group">
+                    <div class="closing-card">
+                        <div class="closing-sprig reveal-item" aria-hidden="true">
+                            <svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M32 38 C32 22 32 10 32 4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                                <path d="M32 14 C24 10 18 12 13 8 C20 9 26 6 32 14Z" fill="currentColor" opacity="0.85"/>
+                                <path d="M32 14 C40 10 46 12 51 8 C44 9 38 6 32 14Z" fill="currentColor" opacity="0.85"/>
+                                <path d="M32 24 C25 21 20 23 16 19 C22 20 27 18 32 24Z" fill="currentColor" opacity="0.7"/>
+                                <path d="M32 24 C39 21 44 23 48 19 C42 20 37 18 32 24Z" fill="currentColor" opacity="0.7"/>
+                                <path d="M32 32 C27 30 23 31 20 28 C25 29 28 27 32 32Z" fill="currentColor" opacity="0.55"/>
+                                <path d="M32 32 C37 30 41 31 44 28 C39 29 36 27 32 32Z" fill="currentColor" opacity="0.55"/>
+                            </svg>
+                        </div>
+                        <div class="the-wedding-of reveal-item">Wassalam</div>
+                        <div class="closing-title reveal-item">Tarimo Kasih</div>
+                        <div class="closing-divider reveal-item"><span></span><span uk-icon="icon: heart; ratio: 0.8"></span><span></span></div>
+                        <div class="closing-message reveal-item">
+                            {{kalimat_penutup}}
+                        </div>
+                        <div class="closing-signature reveal-item">
+                            <span>{{groom_nickname}}</span>
+                            <em>&amp;</em>
+                            <span>{{bride_nickname}}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="invitation-footer">
+                    <div class="footer-name">{{site_name}}</div>
+                    <div class="footer-info"><a href="{{site_url}}" style="text-decoration: unset; color: unset" target="_blank">  {{site_url}} <br> <span>Digital wedding invitation © 2026</span></a></div>
+                    <div class="footer-social">
+                        {{#if flag_use_tiktok_webconfig}}
+                        <a aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+                            </svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_instagram_webconfig}}
+                        <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+                            </svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_youtube_webconfig}}
+                        <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                            </svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_whatsapp_webconfig}}
+                        <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                                <path d="M8.5 9.3c0-.3.3-.5.5-.5h.8c.2 0 .4.1.5.4l.6 1.4c.1.2 0 .4-.1.5l-.5.6c.5 1 1.3 1.8 2.3 2.3l.6-.5c.1-.1.3-.2.5-.1l1.4.6c.3.1.4.3.4.5v.8c0 .3-.2.5-.5.5-3.4 0-6.6-2.8-6.6-6.5z"></path>
+                            </svg>
+                        </a>
+                        {{/if}}
+                    </div>
+                </footer>
+            </section>
+
+
+
+            <!-- ===== FAB / MENU / MUSIC ===== -->
+            <div id="theme-fab-container" class="floating-ui-container" style="display: none;">
+                <button id="btn-show-menu" class="floating-btn btn-menu" uk-toggle="target: #menu-modal" style="outline: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="4" x2="20" y1="12" y2="12"></line>
+                        <line x1="4" x2="20" y1="6" y2="6"></line>
+                        <line x1="4" x2="20" y1="18" y2="18"></line>
+                    </svg>
+                </button>
+
+                <div class="bottom-controls">
+                    <button id="btn-scroll-up" class="floating-btn btn-scroll-up" style="display: none; outline: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="18 15 12 9 6 15"></polyline>
+                        </svg>
+                    </button>
+                    <button id="btn-show-qr" class="floating-btn btn-qr" uk-toggle="target: #qr-modal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="5" height="5" x="3" y="3" rx="1"></rect>
+                            <rect width="5" height="5" x="16" y="3" rx="1"></rect>
+                            <rect width="5" height="5" x="3" y="16" rx="1"></rect>
+                            <path d="M21 16h-3a2 2 0 0 0-2 2v3"></path>
+                            <path d="M21 21v.01"></path>
+                            <path d="M12 7v3a2 2 0 0 1-2 2H7"></path>
+                            <path d="M3 12h.01"></path>
+                            <path d="M12 3h.01"></path>
+                            <path d="M12 16v.01"></path>
+                            <path d="M16 12h1"></path>
+                            <path d="M21 12v.01"></path>
+                            <path d="M12 21v-1"></path>
+                        </svg>
+                    </button>
+                    <button class="floating-btn btn-music" id="btn-toggle-music">
+                        <div id="music-icon-container">
+                            <i>
+                                <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
+                                    style="display: block;">
+                                    <path d="M8 5v14l11-7z"></path>
+                                </svg>
+                                <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
+                                    style="display: none;">
+                                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+                                </svg>
+                            </i>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="menu-modal" class="uk-modal-full" uk-modal="">
+                <div class="uk-modal-dialog uk-flex uk-flex-center uk-flex-middle transparent-dark-bg"
+                    uk-height-viewport="">
+                    <button class="uk-modal-close-full menu-close-btn" type="button" uk-toggle="target: #menu-modal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+
+                    <div class="uk-width-1-1 uk-text-center menu-content">
+                        <div class="menu-header uk-margin-large-bottom">
+                            <div class="menu-wedding-title">Baralek Gadang</div>
+                            <h2 class="menu-couple-name"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h2>
+                            <div class="menu-wedding-date">{{wedding_date}}</div>
+                            <div class="menu-divider"></div>
+                        </div>
+
+                        <ul class="uk-nav uk-nav-primary uk-nav-center menu-list">
+                            <li><a href="#couples" uk-scroll="" uk-toggle="target: #menu-modal">Mempelai</a></li>
+                            <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Waktu &amp; Tampek</a></li>
+                            <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Galeri</a></li>
+                            {{#unless is_link_umum_and_not_for_spesific_guest}}
+                            <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Ucapan &amp; Doa</a></li>
+                            {{/unless}}
+                            <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Amplop &amp; Gift</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <audio id="bg-music" loop="">
+                <source src="{{link_backsound_music}}" type="audio/mpeg">
+            </audio>
+        </div>
+    </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
+<script src="index.js"></script>
+<script>
+    // Desktop mouse-reactive parallax for the sidebar (same pattern as other themes)
+    document.addEventListener('mousemove', function (e) {
+        const container = document.getElementById('desktop-bg-container');
+        if (!container || window.innerWidth < 960) return;
+
+        const x = (e.clientX / window.innerWidth) - 0.5;
+        const y = (e.clientY / window.innerHeight) - 0.5;
+
+        const bg = document.getElementById('layer-bg');
+        const particles = document.getElementById('layer-particles');
+        const text = document.getElementById('layer-text');
+
+        if (bg) bg.style.transform = `translate(${x * -30}px, ${y * -30}px) scale(1.05)`;
+        if (particles) particles.style.transform = `translate(${x * 60}px, ${y * 60}px)`;
+        if (text) text.style.transform = `translate(${x * -12}px, ${y * -12}px)`;
+    });
+</script>

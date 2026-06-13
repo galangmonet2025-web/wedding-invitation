@@ -8,7 +8,7 @@ interface ProxyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>
 const memoryImageCache = new Map<string, string>();
 
 // Helper to get from cache (memory or localstorage)
-const getCachedImage = (key: string): string | null => {
+export const getCachedImage = (key: string): string | null => {
     if (memoryImageCache.has(key)) return memoryImageCache.get(key)!;
     try {
         const stored = localStorage.getItem(`img_cache_${key}`);

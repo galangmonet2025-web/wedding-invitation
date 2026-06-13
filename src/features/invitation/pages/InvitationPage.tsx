@@ -389,6 +389,21 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 } catch { }
             }
 
+            // Pre-convert static theme asset IMAGES to base64 so {{asset_image_N}}
+            // renders on the live page (Drive proxy URLs can't be used directly in
+            // <img>). Keyed by media_cdn_url so the dataContext lookup resolves it.
+            // Videos / YouTube are left as raw URLs (used directly in <video>/<iframe>).
+            const themeAssets = data.theme?.asset_media_list || [];
+            await Promise.all(themeAssets.map(async (a: any) => {
+                if (!a || a.media_type !== 'image' || !a.media_cdn_url) return;
+                try {
+                    const proxiedUrl = resolveProxyUrl(a.media_cdn_url);
+                    const b64 = await fetchProxyImageBase64(proxiedUrl);
+                    resolved[a.media_cdn_url] = b64;
+                    if (proxiedUrl !== a.media_cdn_url) resolved[proxiedUrl] = b64;
+                } catch { }
+            }));
+
             setResolvedImages(resolved);
         };
 
@@ -1043,9 +1058,21 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
 
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
-            ...images
+            ...images,
+
+            // Static theme asset media variables ({{asset_image_1}}, {{asset_video_1}}, ...)
+            // Images resolve to the pre-fetched base64 (so they render in <img>);
+            // videos/YouTube stay as their raw URL for <video>/<iframe>.
+            ...((activeTheme?.asset_media_list || []).reduce((acc: Record<string, string>, a) => {
+                if (a && a.media_code) {
+                    acc[`asset_${a.media_code}`] = a.media_type === 'image'
+                        ? (images[a.media_cdn_url] || a.media_cdn_url)
+                        : a.media_cdn_url;
+                }
+                return acc;
+            }, {}))
         };
-    }, [tenant, activeContent, data, timeline, wishes, resolvedImages, websiteConfig]);
+    }, [tenant, activeContent, data, timeline, wishes, resolvedImages, websiteConfig, activeTheme]);
 
     // Memoize the rendered HTML to prevent re-parsing and re-injecting DOM nodes
     // every second when the countdown state updates.

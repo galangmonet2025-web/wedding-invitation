@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
 import imageCompression from 'browser-image-compression';
-import { Theme, PlanType, Tenant, InvitationContent, ImageRecord } from '@/types';
+import { Theme, PlanType, Tenant, InvitationContent, ImageRecord, ThemeAssetMedia } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload } from 'react-icons/hi';
 import { Button } from '@/shared/components/Button';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { Lightbox } from '@/shared/components/Lightbox';
 import toast from 'react-hot-toast';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { AiThemeModal } from '../components/AiThemeModal';
@@ -13,11 +14,12 @@ import { SimulationModal } from '../components/SimulationModal';
 import { parseTemplate } from '@/utils/templateParser';
 import Editor from '@monaco-editor/react';
 import { imageApi } from '@/core/api/imageApi';
-import { ProxyImage, fetchProxyImageBase64 } from '@/shared/components/ProxyImage';
+import { ProxyImage, fetchProxyImageBase64, setCachedImage, getCachedImage } from '@/shared/components/ProxyImage';
 import html2canvas from 'html2canvas';
 import { useThemeStore } from '../store/themeStore';
 import { useTenantStore } from '../store/tenantStore';
 import { usePreviewStore } from '../store/previewStore';
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import sampleStory1 from '@/assets/img/sample_story_1.jpg';
 import sampleStory2 from '@/assets/img/sample_story_2.jpg';
 import sampleStory3 from '@/assets/img/sample_story_3.jpg';
@@ -68,6 +70,23 @@ const extractDriveId = (url: string) => {
     return match ? match[1] : null;
 };
 
+// Robustly parse the theme.asset_media_list field (may arrive as array or JSON string)
+const parseAssetMediaList = (raw: any): ThemeAssetMedia[] => {
+    let list = raw || [];
+    if (typeof list === 'string') {
+        try { list = JSON.parse(list); } catch { list = []; }
+    }
+    return Array.isArray(list) ? list : [];
+};
+
+// Validate & normalize a YouTube URL; returns null if it is not a YouTube link.
+const parseYoutubeUrl = (url: string): string | null => {
+    if (!url) return null;
+    const trimmed = url.trim();
+    const re = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|shorts\/)|youtu\.be\/)[\w-]{6,}/i;
+    return re.test(trimmed) ? trimmed : null;
+};
+
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -78,6 +97,7 @@ export function ThemeEditorPage() {
     const { themes, addTheme, updateTheme, fetchThemes } = useThemeStore();
     const { tenants: allTenants, fetchTenants } = useTenantStore();
     const previewStore = usePreviewStore();
+    const { addTask, updateTask } = useBackgroundTaskStore();
 
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
@@ -118,7 +138,37 @@ export function ThemeEditorPage() {
     const [flagDraft, setFlagDraft] = useState(true);
     const [flagUseSystemActionButton, setFlagUseSystemActionButton] = useState(true);
     const [imageTypes, setImageTypes] = useState<string[]>([]);
-    const [newImageType, setNewImageType] = useState('');
+
+    // Static theme asset media (images/videos that belong to the theme design itself)
+    const [assetMediaList, setAssetMediaList] = useState<ThemeAssetMedia[]>([]);
+    const [uploadingAsset, setUploadingAsset] = useState(false);
+    // Codes currently being deleted — a Set so multiple assets can delete concurrently,
+    // each keeping its own loading overlay until that delete truly finishes.
+    const [deletingAssetCodes, setDeletingAssetCodes] = useState<Set<string>>(new Set());
+    const [isAssetDragging, setIsAssetDragging] = useState(false);
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    // Which dropzone is currently "active" for paste (Ctrl+V). Set by clicking a box.
+    const [activePasteZone, setActivePasteZone] = useState<'preview' | 'asset' | null>(null);
+    // Lightbox state for viewing full images (asset grid + preview image)
+    const [lightboxImages, setLightboxImages] = useState<{ url: string; caption?: string }[]>([]);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const assetImageInputRef = useRef<HTMLInputElement>(null);
+    const assetVideoInputRef = useRef<HTMLInputElement>(null);
+    // Re-entrancy guard so a duplicate paste/drop can't upload the same files twice
+    const assetUploadingRef = useRef(false);
+    // Always-current asset list (avoids stale closures during serial deletes) +
+    // a promise chain that serializes asset deletes one at a time.
+    const assetMediaListRef = useRef<ThemeAssetMedia[]>([]);
+    const assetDeleteQueueRef = useRef<Promise<void>>(Promise.resolve());
+    // Debounce for persisting asset_media_list: rapid uploads/deletes collapse into a
+    // single updateTheme call to stay well under the backend rate limit.
+    const assetPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const assetPersistLatestRef = useRef<ThemeAssetMedia[] | null>(null);
+    // Refs to the dropzone elements so clicking focuses them (enabling Ctrl+V paste)
+    const previewDropRef = useRef<HTMLDivElement>(null);
+    const assetDropRef = useRef<HTMLDivElement>(null);
+    const previewFileInputRef = useRef<HTMLInputElement>(null);
 
     const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
     const [activeTabPanel, setActiveTabPanel] = useState<'editor' | 'settings'>('editor');
@@ -136,6 +186,8 @@ export function ThemeEditorPage() {
     const htmlCodeRef = useRef(htmlCode);
     const cssCodeRef = useRef(cssCode);
     const jsCodeRef = useRef(jsCode);
+    // Ref to the latest updatePreview so early effects can trigger a refresh
+    const updatePreviewRef = useRef<(force?: boolean) => void>(() => {});
 
     useEffect(() => { htmlCodeRef.current = htmlCode; }, [htmlCode]);
     useEffect(() => { cssCodeRef.current = cssCode; }, [cssCode]);
@@ -336,6 +388,7 @@ export function ThemeEditorPage() {
                         try { imgTypes = JSON.parse(imgTypes); } catch { imgTypes = []; }
                     }
                     setImageTypes(Array.isArray(imgTypes) ? imgTypes : []);
+                    setAssetMediaList(parseAssetMediaList(theme.asset_media_list));
                 } else {
                     // Try one more time by forcing fetch
                     await fetchThemes(true);
@@ -358,6 +411,7 @@ export function ThemeEditorPage() {
                             try { imgTypes = JSON.parse(imgTypes); } catch { imgTypes = []; }
                         }
                         setImageTypes(Array.isArray(imgTypes) ? imgTypes : []);
+                        setAssetMediaList(parseAssetMediaList(refetchedTheme.asset_media_list));
                     } else {
                         toast.error('Theme not found');
                         navigate('/private/themes');
@@ -381,6 +435,9 @@ export function ThemeEditorPage() {
                     try { imgTypes = JSON.parse(imgTypes); } catch { imgTypes = []; }
                 }
                 setImageTypes(Array.isArray(imgTypes) ? imgTypes : []);
+                // Copied theme starts with NO asset media — Drive files still belong to
+                // the source theme; sharing references would break if either is deleted.
+                setAssetMediaList([]);
             }
         } catch (err) {
             toast.error('Gagal memuat data');
@@ -499,6 +556,23 @@ export function ThemeEditorPage() {
             loadTenantPreviewData(selectedPreviewTenantId);
         }
     }, [selectedPreviewTenantId, allTenants]);
+
+    // Prefetch base64 for image assets that aren't cached yet (e.g. when editing an
+    // existing theme). This lets them render inside the preview iframe and refreshes
+    // the preview once ready.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const toFetch = assetMediaList.filter(a => a.media_type === 'image' && a.media_cdn_url && !getCachedImage(a.media_cdn_url));
+            if (toFetch.length === 0) return;
+            await Promise.all(toFetch.map(async (a) => {
+                try { await fetchProxyImageBase64(resolveProxyUrl(a.media_cdn_url)); } catch { }
+                try { await fetchProxyImageBase64(a.media_cdn_url); } catch { }
+            }));
+            if (!cancelled) updatePreviewRef.current?.();
+        })();
+        return () => { cancelled = true; };
+    }, [assetMediaList]);
 
 
     const handleCaptureScreenshot = async () => {
@@ -723,8 +797,404 @@ export function ThemeEditorPage() {
         }
     };
 
+    // ---- Theme Asset Media (static images/videos belonging to the theme) ----
+
+    // Auto-generate the next media_code per type (image_1, image_2 / video_1, ...).
+    // Codes are NOT renumbered on delete, so derive from the highest existing index.
+    const nextAssetCode = (list: ThemeAssetMedia[], type: 'image' | 'video') => {
+        const max = list
+            .filter(a => a.media_type === type)
+            .reduce((m, a) => {
+                const n = parseInt(String(a.media_code).split('_')[1] || '0', 10);
+                return Number.isFinite(n) && n > m ? n : m;
+            }, 0);
+        return `${type}_${max + 1}`;
+    };
+
+    // Persist ONLY the asset_media_list column to the backend immediately, without
+    // touching any other theme field (html/css/js/name/etc). Because updateTheme on
+    // the backend only writes fields that are sent, this keeps asset data in sync with
+    // Drive the moment a user uploads/deletes an asset — so leaving without "Save"
+    // never orphans Drive files. New (unsaved) themes have no id yet, so their assets
+    // are persisted together with the first full Save instead.
+    const persistAssetMediaList = async (list: ThemeAssetMedia[]) => {
+        if (isNewTheme || !id) return; // new theme: assets go in with the first Save
+        try {
+            const res = await themeApi.updateTheme({ id, asset_media_list: list } as any, { skipLoader: true } as any);
+            if (res.success) {
+                updateTheme(id, { asset_media_list: list }); // keep local store cache in sync
+            } else {
+                toast.error('Gagal menyimpan asset: ' + (res.message || ''));
+            }
+        } catch (err: any) {
+            console.error('Persist asset_media_list failed:', err);
+            toast.error('Gagal menyimpan asset ke server: ' + (err.message || 'Error'));
+        }
+    };
+
+    // Debounced persist: coalesce rapid uploads/deletes into ONE updateTheme call.
+    // Each action records the latest list and (re)schedules a single backend write
+    // ~900ms after the last action — keeping request count low to avoid the rate limit.
+    const persistAssetMediaListDebounced = (list: ThemeAssetMedia[]) => {
+        if (isNewTheme || !id) return;
+        assetPersistLatestRef.current = list;
+        if (assetPersistTimerRef.current) clearTimeout(assetPersistTimerRef.current);
+        assetPersistTimerRef.current = setTimeout(() => {
+            const latest = assetPersistLatestRef.current;
+            assetPersistLatestRef.current = null;
+            assetPersistTimerRef.current = null;
+            if (latest) persistAssetMediaList(latest);
+        }, 900);
+    };
+
+    const fileToBase64 = (file: File | Blob): Promise<string> =>
+        new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+    const handleAssetImageUpload = async (files: FileList | File[]) => {
+        const arr = Array.from(files);
+        if (arr.length === 0) return;
+        // Re-entrancy guard: if an upload is already running (e.g. paste fired twice),
+        // ignore this call so the same files aren't uploaded again.
+        if (assetUploadingRef.current) return;
+        assetUploadingRef.current = true;
+        setUploadingAsset(true);
+
+        // Register a background task so progress shows in the header indicator + modal,
+        // mirroring the gallery upload flow (ImageUpload.tsx).
+        const total = arr.length;
+        const taskId = `upload-theme-asset-${Date.now()}`;
+        addTask({ id: taskId, name: total > 1 ? `Upload ${total} Asset Tema` : 'Upload Asset Tema', total });
+        const failedFiles: string[] = [];
+
+        // Work on a local working copy so sequential codes stay sequential within this batch
+        let working = [...assetMediaList];
+        let success = 0;
+        let failCount = 0;
+        try {
+            for (const file of arr) {
+                if (!file.type.startsWith('image/')) {
+                    toast.error(`"${file.name}" bukan gambar.`);
+                    failCount++;
+                    failedFiles.push(file.name);
+                    updateTask(taskId, { failCount, failedFiles, progress: Math.round(((success + failCount) / total) * 100) });
+                    continue;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.error(`"${file.name}" terlalu besar (Max 5MB).`);
+                    failCount++;
+                    failedFiles.push(file.name);
+                    updateTask(taskId, { failCount, failedFiles, progress: Math.round(((success + failCount) / total) * 100) });
+                    continue;
+                }
+
+                const isPng = file.type === 'image/png';
+                let uploadBlob: File | Blob = file;
+                let mimeType = file.type;
+                let extension = (file.name.split('.').pop() || '').toLowerCase();
+
+                // Compress everything to WebP EXCEPT PNG (keep PNG to preserve transparency)
+                if (!isPng) {
+                    uploadBlob = await imageCompression(file, {
+                        maxSizeMB: 0.5,
+                        maxWidthOrHeight: 1920,
+                        useWebWorker: true,
+                        fileType: 'image/webp'
+                    });
+                    mimeType = 'image/webp';
+                    extension = 'webp';
+                } else {
+                    mimeType = 'image/png';
+                    extension = 'png';
+                }
+
+                const base64 = await fileToBase64(uploadBlob);
+                const code = nextAssetCode(working, 'image');
+                const safeName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.' + extension;
+
+                const res = await imageApi.uploadImage({
+                    tenant_id: 'system',
+                    image_type: 'theme_asset',
+                    file_name: safeName,
+                    base64_data: base64,
+                    mime_type: mimeType
+                }, { skipLoader: true } as any);
+
+                if (res.success && res.data) {
+                    // Cache the full data URL keyed by the cdn_url so ProxyImage (grid) and
+                    // the live preview can show the asset instantly without a network fetch.
+                    if (res.data.cdn_url) {
+                        setCachedImage(res.data.cdn_url, `data:${mimeType};base64,${base64}`);
+                    }
+                    working = [...working, {
+                        media_type: 'image',
+                        media_cdn_url: res.data.cdn_url,
+                        media_name: file.name,
+                        media_size: String(Math.round((uploadBlob as Blob).size / 1024)),
+                        media_extension: extension,
+                        media_id: res.data.drive_file_id,
+                        media_code: code
+                    }];
+                    setAssetMediaList(working);
+                    success++;
+                } else {
+                    toast.error(`Gagal upload "${file.name}": ${res.message || ''}`);
+                    failCount++;
+                    failedFiles.push(file.name);
+                }
+                updateTask(taskId, { successCount: success, failCount, failedFiles, progress: Math.round(((success + failCount) / total) * 100) });
+            }
+            if (success > 0) {
+                toast.success(`${success} gambar asset berhasil diupload!`);
+                persistAssetMediaListDebounced(working); // persist once (debounced) to limit requests
+            }
+            updateTask(taskId, {
+                successCount: success,
+                failCount,
+                failedFiles,
+                progress: 100,
+                status: failCount === 0 ? 'success' : 'error',
+                details: `Selesai: ${success} berhasil, ${failCount} gagal` + (failCount > 0 ? ` (Gagal: ${failedFiles.join(', ')})` : '')
+            });
+        } catch (err: any) {
+            console.error('Asset image upload error:', err);
+            toast.error('Gagal mengunggah asset: ' + (err.message || 'Error'));
+            updateTask(taskId, { status: 'error', progress: 100, details: 'Error: ' + (err.message || 'gagal mengunggah') });
+        } finally {
+            setUploadingAsset(false);
+            assetUploadingRef.current = false;
+        }
+    };
+
+    const handleAssetVideoUpload = async (file: File) => {
+        if (!file.type.startsWith('video/')) return toast.error('File harus berupa video.');
+        if (file.size > 10 * 1024 * 1024) return toast.error('Ukuran video maksimal 10MB.');
+        if (assetUploadingRef.current) return;
+        assetUploadingRef.current = true;
+
+        setUploadingAsset(true);
+        const taskId = `upload-theme-asset-video-${Date.now()}`;
+        addTask({ id: taskId, name: 'Upload Video Asset Tema', total: 1 });
+        try {
+            const base64 = await fileToBase64(file);
+            const extension = (file.name.split('.').pop() || 'mp4').toLowerCase();
+            const code = nextAssetCode(assetMediaList, 'video');
+            const safeName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.' + extension;
+
+            const res = await imageApi.uploadImage({
+                tenant_id: 'system',
+                image_type: 'theme_asset',
+                file_name: safeName,
+                base64_data: base64,
+                mime_type: file.type
+            }, { skipLoader: true } as any);
+
+            if (res.success && res.data) {
+                const newList = [...assetMediaList, {
+                    media_type: 'video' as const,
+                    media_cdn_url: res.data.cdn_url,
+                    media_name: file.name,
+                    media_size: String(Math.round(file.size / 1024)),
+                    media_extension: extension,
+                    media_id: res.data.drive_file_id,
+                    media_code: code
+                }];
+                setAssetMediaList(newList);
+                toast.success('Video asset berhasil diupload!');
+                persistAssetMediaListDebounced(newList);
+                updateTask(taskId, { successCount: 1, progress: 100, status: 'success', details: 'Selesai: 1 berhasil' });
+            } else {
+                toast.error('Gagal upload video: ' + (res.message || ''));
+                updateTask(taskId, { failCount: 1, failedFiles: [file.name], progress: 100, status: 'error', details: 'Gagal: ' + (res.message || '') });
+            }
+        } catch (err: any) {
+            console.error('Asset video upload error:', err);
+            toast.error('Gagal mengunggah video: ' + (err.message || 'Error'));
+            updateTask(taskId, { failCount: 1, failedFiles: [file.name], progress: 100, status: 'error', details: 'Error: ' + (err.message || 'gagal') });
+        } finally {
+            setUploadingAsset(false);
+            assetUploadingRef.current = false;
+        }
+    };
+
+    const handleAddYoutubeAsset = async () => {
+        const url = parseYoutubeUrl(youtubeUrl);
+        if (!url) return toast.error('Link YouTube tidak valid.');
+        const code = nextAssetCode(assetMediaList, 'video');
+        const newList = [...assetMediaList, {
+            media_type: 'video' as const,
+            media_cdn_url: url,
+            media_name: url,
+            media_size: '',
+            media_extension: 'youtube',
+            media_id: '',
+            media_code: code
+        }];
+        setAssetMediaList(newList);
+        setYoutubeUrl('');
+        toast.success(`Video YouTube ditambahkan sebagai ${code}`);
+        persistAssetMediaListDebounced(newList);
+    };
+
+    const handleDeleteAsset = (asset: ThemeAssetMedia) => {
+        // Show the overlay immediately (so the user sees it on every clicked item),
+        // then enqueue the actual delete. Deletes run ONE AT A TIME via a queue —
+        // this prevents the race where parallel deletes each persisted a different
+        // (and sometimes empty) list while a Drive delete was still in flight, which
+        // left orphaned files in Drive + Images. Sequential = each Drive delete
+        // finishes and the list is persisted with the correct survivors before the
+        // next delete starts.
+        setDeletingAssetCodes(prev => new Set(prev).add(asset.media_code));
+        enqueueAssetDelete(asset);
+    };
+
+    // Serial queue for asset deletes. Each job: delete the Drive file (awaited to
+    // completion), then atomically remove it from the list and persist the EXACT
+    // surviving list. assetMediaListRef holds the always-current list so we never
+    // persist a stale/empty snapshot.
+    const runAssetDeleteJob = async (asset: ThemeAssetMedia) => {
+        try {
+            // Drive-backed assets must finish their backend delete before we drop
+            // them from the persisted list. Retry once on transient failure; only
+            // remove from the list if Drive deletion actually succeeded — otherwise
+            // keep the entry so it isn't orphaned.
+            let driveOk = true;
+            if (asset.media_id) {
+                driveOk = false;
+                for (let attempt = 0; attempt < 2 && !driveOk; attempt++) {
+                    try {
+                        const res = await imageApi.deleteImage(asset.media_id, { skipLoader: true } as any);
+                        driveOk = !!(res && res.success);
+                    } catch (e) {
+                        console.error('Failed to delete asset from Drive (attempt ' + (attempt + 1) + '):', e);
+                    }
+                }
+            }
+
+            if (!driveOk) {
+                toast.error(`Gagal menghapus ${asset.media_code} dari penyimpanan. Coba lagi.`);
+                return; // keep the asset in the list — do NOT create an orphan
+            }
+
+            // Remove from the live list (read from the ref so it reflects prior
+            // deletes in this same queue), persist the exact survivors, and sync UI.
+            const newList = assetMediaListRef.current.filter(a => a.media_code !== asset.media_code);
+            assetMediaListRef.current = newList;
+            setAssetMediaList(newList);
+            toast.success(`Asset ${asset.media_code} dihapus`);
+            persistAssetMediaListDebounced(newList);
+        } finally {
+            setDeletingAssetCodes(prev => {
+                const next = new Set(prev);
+                next.delete(asset.media_code);
+                return next;
+            });
+        }
+    };
+
+    const enqueueAssetDelete = (asset: ThemeAssetMedia) => {
+        // Chain onto the tail of the queue so jobs run strictly one after another.
+        assetDeleteQueueRef.current = assetDeleteQueueRef.current
+            .then(() => runAssetDeleteJob(asset))
+            .catch(() => { /* a job's own try/finally handles its errors */ });
+    };
+
+    // Open the lightbox showing all image assets, starting at the clicked one.
+    const openAssetLightbox = (asset: ThemeAssetMedia) => {
+        const imageAssets = assetMediaList.filter(a => a.media_type === 'image');
+        const idx = imageAssets.findIndex(a => a.media_code === asset.media_code);
+        setLightboxImages(imageAssets.map(a => ({ url: getCachedImage(a.media_cdn_url) || a.media_cdn_url, caption: `${a.media_name} ({{asset_${a.media_code}}})` })));
+        setLightboxIndex(idx < 0 ? 0 : idx);
+        setLightboxOpen(true);
+    };
+
+    // Open the lightbox for the single theme preview image.
+    const openPreviewLightbox = () => {
+        if (!previewImage) return;
+        setLightboxImages([{ url: getCachedImage(previewImage) || previewImage, caption: 'Gambar Pratinjau Tema' }]);
+        setLightboxIndex(0);
+        setLightboxOpen(true);
+    };
+
+    // Drag-drop / paste entry for the asset dropzone: route images & videos to the
+    // right handler (pasted clipboard content can only be images).
+    const handleAssetDrop = (files: FileList | File[]) => {
+        const arr = Array.from(files);
+        if (arr.length === 0) return;
+        const images = arr.filter(f => f.type.startsWith('image/'));
+        const videos = arr.filter(f => f.type.startsWith('video/'));
+        if (images.length) handleAssetImageUpload(images);
+        videos.forEach(v => handleAssetVideoUpload(v));
+        if (!images.length && !videos.length) toast.error('File harus gambar atau video.');
+    };
+
+    const handleAssetPaste = (e: { clipboardData: DataTransfer | null }) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const files: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const f = items[i].getAsFile();
+                if (f) files.push(f);
+            }
+        }
+        if (files.length) handleAssetImageUpload(files);
+    };
+
+    // Global Ctrl+V handler: routes the pasted image to whichever dropzone the user
+    // last clicked (preview vs asset media). Using a window listener avoids the
+    // unreliable focus/onPaste behaviour of plain <div>s. The ref keeps the closure
+    // fresh without re-registering the listener every render.
+    const pasteRouterRef = useRef<(e: ClipboardEvent) => void>(() => {});
+    useEffect(() => {
+        pasteRouterRef.current = (e: ClipboardEvent) => {
+            if (!activePasteZone) return;
+            const hasImage = Array.from(e.clipboardData?.items || []).some(it => it.type.indexOf('image') !== -1);
+            if (!hasImage) return;
+            if (activePasteZone === 'preview') {
+                const item = Array.from(e.clipboardData!.items).find(it => it.type.indexOf('image') !== -1);
+                const file = item?.getAsFile();
+                if (file) processImageFile(file);
+            } else {
+                handleAssetPaste({ clipboardData: e.clipboardData });
+            }
+        };
+    });
+    useEffect(() => {
+        const onPaste = (e: ClipboardEvent) => pasteRouterRef.current(e);
+        window.addEventListener('paste', onPaste);
+
+        // Prevent the browser's default "open dropped file in tab" behaviour, which
+        // otherwise navigates away and makes an in-app drop look like it did nothing.
+        const preventDefaultDrag = (e: DragEvent) => {
+            const target = e.target as HTMLElement;
+            if (target && target.closest('[data-theme-dropzone]')) return; // let our zones handle it
+            e.preventDefault();
+        };
+        window.addEventListener('dragover', preventDefaultDrag);
+        window.addEventListener('drop', preventDefaultDrag);
+
+        return () => {
+            window.removeEventListener('paste', onPaste);
+            window.removeEventListener('dragover', preventDefaultDrag);
+            window.removeEventListener('drop', preventDefaultDrag);
+        };
+    }, []);
+
     const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
+
+        // A full Save already writes asset_media_list, so cancel any pending debounced
+        // asset persist to avoid a redundant duplicate request.
+        if (assetPersistTimerRef.current) {
+            clearTimeout(assetPersistTimerRef.current);
+            assetPersistTimerRef.current = null;
+            assetPersistLatestRef.current = null;
+        }
 
         // Proactive Google Sheets Cell Character Limit Validation
         const MAX_CELL_CHARS = 150000;
@@ -788,7 +1258,8 @@ export function ThemeEditorPage() {
                 js_template: jsCode,
                 flag_draft: isDraft,
                 flag_use_system_action_button: flagUseSystemActionButton,
-                image_types: imageTypes
+                image_types: imageTypes,
+                asset_media_list: assetMediaList
             };
 
             if (isNew) {
@@ -1110,6 +1581,16 @@ export function ThemeEditorPage() {
                         });
                     }
 
+                    // Inject static theme asset media variables ({{asset_image_1}}, {{asset_video_1}}, ...)
+                    // Prefer the locally cached base64 (set on upload / prefetched on load) so the
+                    // image renders inside the preview iframe; fall back to the proxy URL.
+                    if (Array.isArray(assetMediaList)) {
+                        assetMediaList.forEach((a) => {
+                            const cached = a.media_type === 'image' ? getCachedImage(a.media_cdn_url) : null;
+                            mockData[`asset_${a.media_code}`] = cached || a.media_cdn_url;
+                        });
+                    }
+
                     activeBacksound = mockData.link_backsound_music || '';
                     finalHtml = parseTemplate(htmlCodeRef.current, mockData);
                 }
@@ -1273,7 +1754,28 @@ export function ThemeEditorPage() {
                 setIsPreviewUpdating(false);
             }
         }, 300); // 300ms debounce
-    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes, mockGuestData, websiteConfig]);
+    }, [previewTenant, previewContent, previewImages, previewImagesB64, showDataBinding, showCover, imageTypes, assetMediaList, mockGuestData, websiteConfig]);
+
+    // Keep the ref pointing at the latest updatePreview for early effects to call
+    useEffect(() => { updatePreviewRef.current = updatePreview; }, [updatePreview]);
+
+    // Mirror assetMediaList into a ref so the serial delete queue always reads the
+    // current survivors (never a stale snapshot) when computing what to persist.
+    useEffect(() => { assetMediaListRef.current = assetMediaList; }, [assetMediaList]);
+
+    // Flush any pending debounced asset persist when leaving the editor, so assets
+    // uploaded/deleted just before navigating away are never lost (no Drive orphans).
+    useEffect(() => {
+        return () => {
+            if (assetPersistTimerRef.current) {
+                clearTimeout(assetPersistTimerRef.current);
+                assetPersistTimerRef.current = null;
+                const latest = assetPersistLatestRef.current;
+                assetPersistLatestRef.current = null;
+                if (latest) persistAssetMediaList(latest); // fire-and-forget on unmount
+            }
+        };
+    }, []);
 
     // Clean up timer on unmount
     useEffect(() => {
@@ -1535,8 +2037,11 @@ export function ThemeEditorPage() {
                                     </label>
                                 </div>
 
-                                {!isNewTheme && (
-                                    <>
+                                {/* ===== Pratinjau Tema + Asset Media (side by side) ===== */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 border-t border-gray-100 dark:border-gray-800 pt-4">
+
+                                    {/* --- KIRI: Gambar Pratinjau Tema --- */}
+                                    {!isNewTheme && (
                                         <div>
                                             <div className="flex justify-between items-center mb-1">
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Pratinjau Tema</label>
@@ -1571,8 +2076,25 @@ export function ThemeEditorPage() {
                                                 </div>
                                             </div>
 
+                                            {/* Single hidden file input for the preview box */}
+                                            <input
+                                                type="file"
+                                                ref={previewFileInputRef}
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) processImageFile(file);
+                                                    e.target.value = '';
+                                                }}
+                                            />
                                             <div
-                                                className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all ${isPreviewDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'} overflow-hidden`}
+                                                ref={previewDropRef}
+                                                data-theme-dropzone
+                                                tabIndex={0}
+                                                onClick={() => { setActivePasteZone('preview'); previewDropRef.current?.focus(); }}
+                                                onFocus={() => setActivePasteZone('preview')}
+                                                className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all outline-none cursor-pointer overflow-hidden ${activePasteZone === 'preview' ? 'border-gold-500 ring-2 ring-gold-400/40 bg-gold-50/30' : isPreviewDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'}`}
                                                 onDragOver={(e) => { e.preventDefault(); setIsPreviewDragging(true); }}
                                                 onDragLeave={() => setIsPreviewDragging(false)}
                                                 onDrop={(e) => {
@@ -1581,7 +2103,6 @@ export function ThemeEditorPage() {
                                                     const file = e.dataTransfer.files[0];
                                                     if (file) processImageFile(file);
                                                 }}
-                                                onPaste={handlePaste}
                                             >
                                                 {/* Loading Overlay */}
                                                 {(uploadingPreview || deletingPreview) && (
@@ -1602,19 +2123,25 @@ export function ThemeEditorPage() {
                                                         />
 
                                                         {!uploadingPreview && !deletingPreview && (
-                                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer">
-                                                                <p className="text-white text-xs font-bold uppercase">Ganti Gambar</p>
-                                                                <p className="text-gray-300 text-[10px]">Upload / Paste / Drop</p>
-                                                                <input
-                                                                    type="file"
-                                                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                                                    accept="image/*"
-                                                                    onChange={(e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) processImageFile(file);
-                                                                        e.target.value = '';
-                                                                    }}
-                                                                />
+                                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2">
+                                                                <p className="text-white text-xs font-bold uppercase">Klik area ini lalu Paste (Ctrl+V)</p>
+                                                                <p className="text-gray-300 text-[10px]">Atau Drag & Drop ke sini</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => { e.stopPropagation(); openPreviewLightbox(); }}
+                                                                        className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-white/90 text-gray-800 hover:bg-white transition-colors"
+                                                                    >
+                                                                        <i className="ri-zoom-in-line"></i> Lihat Penuh
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => { e.stopPropagation(); previewFileInputRef.current?.click(); }}
+                                                                        className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-white/90 text-gray-800 hover:bg-white transition-colors"
+                                                                    >
+                                                                        <HiOutlineUpload className="w-3.5 h-3.5" /> Ganti Gambar
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1623,18 +2150,15 @@ export function ThemeEditorPage() {
                                                         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 text-gray-400 group-hover:text-gold-500 transition-colors">
                                                             <i className="ri-image-add-line text-2xl"></i>
                                                         </div>
-                                                        <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik untuk upload gambar pratinjau</p>
-                                                        <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop / Paste (Ctrl+V)</p>
-                                                        <input
-                                                            type="file"
-                                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                                            accept="image/*"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) processImageFile(file);
-                                                                e.target.value = '';
-                                                            }}
-                                                        />
+                                                        <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik area ini lalu Paste (Ctrl+V)</p>
+                                                        <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop ke sini</p>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); previewFileInputRef.current?.click(); }}
+                                                            className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-300 border border-gold-200 dark:border-gold-800 hover:bg-gold-100 transition-colors"
+                                                        >
+                                                            <HiOutlineUpload className="w-3.5 h-3.5" /> Pilih Gambar
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>
@@ -1650,48 +2174,166 @@ export function ThemeEditorPage() {
                                                 />
                                             </div>
                                         </div>
-                                    </>
-                                )}
+                                    )}
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Daftar Variabel Gambar (Dinamis)</label>
-                                    <p className="text-xs text-gray-500 mb-2">Tambahkan nama variabel gambar untuk diupload tenant (contoh: <code>hero_cover</code>)</p>
-                                    <div className="flex gap-2 mb-3">
+                                    {/* --- KANAN: Asset Media Tema --- */}
+                                    <div className={isNewTheme ? 'lg:col-span-2' : ''}>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset Media Tema</label>
+                                        <p className="text-xs text-gray-500 mb-3">
+                                            Foto/video statis milik desain tema. Pakai di HTML dengan variabel{' '}
+                                            <code>{'{{asset_image_1}}'}</code>, <code>{'{{asset_video_1}}'}</code>, dst.
+                                            Gambar max 5MB (dikompres ke WebP, kecuali PNG dipertahankan). Video upload max 10MB, atau pakai link YouTube.
+                                        </p>
+
+                                        {/* Hidden inputs (image: multiple, video: single) */}
                                         <input
-                                            type="text"
-                                            value={newImageType}
-                                            onChange={e => setNewImageType(e.target.value)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
-                                                    if (val && !imageTypes.includes(val)) {
-                                                        setImageTypes([...(Array.isArray(imageTypes) ? imageTypes : []), val]);
-                                                        setNewImageType('');
-                                                    }
-                                                }
+                                            type="file"
+                                            ref={assetImageInputRef}
+                                            className="hidden"
+                                            accept="image/png, image/jpeg, image/webp"
+                                            multiple
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files.length > 0) handleAssetImageUpload(e.target.files);
+                                                e.target.value = '';
                                             }}
-                                            placeholder="hero_cover"
-                                            className="input-field"
                                         />
-                                        <Button
-                                            onClick={() => {
-                                                const val = newImageType.trim().replace(/[^a-zA-Z0-9_]/g, '');
-                                                if (val && !imageTypes.includes(val)) {
-                                                    setImageTypes([...imageTypes, val]);
-                                                    setNewImageType('');
-                                                }
+                                        <input
+                                            type="file"
+                                            ref={assetVideoInputRef}
+                                            className="hidden"
+                                            accept="video/mp4, video/webm, video/ogg"
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) handleAssetVideoUpload(f);
+                                                e.target.value = '';
                                             }}
-                                        >Tambah</Button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {Array.isArray(imageTypes) && imageTypes.map(it => (
-                                            <span key={it} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-100 text-gold-800 border border-gold-200">
-                                                {it}
-                                                <button onClick={() => setImageTypes(imageTypes.filter(i => i !== it))} className="text-gold-600 hover:text-gold-900">&times;</button>
-                                            </span>
-                                        ))}
-                                        {(!Array.isArray(imageTypes) || imageTypes.length === 0) && <span className="text-xs text-gray-400 italic">Belum ada variabel gambar</span>}
+                                        />
+
+                                        {/* Dropzone (drag & drop + paste + click) — same method as preview */}
+                                        <div
+                                            ref={assetDropRef}
+                                            data-theme-dropzone
+                                            tabIndex={0}
+                                            onClick={() => { setActivePasteZone('asset'); assetDropRef.current?.focus(); }}
+                                            onFocus={() => setActivePasteZone('asset')}
+                                            className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all outline-none cursor-pointer overflow-hidden ${activePasteZone === 'asset' ? 'border-gold-500 ring-2 ring-gold-400/40 bg-gold-50/30' : isAssetDragging ? 'border-gold-500 bg-gold-50/50' : 'border-gray-200 dark:border-gray-700 hover:border-gold-400'}`}
+                                            onDragOver={(e) => { e.preventDefault(); setIsAssetDragging(true); }}
+                                            onDragLeave={() => setIsAssetDragging(false)}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                setIsAssetDragging(false);
+                                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleAssetDrop(e.dataTransfer.files);
+                                            }}
+                                        >
+                                            {uploadingAsset && (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/10 dark:bg-black/10 backdrop-blur-[2px] z-20">
+                                                    <div className="w-8 h-8 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin mb-2" />
+                                                    <p className="text-[10px] font-bold text-gold-600 dark:text-gold-400 uppercase tracking-tighter">Mengunggah...</p>
+                                                </div>
+                                            )}
+
+                                            <div className={`flex flex-col items-center justify-center py-6 text-center transition-opacity ${uploadingAsset ? 'opacity-30' : 'opacity-100'}`}>
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 text-gray-400 group-hover:text-gold-500 transition-colors">
+                                                    <i className="ri-image-add-line text-2xl"></i>
+                                                </div>
+                                                <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik area ini lalu Paste (Ctrl+V)</p>
+                                                <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop file ke sini — bisa banyak file</p>
+                                                <div className="flex items-center gap-2 mt-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); assetImageInputRef.current?.click(); }}
+                                                        className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-300 border border-gold-200 dark:border-gold-800 hover:bg-gold-100 transition-colors"
+                                                    >
+                                                        <HiOutlineUpload className="w-3.5 h-3.5" /> Pilih Gambar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); assetVideoInputRef.current?.click(); }}
+                                                        className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition-colors"
+                                                    >
+                                                        <i className="ri-film-line"></i> Pilih Video
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* YouTube link input */}
+                                        <div className="flex gap-2 mt-3">
+                                            <input
+                                                type="text"
+                                                value={youtubeUrl}
+                                                onChange={e => setYoutubeUrl(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddYoutubeAsset(); } }}
+                                                placeholder="https://youtube.com/watch?v=... (link YouTube)"
+                                                className="input-field text-xs"
+                                            />
+                                            <Button onClick={handleAddYoutubeAsset}>Tambah YouTube</Button>
+                                        </div>
+
+                                        {/* Asset grid */}
+                                        <div className="mt-3">
+                                            {assetMediaList.length === 0 ? (
+                                                <span className="text-xs text-gray-400 italic">Belum ada asset media</span>
+                                            ) : (
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                    {assetMediaList.map(asset => {
+                                                        const isDeleting = deletingAssetCodes.has(asset.media_code);
+                                                        return (
+                                                        <div key={asset.media_code} className="relative group border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800/50">
+                                                            <div
+                                                                className={`relative aspect-square bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden ${asset.media_type === 'image' ? 'cursor-zoom-in' : ''}`}
+                                                                onClick={() => { if (asset.media_type === 'image' && !isDeleting) openAssetLightbox(asset); }}
+                                                                title={asset.media_type === 'image' ? 'Klik untuk lihat gambar penuh' : undefined}
+                                                            >
+                                                                {asset.media_type === 'image' ? (
+                                                                    <ProxyImage src={asset.media_cdn_url} alt={asset.media_name} className="w-full h-full object-cover" />
+                                                                ) : asset.media_extension === 'youtube' ? (
+                                                                    <i className="ri-youtube-fill text-4xl text-red-500"></i>
+                                                                ) : (
+                                                                    <i className="ri-film-fill text-4xl text-purple-400"></i>
+                                                                )}
+
+                                                                {/* Deleting overlay — stays until the delete truly finishes */}
+                                                                {isDeleting && (
+                                                                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[1px]">
+                                                                        <div className="w-7 h-7 border-[3px] border-white/30 border-t-red-400 rounded-full animate-spin mb-1.5" />
+                                                                        <span className="text-[10px] font-bold text-white uppercase tracking-tighter">Menghapus...</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="p-2">
+                                                                <button
+                                                                    type="button"
+                                                                    title="Klik untuk menyalin variabel"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard?.writeText(`{{asset_${asset.media_code}}}`);
+                                                                        toast.success(`Disalin: {{asset_${asset.media_code}}}`);
+                                                                    }}
+                                                                    className="w-full text-left font-mono text-[10px] font-bold text-gold-700 dark:text-gold-300 truncate hover:underline"
+                                                                >
+                                                                    {`{{asset_${asset.media_code}}}`}
+                                                                </button>
+                                                                <p className="text-[9px] text-gray-400 truncate">
+                                                                    {asset.media_name}{asset.media_size ? ` • ${asset.media_size} KB` : ''}
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                disabled={isDeleting}
+                                                                onClick={() => handleDeleteAsset(asset)}
+                                                                className="absolute top-1.5 right-1.5 z-20 w-7 h-7 rounded-full bg-white/90 dark:bg-black/70 text-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow disabled:opacity-100"
+                                                                title="Hapus asset"
+                                                            >
+                                                                {isDeleting
+                                                                    ? <div className="w-3.5 h-3.5 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" />
+                                                                    : <HiOutlineTrash className="w-3.5 h-3.5" />}
+                                                            </button>
+                                                        </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1918,6 +2560,15 @@ export function ThemeEditorPage() {
                 confirmLabel="Ya, Ganti Gambar"
                 loading={uploadingPreview}
             />
+
+            {/* Lightbox for viewing full asset / preview images */}
+            {lightboxOpen && (
+                <Lightbox
+                    images={lightboxImages}
+                    initialIndex={lightboxIndex}
+                    onClose={() => setLightboxOpen(false)}
+                />
+            )}
         </div>
     );
 }

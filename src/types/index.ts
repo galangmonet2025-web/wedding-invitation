@@ -133,6 +133,16 @@ export interface ActivityLog {
     created_at: string;
 }
 
+export interface ThemeAssetMedia {
+    media_type: 'image' | 'video';
+    media_cdn_url: string;
+    media_name: string;
+    media_size: string;       // size in KB as string ('' for youtube)
+    media_extension: string;  // 'webp' | 'png' | 'mp4' | 'youtube' | ...
+    media_id: string;         // Drive file id ('' for youtube)
+    media_code: string;       // image_1, video_1, ...
+}
+
 export interface Theme {
     id: string;
     name: string;
@@ -145,6 +155,7 @@ export interface Theme {
     flag_draft?: boolean | string;
     flag_use_system_action_button?: boolean | string;
     image_types?: string[];
+    asset_media_list?: ThemeAssetMedia[];
     created_at: string;
 }
 
@@ -307,6 +318,7 @@ export interface CreateThemeRequest {
     flag_draft?: boolean | string;
     flag_use_system_action_button?: boolean | string;
     image_types?: string[];
+    asset_media_list?: ThemeAssetMedia[];
 }
 
 export interface UpdateThemeRequest {
@@ -321,6 +333,7 @@ export interface UpdateThemeRequest {
     flag_draft?: boolean | string;
     flag_use_system_action_button?: boolean | string;
     image_types?: string[];
+    asset_media_list?: ThemeAssetMedia[];
 }
 
 // =============================================

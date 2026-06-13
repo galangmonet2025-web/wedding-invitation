@@ -1932,6 +1932,7 @@
         theme = DB.findOne('Themes', 'id', tenant.theme_id);
         if (theme) {
           try { theme.image_types = JSON.parse(theme.image_types); } catch(e) { theme.image_types = []; }
+          try { theme.asset_media_list = JSON.parse(theme.asset_media_list); } catch(e) { theme.asset_media_list = []; }
         }
       }
 
@@ -2239,6 +2240,7 @@
         t.style_category = t.style_category || '';
         t.flag_use_system_action_button = (t.flag_use_system_action_button === undefined || t.flag_use_system_action_button === null || t.flag_use_system_action_button === '' ? true : (t.flag_use_system_action_button === true || t.flag_use_system_action_button === 'true' || t.flag_use_system_action_button === 'TRUE' || t.flag_use_system_action_button === 1 || t.flag_use_system_action_button === '1'));
         try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
+        try { t.asset_media_list = JSON.parse(t.asset_media_list); } catch(e) { t.asset_media_list = []; }
       });
       // Tenant only sees themes for their plan or lower. Public sees all non-drafts.
       if (!auth || auth.role !== 'superadmin') {
@@ -2307,6 +2309,7 @@
         flag_draft: payload.hasOwnProperty('flag_draft') ? payload.flag_draft : true,
         flag_use_system_action_button: payload.hasOwnProperty('flag_use_system_action_button') ? (payload.flag_use_system_action_button === true || payload.flag_use_system_action_button === 'true' || payload.flag_use_system_action_button === 'TRUE') : true,
         image_types: payload.image_types ? JSON.stringify(payload.image_types) : '[]',
+        asset_media_list: payload.asset_media_list ? JSON.stringify(payload.asset_media_list) : '[]',
         created_at: new Date().toISOString()
       };
 
@@ -2367,6 +2370,7 @@
       if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
       if (payload.flag_draft !== undefined) updates.flag_draft = payload.flag_draft;
       if (payload.image_types !== undefined) updates.image_types = JSON.stringify(payload.image_types);
+      if (payload.asset_media_list !== undefined) updates.asset_media_list = JSON.stringify(payload.asset_media_list);
       if (payload.flag_use_system_action_button !== undefined) {
         updates.flag_use_system_action_button = (payload.flag_use_system_action_button === true || payload.flag_use_system_action_button === 'true' || payload.flag_use_system_action_button === 'TRUE');
       }
@@ -2380,6 +2384,33 @@
 
     deleteTheme: function(auth, payload) {
       Validator.required(payload, ['id']);
+
+      // Clean up static asset media files (image/video) stored in Drive for this theme.
+      // YouTube videos have an empty media_id and are skipped (no Drive file).
+      var existingTheme = DB.findOne('Themes', 'id', payload.id);
+      if (existingTheme) {
+        var assetList = [];
+        try { assetList = JSON.parse(existingTheme.asset_media_list); } catch(e) { assetList = []; }
+        if (Array.isArray(assetList)) {
+          assetList.forEach(function(asset) {
+            if (asset && asset.media_id) {
+              try {
+                DriveApp.getFileById(asset.media_id).setTrashed(true);
+              } catch (e) {
+                Logger.log('Could not trash theme asset file: ' + asset.media_id + '. Error: ' + e.toString());
+              }
+              // Remove matching record from the Images sheet if it exists
+              try {
+                var imgRec = DB.findOne('Images', 'drive_file_id', asset.media_id);
+                if (imgRec) DB.deleteRow('Images', imgRec.id);
+              } catch (e) {
+                Logger.log('Could not delete Images record for theme asset: ' + asset.media_id);
+              }
+            }
+          });
+        }
+      }
+
       var success = DB.deleteRow('Themes', payload.id);
       if (!success) {
         return ResponseHelper.error('Theme not found', 404);
@@ -4380,6 +4411,65 @@
     } catch (e) {
       Logger.log('Recovery FAILED: ' + (e && e.message ? e.message : e));
     }
+  }
+
+
+  // =====================================================================
+  // THEME ASSET — ORPHAN CLEANUP (run manually from the editor)
+  // =====================================================================
+  // Finds 'theme_asset' images in the Images sheet that are NOT referenced by any
+  // theme's asset_media_list (orphans left by an interrupted delete), trashes the
+  // Drive file, and removes the Images row.
+  //
+  // Run cleanupOrphanThemeAssets(true) first to DRY-RUN (logs what it WOULD delete
+  // without touching anything). When the report looks right, run
+  // cleanupOrphanThemeAssets(false) to actually delete.
+  // =====================================================================
+  function cleanupOrphanThemeAssets(dryRun) {
+    if (dryRun === undefined) dryRun = true; // default: safe dry-run
+    var out = [];
+
+    // 1. Collect every media_id still referenced by a theme.
+    var referenced = {};
+    var themes = DB.getAll('Themes');
+    themes.forEach(function (t) {
+      var list = [];
+      try { list = JSON.parse(t.asset_media_list); } catch (e) { list = []; }
+      if (Array.isArray(list)) {
+        list.forEach(function (a) {
+          if (a && a.media_id) referenced[String(a.media_id)] = true;
+        });
+      }
+    });
+    out.push('Referenced theme_asset media_id count: ' + Object.keys(referenced).length);
+
+    // 2. Scan Images for theme_asset rows not referenced by any theme.
+    var images = DB.getAll('Images');
+    var orphans = images.filter(function (img) {
+      return img.image_type === 'theme_asset' && !referenced[String(img.drive_file_id)];
+    });
+    out.push('Orphan theme_asset rows found: ' + orphans.length);
+    out.push(dryRun ? '--- DRY RUN (nothing deleted) ---' : '--- DELETING ---');
+
+    var trashed = 0, rowsDeleted = 0;
+    orphans.forEach(function (img) {
+      out.push('  orphan: id=' + img.id + ' file=' + img.file_name + ' drive=' + img.drive_file_id);
+      if (!dryRun) {
+        try {
+          if (img.drive_file_id) DriveApp.getFileById(img.drive_file_id).setTrashed(true);
+          trashed++;
+        } catch (e) {
+          out.push('    (could not trash Drive file: ' + (e && e.message ? e.message : e) + ')');
+        }
+        try { DB.deleteRow('Images', img.id); rowsDeleted++; } catch (e2) {}
+      }
+    });
+
+    if (!dryRun) out.push('Done. Drive files trashed: ' + trashed + ', Images rows deleted: ' + rowsDeleted);
+    else out.push('Re-run with cleanupOrphanThemeAssets(false) to actually delete.');
+
+    Logger.log(out.join('\n'));
+    return out;
   }
 
 
