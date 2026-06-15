@@ -1614,9 +1614,9 @@ export function ThemeEditorPage() {
                             { tanggal: 'Desember 2024', judul: 'Lamaran', deskripsi: 'Momen berharga ketika dua keluarga bertemu.' }
                         ],
                         tampilkan_amplop_online: getBool(c.tampilkan_amplop_online),
-                        flag_lokasi_akad_dan_resepsi_berbeda: true,
-                        flag_tampilkan_nama_orang_tua: true,
-                        flag_tampilkan_sosial_media_mempelai: true,
+                        flag_lokasi_akad_dan_resepsi_berbeda: c.flag_lokasi_akad_dan_resepsi_berbeda !== undefined ? getBool(c.flag_lokasi_akad_dan_resepsi_berbeda) : true,
+                        flag_tampilkan_nama_orang_tua: c.flag_tampilkan_nama_orang_tua !== undefined ? getBool(c.flag_tampilkan_nama_orang_tua) : true,
+                        flag_tampilkan_sosial_media_mempelai: c.flag_tampilkan_sosial_media_mempelai !== undefined ? getBool(c.flag_tampilkan_sosial_media_mempelai) : true,
                         flag_sudah_kirim_undangan_via_whatsapp: false,
                         is_fitur_gallery: activeGalleries.length > 0,
                         has_gallery: activeGalleries.length > 0,
@@ -2144,48 +2144,59 @@ export function ThemeEditorPage() {
                                         placeholder="Contoh: Gold Ivy Template"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Paket</label>
-                                    <select
-                                        value={planType}
-                                        onChange={e => setPlanType(e.target.value as PlanType)}
-                                        className="input-field"
-                                    >
-                                        <option value="basic">Basic</option>
-                                        <option value="pro">Pro</option>
-                                        <option value="premium">Premium</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Gaya (Style)</label>
-                                    <select
-                                        value={styleCategory}
-                                        onChange={e => setStyleCategory(e.target.value)}
-                                        className="input-field"
-                                    >
-                                        <option value="Minimalist">Minimalist</option>
-                                        <option value="Elegant">Elegant</option>
-                                        <option value="Nature">Nature</option>
-                                        <option value="Romantic">Romantic</option>
-                                        <option value="Cultural">Cultural</option>
-                                        <option value="Lainnya">Lainnya</option>
-                                    </select>
-                                </div>
-
-                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                                    <div className="pr-4">
-                                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">Gunakan Floating Action Button Sistem</label>
-                                        <p className="text-xs text-gray-550 mt-0.5">Jika aktif, undangan akan menggunakan 4 tombol mengambang bawaan sistem (Menu, QR Code, Musik, Scroll Up).</p>
+                                {/* Paket + Kategori Gaya + Floating Action Button — satu baris di layar lebar */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+                                    <div className="flex flex-col">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Paket</label>
+                                        <select
+                                            value={planType}
+                                            onChange={e => setPlanType(e.target.value as PlanType)}
+                                            className="input-field"
+                                        >
+                                            <option value="basic">Basic</option>
+                                            <option value="pro">Pro</option>
+                                            <option value="premium">Premium</option>
+                                        </select>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                                        <input
-                                            type="checkbox"
-                                            checked={flagUseSystemActionButton}
-                                            onChange={e => setFlagUseSystemActionButton(e.target.checked)}
-                                            className="sr-only peer"
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-500 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
-                                    </label>
+                                    <div className="flex flex-col">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Gaya (Style)</label>
+                                        <select
+                                            value={styleCategory}
+                                            onChange={e => setStyleCategory(e.target.value)}
+                                            className="input-field"
+                                        >
+                                            <option value="Minimalist">Minimalist</option>
+                                            <option value="Elegant">Elegant</option>
+                                            <option value="Nature">Nature</option>
+                                            <option value="Romantic">Romantic</option>
+                                            <option value="Cultural">Cultural</option>
+                                            <option value="Lainnya">Lainnya</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex flex-col">
+                                        <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Floating Action Button
+                                            <span className="tooltip tooltip-bottom cursor-help">
+                                                <HiOutlineInformationCircle className="w-3.5 h-3.5 text-gray-400" />
+                                                <span className="tooltip-text w-64 whitespace-normal normal-case text-left leading-snug">
+                                                    Jika aktif, undangan memakai 4 tombol mengambang bawaan sistem (Menu, QR Code, Musik, Scroll Up).
+                                                </span>
+                                            </span>
+                                        </label>
+                                        <label className="input-field flex items-center justify-between cursor-pointer">
+                                            <span className="text-sm text-gray-600 dark:text-gray-300">{flagUseSystemActionButton ? 'Aktif' : 'Nonaktif'}</span>
+                                            <span className="relative inline-flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={flagUseSystemActionButton}
+                                                    onChange={e => setFlagUseSystemActionButton(e.target.checked)}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-500 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gold-500"></div>
+                                            </span>
+                                        </label>
+                                    </div>
                                 </div>
 
                                 {/* ===== Pratinjau Tema + Asset Media (side by side) ===== */}
