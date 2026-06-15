@@ -33,6 +33,8 @@ import {
     HiOutlineTicket,
     HiOutlineAnnotation,
     HiOutlineArchive,
+    HiOutlineChevronDoubleLeft,
+    HiOutlineChevronDoubleRight,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
@@ -213,6 +215,15 @@ function MobileMenuOverlay({
 
 export function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    // Desktop sidebar collapse (icons-only + tooltip). Persisted across sessions.
+    const [collapsed, setCollapsed] = useState(() => {
+        try { return localStorage.getItem('sidebar_collapsed') === 'true'; } catch { return false; }
+    });
+    const toggleCollapsed = () => setCollapsed(prev => {
+        const next = !prev;
+        try { localStorage.setItem('sidebar_collapsed', String(next)); } catch { /* ignore */ }
+        return next;
+    });
     const { user, tenant, logout } = useAuthStore();
     const { isDark, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
@@ -360,12 +371,12 @@ export function DashboardLayout() {
 
             {/* Desktop Sidebar (Only visible on LG up) */}
             <aside
-                className="fixed inset-y-0 left-0 z-50 w-60 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700
-        hidden lg:flex flex-col"
+                className={`fixed inset-y-0 left-0 z-50 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700
+        hidden lg:flex flex-col transition-[width] duration-300 ${collapsed ? 'w-16' : 'w-60'}`}
             >
-                {/* Logo */}
-                <div className="px-4 py-3.5 border-b border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-2.5">
+                {/* Logo + collapse toggle */}
+                <div className={`relative px-4 py-3.5 border-b border-gray-100 dark:border-gray-700 ${collapsed ? 'px-0' : ''}`}>
+                    <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
                         {siteLogo ? (
                             <img
                                 src={siteLogo}
@@ -379,17 +390,28 @@ export function DashboardLayout() {
                                 </span>
                             </div>
                         )}
-                        <div className="min-w-0">
-                            <h1 className="font-display font-bold text-base text-gray-800 dark:text-white leading-tight truncate">
-                                {siteName || <>Wedding<span className="text-gradient-gold">SaaS</span></>}
-                            </h1>
-                            <p className="text-[10px] text-gray-400 leading-tight">Platform Management</p>
-                        </div>
+                        {!collapsed && (
+                            <div className="min-w-0">
+                                <h1 className="font-display font-bold text-base text-gray-800 dark:text-white leading-tight truncate">
+                                    {siteName || <>Wedding<span className="text-gradient-gold">SaaS</span></>}
+                                </h1>
+                                <p className="text-[10px] text-gray-400 leading-tight">Platform Management</p>
+                            </div>
+                        )}
                     </div>
+                    {/* Collapse / expand handle — sits on the sidebar's right edge */}
+                    <button
+                        onClick={toggleCollapsed}
+                        title={collapsed ? t('sidebar.expand', 'Perlebar menu') : t('sidebar.collapse', 'Perkecil menu')}
+                        aria-label={collapsed ? t('sidebar.expand', 'Perlebar menu') : t('sidebar.collapse', 'Perkecil menu')}
+                        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white dark:bg-wedding-dark-card border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-gold-600 hover:border-gold-400 shadow-sm flex items-center justify-center z-10 transition-colors"
+                    >
+                        {collapsed ? <HiOutlineChevronDoubleRight className="w-3.5 h-3.5" /> : <HiOutlineChevronDoubleLeft className="w-3.5 h-3.5" />}
+                    </button>
                 </div>
 
                 {/* Tenant Info */}
-                {tenant && showTenantMenu && (
+                {tenant && showTenantMenu && !collapsed && (
                     <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
                         {isImpersonating && (
                             <div className="mb-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-[10px] text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1">
@@ -411,55 +433,65 @@ export function DashboardLayout() {
                 )}
 
                 {/* Navigation */}
-                <nav className="flex-1 px-2.5 py-2 space-y-0.5 overflow-y-auto">
-                    <p className="px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.menu')}</p>
+                <nav className={`flex-1 py-2 space-y-0.5 overflow-y-auto overflow-x-hidden ${collapsed ? 'px-2' : 'px-2.5'}`}>
+                    {!collapsed && (
+                        <p className="px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.menu')}</p>
+                    )}
                     {filteredNavItems.map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}
                             onClick={() => setSidebarOpen(false)}
+                            title={collapsed ? item.label : undefined}
                             className={({ isActive }) =>
-                                `sidebar-link ${isActive ? 'active' : ''}`
+                                `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-0' : ''}`
                             }
                         >
                             <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                            <span>{item.label}</span>
+                            {!collapsed && <span>{item.label}</span>}
                         </NavLink>
                     ))}
                 </nav>
 
                 {/* User Info & Actions */}
-                <div className="px-2.5 py-2.5 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-2.5 px-2.5 py-2 mb-1">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shrink-0">
+                <div className={`py-2.5 border-t border-gray-100 dark:border-gray-700 ${collapsed ? 'px-2' : 'px-2.5'}`}>
+                    <div className={`flex items-center gap-2.5 py-2 mb-1 ${collapsed ? 'justify-center px-0' : 'px-2.5'}`}>
+                        <div
+                            className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shrink-0"
+                            title={collapsed ? `${user?.username} • ${user?.role?.replace('_', ' ')}` : undefined}
+                        >
                             <span className="text-white font-bold text-xs">{user?.username?.[0]?.toUpperCase()}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{user?.username}</p>
-                            <p className="text-[10px] text-gold-500 capitalize truncate">{user?.role?.replace('_', ' ')}</p>
-                        </div>
+                        {!collapsed && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{user?.username}</p>
+                                <p className="text-[10px] text-gold-500 capitalize truncate">{user?.role?.replace('_', ' ')}</p>
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={() => setPasswordModalOpen(true)}
-                        className="sidebar-link w-full mb-0.5 text-gray-600 dark:text-gray-300"
+                        title={collapsed ? t('sidebar.change_password') : undefined}
+                        className={`sidebar-link w-full mb-0.5 text-gray-600 dark:text-gray-300 ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         <HiOutlineKey className="w-[18px] h-[18px]" />
-                        <span>{t('sidebar.change_password')}</span>
+                        {!collapsed && <span>{t('sidebar.change_password')}</span>}
                     </button>
                     <button
                         onClick={() => setLogoutConfirmOpen(true)}
-                        className="sidebar-link w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
+                        title={collapsed ? t('sidebar.logout') : undefined}
+                        className={`sidebar-link w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         <HiOutlineLogout className="w-[18px] h-[18px]" />
-                        <span>{t('sidebar.logout')}</span>
+                        {!collapsed && <span>{t('sidebar.logout')}</span>}
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 lg:ml-60 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden">
+            <div className={`flex-1 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden transition-[margin] duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-60'}`}>
                 {/* Topbar */}
-                <header className="fixed top-0 left-0 lg:left-60 right-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700">
+                <header className={`fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700 transition-[left] duration-300 ${collapsed ? 'lg:left-16' : 'lg:left-60'}`}>
                     <div className="flex items-center justify-between px-4 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button

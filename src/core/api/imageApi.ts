@@ -47,5 +47,27 @@ export const imageApi = {
             console.error('API Error (deleteImage):', error);
             throw new Error(error.response?.data?.message || 'Failed to delete image');
         }
+    },
+
+    /**
+     * Batch-delete many images in ONE request: trashes every Drive file and removes
+     * their Images rows in a single sheet rewrite. `ids` may be Images.id or Drive
+     * file ids. Returns which ids were truly deleted vs. which failed, so the caller
+     * can drop only the confirmed ones and keep the rest (no orphans).
+     */
+    deleteImages: async (
+        ids: string[],
+        config: any = {}
+    ): Promise<ApiResponse<{ deleted: string[]; failed: { id: string; reason: string }[] }>> => {
+        try {
+            const response = await apiClient.post<any, { data: ApiResponse<{ deleted: string[]; failed: { id: string; reason: string }[] }> }>('', {
+                action: 'deleteImages',
+                ids
+            }, config);
+            return response.data;
+        } catch (error: any) {
+            console.error('API Error (deleteImages):', error);
+            throw new Error(error.response?.data?.message || 'Failed to delete images');
+        }
     }
 };

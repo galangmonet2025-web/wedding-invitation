@@ -231,6 +231,8 @@
         return ImageService.uploadImage(auth, payload);
       case 'deleteImage':
         return ImageService.deleteImage(auth, payload);
+      case 'deleteImages':
+        return ImageService.deleteImages(auth, payload);
 
       // Additional Features
       case 'getMstAdditionalFeatures':
@@ -603,6 +605,46 @@
         sheet.getRange(2, 1, kept.length, lastCol).setValues(kept);
       }
       return removed;
+    },
+
+    // Batch-delete every row whose `id` is in the given list, in a single rewrite.
+    // Same single-rewrite strategy as deleteRowsWhere, but matches a SET of ids so
+    // many images can be removed with one Sheets write instead of one per id.
+    // Returns the list of ids that were actually found & removed.
+    deleteRowsByIds: function(sheetName, ids) {
+      if (!ids || ids.length === 0) return [];
+      var sheet = this.getSheet(sheetName);
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      if (lastRow <= 1 || lastCol === 0) return []; // header-only or empty
+
+      var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+      var headers = data[0];
+      var idCol = headers.indexOf('id');
+      if (idCol === -1) return [];
+
+      // Build a lookup of target ids for O(1) membership checks.
+      var targets = {};
+      ids.forEach(function(x) { targets[String(x)] = true; });
+
+      var kept = [];
+      var removedIds = [];
+      for (var i = 1; i < data.length; i++) {
+        var rowId = String(data[i][idCol]);
+        if (targets[rowId]) {
+          removedIds.push(rowId);
+        } else {
+          kept.push(data[i]);
+        }
+      }
+      if (removedIds.length === 0) return [];
+
+      // Clear all data rows, then write back the survivors in one shot.
+      sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+      if (kept.length > 0) {
+        sheet.getRange(2, 1, kept.length, lastCol).setValues(kept);
+      }
+      return removedIds;
     },
 
     // Batch-insert many rows in a single setValues call (one Sheets write).
@@ -2216,6 +2258,81 @@
       DB.deleteRow('Images', existingImage.id);
 
       return ResponseHelper.success(null, 'Image deleted successfully');
+    },
+
+    // Batch delete: trash many Drive files and remove their Images rows in ONE
+    // sheet rewrite. Accepts `ids` (array of Images.id OR drive_file_id, same dual
+    // lookup as single delete). Ordering is deliberate to avoid orphans BOTH ways:
+    //   1. Resolve + authorize every id -> the real Images row.
+    //   2. Trash each Drive file. A file that is already gone counts as success
+    //      (so its row gets cleaned up rather than stranded forever).
+    //   3. Remove from the sheet ONLY the rows whose Drive file is confirmed gone,
+    //      in a single rewrite. Rows whose Drive trash genuinely failed are kept
+    //      so they aren't left as DB records pointing at a live Drive file.
+    // Returns { deleted: [...ids resolved as input], failed: [{id, reason}] } so the
+    // frontend can drop exactly the assets that were truly removed and keep the rest.
+    deleteImages: function(auth, payload) {
+      var tenantId = PermissionService.getTenantId(auth);
+      Validator.required(payload, ['ids']);
+
+      var inputIds = payload.ids;
+      if (!Array.isArray(inputIds)) inputIds = [inputIds];
+
+      var rowIdsToDelete = [];   // resolved Images.id values whose Drive file is gone
+      var deletedInputIds = [];  // the original input ids that succeeded
+      var failed = [];           // [{ id: inputId, reason }]
+
+      for (var i = 0; i < inputIds.length; i++) {
+        var inputId = inputIds[i];
+
+        // Same dual lookup as the single delete.
+        var existingImage = DB.findOne('Images', 'id', inputId);
+        if (!existingImage) {
+          existingImage = DB.findOne('Images', 'drive_file_id', inputId);
+        }
+
+        // Not in DB: nothing to orphan here. Treat as success so the caller can
+        // drop a stale reference that points at no record.
+        if (!existingImage) {
+          deletedInputIds.push(inputId);
+          continue;
+        }
+
+        if (auth.role !== 'superadmin' && existingImage.tenant_id !== tenantId) {
+          failed.push({ id: inputId, reason: 'unauthorized' });
+          continue;
+        }
+
+        // Trash the Drive file. Already-trashed/deleted counts as gone.
+        var driveGone = true;
+        try {
+          var file = DriveApp.getFileById(existingImage.drive_file_id);
+          file.setTrashed(true);
+        } catch (e) {
+          // File missing/inaccessible -> treat as already gone (no orphan possible).
+          // Any other unexpected error: keep the row so we don't strand a live file.
+          var msg = (e && e.toString) ? e.toString() : String(e);
+          if (msg.indexOf('not found') === -1 && msg.indexOf('Not Found') === -1
+              && msg.indexOf('No item') === -1 && msg.indexOf('does not exist') === -1) {
+            driveGone = false;
+            failed.push({ id: inputId, reason: 'drive_trash_failed' });
+          }
+          Logger.log('Batch trash: ' + existingImage.drive_file_id + ' -> ' + msg);
+        }
+
+        if (driveGone) {
+          rowIdsToDelete.push(existingImage.id);
+          deletedInputIds.push(inputId);
+        }
+      }
+
+      // Remove all confirmed rows in a single rewrite.
+      DB.deleteRowsByIds('Images', rowIdsToDelete);
+
+      return ResponseHelper.success(
+        { deleted: deletedInputIds, failed: failed },
+        deletedInputIds.length + ' image(s) deleted, ' + failed.length + ' failed'
+      );
     }
   };
 

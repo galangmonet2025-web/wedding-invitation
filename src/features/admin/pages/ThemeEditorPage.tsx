@@ -3,7 +3,7 @@ import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
 import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord, ThemeAssetMedia } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload, HiCheck } from 'react-icons/hi';
 import { Button } from '@/shared/components/Button';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Lightbox } from '@/shared/components/Lightbox';
@@ -111,6 +111,14 @@ export function ThemeEditorPage() {
         const saved = localStorage.getItem('theme-editor-show-preview');
         return saved !== 'false';
     });
+    // Split ratio between editor (left) and live preview (right) on desktop:
+    //  - 'desktop'  : editor lebih kecil dari preview (40 / 60)
+    //  - 'balanced' : sama lebar (50 / 50) — kondisi default
+    //  - 'mobile'   : editor lebih besar dari preview (60 / 40)
+    const [layoutMode, setLayoutMode] = useState<'desktop' | 'balanced' | 'mobile'>(() => {
+        const saved = localStorage.getItem('theme-editor-layout-mode');
+        return saved === 'desktop' || saved === 'mobile' ? saved : 'balanced';
+    });
     const [isCapturing, setIsCapturing] = useState(false);
     const [isPreviewUpdating, setIsPreviewUpdating] = useState(false);
     const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -145,6 +153,12 @@ export function ThemeEditorPage() {
     // Codes currently being deleted — a Set so multiple assets can delete concurrently,
     // each keeping its own loading overlay until that delete truly finishes.
     const [deletingAssetCodes, setDeletingAssetCodes] = useState<Set<string>>(new Set());
+    // Bulk-delete selection: when selectionMode is on, each asset card shows a checkbox
+    // and the user can delete several (or all) assets at once via the serial queue.
+    const [assetSelectionMode, setAssetSelectionMode] = useState(false);
+    const [selectedAssetCodes, setSelectedAssetCodes] = useState<Set<string>>(new Set());
+    // Bulk-delete confirmation modal: 'selected' deletes the checked assets, 'all' deletes every asset.
+    const [bulkDeleteMode, setBulkDeleteMode] = useState<'selected' | 'all' | null>(null);
     const [isAssetDragging, setIsAssetDragging] = useState(false);
     const [youtubeUrl, setYoutubeUrl] = useState('');
     // Which dropzone is currently "active" for paste (Ctrl+V). Set by clicking a box.
@@ -464,6 +478,10 @@ export function ThemeEditorPage() {
     useEffect(() => {
         localStorage.setItem('theme-editor-show-preview', String(showPreview));
     }, [showPreview]);
+
+    useEffect(() => {
+        localStorage.setItem('theme-editor-layout-mode', layoutMode);
+    }, [layoutMode]);
 
     // When the selected preview tenant changes, fetch their real content + images
     const loadTenantPreviewData = useCallback(async (tenantId: string, force = false) => {
@@ -1096,11 +1114,127 @@ export function ThemeEditorPage() {
         }
     };
 
+
     const enqueueAssetDelete = (asset: ThemeAssetMedia) => {
         // Chain onto the tail of the queue so jobs run strictly one after another.
         assetDeleteQueueRef.current = assetDeleteQueueRef.current
             .then(() => runAssetDeleteJob(asset))
             .catch(() => { /* a job's own try/finally handles its errors */ });
+    };
+
+    // ---- Bulk delete (selected / all) ----
+    // Toggle one asset's checkbox in selection mode.
+    const toggleAssetSelected = (code: string) => {
+        setSelectedAssetCodes(prev => {
+            const next = new Set(prev);
+            if (next.has(code)) next.delete(code); else next.add(code);
+            return next;
+        });
+    };
+
+    // Are ALL non-deleting assets currently selected?
+    const allAssetsSelected = assetMediaList.length > 0
+        && assetMediaList.every(a => selectedAssetCodes.has(a.media_code));
+
+    const toggleSelectAllAssets = () => {
+        if (allAssetsSelected) {
+            setSelectedAssetCodes(new Set());
+        } else {
+            setSelectedAssetCodes(new Set(assetMediaList.map(a => a.media_code)));
+        }
+    };
+
+    // Leave selection mode and clear any checked items.
+    const exitAssetSelectionMode = () => {
+        setAssetSelectionMode(false);
+        setSelectedAssetCodes(new Set());
+    };
+
+    // Confirmed bulk delete: ONE batch request to the backend trashes every Drive
+    // file and removes their Images rows in a single sheet rewrite (instead of N
+    // serial single-delete requests). Orphan safety is preserved end to end:
+    //   - We only drop an asset from asset_media_list once its Drive file is
+    //     CONFIRMED gone by the backend (it returns the exact ids it deleted).
+    //   - YouTube/link assets have no media_id (no Drive file) and are removed
+    //     locally without a backend call.
+    //   - The whole job runs on the SAME serial queue as single deletes, so it can
+    //     never race with an in-flight single delete or persist a stale list.
+    const runBulkDeleteJob = async (targets: ThemeAssetMedia[]) => {
+        try {
+            // Split into Drive-backed (needs backend) vs. link-only (local removal).
+            const driveBacked = targets.filter(a => a.media_id);
+            const linkOnly = targets.filter(a => !a.media_id);
+
+            // Codes that are safe to remove from the list once we're done.
+            const removableCodes = new Set<string>(linkOnly.map(a => a.media_code));
+
+            if (driveBacked.length) {
+                const ids = driveBacked.map(a => a.media_id as string);
+                let result: { deleted?: string[]; failed?: { id: string; reason: string }[] } | null = null;
+                try {
+                    const res = await imageApi.deleteImages(ids, { skipLoader: true } as any);
+                    if (res && res.success) result = res.data;
+                    else toast.error('Gagal menghapus asset: ' + (res?.message || ''));
+                } catch (e: any) {
+                    console.error('Batch asset delete failed:', e);
+                    toast.error('Gagal menghapus asset: ' + (e?.message || 'Error'));
+                }
+
+                if (result) {
+                    // Map the confirmed-deleted media_ids back to their media_codes so we
+                    // remove EXACTLY the assets whose Drive file is gone (no orphans).
+                    const deletedIds = new Set(result.deleted || []);
+                    driveBacked.forEach(a => {
+                        if (a.media_id && deletedIds.has(a.media_id)) removableCodes.add(a.media_code);
+                    });
+                    const failedCount = (result.failed || []).length;
+                    if (failedCount > 0) {
+                        toast.error(`${failedCount} asset gagal dihapus dari penyimpanan dan tetap dipertahankan.`);
+                    }
+                }
+            }
+
+            // Persist the exact survivors (read from the ref so concurrent single
+            // deletes in this same queue are respected), then sync UI.
+            if (removableCodes.size > 0) {
+                const newList = assetMediaListRef.current.filter(a => !removableCodes.has(a.media_code));
+                assetMediaListRef.current = newList;
+                setAssetMediaList(newList);
+                persistAssetMediaListDebounced(newList);
+                toast.success(`${removableCodes.size} asset dihapus`);
+            }
+        } finally {
+            // Clear the deleting overlay for every target we attempted.
+            setDeletingAssetCodes(prev => {
+                const next = new Set(prev);
+                targets.forEach(a => next.delete(a.media_code));
+                return next;
+            });
+        }
+    };
+
+    const handleBulkDeleteConfirmed = () => {
+        const targets = bulkDeleteMode === 'all'
+            ? [...assetMediaList]
+            : assetMediaList.filter(a => selectedAssetCodes.has(a.media_code));
+
+        // Skip items already mid-delete so we don't double-process them.
+        const toDelete = targets.filter(a => !deletingAssetCodes.has(a.media_code));
+
+        if (toDelete.length) {
+            setDeletingAssetCodes(prev => {
+                const next = new Set(prev);
+                toDelete.forEach(a => next.add(a.media_code));
+                return next;
+            });
+            // Chain onto the serial delete queue so it can't race single deletes.
+            assetDeleteQueueRef.current = assetDeleteQueueRef.current
+                .then(() => runBulkDeleteJob(toDelete))
+                .catch(() => { /* runBulkDeleteJob handles its own errors */ });
+        }
+
+        setBulkDeleteMode(null);
+        exitAssetSelectionMode();
     };
 
     // Open the lightbox showing all image assets, starting at the clicked one.
@@ -1878,6 +2012,23 @@ export function ThemeEditorPage() {
 
     if (loading) return <div className="p-8 text-center text-gray-500">Memuat Editor Tema...</div>;
 
+    // Desktop split widths for editor (left) vs live preview (right) per layout mode.
+    const editorWidthClass = !showPreview
+        ? 'lg:w-full'
+        : layoutMode === 'desktop' ? 'lg:w-1/4'   // editor lebih kecil (= preview saat mode mobile)
+        : layoutMode === 'mobile' ? 'lg:w-3/4'    // editor lebih besar (preview kecil)
+        : 'lg:w-1/2';                              // balanced
+    const previewWidthClass =
+        layoutMode === 'desktop' ? 'lg:w-3/4'
+        : layoutMode === 'mobile' ? 'lg:w-1/4'
+        : 'lg:w-1/2';
+
+    const layoutOptions: { key: 'desktop' | 'balanced' | 'mobile'; icon: string; label: string }[] = [
+        { key: 'desktop', icon: '🖥️', label: 'Desktop — editor lebih kecil dari preview' },
+        { key: 'balanced', icon: '⬌', label: 'Side by side — editor & preview sama lebar' },
+        { key: 'mobile', icon: '📱', label: 'Mobile — editor lebih besar dari preview' },
+    ];
+
     return (
         <div className="h-[calc(100vh-theme(spacing.16))] flex flex-col bg-gray-50 dark:bg-gray-900 -mx-4 -my-6 sm:-mx-6 lg:-mx-8">
             {/* Toolbar */}
@@ -1946,7 +2097,7 @@ export function ThemeEditorPage() {
             {/* Main Editor Split Area */}
             <div className={`flex flex-col lg:flex-row min-h-0 ${isFocusMode ? 'fixed inset-0 z-[100] bg-white dark:bg-gray-900 flex-1' : 'flex-1'}`}>
                 {/* Left Panel (Editor / Settings) */}
-                <div className={`w-full ${showPreview ? 'lg:w-1/2' : 'lg:w-full'} flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-300`}>
+                <div className={`w-full ${editorWidthClass} flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-300`}>
                     <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 justify-between items-center">
                         <div className="flex flex-1">
                             <button
@@ -2270,6 +2421,63 @@ export function ThemeEditorPage() {
                                             <Button onClick={handleAddYoutubeAsset}>Tambah YouTube</Button>
                                         </div>
 
+                                        {/* Bulk-delete toolbar */}
+                                        {assetMediaList.length > 0 && (
+                                            <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
+                                                <span className="text-[11px] text-gray-500">
+                                                    {assetSelectionMode
+                                                        ? `${selectedAssetCodes.size} dari ${assetMediaList.length} dipilih`
+                                                        : `${assetMediaList.length} asset`}
+                                                </span>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {!assetSelectionMode ? (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAssetSelectionMode(true)}
+                                                                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                            >
+                                                                <i className="ri-checkbox-multiple-line"></i> Pilih
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setBulkDeleteMode('all')}
+                                                                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                                                            >
+                                                                <HiOutlineTrash className="w-3.5 h-3.5" /> Hapus Semua
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={toggleSelectAllAssets}
+                                                                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                            >
+                                                                <HiCheck className="w-3.5 h-3.5" />
+                                                                {allAssetsSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                disabled={selectedAssetCodes.size === 0}
+                                                                onClick={() => setBulkDeleteMode('selected')}
+                                                                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-red-600 text-white border border-red-600 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                            >
+                                                                <HiOutlineTrash className="w-3.5 h-3.5" /> Hapus Terpilih ({selectedAssetCodes.size})
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={exitAssetSelectionMode}
+                                                                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                            >
+                                                                <HiOutlineX className="w-3.5 h-3.5" /> Batal
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Asset grid */}
                                         <div className="mt-3">
                                             {assetMediaList.length === 0 ? (
@@ -2278,12 +2486,17 @@ export function ThemeEditorPage() {
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                                     {assetMediaList.map(asset => {
                                                         const isDeleting = deletingAssetCodes.has(asset.media_code);
+                                                        const isSelected = selectedAssetCodes.has(asset.media_code);
                                                         return (
-                                                        <div key={asset.media_code} className="relative group border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800/50">
+                                                        <div key={asset.media_code} className={`relative group border rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800/50 transition-all ${assetSelectionMode && isSelected ? 'border-red-500 ring-2 ring-red-400/40' : 'border-gray-200 dark:border-gray-700'}`}>
                                                             <div
-                                                                className={`relative aspect-square bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden ${asset.media_type === 'image' ? 'cursor-zoom-in' : ''}`}
-                                                                onClick={() => { if (asset.media_type === 'image' && !isDeleting) openAssetLightbox(asset); }}
-                                                                title={asset.media_type === 'image' ? 'Klik untuk lihat gambar penuh' : undefined}
+                                                                className={`relative aspect-square bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden ${assetSelectionMode ? 'cursor-pointer' : asset.media_type === 'image' ? 'cursor-zoom-in' : ''}`}
+                                                                onClick={() => {
+                                                                    if (isDeleting) return;
+                                                                    if (assetSelectionMode) { toggleAssetSelected(asset.media_code); return; }
+                                                                    if (asset.media_type === 'image') openAssetLightbox(asset);
+                                                                }}
+                                                                title={assetSelectionMode ? 'Klik untuk memilih' : asset.media_type === 'image' ? 'Klik untuk lihat gambar penuh' : undefined}
                                                             >
                                                                 {asset.media_type === 'image' ? (
                                                                     <ProxyImage src={asset.media_cdn_url} alt={asset.media_name} className="w-full h-full object-cover" />
@@ -2291,6 +2504,13 @@ export function ThemeEditorPage() {
                                                                     <i className="ri-youtube-fill text-4xl text-red-500"></i>
                                                                 ) : (
                                                                     <i className="ri-film-fill text-4xl text-purple-400"></i>
+                                                                )}
+
+                                                                {/* Selection checkbox (selection mode only) */}
+                                                                {assetSelectionMode && !isDeleting && (
+                                                                    <div className={`absolute top-1.5 left-1.5 z-20 w-6 h-6 rounded-md flex items-center justify-center shadow transition-colors ${isSelected ? 'bg-red-600 text-white' : 'bg-white/90 dark:bg-black/70 border border-gray-300 dark:border-gray-600'}`}>
+                                                                        {isSelected && <HiCheck className="w-4 h-4" strokeWidth={1} />}
+                                                                    </div>
                                                                 )}
 
                                                                 {/* Deleting overlay — stays until the delete truly finishes */}
@@ -2317,17 +2537,19 @@ export function ThemeEditorPage() {
                                                                     {asset.media_name}{asset.media_size ? ` • ${asset.media_size} KB` : ''}
                                                                 </p>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                disabled={isDeleting}
-                                                                onClick={() => handleDeleteAsset(asset)}
-                                                                className="absolute top-1.5 right-1.5 z-20 w-7 h-7 rounded-full bg-white/90 dark:bg-black/70 text-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow disabled:opacity-100"
-                                                                title="Hapus asset"
-                                                            >
-                                                                {isDeleting
-                                                                    ? <div className="w-3.5 h-3.5 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" />
-                                                                    : <HiOutlineTrash className="w-3.5 h-3.5" />}
-                                                            </button>
+                                                            {!assetSelectionMode && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isDeleting}
+                                                                    onClick={() => handleDeleteAsset(asset)}
+                                                                    className="absolute top-1.5 right-1.5 z-20 w-7 h-7 rounded-full bg-white/90 dark:bg-black/70 text-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow disabled:opacity-100"
+                                                                    title="Hapus asset"
+                                                                >
+                                                                    {isDeleting
+                                                                        ? <div className="w-3.5 h-3.5 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" />
+                                                                        : <HiOutlineTrash className="w-3.5 h-3.5" />}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                         );
                                                     })}
@@ -2344,35 +2566,15 @@ export function ThemeEditorPage() {
                             {/* Editor Tabs */}
                             <div className="flex bg-[#2d2d2d] justify-between items-center">
                                 <div className="flex">
-                                    {(['html', 'css', 'js'] as const).map(tab => {
-                                        const codeLen = tab === 'html' ? htmlCode.length : tab === 'css' ? cssCode.length : jsCode.length;
-                                        const MAX_CELL_CHARS = 150000;
-                                        const isLimitWarning = codeLen > 135000;
-                                        const isLimitExceeded = codeLen > MAX_CELL_CHARS;
-                                        const remaining = MAX_CELL_CHARS - codeLen;
-
-                                        return (
-                                            <button
-                                                key={tab}
-                                                onClick={() => setActiveTab(tab)}
-                                                className={`px-4 py-2 text-xs font-mono border-t-2 flex items-center gap-2 transition-all ${activeTab === tab ? 'border-gold-500 bg-[#1e1e1e] text-white' : 'border-transparent text-gray-400 hover:bg-[#3d3d3d] hover:text-gray-200'}`}
-                                            >
-                                                <span>index.{tab}</span>
-                                                <span 
-                                                    title={`${remaining >= 0 ? `${remaining.toLocaleString('id-ID')} karakter tersisa` : `Kelebihan ${Math.abs(remaining).toLocaleString('id-ID')} karakter!`}`}
-                                                    className={`text-[9px] px-1 py-0.5 rounded transition-all select-none ${
-                                                        isLimitExceeded 
-                                                            ? 'bg-red-950 text-red-400 border border-red-700/60 font-bold animate-pulse' 
-                                                            : isLimitWarning 
-                                                                ? 'bg-yellow-950 text-yellow-400 border border-yellow-700/60 font-medium' 
-                                                                : 'bg-gray-800 text-gray-400 border border-gray-700/40'
-                                                    }`}
-                                                >
-                                                    {codeLen.toLocaleString('id-ID')} / {MAX_CELL_CHARS.toLocaleString('id-ID')}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
+                                    {(['html', 'css', 'js'] as const).map(tab => (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveTab(tab)}
+                                            className={`px-4 py-2 text-xs font-mono border-t-2 flex items-center gap-2 transition-all ${activeTab === tab ? 'border-gold-500 bg-[#1e1e1e] text-white' : 'border-transparent text-gray-400 hover:bg-[#3d3d3d] hover:text-gray-200'}`}
+                                        >
+                                            <span>index.{tab}</span>
+                                        </button>
+                                    ))}
                                 </div>
                                 <div className="px-3">
                                     <input
@@ -2426,7 +2628,7 @@ export function ThemeEditorPage() {
 
                 {/* Right Panel (Live Preview) */}
                 {showPreview && (
-                    <div className="w-full lg:w-1/2 flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
+                    <div className={`w-full ${previewWidthClass} flex flex-col bg-gray-100 dark:bg-gray-900 border-t lg:border-t-0 border-gray-200 dark:border-gray-700 transition-all duration-300`}>
                         <div className="flex-none px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex flex-wrap justify-between items-center bg-white dark:bg-gray-800 gap-2">
                             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                                 <HiOutlineEye className="w-4 h-4 text-gold-500" />
@@ -2446,6 +2648,23 @@ export function ThemeEditorPage() {
                                 >
                                     <span className="text-lg leading-none">🧪</span>
                                 </button>
+
+                                {/* Layout size: editor vs live preview width ratio (desktop only).
+                                    Placed here so it stays reachable inside Focus / fullscreen mode. */}
+                                <div className="hidden lg:inline-flex items-center rounded-md border border-gray-200 dark:border-gray-600 overflow-hidden" title="Ukuran layout editor vs live preview">
+                                    {layoutOptions.map(opt => (
+                                        <button
+                                            key={opt.key}
+                                            onClick={() => setLayoutMode(opt.key)}
+                                            title={opt.label}
+                                            className={`px-2 py-1 text-xs leading-none transition-colors ${layoutMode === opt.key
+                                                ? 'bg-gold-500 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                                        >
+                                            {opt.icon}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -2542,6 +2761,22 @@ export function ThemeEditorPage() {
                 message="Apakah Anda yakin ingin menghapus gambar pratinjau tema ini? Gambar juga akan dihapus permanen dari Google Drive."
                 confirmLabel="Ya, Hapus Gambar"
                 loading={deletingPreview}
+            />
+
+            {/* Modal Konfirmasi Hapus Asset (Massal) */}
+            <ConfirmDialog
+                isOpen={bulkDeleteMode !== null}
+                onClose={() => setBulkDeleteMode(null)}
+                onConfirm={handleBulkDeleteConfirmed}
+                title={bulkDeleteMode === 'all' ? 'Hapus Semua Asset' : 'Hapus Asset Terpilih'}
+                variant="danger"
+                warningTitle="Konfirmasi Hapus"
+                message={
+                    bulkDeleteMode === 'all'
+                        ? <>Apakah Anda yakin ingin menghapus <b>SEMUA {assetMediaList.length} asset</b> media tema ini? File juga akan dihapus permanen dari Google Drive dan tidak bisa dikembalikan.</>
+                        : <>Apakah Anda yakin ingin menghapus <b>{selectedAssetCodes.size} asset</b> terpilih? File juga akan dihapus permanen dari Google Drive dan tidak bisa dikembalikan.</>
+                }
+                confirmLabel={bulkDeleteMode === 'all' ? 'Ya, Hapus Semua' : `Ya, Hapus (${selectedAssetCodes.size})`}
             />
 
             {/* Modal Konfirmasi Ganti Pratinjau */}

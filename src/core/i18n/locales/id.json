@@ -50,6 +50,8 @@
     "logout_confirm_button": "Ya, Keluar",
     "change_password": "Ubah Password",
     "menu": "Menu",
+    "collapse": "Perkecil menu",
+    "expand": "Perlebar menu",
     "scanner_kehadiran": "Scanner Kehadiran",
     "viewing_tenant": "Melihat sebagai Tenant",
     "coupon": "Kode Promosi",

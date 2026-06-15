@@ -50,6 +50,8 @@
     "logout_confirm_button": "Yes, Sign Out",
     "change_password": "Change Password",
     "menu": "Menu",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu",
     "scanner_kehadiran": "Presence Scanner",
     "viewing_tenant": "Viewing as Tenant",
     "coupon": "Coupon",

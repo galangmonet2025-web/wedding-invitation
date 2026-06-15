@@ -6,6 +6,7 @@ import { useBlocker } from 'react-router-dom';
 import { tenantApi, quotesApi } from '@/core/api/endpoints';
 import { useInvitationContentStore } from '../store/invitationContentStore';
 import { Modal } from '@/shared/components/Modal';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Button } from '@/shared/components/Button';
 import { IconButton } from '@/shared/components/IconButton';
 import { PageLoader } from '@/shared/components/Loading';
@@ -33,7 +34,8 @@ import {
     HiOutlineChevronDown,
     HiOutlineX,
     HiOutlineRefresh,
-    HiOutlineCalendar
+    HiOutlineCalendar,
+    HiOutlineCheck
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -96,6 +98,7 @@ export function InvitationContentPage() {
         updateContent,
         setContent,
         deleteImage,
+        bulkDeleteImages,
         addImage,
         removeImageLocally
     } = useInvitationContentStore();
@@ -190,6 +193,53 @@ export function InvitationContentPage() {
     };
 
     const closeLightbox = () => setLightboxImageIndex(null);
+
+    // ---- Gallery bulk-delete selection ----
+    const [gallerySelectionMode, setGallerySelectionMode] = useState(false);
+    const [selectedGalleryIds, setSelectedGalleryIds] = useState<Set<string>>(new Set());
+    // 'selected' deletes the checked photos; 'all' deletes every gallery photo.
+    const [galleryBulkMode, setGalleryBulkMode] = useState<'selected' | 'all' | null>(null);
+    const [galleryDeleting, setGalleryDeleting] = useState(false);
+
+    const galleryImages = useMemo(() => images.filter(img => img.image_type === 'gallery'), [images]);
+
+    const toggleGallerySelected = (id: string) => {
+        setSelectedGalleryIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const allGallerySelected = galleryImages.length > 0
+        && galleryImages.every(img => selectedGalleryIds.has(img.id));
+
+    const toggleSelectAllGallery = () => {
+        if (allGallerySelected) setSelectedGalleryIds(new Set());
+        else setSelectedGalleryIds(new Set(galleryImages.map(img => img.id)));
+    };
+
+    const exitGallerySelectionMode = () => {
+        setGallerySelectionMode(false);
+        setSelectedGalleryIds(new Set());
+    };
+
+    const handleGalleryBulkDeleteConfirmed = async () => {
+        const ids = galleryBulkMode === 'all'
+            ? galleryImages.map(img => img.id)
+            : galleryImages.filter(img => selectedGalleryIds.has(img.id)).map(img => img.id);
+
+        if (ids.length === 0) { setGalleryBulkMode(null); return; }
+
+        setGalleryDeleting(true);
+        try {
+            await bulkDeleteImages(ids);
+        } finally {
+            setGalleryDeleting(false);
+            setGalleryBulkMode(null);
+            exitGallerySelectionMode();
+        }
+    };
 
     const handleNextImage = () => {
         if (lightboxImageIndex !== null) {
@@ -1082,7 +1132,7 @@ export function InvitationContentPage() {
                                                     })}
                                                     {typesList.includes('gallery') && (
                                                         <div className="col-span-full mt-6 border-t border-gray-100 dark:border-gray-800 pt-6">
-                                                            <div className="flex items-center justify-between mb-4">
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                                                                 <h3 className="text-md font-semibold text-gray-800 dark:text-white">{t('invitation_content.album_photo')}</h3>
                                                                 {(() => {
                                                                     const maxGallery = tenant?.plan_type === 'premium' ? 15 : tenant?.plan_type === 'pro' ? 10 : 5;
@@ -1094,21 +1144,92 @@ export function InvitationContentPage() {
                                                                     );
                                                                 })()}
                                                             </div>
+
+                                                            {/* Bulk-delete toolbar */}
+                                                            {galleryImages.length > 0 && (
+                                                                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                                                    <span className="text-[11px] text-gray-500">
+                                                                        {gallerySelectionMode
+                                                                            ? `${selectedGalleryIds.size} / ${galleryImages.length} dipilih`
+                                                                            : `${galleryImages.length} foto`}
+                                                                    </span>
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        {!gallerySelectionMode ? (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => setGallerySelectionMode(true)}
+                                                                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                                                >
+                                                                                    <HiOutlineCheck className="w-3.5 h-3.5" /> Pilih
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => setGalleryBulkMode('all')}
+                                                                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                                                                                >
+                                                                                    <HiOutlineTrash className="w-3.5 h-3.5" /> Hapus Semua
+                                                                                </button>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={toggleSelectAllGallery}
+                                                                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                                                >
+                                                                                    <HiOutlineCheck className="w-3.5 h-3.5" /> {allGallerySelected ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    disabled={selectedGalleryIds.size === 0}
+                                                                                    onClick={() => setGalleryBulkMode('selected')}
+                                                                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-red-600 text-white border border-red-600 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                                >
+                                                                                    <HiOutlineTrash className="w-3.5 h-3.5" /> Hapus Terpilih ({selectedGalleryIds.size})
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={exitGallerySelectionMode}
+                                                                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                                                >
+                                                                                    <HiOutlineX className="w-3.5 h-3.5" /> Batal
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                                                 {images.filter(img => img.image_type === 'gallery').map(img => (
-                                                                    <div key={img.id} className="relative group">
-                                                                        <ImageUpload
-                                                                            imageType="gallery"
-                                                                            title={t('invitation_content.gallery_label')}
-                                                                            currentImage={img}
-                                                                            onUploadSuccess={() => { }}
-                                                                            onDeleteSuccess={removeImageLocally}
-                                                                            onClick={openLightbox}
-                                                                            aspectRatio="square"
-                                                                        />
-                                                                    </div>
+                                                                    gallerySelectionMode ? (
+                                                                        <div
+                                                                            key={img.id}
+                                                                            onClick={() => { if (!galleryDeleting) toggleGallerySelected(img.id); }}
+                                                                            className={`relative group rounded-xl overflow-hidden border-2 cursor-pointer transition-all aspect-square ${selectedGalleryIds.has(img.id) ? 'border-red-500 ring-2 ring-red-400/40' : 'border-gray-200 dark:border-gray-700'}`}
+                                                                            title="Klik untuk memilih"
+                                                                        >
+                                                                            <ProxyImage src={img.cdn_url} alt={img.file_name} className="w-full h-full object-cover" />
+                                                                            <div className={`absolute top-1.5 left-1.5 z-10 w-6 h-6 rounded-md flex items-center justify-center shadow transition-colors ${selectedGalleryIds.has(img.id) ? 'bg-red-600 text-white' : 'bg-white/90 dark:bg-black/70 border border-gray-300 dark:border-gray-600'}`}>
+                                                                                {selectedGalleryIds.has(img.id) && <HiOutlineCheck className="w-4 h-4" />}
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div key={img.id} className="relative group">
+                                                                            <ImageUpload
+                                                                                imageType="gallery"
+                                                                                title={t('invitation_content.gallery_label')}
+                                                                                currentImage={img}
+                                                                                onUploadSuccess={() => { }}
+                                                                                onDeleteSuccess={removeImageLocally}
+                                                                                onClick={openLightbox}
+                                                                                aspectRatio="square"
+                                                                            />
+                                                                        </div>
+                                                                    )
                                                                 ))}
                                                                 {(() => {
+                                                                    if (gallerySelectionMode) return null;
                                                                     const maxGallery = tenant?.plan_type === 'premium' ? 15 : tenant?.plan_type === 'pro' ? 10 : 5;
                                                                     const currentCount = images.filter(img => img.image_type === 'gallery').length;
                                                                     const remainingCount = maxGallery - currentCount;
@@ -1490,6 +1611,23 @@ export function InvitationContentPage() {
                     onClose={closeLightbox}
                 />
             )}
+
+            {/* MODAL KONFIRMASI HAPUS FOTO GALERI (MASSAL) */}
+            <ConfirmDialog
+                isOpen={galleryBulkMode !== null}
+                onClose={() => { if (!galleryDeleting) setGalleryBulkMode(null); }}
+                onConfirm={handleGalleryBulkDeleteConfirmed}
+                title={galleryBulkMode === 'all' ? 'Hapus Semua Foto' : 'Hapus Foto Terpilih'}
+                variant="danger"
+                warningTitle="Konfirmasi Hapus"
+                message={
+                    galleryBulkMode === 'all'
+                        ? <>Apakah Anda yakin ingin menghapus <b>SEMUA {galleryImages.length} foto</b> galeri? Foto juga akan dihapus permanen dari Google Drive dan tidak bisa dikembalikan.</>
+                        : <>Apakah Anda yakin ingin menghapus <b>{selectedGalleryIds.size} foto</b> terpilih? Foto juga akan dihapus permanen dari Google Drive dan tidak bisa dikembalikan.</>
+                }
+                confirmLabel={galleryBulkMode === 'all' ? 'Ya, Hapus Semua' : `Ya, Hapus (${selectedGalleryIds.size})`}
+                loading={galleryDeleting}
+            />
 
             {/* MODAL KONFIRMASI NAVIGASI (UNSAVED CHANGES) */}
             {blocker.state === 'blocked' && (

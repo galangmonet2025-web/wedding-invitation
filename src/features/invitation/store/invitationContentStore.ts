@@ -17,6 +17,7 @@ interface InvitationContentState {
     setContent: (content: Partial<InvitationContent>) => void;
     addImage: (image: ImageRecord) => void;
     deleteImage: (id: string) => Promise<boolean>;
+    bulkDeleteImages: (ids: string[]) => Promise<boolean>;
     removeImageLocally: (id: string) => void;
 }
 
@@ -143,6 +144,39 @@ export const useInvitationContentStore = create<InvitationContentState>((set, ge
         } catch (error) {
             set({ images: originalImages });
             toast.error('Gagal menghapus gambar');
+            return false;
+        }
+    },
+
+    // Batch delete: ONE request trashes every Drive file + removes its Images row
+    // in a single sheet rewrite. Optimistically removes only the ids the backend
+    // CONFIRMS deleted, restoring any that failed so no row is left orphaned.
+    bulkDeleteImages: async (ids: string[]) => {
+        if (!ids || ids.length === 0) return true;
+        const originalImages = get().images;
+
+        try {
+            const res = await imageApi.deleteImages(ids, { skipLoader: true } as any);
+            if (res.success) {
+                const deleted = new Set(res.data?.deleted || []);
+                const failed = res.data?.failed || [];
+                // Remove only confirmed-deleted images; keep the rest untouched.
+                set((state) => ({
+                    images: state.images.filter(img => !deleted.has(img.id)),
+                }));
+                if (failed.length > 0) {
+                    toast.error(`${deleted.size} foto dihapus, ${failed.length} gagal dan tetap dipertahankan.`);
+                } else {
+                    toast.success(`${deleted.size} foto berhasil dihapus`);
+                }
+                return failed.length === 0;
+            }
+            set({ images: originalImages });
+            toast.error(res.message || 'Gagal menghapus foto');
+            return false;
+        } catch (error) {
+            set({ images: originalImages });
+            toast.error('Gagal menghapus foto');
             return false;
         }
     },
