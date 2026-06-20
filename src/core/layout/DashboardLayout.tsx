@@ -52,7 +52,7 @@ function MobileMenuOverlay({
     t,
     isDark,
     toggleTheme,
-    isSuperAdmin,
+    canOpenInvitation,
     siteName,
     siteLogo
 }: any) {
@@ -108,8 +108,8 @@ function MobileMenuOverlay({
                         </h2>
                     </div>
 
-                    {/* Open Invitation Shortcut next to Nickname */}
-                    {tenant?.domain_slug && !isSuperAdmin && (
+                    {/* Open Invitation Shortcut next to Nickname (shows for tenant admins & impersonating superadmins) */}
+                    {tenant?.domain_slug && canOpenInvitation && (
                         <a
                             href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
                             target="_blank"
@@ -348,7 +348,10 @@ export function DashboardLayout() {
             { to: '/private/activity', icon: HiOutlineClipboardList, label: t('sidebar.activity_log'), roles: ['tenant_admin', 'superadmin'], desc: t('sidebar.activity_log_desc', 'Lihat rekaman audit log perubahan data dan aktivitas penting pada undangan') },
         ];
 
-    const filteredNavItems = navItems.filter((item) => item.roles.includes(user?.role || ''));
+    const filteredNavItems = navItems
+        .filter((item) => item.roles.includes(user?.role || ''))
+        // Hide the attendance scanner for superadmins impersonating a tenant
+        .filter((item) => !(isImpersonating && item.to === '/private/scanner'));
 
     return (
         <div className={`min-h-screen flex ${isDark ? 'dark' : ''}`}>
@@ -364,7 +367,7 @@ export function DashboardLayout() {
                 t={t}
                 isDark={isDark}
                 toggleTheme={toggleTheme}
-                isSuperAdmin={isSuperAdmin}
+                canOpenInvitation={showTenantMenu}
                 siteName={siteName}
                 siteLogo={siteLogo}
             />
@@ -527,7 +530,7 @@ export function DashboardLayout() {
                         <div className="flex items-center gap-3">
                             <div className="hidden lg:flex items-center gap-3">
                                 {/* Open Invitation Shortcut */}
-                                {tenant?.domain_slug && !isSuperAdmin && (
+                                {tenant?.domain_slug && showTenantMenu && (
                                     <a
                                         href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
                                         target="_blank"
