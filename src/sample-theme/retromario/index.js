@@ -183,13 +183,13 @@
                 localStorage.setItem(STORE_KEY, JSON.stringify({
                     unlocked: unlocked, bestScore: Math.max(bestScore, score),
                     seenInfo: seenInfo, bestStage: bestStage, completed: completed,
-                    announcedAll: announcedAll
+                    announcedAll: announcedAll, gameDiff: gameDiff
                 }));
             } catch (e) {}
         }
         function resetSave() {
             try { localStorage.removeItem(STORE_KEY); } catch (e) {}
-            unlocked = {}; seenInfo = {}; bestScore = 0; bestStage = 1; completed = false; announcedAll = false;
+            unlocked = {}; seenInfo = {}; bestScore = 0; bestStage = 1; completed = false; announcedAll = false; gameDiff = 'medium';
         }
 
         // True once EVERY invitation info-block has been collected (manually or
@@ -380,6 +380,51 @@
                 g[x + 2 + Math.floor(w / 2)][up(5)] = 'o';
                 fillGroundCols(g, x + 2 + w, x + 5 + w);
                 g[x + 3 + w][up(3)] = 'B';
+            } }; },
+
+            // ---- Harder-difficulty patterns (new enemies/hazards/challenges) ----
+
+            // ENEMY GAUNTLET: a dense run of mixed enemies (goomba+koopa+spiny)
+            // — the higher-difficulty "reaction" set. Solvable (still flat floor).
+            gauntlet: function (kinds) { return { width: kinds.length * 3 + 3, stamp: function (g, x) {
+                fillGroundCols(g, x, x + kinds.length * 3 + 2);
+                for (var i = 0; i < kinds.length; i++) g[x + 2 + i * 3][up(1)] = kinds[i];
+            } }; },
+
+            // ELEVATED ENEMY: a goomba/koopa standing on a brick ledge over a
+            // coin, so it can drop on you — vertical threat (bible §7 variety).
+            ledgeEnemy: function (kind) { return { width: 6, stamp: function (g, x) {
+                fillGroundCols(g, x, x + 5);
+                g[x + 2][up(3)] = 'B'; g[x + 3][up(3)] = 'B';
+                g[x + 2][up(4)] = kind;           // enemy perched on the ledge
+                g[x + 4][up(1)] = 'o';
+            } }; },
+
+            // SPIKE GAP: two short pits split by a thin one-tile pillar — a
+            // tight double-hop. Harder timing than a single gap. Always clearable
+            // (each sub-gap ≤ 3, pillar in the middle gives footing).
+            doubleGap: function (w) { w = clamp(w, 2, 3); return { width: w * 2 + 5, stamp: function (g, x) {
+                fillGroundCols(g, x, x + 1);
+                carveGap(g, x + 2, x + 1 + w);
+                fillGroundCols(g, x + 2 + w, x + 2 + w);   // 1-tile foothold pillar
+                carveGap(g, x + 3 + w, x + 2 + w * 2);
+                fillGroundCols(g, x + 3 + w * 2, x + 4 + w * 2);
+                g[x + 2 + w][up(4)] = 'o';
+            } }; },
+
+            // PIRANHA CORRIDOR: two piranha pipes close together — must time
+            // passage through both. Hard-mode hazard density.
+            piranhaCorridor: function (h) { h = h || 3; return { width: 11, stamp: function (g, x) {
+                fillGroundCols(g, x, x + 10);
+                for (var s = 0; s < 2; s++) {
+                    var px0 = x + 1 + s * 6;
+                    for (var i = 0; i < h; i++) {
+                        g[px0][up(1 + i)] = (i === h - 1) ? 'T' : '[';
+                        g[px0 + 1][up(1 + i)] = (i === h - 1) ? 'U' : ']';
+                    }
+                    g[px0][up(h + 1)] = 'P';
+                }
+                g[x + 5][up(5)] = 'o';
             } }; }
         };
 
@@ -425,13 +470,32 @@
             return off;
         }
 
+        // Combine the world's BASE difficulty with the player-chosen gameDiff.
+        // gameDiff shifts the world's diff one step easier/harder, clamped.
+        // Returns {hard, med, gapBase, pipeH, lenMul, extra} knobs.
+        function diffKnobs(stage) {
+            var world = WORLDS[stage - 1] || WORLDS[0];
+            var baseIdx = world.diff === 'hard' ? 2 : (world.diff === 'medium' ? 1 : 0);
+            var modeIdx = gameDiff === 'hard' ? 1 : (gameDiff === 'medium' ? 0 : -1);
+            var lvl = clamp(baseIdx + modeIdx, 0, 2);     // 0 easy · 1 med · 2 hard
+            return {
+                lvl: lvl,
+                hard: lvl === 2, med: lvl === 1,
+                gapBase: lvl === 2 ? 4 : (lvl === 1 ? 3 : 2),
+                pipeH:   lvl === 2 ? 4 : (lvl === 1 ? 3 : 2),
+                // Hard stages are LONGER: the biome's middle section repeats once
+                // more (item 5 "stage lebih panjang"); easy is shortest.
+                lenMul:  lvl === 2 ? 2 : 1,
+                // Higher difficulty unlocks the new enemy/hazard patterns.
+                extra:   lvl >= 1
+            };
+        }
+
         function buildSpine(stage) {
             var world = WORLDS[stage - 1] || WORLDS[0];
-            var diff = world.diff;
+            var k = diffKnobs(stage);
             var quota = stageInfoQuota(stage);   // how many "?" this stage seeds
-            var hard = diff === 'hard', med = diff === 'medium';
-            var gapBase = hard ? 4 : (med ? 3 : 2);
-            var pipeH = hard ? 4 : (med ? 3 : 2);
+            var hard = k.hard, med = k.med, gapBase = k.gapBase, pipeH = k.pipeH;
             var nInfo = 0;
             // info() drops a real "?" block while the stage still has quota left,
             // else a coin trail of the same footprint (pure score filler).
@@ -440,22 +504,31 @@
             var spine;
 
             if (stage === 1) {
-                // STAGE 1 — discovery run; teaches every core mechanic. The info()
-                // helper now only realises the first `quota` "?" blocks.
-                spine = [
-                    PAT.flat(7), PAT.coinTrail(4), info(), PAT.goombas(1), PAT.coinArc(),
-                    PAT.qrow(['C', 'o', 'M']), PAT.gap(1), info(), PAT.goombas(1), PAT.pipe(2),
-                    PAT.floatPlat(3), PAT.coinTrail(5), info(), PAT.staircase(3), PAT.gap(2),
-                    PAT.koopa(), PAT.warpPipe(2), PAT.hiddenBonus(), info(), cp(PAT.flat(4)),
-                    PAT.powerRow('S'), PAT.qrow(['C', 'o']), info(), PAT.spiny(), PAT.gap(2),
+                // STAGE 1 — discovery run; teaches every core mechanic.
+                // POWER-UP PLACEMENT FIX (item 6): the mushroom/star sit EARLY,
+                // BEFORE the enemy clusters & gaps, so the buff is actually usable
+                // through the challenge (bible flow: Reward → Challenge), never
+                // stranded in the empty tail.
+                var s1 = [
+                    PAT.flat(6), PAT.coinTrail(4), info(), PAT.powerRow('M'),   // early mushroom
+                    PAT.goombas(1), PAT.coinArc(), PAT.qrow(['C', 'o', 'M']),
+                    PAT.gap(1), info(), PAT.goombas(1), PAT.pipe(2),
+                    PAT.floatPlat(3), PAT.coinTrail(5), info(), PAT.powerRow('S'), // star before the gauntlet
+                    PAT.staircase(3), PAT.gap(2), PAT.koopa(), PAT.warpPipe(2),
+                    PAT.hiddenBonus(), info(), cp(PAT.flat(4)),
+                    PAT.qrow(['C', 'o']), info(), PAT.spiny(), PAT.gap(2),
                     PAT.goombas(2, 4), info(), PAT.piranhaPipe(2), PAT.coinArc(), PAT.spring(),
                     info(), PAT.staircase(3), PAT.gap(2), info(), PAT.coinTrail(6),
-                    PAT.qrow(['C', 'M']), info(), PAT.goombas(1), info(), PAT.flat(6)
+                    PAT.qrow(['C', 'M']), info(), PAT.goombas(1), info()
                 ];
+                // hard adds an extra enemy gauntlet + gap before the run-up
+                if (k.extra) s1 = s1.concat([PAT.gauntlet(['g', 'k', 's']), PAT.gap(gapBase)]);
+                if (k.hard)  s1 = s1.concat([PAT.ledgeEnemy('k'), PAT.doubleGap(3)]);
+                spine = s1.concat([PAT.flat(6)]);
             } else {
                 // STAGES 2-8 — distinct biome layout; info() seeds this stage's
                 // quota (stages 2-4) and is inert filler afterwards.
-                spine = biomeSpine(world.biome, hard, med, gapBase, pipeH, info);
+                spine = biomeSpine(world.biome, k, info);
             }
 
             return { spine: spine, infoCount: nInfo };
@@ -463,9 +536,13 @@
 
         // Per-biome layout grammar — the heart of stage variety. Each returns a
         // full Start→…→Goal spine with a tagged checkpoint, distinct from the
-        // others in structure, not just colour.
-        function biomeSpine(biome, hard, med, gapBase, pipeH, info) {
-            var start = [PAT.flat(7), PAT.coinTrail(4)]; // safe start (bible §2.2)
+        // others in structure, not just colour. `k` = difficulty knobs.
+        function biomeSpine(biome, k, info) {
+            var hard = k.hard, med = k.med, gapBase = k.gapBase, pipeH = k.pipeH;
+            // POWER-UP FIX: every biome opens with an EARLY power-up (mushroom on
+            // easy/med, star on hard) right after the safe start, so the buff is
+            // usable across the whole stage — never dumped in the empty tail.
+            var start = [PAT.flat(7), PAT.coinTrail(4), PAT.powerRow(hard ? 'S' : 'M')];
             // `info()` realises a "?" block only while this stage has quota left,
             // otherwise returns coin filler — so the SAME spine works whether the
             // stage seeds info (worlds 2-4) or is a pure score-run (worlds 5-8).
@@ -530,14 +607,33 @@
                         PAT.castleGap(gapBase), PAT.goombas(2, 3), PAT.coinArc(),
                         cp(PAT.flat(4)), PAT.castleGap(gapBase + 1), PAT.spiny(),
                         PAT.piranhaPipe(pipeH), PAT.castleGap(gapBase), PAT.koopa(),
-                        PAT.powerRow('S'), PAT.castleGap(gapBase), PAT.spiny()
+                        PAT.castleGap(gapBase), PAT.spiny()
                     ];
                     break;
                 default:
                     s = [PAT.goombas(1), PAT.coinArc(), PAT.pipe(pipeH), cp(PAT.flat(4)), PAT.gap(gapBase), PAT.coinTrail(5)];
             }
-            // Shared finale: reward → final challenge → run-up to the flag.
-            var tail = [PAT.powerRow(hard ? 'S' : 'M'), PAT.coinTrail(5), PAT.flat(6)];
+
+            // DIFFICULTY EXTRAS (item 5): on medium/hard, splice the NEW
+            // enemy/hazard patterns into the challenge section so higher levels
+            // genuinely have new threats, not just recolours.
+            if (k.extra) {
+                var ex = (biome === 'water' || biome === 'sky')
+                    ? [PAT.ledgeEnemy('k'), PAT.gap(gapBase)]               // air biomes: perched enemy + gap
+                    : [PAT.gauntlet(['g', 'k']), PAT.piranhaCorridor(pipeH)]; // ground: gauntlet + piranha corridor
+                if (k.hard) ex = ex.concat([PAT.gauntlet(['s', 'g', 'k']), PAT.doubleGap(gapBase - 1)]);
+                s = s.concat(ex);
+            }
+            // LONGER STAGES on hard (item 5 "stage lebih panjang"): repeat the
+            // biome's challenge body once more (a fresh, harder second leg).
+            if (k.lenMul > 1) {
+                s = s.concat(s.slice(2));   // skip the duplicated checkpoint tag region
+            }
+
+            // Shared finale: a mid power-up sits BEFORE the final challenge run
+            // (usable), then coins + the run-up to the flag (no power-up stranded
+            // at the very end — item 6).
+            var tail = [PAT.powerRow(hard ? 'S' : 'M'), PAT.coinTrail(4), PAT.goombas(1), PAT.coinTrail(5), PAT.flat(6)];
             return start.concat(s, tail);
         }
 
@@ -563,13 +659,28 @@
                 cx += spine[i].width;
             }
 
-            // Flag pole near the end on solid ground.
-            var flagX = cx + 1;
+            var isBoss = !!(BIOMES[(WORLDS[stage - 1] || WORLDS[0]).biome] || {}).boss;
             fillGroundCols(grid, cx, COLS - 1);
-            grid[flagX][up(1)] = 'F'; grid[flagX][up(2)] = 'F';
-            grid[flagX][up(3)] = 'F'; grid[flagX][up(4)] = 'F'; grid[flagX][up(5)] = 'F';
+            var flagX, prisonX = 0;
+            if (isBoss) {
+                // BOSS STAGE (item 4): NO flag pole. The goal is a CAVE-PRISON
+                // room at the end — the princess sits behind bars; reaching the
+                // goal X triggers the rescue (drawn by drawPrison/drawPrincess).
+                // The "goal" line is where the boss must already be beaten and
+                // Mario walks up to the cell door. We mark it with flagX (reused
+                // as the goal X) but stamp no 'F' tiles, so no pole is drawn.
+                flagX = cx + 4;
+                prisonX = flagX;
+                // give a bit of solid run-up; the prison itself is decorative
+                // (drawn in render), not collidable, so gameplay is unaffected.
+            } else {
+                // Flag pole near the end on solid ground (stages 1-7).
+                flagX = cx + 1;
+                grid[flagX][up(1)] = 'F'; grid[flagX][up(2)] = 'F';
+                grid[flagX][up(3)] = 'F'; grid[flagX][up(4)] = 'F'; grid[flagX][up(5)] = 'F';
+            }
 
-            return { grid: grid, cols: COLS, flagX: flagX, checkpointX: checkpointX, seedInfo: built.seedInfo };
+            return { grid: grid, cols: COLS, flagX: flagX, checkpointX: checkpointX, prisonX: prisonX, isBoss: isBoss, seedInfo: built.seedInfo };
         }
 
         // ============================================================
@@ -619,6 +730,7 @@
             var world = {
                 cols: COLS, grid: g, biome: biome, biomeKey: biomeKey, isBoss: isBoss,
                 flagX: level.flagX * TILE, checkpointX: level.checkpointX * TILE,
+                prisonX: (level.prisonX || 0) * TILE,
                 coins: [], enemies: [], boxes: [], pipes: [], springs: [], hidden: [], warps: [],
                 infoTotal: 0, powerups: [], fireballs: [], particles: [],
                 worldW: COLS * TILE, worldH: ROWS * TILE,
@@ -654,11 +766,13 @@
                 }
             }
 
-            // Boss world: spawn Boom-Boom-style boss near the flag run-up, and a
-            // captured princess waiting at the goal to be rescued after the fight.
+            // Boss world: spawn the boss near the run-up, and a captured princess
+            // INSIDE A CAVE PRISON cell at the goal (item 4). She stands behind
+            // bars until rescued, then steps out. The prison is drawn in render()
+            // (cosmetic) — it never blocks Mario, so reaching prisonX is the goal.
             if (isBoss) {
                 world.boss = mkBoss(world.flagX / TILE - 6);
-                world.princess = { x: world.flagX + 8, y: (GROUND_R - 2) * TILE, w: 12, h: 16, t: 0, rescued: false };
+                world.princess = { x: world.prisonX + 2, y: (GROUND_R - 2) * TILE, w: 12, h: 16, t: 0, rescued: false, freed: false };
             }
             return world;
         }
@@ -720,9 +834,19 @@
         var jumpQueued = 0;     // frames remaining in the jump-press buffer
         var coyote = 0;         // frames remaining of coyote-time after leaving ground
         var running = false, started = false;
+        // Chosen difficulty mode (cover selector; cheat can re-cycle it). It
+        // BOOSTS the per-world base difficulty: easy=−1 step, medium=0, hard=+1.
+        // Used by buildSpine to scale length, enemy density, gaps, hazards.
+        var gameDiff = (saved.gameDiff === 'easy' || saved.gameDiff === 'hard') ? saved.gameDiff : 'medium';
+        var DIFF_ORDER = ['easy', 'medium', 'hard'];
         var animT = 0;          // global animation clock (frames) for sprite cycles
         var fireworks = [];     // celebratory firework bursts (final victory cutscene)
         var fwActive = 0;       // frames remaining of the firework celebration
+        // Full-screen celebration flash: a white→colour burst + radiating shock
+        // ring drawn over everything on a big moment (princess rescued, all-info
+        // collected). flash.t counts down; flash.col tints it.
+        var flash = { t: 0, max: 1, col: '#fff' };
+        function triggerFlash(frames, col) { flash.t = frames; flash.max = frames; flash.col = col || '#fff'; }
 
         var elCoins = document.getElementById('rm-coins');
         var elScore = document.getElementById('rm-score');
@@ -826,12 +950,46 @@
         // One-time celebratory farewell shown the moment the final info-block is
         // collected manually: tells the guest the whole invitation is now open.
         function announceAllCollected() {
-            playSfx('win');
+            // BIG "WAH": gold screen-flash + an erupting fireworks burst + the
+            // victory fanfare, then the congratulations dialog opens by itself.
+            playSfx('fanfare');
+            triggerFlash(46, '#fff3b0');
+            startFireworks();
+            for (var bxr = 0; bxr < 5; bxr++) {
+                spawnFirework(camX + 30 + bxr * (VW - 60) / 4, camY + 30 + (bxr % 2) * 24);
+            }
             toast('🎉 SEMUA INFO TERKUMPUL! 🎉<br>' +
-                  '<span style="font-size:8px;color:#fac000">Undangan kini bisa dibuka — ketuk ikon 📑 di kiri</span>',
-                  3200);
+                  '<span style="font-size:8px;color:#fac000">Undangan terbuka — selamat! ✨</span>', 2200);
             if (viewBtn) viewBtn.classList.add('just-unlocked');
             setTimeout(function () { if (viewBtn) viewBtn.classList.remove('just-unlocked'); }, 700);
+            setTimeout(function () { triggerFlash(30, '#ffd84a'); }, 700);
+            // open the congratulations dialog automatically (not just a toast)
+            setTimeout(function () { showCongrats(); }, 1700);
+        }
+
+        // Shared "congratulations" dialog used when the guest unlocks everything
+        // manually (without finishing the full 8-world run). Reuses the win
+        // overlay but with collect-themed wording, and routes its button to the
+        // full invitation.
+        function showCongrats() {
+            running = false;
+            var winText = document.getElementById('rm-win-text');
+            var titleEl = document.querySelector('#rm-win .rm-overlay-pixtitle');
+            var groom = val('groom_nickname', 'Mempelai Pria');
+            var bride = val('bride_nickname', 'Mempelai Wanita');
+            if (titleEl) titleEl.innerHTML = '🎉 SELAMAT! 🎉';
+            if (winText) {
+                winText.innerHTML =
+                    '<div style="color:#ffd24a;font-size:11px;line-height:1.9;margin-bottom:10px">' +
+                    'Kamu sudah mengumpulkan SEMUA kepingan undangan ' +
+                    '<strong>' + esc(groom) + '</strong> &amp; <strong>' + esc(bride) + '</strong>! 💌✨' +
+                    '</div>' +
+                    '<div style="font-size:11px;line-height:1.9;color:rgba(255,255,255,0.9)">' +
+                    'Undangan kini terbuka penuh. Tekan tombol di bawah untuk membaca ' +
+                    'undangan lengkap kami. 🎆' +
+                    '</div>';
+            }
+            showOverlay('rm-win');
         }
 
         var modalRoot = document.getElementById('rm-modal-root');
@@ -933,16 +1091,33 @@
                 g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
                 o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
             }
+            // arpeggio helper: play a rising/falling run of notes
+            function arp(notes, step, dur, vol, wave) {
+                notes.forEach(function (f, i) { setTimeout(function () { tone(f, f, dur || 0.12, vol || 0.08, wave); }, i * (step || 70)); });
+            }
             if (type === 'jump') tone(420, 760, 0.16, 0.06);
             else if (type === 'coin') { tone(988, 1319, 0.09, 0.06); }
             else if (type === 'stomp') tone(300, 120, 0.12, 0.07);
             else if (type === 'power') { tone(523, 1046, 0.18, 0.07); }
+            else if (type === 'powerup') { arp([392, 523, 659, 784, 1046], 55, 0.12, 0.07); }   // mushroom/flower grab — rising
+            else if (type === 'sprout') { arp([262, 392, 523], 60, 0.13, 0.06, 'sine'); }        // item emerges from block
             else if (type === 'unlock') { tone(659, 988, 0.12, 0.08); setTimeout(function () { tone(988, 1319, 0.14, 0.08); }, 90); }
             else if (type === 'modal') tone(740, 1100, 0.1, 0.06);
-            else if (type === 'die') { tone(330, 80, 0.5, 0.09, 'triangle'); }
-            else if (type === 'win') { [523, 659, 784, 1046].forEach(function (f, i) { setTimeout(function () { tone(f, f, 0.16, 0.08); }, i * 130); }); }
+            else if (type === 'die') { tone(330, 80, 0.5, 0.09, 'triangle'); setTimeout(function () { tone(196, 60, 0.5, 0.08, 'triangle'); }, 240); }
+            else if (type === 'fireball') { tone(700, 240, 0.12, 0.05, 'sawtooth'); }            // throw fireball
+            else if (type === 'spring') { tone(300, 1200, 0.22, 0.07, 'sine'); }                 // boing!
+            else if (type === 'flag') { arp([523, 587, 659, 784, 880, 1046], 55, 0.12, 0.08); }  // slide down flagpole
+            else if (type === 'stageclear') { arp([523, 659, 784, 1046, 784, 1046, 1318], 110, 0.16, 0.08); } // little fanfare
+            else if (type === '1up') { arp([659, 784, 1046, 1318], 60, 0.12, 0.08); }            // extra life jingle
+            else if (type === 'win') { arp([523, 659, 784, 1046, 1318, 1046, 1568], 130, 0.18, 0.08); }
+            else if (type === 'fanfare') {                                                        // BIG victory — princess rescued
+                arp([523, 659, 784, 1046, 1318, 1568], 95, 0.18, 0.09);
+                setTimeout(function () { arp([1046, 1318, 1568, 2093], 80, 0.22, 0.09); }, 620);
+                setTimeout(function () { tone(1568, 1568, 0.5, 0.08); tone(2093, 2093, 0.5, 0.07); }, 1100);
+            }
             else if (type === 'warp') { tone(880, 220, 0.32, 0.08, 'sine'); }
             else if (type === 'bosshit') { tone(180, 60, 0.22, 0.1, 'sawtooth'); }
+            else if (type === 'bossdie') { tone(220, 50, 0.6, 0.1, 'sawtooth'); setTimeout(function () { arp([392, 523, 659], 70, 0.16, 0.08); }, 200); }
             else if (type === 'bump') tone(160, 90, 0.08, 0.06);
         }
 
@@ -1072,7 +1247,7 @@
                 W.fireballs.push({ x: player.x + (player.face > 0 ? player.w : -4), y: player.y + 4,
                     vx: player.face * 4, vy: 2, alive: true, bounces: 0 });
                 player.fireCd = 18;
-                playSfx('jump');
+                playSfx('fireball');
             }
         }
 
@@ -1122,9 +1297,9 @@
                 toast('INFO TERBUKA: ' + b.info.label + '<br><span style="font-size:8px;color:#fac000">Ketuk ikon ▶ untuk membaca</span>', 1900);
             } else if (b.kind === 'mushroom') {
                 spawnPowerup(b, player.big ? 'flower' : 'mushroom');
-                playSfx('power');
+                playSfx('sprout');
             } else if (b.kind === 'star') {
-                spawnPowerup(b, 'star'); playSfx('power');
+                spawnPowerup(b, 'star'); playSfx('sprout');
             } else if (b.kind === 'hidden') {
                 coinGot++; addScore(100); playSfx('coin');
                 spawnParticles(b.c * TILE + 8, b.r * TILE, '#fac000', 6);
@@ -1237,7 +1412,7 @@
                 var sx = sp.c * TILE, sy = (sp.r) * TILE;
                 if (player.x + player.w > sx && player.x < sx + TILE &&
                     player.y + player.h >= sy - 2 && player.y + player.h <= sy + 8 && player.vy >= 0) {
-                    player.vy = JUMP_V * 1.5; player.onGround = false; sp.t = 8; playSfx('jump');
+                    player.vy = JUMP_V * 1.5; player.onGround = false; sp.t = 8; playSfx('spring');
                 }
             }
 
@@ -1277,7 +1452,7 @@
                 if (player.x + player.w > co.x - 2 && player.x < co.x + 12 &&
                     player.y + player.h > co.y - 2 && player.y < co.y + 14) {
                     co.taken = true; coinGot++; addScore(100); playSfx('coin');
-                    if (coinGot % 100 === 0) { lives++; toast('1-UP!'); }
+                    if (coinGot % 100 === 0) { lives++; toast('1-UP!'); playSfx('1up'); }
                 }
             }
         }
@@ -1300,7 +1475,7 @@
                     if (pu.kind === 'mushroom') { setBig(true); addScore(1000); toast('SUPER!'); }
                     else if (pu.kind === 'flower') { setBig(true); player.fire = true; addScore(1000); toast('FIRE POWER!'); }
                     else if (pu.kind === 'star') { player.star = 600; addScore(1000); toast('★ INVINCIBLE ★'); }
-                    playSfx('power');
+                    playSfx('powerup');
                 }
             }
             W.powerups = W.powerups.filter(function (p) { return p.alive; });
@@ -1459,6 +1634,7 @@
                 b.alive = false;
                 spawnParticles(b.x + b.w / 2, b.y + b.h / 2, '#fac000', 20);
                 addScore(3000);
+                playSfx('bossdie');
                 toast('BOSS KALAH! +3000<br><span style="font-size:8px;color:#ff7ab6">Selamatkan sang putri di ujung! ▶</span>', 2200);
             }
         }
@@ -1500,16 +1676,33 @@
                 // cutscene, then reveal the happy-ending narration. Unlock all
                 // invitation pieces so the guest is never locked out.
                 completed = true;
-                if (W.princess) W.princess.rescued = true;
+                // Open the cell: the princess is RESCUED (bars swing open in
+                // drawPrison) and after a short beat she steps OUT toward Mario.
+                if (W.princess) {
+                    W.princess.rescued = true;
+                    setTimeout(function () { if (W.princess) W.princess.freed = true; }, 600);
+                }
                 INFOS.forEach(function (info) {
                     if (!unlocked[info.key]) { unlocked[info.key] = true; var btn = invButtons[info.key]; if (btn) btn.classList.add('is-enabled'); }
                 });
                 updateViewBtn();
                 persist();
-                startFireworks();                       // celebration keeps the loop running
-                toast('♥ SANG PUTRI SELAMAT! ♥', 2400);
-                setTimeout(showWin, 3200);              // let the fireworks play first
+                // BIG "WAH" moment: instant gold screen-flash + shock ring, a
+                // huge fireworks burst, the victory fanfare, then the congrats
+                // dialog opens quickly (not after a long wait).
+                triggerFlash(46, '#fff3b0');
+                startFireworks();
+                // seed an immediate ring of bursts so the screen erupts at once
+                for (var bxr = 0; bxr < 5; bxr++) {
+                    spawnFirework(camX + 30 + bxr * (VW - 60) / 4, camY + 30 + (bxr % 2) * 24);
+                }
+                playSfx('fanfare');
+                toast('♥ SANG PUTRI SELAMAT! ♥', 2200);
+                setTimeout(function () { triggerFlash(30, '#ffd84a'); }, 700);   // second pop
+                setTimeout(showWin, 1700);              // open the congrats dialog sooner
             } else {
+                playSfx('flag');
+                setTimeout(function () { playSfx('stageclear'); }, 400);
                 setTimeout(showStageClear, 1100);
             }
         }
@@ -1649,105 +1842,301 @@
         }
 
         // ------------------------------------------------------------
-        // SPRITE RENDERING — higher-detail, clearer characters.
-        // The world/collision stays at TILE=16 virtual px, but sprites are
-        // authored on a 2× sub-grid (each "art pixel" = 0.5 virtual px) and
-        // drawn with many small rects. Because the canvas backing store is
-        // already device-resolution (dpr up to 3) the sub-pixel detail renders
-        // crisp, giving rounder, more readable characters without changing
-        // physics or hitboxes (bible §18 Readability, §22 Nintendo entity rules).
-        // `sp(x,y,w,h)` = sprite-pixel rect in HALF-virtual-px units from (ox,oy).
+        // SPRITE RENDERING — crisp, high-resolution, NO blur.
         // ------------------------------------------------------------
+        // WHY THE OLD WAY BLURRED: drawing sprites directly with fillRect on a
+        // 0.5-virtual-px sub-grid, then scaling the whole context by a *fractional*
+        // device factor, anti-aliased every rect edge (fillRect ignores
+        // imageSmoothingEnabled). Hundreds of fractional-edge rects = mud.
+        //
+        // THE FIX: each sprite/pose is drawn ONCE into an offscreen canvas at its
+        // own native pixel grid (every fillRect is a WHOLE pixel — no fractions,
+        // no internal AA), cached, then blitted with drawImage(). drawImage DOES
+        // honour imageSmoothingEnabled=false, so the high-res art is sampled
+        // nearest-neighbour onto the screen → sharp pixels even through the
+        // fractional device transform. Detail can be far higher (native grids are
+        // ~2× the old sub-grid → ~4-10× the pixel count) without any blur.
+        // Hitboxes/physics are untouched (only the visual blit size changes).
+        //
+        // `px(x,y,w,h)` paints WHOLE-pixel rects into the current offscreen ctx
+        // `octx` at native sprite resolution. `pc(col)` sets the colour.
+        // ------------------------------------------------------------
+        var SPR_SS = 3;                 // sprite supersample: native px per virtual px
+                                        // (3× gives a fine native grid for smooth
+                                        // shapes; buffers stay small since the on-
+                                        // screen blit size is what bounds memory)
+        var spriteCache = {};           // key → { cv, vw, vh } cached offscreen sprites
+        var octx = null;                // current offscreen 2d ctx while painting
+        function px(x, y, w, h) { octx.fillRect(x, y, (w || 1), (h || 1)); }
+        function pc(col) { octx.fillStyle = col; }
+        // Get (or build) a cached sprite. `vw,vh` = on-screen virtual size; the
+        // offscreen buffer is (vw*SS)×(vh*SS) native px. `paint(W,H)` draws the
+        // art in native px (W=vw*SS, H=vh*SS). Returns the buffer record.
+        function getSprite(key, vw, vh, paint) {
+            var rec = spriteCache[key];
+            if (rec) return rec;
+            var W2 = Math.round(vw * SPR_SS), H2 = Math.round(vh * SPR_SS);
+            var cv = document.createElement('canvas'); cv.width = W2; cv.height = H2;
+            var prev = octx; octx = cv.getContext('2d');
+            octx.imageSmoothingEnabled = false;
+            paint(W2, H2);
+            octx = prev;
+            rec = { cv: cv, vw: vw, vh: vh };
+            spriteCache[key] = rec;
+            return rec;
+        }
+        // Blit a cached sprite centred over a hitbox-anchored origin. (ax,ay) is
+        // the on-screen virtual top-left where the sprite's box should sit; the
+        // dest size is the sprite's virtual size. `flip` mirrors horizontally.
+        function blit(rec, ax, ay, flip) {
+            var dw = rec.vw, dh = rec.vh;
+            var dx = Math.round(ax), dy = Math.round(ay);
+            ctx.imageSmoothingEnabled = false;
+            if (flip) {
+                ctx.save(); ctx.translate(dx + dw, dy); ctx.scale(-1, 1);
+                ctx.drawImage(rec.cv, 0, 0, dw, dh); ctx.restore();
+            } else {
+                ctx.drawImage(rec.cv, dx, dy, dw, dh);
+            }
+        }
+
+        // Legacy sub-grid helpers kept for enemies/boss (still fillRect-based;
+        // they read fine at their size). _ox/_oy = origin, sp = half-px rect.
         var _ox = 0, _oy = 0;
         function sp(x, y, w, h) { ctx.fillRect(_ox + x * 0.5, _oy + y * 0.5, w * 0.5, h * 0.5); }
         function spc(col) { ctx.fillStyle = col; }
 
         function drawCoin(sx, sy, t) {
-            // spinning coin: width pulses; add rim + inner shine for clarity
+            // Spinning coin: the width pulses to fake 3D rotation. Now with a
+            // proper rim, an embossed inner ring, a "$"-style notch, and a
+            // travelling specular glint so it reads as a minted gold coin.
             var phase = Math.abs(Math.sin(t));
-            var w = 5 + phase * 6;            // 5..11 px
+            var w = 4 + phase * 8;            // 4..12 px (thinner edge-on for spin)
             var cx = sx + 7;                  // centre of the ~14px coin cell
-            ctx.fillStyle = '#fde36a'; ctx.fillRect(cx - w / 2, sy + 1, w, 12);          // bright face
-            ctx.fillStyle = '#fac000'; ctx.fillRect(cx - w / 2, sy + 1, w, 2);           // top sheen
-            ctx.fillStyle = '#e89000'; ctx.fillRect(cx - w / 2, sy + 11, w, 2);          // bottom shade
-            ctx.fillStyle = '#b56f00'; ctx.fillRect(cx - w / 2, sy + 1, Math.max(1, w * 0.18), 12); // left rim
-            if (w > 7) { ctx.fillStyle = '#fff7c8'; ctx.fillRect(cx - 1, sy + 3, 1.5, 7); }          // glint
+            var L = cx - w / 2;
+            // dark rim (full pill) → bright face inset → highlights
+            ctx.fillStyle = '#9a5e00'; ctx.fillRect(L, sy, w, 14);                        // outer rim
+            ctx.fillStyle = '#fde36a'; ctx.fillRect(L + Math.max(1, w * 0.12), sy + 1, Math.max(1, w * 0.76), 12); // face
+            ctx.fillStyle = '#ffe88a'; ctx.fillRect(L + Math.max(1, w * 0.12), sy + 1, Math.max(1, w * 0.76), 2);  // top sheen
+            ctx.fillStyle = '#e89000'; ctx.fillRect(L + Math.max(1, w * 0.12), sy + 11, Math.max(1, w * 0.76), 2); // bottom shade
+            if (w > 6) {
+                // embossed inner ring + centre notch (only when face is wide enough)
+                ctx.fillStyle = '#d99500'; ctx.fillRect(cx - 1, sy + 3, 2, 8);            // centre bar
+                ctx.fillStyle = '#fff7c8'; ctx.fillRect(cx - 2, sy + 3, 1, 8);            // left glint
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                var gly = sy + 2 + ((Math.floor(t * 3)) % 8);                              // travelling specular
+                ctx.fillRect(cx + 1, gly, 1, 2);
+            }
+        }
+
+        // Visual sprite footprint (virtual px). The hitbox is 11 wide; the
+        // sprite box is wider so the art has margin, but Mario himself is drawn
+        // SLIM and centred inside it so he never looks blocky/fat.
+        var P_VW = 18;
+
+        // ============================================================
+        // PRE-BAKED SPRITE-SHEET (zero-judder, high-detail).
+        // ------------------------------------------------------------
+        // Instead of repainting Mario every frame with shifting offsets (which
+        // caused the vertical shimmer/judder), we paint a HIGH-DETAIL Mario into
+        // a set of FROZEN frames ONCE at boot, on a large native grid. Animation
+        // then ONLY swaps which baked frame is shown — Mario's body sits at the
+        // exact same pixels every frame, so there is no per-frame motion of the
+        // torso/head/arms at all. Only the legs differ between frames, and they
+        // are authored INSIDE the frame (not by moving the whole sprite). This
+        // makes "no judder" structural, not something to tune.
+        //
+        // The sheet is keyed by (size, capCol, shirt, overall) so star-flash /
+        // fire-flower recolours each get their own baked set (built lazily,
+        // bounded: ~handful of colour combos over a whole run).
+        // ============================================================
+        var MARIO_FRAMES = ['idle', 'walk0', 'walk1', 'walk2', 'jump'];
+        var marioSheets = {};   // key → { idle:rec, walk0:rec, ... } baked frames
+
+        // Paint ONE Mario frame at native resolution into the current octx.
+        // `frame` selects the leg/arm configuration; the head/torso are IDENTICAL
+        // across frames so nothing above the hips ever moves. Higher detail than
+        // before: rounded cap, shaded face, defined overalls, gloves, big boots.
+        function paintMarioFrame(W, H, c, frame) {
+            var capCol = c.cap, capDk = shade(capCol, -0.28), capHi = shade(capCol, 0.34);
+            var shirt = c.shirt, shirtHi = shade(shirt, 0.24), shirtDk = shade(shirt, -0.24);
+            var ov = c.overall, ovHi = shade(ov, 0.26), ovDk = shade(ov, -0.26);
+            var skin = '#ffce9e', skinHi = '#ffe6c8', skinDk = '#e3a06f';
+            var hair = '#3a1d0c', boot = '#5a3010', bootHi = '#7a4418', bootDk = '#2a1404';
+            var glove = '#ffffff', gloveDk = '#cdd4e4';
+            var cx = Math.round(W / 2);
+
+            var airborne = frame === 'jump';
+
+            // ---------------- HEAD (identical every frame) ----------------
+            var headTop = 4, headW = 24, hx = cx - headW / 2;
+            // hair back behind the cap brim
+            pc(hair); px(hx, headTop + 9, headW, 4);
+            // CAP — domed, with side curve via insets
+            pc(capCol);
+            px(cx - 10, headTop, 20, 4);              // dome top
+            px(cx - 12, headTop + 2, 24, 3);          // dome mid (wider)
+            px(hx, headTop + 4, headW, 4);            // band
+            px(hx + 1, headTop + 8, headW - 2, 3);    // brim ledge
+            pc(capHi); px(cx - 8, headTop, 12, 1); px(cx - 11, headTop + 2, 5, 1);   // sun sheen
+            pc(capDk); px(hx, headTop + 7, headW, 1); px(hx + 1, headTop + 10, headW - 2, 1); // under-shade
+            // emblem disc + M
+            pc('#fff'); px(cx - 4, headTop + 1, 8, 6);
+            pc(capCol); px(cx - 3, headTop + 2, 6, 4);
+            pc('#fff'); px(cx - 2, headTop + 2, 1, 3); px(cx, headTop + 3, 1, 2); px(cx + 1, headTop + 2, 1, 3);
+            // FACE
+            var faceTop = headTop + 11, faceH = 12;
+            pc(skin); px(hx + 2, faceTop, headW - 4, faceH);
+            pc(skinHi); px(hx + 3, faceTop, 5, 2);                 // forehead light
+            pc(skinDk); px(hx + 2, faceTop + faceH - 2, headW - 4, 2); // jaw shade
+            // sideburns both sides
+            pc(hair); px(hx, faceTop, 3, faceH - 1); px(hx + headW - 3, faceTop, 3, faceH - 1);
+            // big nose, centred + rounded
+            pc(skin); px(cx - 3, faceTop + 4, 6, 5); pc(skinHi); px(cx - 2, faceTop + 4, 2, 1); pc(skinDk); px(cx - 3, faceTop + 8, 6, 1);
+            // EYES — two, symmetric (whites + blue pupils + brows)
+            var eyeY = faceTop + 2, eL = cx - 7, eR = cx + 3;
+            pc('#fff'); px(eL, eyeY, 4, 5); px(eR, eyeY, 4, 5);
+            pc('#2a4ba0'); px(eL + 2, eyeY + 1, 2, 3); px(eR, eyeY + 1, 2, 3);
+            pc('#000'); px(eL + 2, eyeY + 2, 1, 1); px(eR + 1, eyeY + 2, 1, 1);
+            pc(hair); px(eL - 1, eyeY - 2, 5, 1); px(eR, eyeY - 2, 5, 1);
+            // mustache — symmetric, under the nose
+            pc(hair); px(cx - 9, faceTop + 9, 19, 3); px(cx - 10, faceTop + 10, 2, 2); px(cx + 9, faceTop + 10, 2, 2);
+
+            // ---------------- TORSO (identical every frame) ----------------
+            var shoulder = faceTop + faceH;
+            var hipY = H - 18;                         // where legs begin (constant)
+            var bx = cx - 12, bw = 24;                 // torso box
+            // shirt across shoulders
+            pc(shirt); px(bx, shoulder, bw, 6);
+            pc(shirtHi); px(bx + 1, shoulder, 10, 2);
+            pc(shirtDk); px(bx, shoulder + 5, bw, 1);
+            // overall bib + body
+            pc(ov); px(bx + 3, shoulder + 5, bw - 6, hipY - (shoulder + 5));
+            pc(ovHi); px(bx + 3, shoulder + 5, bw - 6, 1); px(bx + 3, shoulder + 5, 1, hipY - (shoulder + 5));
+            pc(ovDk); px(bx + bw - 4, shoulder + 7, 1, hipY - (shoulder + 7));
+            // straps over the shoulders
+            pc(ov); px(bx + 2, shoulder + 2, 3, hipY - (shoulder + 2)); px(bx + bw - 5, shoulder + 2, 3, hipY - (shoulder + 2));
+            pc(ovHi); px(bx + 2, shoulder + 2, 1, 6); px(bx + bw - 5, shoulder + 2, 1, 6);
+            // gold buttons (symmetric)
+            pc('#f7c800'); px(bx + 5, shoulder + 8, 3, 3); px(bx + bw - 8, shoulder + 8, 3, 3);
+            pc('#fff7c0'); px(bx + 5, shoulder + 8, 1, 1); px(bx + bw - 8, shoulder + 8, 1, 1);
+
+            // ---------------- ARMS + GLOVES ----------------
+            // Resting at sides on the ground (constant); raised only when airborne.
+            if (airborne) {
+                pc(shirt); px(bx - 4, shoulder - 3, 6, 9); px(bx + bw - 2, shoulder - 3, 6, 9);
+                pc(glove); px(bx - 6, shoulder - 9, 8, 7); px(bx + bw - 2, shoulder - 9, 8, 7);
+                pc(gloveDk); px(bx - 6, shoulder - 3, 8, 2); px(bx + bw - 2, shoulder - 3, 8, 2);
+            } else {
+                pc(shirt); px(bx - 4, shoulder + 3, 6, 8); px(bx + bw - 2, shoulder + 3, 6, 8);
+                pc(glove); px(bx - 6, shoulder + 10, 8, 7); px(bx + bw - 2, shoulder + 10, 8, 7);
+                pc(gloveDk); px(bx - 6, shoulder + 15, 8, 2); px(bx + bw - 2, shoulder + 15, 8, 2);
+            }
+
+            // ---------------- LEGS / BOOTS (the ONLY per-frame difference) ----
+            // Feet bottom is ALWAYS at H-1 — legs never change the silhouette's
+            // vertical extent. Frames differ only by horizontal stride + a tiny
+            // boot-sole angle, so walking reads without any vertical bounce.
+            var legTopY = hipY;
+            var legW = 10, legH = H - legTopY;
+            // stride offsets per frame (native px, horizontal only)
+            var lDx = 0, rDx = 0, lToe = 0, rToe = 0;
+            if (frame === 'walk0') { lDx = -4; rDx = 1; lToe = 3; }
+            else if (frame === 'walk2') { lDx = -1; rDx = 4; rToe = 3; }
+            else if (frame === 'walk1' || frame === 'walk3') { lDx = -2; rDx = 2; }
+            else if (frame === 'jump') { lDx = -3; rDx = 3; }   // legs apart in air
+            // left leg
+            pc(ov); px(cx - 11 + lDx, legTopY, legW, 4);                 // upper (overall) leg
+            pc(boot); px(cx - 11 + lDx, legTopY + 4, legW, legH - 4);    // boot
+            pc(bootHi); px(cx - 11 + lDx, legTopY + 4, legW, 1);
+            pc(bootDk); px(cx - 13 + lDx - lToe, H - 4, legW + 3 + lToe, 4); // sole/toe (points fwd on stride)
+            // right leg
+            pc(ov); px(cx + 1 + rDx, legTopY, legW, 4);
+            pc(boot); px(cx + 1 + rDx, legTopY + 4, legW, legH - 4);
+            pc(bootHi); px(cx + 1 + rDx, legTopY + 4, legW, 1);
+            pc(bootDk); px(cx + rDx, H - 4, legW + 3 + rToe, 4);
+        }
+
+        // Build (or fetch) the frozen frame-set for a colour combo. Each frame is
+        // its own cached offscreen rec keyed in spriteCache, so blit() reuses the
+        // crisp drawImage path. Big Mario uses a taller box (more torso), small a
+        // shorter one — the head is the same either way.
+        function getMarioSheet(big, capCol, shirt, overall) {
+            var key = 'M|' + (big ? 'B' : 's') + '|' + capCol + '|' + shirt + '|' + overall;
+            var sheet = marioSheets[key];
+            if (sheet) return sheet;
+            sheet = {};
+            var vh = (big ? 26 : 18);               // on-screen virtual height of the sprite
+            for (var i = 0; i < MARIO_FRAMES.length; i++) {
+                (function (frame) {
+                    sheet[frame] = getSprite(key + '|' + frame, P_VW, vh, function (Wn, Hn) {
+                        paintMarioFrame(Wn, Hn, { cap: capCol, shirt: shirt, overall: overall }, frame);
+                    });
+                })(MARIO_FRAMES[i]);
+            }
+            marioSheets[key] = sheet;
+            return sheet;
         }
 
         function drawPlayer() {
             if (player.invuln > 0 && Math.floor(player.invuln / 4) % 2 === 0) return;
             var face = player.face;
             var star = player.star > 0;
-            // animation state
             var moving = Math.abs(player.vx) > 0.3 && player.onGround;
             var airborne = !player.onGround;
-            var walkPhase = moving ? Math.floor(animT / 5) % 4 : 0;      // 4-frame walk
-            var bob = moving ? (walkPhase === 1 || walkPhase === 3 ? -1 : 0) : 0; // body bob
-            var idleBreath = (!moving && !airborne) ? (Math.floor(animT / 24) % 2) : 0;
-            var sy = Math.round(player.y) + bob;
-            var sx = Math.round(player.x - camX);
+            var big = player.h > 14;
+            // Pick a FROZEN frame name (animation = frame swap only, no geometry
+            // change). Slower cadence (animT/7) → calmer, more readable stride.
+            var frameName;
+            if (airborne) frameName = 'jump';
+            else if (moving) frameName = MARIO_FRAMES[1 + (Math.floor(animT / 7) % 3)]; // walk0/1/2
+            else frameName = 'idle';
 
-            var capCol = star ? (Math.floor(player.star / 4) % 2 ? '#fac000' : '#fff') : '#e52521';
-            var capDark = star ? '#caa000' : '#b81b18';
-            var shirt  = player.fire ? '#ffffff' : capCol;
-            var shirtDk= player.fire ? '#d9d9d9' : capDark;
-            var overall= player.fire ? '#e52521' : '#2452c8';
-            var overHi = player.fire ? '#ff6a64' : '#3a72ee';
-            var skin = '#ffce9e', skinHi = '#ffe4c4', hair = '#5a2d12', boot = '#6a3a14';
-            var w = player.w, h = player.h;
+            // on-screen anchor: feet locked to the ground tile so the body never
+            // jitters vertically. The baked frame's feet sit at its own bottom
+            // edge, so we anchor by the sprite-box bottom = feet line.
+            var vh = (big ? 26 : 18);                      // matches getMarioSheet
+            var P_VH = vh;
 
-            // running dust puffs behind the feet
-            if (moving && walkPhase % 2 === 0) {
-                ctx.fillStyle = 'rgba(255,255,255,0.55)';
-                var dustX = sx + (face > 0 ? -2 : w - 1);
-                ctx.fillRect(dustX, Math.round(player.y) + h - 3, 3, 2);
-            }
-
-            ctx.save();
-            if (face < 0) { ctx.translate(sx + w, sy); ctx.scale(-1, 1); _ox = 0; _oy = 0; }
-            else { _ox = sx; _oy = sy; }
-            var W2 = w * 2, H2 = h * 2;
-
-            // --- CAP ---
-            spc(capCol);
-            sp(3, 0, W2 - 6, 3); sp(2, 3, W2 - 2, 3); sp(W2 - 4, 4, 7, 3); // dome + base + brim
-            spc(capDark); sp(3, 0, W2 - 6, 1); sp(W2 - 4, 6, 7, 1);
-            // --- FACE ---
-            spc(skin);  sp(4, 6, W2 - 6, 8);
-            spc(skinHi);sp(5, 6, 3, 2);
-            spc(hair);  sp(2, 7, 3, 5);                       // sideburn
-            spc('#000');sp(W2 - 9, 8, 2, idleBreath ? 1 : 3); // eye (blinks on idle)
-            spc(hair);  sp(W2 - 6, 9, 5, 2);                  // mustache
-            spc(skin);  sp(W2 - 5, 6, 3, 3);                  // nose
-            // --- TORSO ---
-            spc(shirt); sp(1, 14, W2 - 2, 6);
-            spc(shirtDk); sp(1, 18, W2 - 2, 1);
-            spc(overall);
-            sp(3, 18, W2 - 6, H2 - 24);
-            sp(2, 16, 3, H2 - 22); sp(W2 - 5, 16, 3, H2 - 22); // straps
-            spc(overHi); sp(3, 18, W2 - 6, 1);
-            spc('#f7c800'); sp(W2 - 9, 20, 2, 2); sp(6, 20, 2, 2); // buttons
-            // --- ARM (raises on jump / fire) ---
-            spc(skin);
-            if (airborne || player.fireCd > 14) { sp(W2 - 2, 9, 4, 5); spc(skinHi); sp(W2 - 2, 9, 4, 1); }
-            else { sp(W2 - 3, 15, 4, 5); spc(skinHi); sp(W2 - 3, 15, 4, 1); }
-            // --- LEGS / BOOTS (pose by state) ---
-            spc(boot);
-            if (airborne) {
-                // tucked legs
-                sp(2, H2 - 6, 7, 6); sp(W2 - 9, H2 - 8, 7, 6);
-            } else if (moving) {
-                // walk cycle: legs swing opposite
-                if (walkPhase === 0) { sp(1, H2 - 7, 6, 7); sp(W2 - 8, H2 - 5, 6, 5); }
-                else if (walkPhase === 1) { sp(3, H2 - 6, 6, 6); sp(W2 - 9, H2 - 6, 6, 6); }
-                else if (walkPhase === 2) { sp(W2 - 8, H2 - 7, 6, 7); sp(1, H2 - 5, 6, 5); }
-                else { sp(3, H2 - 6, 6, 6); sp(W2 - 9, H2 - 6, 6, 6); }
+            // Y anchor: while resting/settling on ground, snap feet to the tile
+            // top (constant every frame → zero shimmer). Airborne uses the live
+            // y for a smooth arc. (Physics/hitboxes untouched — render only.)
+            var feetCol = Math.floor((player.x + player.w / 2) / TILE);
+            var feetRow = Math.floor((player.y + player.h) / TILE);
+            var restingOnGround = player.vy >= 0 && player.vy <= GRAV * 1.2 &&
+                                  (solidAt(feetCol, feetRow) || solidAt(feetCol, feetRow + 1));
+            var feetWorldY;
+            if (restingOnGround) {
+                var groundTopY = feetRow * TILE;
+                if (!solidAt(feetCol, feetRow)) groundTopY = (feetRow + 1) * TILE;
+                feetWorldY = groundTopY;                   // exact tile surface
             } else {
-                sp(1, H2 - 6, 6, 6); sp(W2 - 7, H2 - 6, 6, 6);
+                feetWorldY = player.y + player.h;          // live feet line
             }
-            spc('#3a2010'); sp(1, H2 - 2, W2 - 2, 2); // soles
-            ctx.restore();
-            _ox = 0; _oy = 0;
+            // sprite box top so its BOTTOM aligns with the feet line
+            var sx = Math.round(player.x - camX - (P_VW - player.w) / 2);
+            var sy = Math.round(feetWorldY - P_VH);
+
+            // colours for this frame (recolour → its own baked sheet)
+            var capCol = star ? (Math.floor(player.star / 4) % 2 ? '#fac000' : '#fff') : '#e52521';
+            var shirt = player.fire ? '#ffffff' : capCol;
+            var overall = player.fire ? '#e52521' : '#2452c8';
+
+            var sheet = getMarioSheet(big, capCol, shirt, overall);
+            var rec = sheet[frameName] || sheet.idle;
+
+            // contact shadow + running dust — keyed to the same locked feet line.
+            var footScreenY = sy + P_VH;
+            if (moving && Math.floor(animT / 7) % 2 === 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                var dustX = Math.round(player.x - camX) + (face > 0 ? -2 : player.w - 1);
+                ctx.fillRect(dustX, footScreenY - 3, 3, 2);
+            }
+            if (!airborne) {
+                ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                ctx.beginPath(); ctx.ellipse(Math.round(player.x - camX) + player.w / 2, footScreenY - 1, player.w * 0.62, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+            }
+            blit(rec, sx, sy, face < 0);
         }
 
         function drawEnemy(e) {
@@ -1760,48 +2149,69 @@
             var W2 = e.w * 2, H2 = e.h * 2, walk = Math.floor(e.t) % 2;
 
             if (e.kind === 'goomba') {
-                spc('#8a4f24'); sp(2, 2, W2 - 4, H2 - 6);            // head dome (rounded via insets)
-                spc('#9a5a2a'); sp(0, 5, W2, H2 - 9);               // head mid
-                spc('#a8642f'); sp(1, 3, W2 - 2, 2);                // top sheen
-                spc('#f3d6a8'); sp(4, 14, W2 - 8, 5);               // muzzle
+                // rounder mushroom head with rim shading, brows, fangs, shuffling feet
+                spc('#6f3d18'); sp(1, 1, W2 - 2, H2 - 5);            // dark rim
+                spc('#8a4f24'); sp(2, 2, W2 - 4, H2 - 7);            // head dome
+                spc('#9a5a2a'); sp(0, 6, W2, H2 - 10);              // head mid band
+                spc('#ad6a32'); sp(2, 3, W2 - 6, 2);                // top sheen
                 var blink = Math.floor(animT / 40) % 8 === 0;       // occasional blink
-                spc('#fff');    sp(5, 8, 4, 4); sp(W2 - 9, 8, 4, 4); // eye whites
-                spc('#000');    sp(7, 9, 2, blink ? 1 : 3); sp(W2 - 9, 9, 2, blink ? 1 : 3); // pupils
-                spc('#000');    sp(5, 7, 4, 2); sp(W2 - 9, 7, 4, 2); // angry brows
-                spc('#5a3216'); sp(walk ? 0 : 3, H2 - 4, 7, 4); sp(W2 - (walk ? 7 : 10), H2 - 4, 7, 4); // feet
+                spc('#f3d6a8'); sp(4, 13, W2 - 8, 6);               // pale muzzle
+                spc('#e8c089'); sp(4, 17, W2 - 8, 2);              // muzzle shade
+                spc('#000');    sp(5, 7, 5, 2); sp(W2 - 10, 7, 5, 2); // angry brows (slanted via offset)
+                spc('#fff');    sp(5, 9, 4, 4); sp(W2 - 9, 9, 4, 4); // eye whites
+                spc('#000');    sp(6, 10, 2, blink ? 1 : 3); sp(W2 - 8, 10, 2, blink ? 1 : 3); // pupils
+                spc('#fff');    sp(6, 15, 2, 2); sp(W2 - 8, 15, 2, 2); // little fangs
+                spc('#4a2a10'); sp(walk ? 0 : 3, H2 - 4, 8, 4); sp(W2 - (walk ? 8 : 11), H2 - 4, 8, 4); // feet
+                spc('#5a3216'); sp(walk ? 0 : 3, H2 - 4, 8, 1); sp(W2 - (walk ? 8 : 11), H2 - 4, 8, 1); // feet top edge
             } else if (e.kind === 'koopa') {
-                // body + head poke out the front
-                spc('#ffce9e'); sp(W2 - 7, 1, 6, 7);               // head
-                spc('#000');    sp(W2 - 4, 3, 2, 2);               // eye
-                spc('#f7b000'); sp(W2 - 8, 0, 3, 2);               // beak hint
-                spc('#2f8a33'); sp(2, 6, W2 - 4, H2 - 12);         // shell back
-                spc('#43b047'); sp(3, 7, W2 - 6, H2 - 14);         // shell mid
-                spc('#7bd47e'); sp(5, 9, W2 - 10, 3);              // shell highlight
-                spc('#175a1c'); sp(3, 7, W2 - 6, 1);               // shell rim
+                // upright koopa: head pokes forward, domed turtle shell + scutes, feet shuffle
+                spc('#ffce9e'); sp(W2 - 9, 0, 8, 9);               // head
+                spc('#e8a877'); sp(W2 - 9, 7, 8, 2);              // jaw shade
+                spc('#fff');    sp(W2 - 6, 2, 3, 3); spc('#000'); sp(W2 - 5, 3, 2, 2); // eye
+                spc('#f7b000'); sp(W2 - 10, 4, 3, 3);             // beak
+                spc('#d99000'); sp(W2 - 10, 6, 3, 1);
+                spc('#175a1c'); sp(1, 5, W2 - 3, H2 - 10);        // shell dark rim
+                spc('#2f8a33'); sp(2, 6, W2 - 5, H2 - 12);        // shell back
+                spc('#43b047'); sp(3, 7, W2 - 7, H2 - 14);        // shell mid
+                spc('#7bd47e'); sp(5, 8, W2 - 11, 3);             // shell top highlight
+                spc('#175a1c');                                    // scute seams (hexagon hint)
+                sp(W2 / 2 - 1, 7, 1, H2 - 14); sp(4, H2 / 2, W2 - 8, 1);
+                spc('#fff7d0'); sp(2, 6, W2 - 5, 1);              // rim lip
                 spc('#ffce9e'); sp(walk ? 1 : 3, H2 - 5, 5, 5); sp(W2 - (walk ? 6 : 8), H2 - 5, 5, 5); // feet
+                spc('#e8a877'); sp(walk ? 1 : 3, H2 - 2, 5, 2); sp(W2 - (walk ? 6 : 8), H2 - 2, 5, 2); // foot shade
             } else if (e.kind === 'spiny') {
-                // shell
-                spc('#e8861f'); sp(0, 6, W2, H2 - 6);
-                spc('#ffae45'); sp(2, 8, W2 - 4, 4);               // shell highlight
-                spc('#a8560c'); sp(0, H2 - 4, W2, 4);              // shell shade
-                // spikes (triangles for clarity)
-                spc('#f4f4fa');
-                for (var s2 = 0; s2 < 4; s2++) {
-                    var bx2 = _ox + (2 + s2 * 4) * 0.5, by2 = _oy + 6 * 0.5;
-                    ctx.beginPath(); ctx.moveTo(bx2, by2); ctx.lineTo(bx2 + 2, by2 - 4); ctx.lineTo(bx2 + 4, by2); ctx.closePath(); ctx.fill();
+                // red domed shell with bone-white spikes, beady eyes, little feet
+                spc('#a8560c'); sp(0, 7, W2, H2 - 7);              // shell base/shade
+                spc('#e8861f'); sp(1, 6, W2 - 2, H2 - 8);          // shell body
+                spc('#ffae45'); sp(2, 7, W2 - 4, 4);               // shell highlight
+                spc('#ffd089'); sp(3, 8, W2 - 8, 1);              // sheen line
+                spc('#7a3c06'); sp(2, 11, 2, 2); sp(W2 - 4, 11, 2, 2); sp(W2 / 2 - 1, 12, 2, 2); // shell spots
+                // spikes (bone-white triangles with a grey base)
+                spc('#cfcfe0');
+                for (var s2 = 0; s2 < 5; s2++) {
+                    var bx2 = _ox + (1 + s2 * 3.6) * 0.5, by2 = _oy + 7 * 0.5;
+                    ctx.beginPath(); ctx.moveTo(bx2, by2); ctx.lineTo(bx2 + 1.8, by2 - 5); ctx.lineTo(bx2 + 3.6, by2); ctx.closePath(); ctx.fill();
                 }
-                spc('#fff'); sp(4, 12, 4, 3); sp(W2 - 8, 12, 4, 3); // eye whites
-                spc('#000'); sp(6, 13, 2, 2); sp(W2 - 7, 13, 2, 2); // pupils
+                spc('#fff'); sp(4, 13, 4, 3); sp(W2 - 8, 13, 4, 3); // eye whites
+                spc('#000'); sp(6, 14, 2, 2); sp(W2 - 7, 14, 2, 2); // pupils
+                spc('#000'); sp(4, 12, 4, 1); sp(W2 - 8, 12, 4, 1); // angry brow
+                spc('#c86a14'); sp(2, H2 - 3, 4, 3); sp(W2 - 6, H2 - 3, 4, 3); // feet
             } else if (e.kind === 'piranha') {
                 var chomp = Math.floor(animT / 16) % 2; // mouth open/close
-                spc('#1f7a2a'); sp(W2 / 2 - 3, H2 - 8, 6, 8);      // stem
-                spc('#2a9a38'); sp(W2 / 2 - 3, H2 - 8, 2, 8);      // stem highlight
-                spc('#e52521'); sp(1, 1, W2 - 2, H2 - 8);          // head
-                spc('#ff5a55'); sp(2, 2, W2 - 4, 3);              // top sheen
-                spc('#b81b18'); sp(1, H2 - 11 + (chomp ? 1 : 0), W2 - 2, 2); // lip
-                spc('#fff');    sp(2, 4, W2 - 4, 3);              // teeth (upper)
-                spc('#fff');    sp(2, 8 + (chomp ? 2 : 0), W2 - 4, 2); // teeth (lower; gap chomps)
-                spc('#fff');    sp(3, 1, 3, 3); sp(W2 - 6, 1, 3, 3); // spots
+                // green stem with leaves
+                spc('#1f7a2a'); sp(W2 / 2 - 3, H2 - 9, 6, 9);      // stem
+                spc('#2a9a38'); sp(W2 / 2 - 3, H2 - 9, 2, 9);      // stem highlight
+                spc('#43b047'); sp(W2 / 2 - 7, H2 - 6, 4, 2); sp(W2 / 2 + 3, H2 - 5, 4, 2); // leaves
+                // red bulb head with spots
+                spc('#b81b18'); sp(1, 1, W2 - 2, H2 - 9);          // head dark
+                spc('#e52521'); sp(2, 1, W2 - 4, H2 - 10);         // head
+                spc('#ff6a55'); sp(2, 2, W2 - 6, 3);              // top sheen
+                spc('#fff'); sp(3, 1, 3, 3); sp(W2 - 6, 4, 3, 3); sp(5, 7, 2, 2); // white spots
+                // gaping mouth with lips + teeth (gap widens on chomp)
+                var mY = H2 - 11 + (chomp ? 2 : 0);
+                spc('#7a0e0c'); sp(2, mY, W2 - 4, 3 + (chomp ? 2 : 0)); // mouth interior
+                spc('#fff'); sp(2, mY - 1, W2 - 4, 2);            // upper teeth
+                spc('#fff'); sp(2, mY + 2 + (chomp ? 2 : 0), W2 - 4, 2); // lower teeth
             }
             _ox = 0; _oy = 0;
         }
@@ -1832,19 +2242,26 @@
             // head
             spc(flash ? '#fff' : '#e0a040'); sp(W2 - 22, 0, 20, 16);
             spc(flash ? '#fff' : '#f0b85a'); sp(W2 - 20, 2, 16, 5); // brow highlight
-            // snout
+            // snout + fanged mouth (chomps with the walk cycle)
             spc(flash ? '#fff' : '#caa24a'); sp(W2 - 8, 8, 8, 7);
-            spc('#000'); sp(W2 - 6, 10, 2, 2); sp(W2 - 6, 13, 2, 2); // nostrils
-            // eye (angry)
+            spc('#000'); sp(W2 - 6, 9, 2, 2); sp(W2 - 6, 12, 2, 2); // nostrils
+            var chomp = Math.floor(b.t / 14) % 2;
+            spc('#5a0a08'); sp(W2 - 9, 14 + (chomp ? 1 : 0), 9, 3);  // mouth
+            spc('#fff'); sp(W2 - 9, 14 + (chomp ? 1 : 0), 9, 1);     // teeth
+            // eye (angry) + heavy brow
             spc('#fff'); sp(W2 - 16, 4, 6, 5);
             spc('#000'); sp(W2 - 13, 5, 3, 3);
-            spc(flash ? '#fff' : '#b87a1f'); sp(W2 - 17, 2, 7, 2); // brow
-            // horns (curved up)
+            spc('#fff'); sp(W2 - 13, 5, 1, 1);                       // eye glint
+            spc(flash ? '#fff' : '#7a4e12'); sp(W2 - 18, 2, 9, 2);  // brow ridge
+            // horns (curved up, with dark base)
+            spc(flash ? '#fff' : '#9a9a9a'); sp(W2 - 22, -4, 3, 4); sp(W2 - 10, -4, 3, 4); // horn bases
             spc('#fdfdff');
             sp(W2 - 22, -6, 3, 7); sp(W2 - 23, -8, 4, 3);
             sp(W2 - 10, -6, 3, 7); sp(W2 - 9, -8, 4, 3);
-            // feet
+            // clawed feet
             spc(flash ? '#fff' : '#2a6a2a'); sp(2, H2 - 6, 9, 6); sp(W2 - 11, H2 - 6, 9, 6);
+            spc('#fdfdff'); sp(3, H2 - 2, 1, 2); sp(6, H2 - 2, 1, 2); sp(9, H2 - 2, 1, 2);   // toe claws L
+            sp(W2 - 10, H2 - 2, 1, 2); sp(W2 - 7, H2 - 2, 1, 2); sp(W2 - 4, H2 - 2, 1, 2);    // toe claws R
             ctx.restore();
             _ox = 0; _oy = 0;
 
@@ -1868,7 +2285,8 @@
             ctx.save();
             ctx.translate(0, -camY);
 
-            drawScenery();  // hills anchored to the ground (world space)
+            drawBackdrop(); // far parallax layer: mountains/atmosphere (world space)
+            drawScenery();  // mid hills anchored to the ground (world space)
             drawDecor();    // biome-specific environment decorations (bushes, cacti, bubbles…)
 
             var c0 = Math.floor(camX / TILE), c1 = c0 + COLS_VIS + 1;
@@ -1926,9 +2344,35 @@
             }
             for (var p = 0; p < W.powerups.length; p++) {
                 var pu = W.powerups[p]; var px = Math.round(pu.x - camX), py = Math.round(pu.y);
-                if (pu.kind === 'mushroom') { ctx.fillStyle = '#e52521'; ctx.fillRect(px, py, pu.w, 7); ctx.fillStyle = '#fff'; ctx.fillRect(px + 2, py + 1, 3, 3); ctx.fillRect(px + 8, py + 2, 3, 3); ctx.fillStyle = '#ffd9a0'; ctx.fillRect(px + 2, py + 7, pu.w - 4, 6); }
-                else if (pu.kind === 'flower') { ctx.fillStyle = '#fac000'; ctx.fillRect(px + 3, py, 7, 7); ctx.fillStyle = '#e52521'; ctx.fillRect(px + 5, py + 2, 3, 3); ctx.fillStyle = '#43b047'; ctx.fillRect(px + 5, py + 7, 3, 6); }
-                else { var bl = Math.floor(pu.t / 4) % 2; ctx.fillStyle = bl ? '#fac000' : '#fff'; ctx.fillRect(px + 3, py, 7, 13); ctx.fillStyle = '#000'; ctx.fillRect(px + 4, py + 4, 1, 1); ctx.fillRect(px + 8, py + 4, 1, 1); }
+                if (pu.kind === 'mushroom') {
+                    // domed red cap with white spots, shaded stem + eyes
+                    ctx.fillStyle = '#c81818'; ctx.fillRect(px + 1, py, pu.w - 2, 7);              // cap base
+                    ctx.fillStyle = '#e52521'; ctx.fillRect(px + 1, py + 1, pu.w - 2, 5);          // cap mid
+                    ctx.fillStyle = '#ff6a55'; ctx.fillRect(px + 2, py + 1, 4, 1);                 // cap sheen
+                    ctx.fillStyle = '#fff'; ctx.fillRect(px + 2, py + 2, 3, 3); ctx.fillRect(px + 8, py + 3, 3, 3); ctx.fillRect(px + 6, py + 1, 2, 2); // spots
+                    ctx.fillStyle = '#ffd9a0'; ctx.fillRect(px + 2, py + 7, pu.w - 4, 6);          // stem
+                    ctx.fillStyle = '#e0b079'; ctx.fillRect(px + pu.w - 4, py + 7, 2, 6);          // stem shade
+                    ctx.fillStyle = '#000'; ctx.fillRect(px + 4, py + 9, 1, 2); ctx.fillRect(px + 8, py + 9, 1, 2); // eyes
+                } else if (pu.kind === 'flower') {
+                    // fire-flower: 4 petals + glowing centre + green stem/leaf
+                    var fp = Math.floor(pu.t / 6) % 2;
+                    ctx.fillStyle = '#43b047'; ctx.fillRect(px + 6, py + 6, 2, 7);                 // stem
+                    ctx.fillStyle = '#2f8a33'; ctx.fillRect(px + 3, py + 9, 4, 2);                 // leaf
+                    ctx.fillStyle = fp ? '#ff8a1e' : '#ffd84a'; ctx.fillRect(px + 4, py, 6, 2); ctx.fillRect(px + 2, py + 2, 10, 4); ctx.fillRect(px + 4, py + 6, 6, 1); // petals
+                    ctx.fillStyle = '#fff'; ctx.fillRect(px + 6, py + 3, 2, 2);                    // hot centre
+                    ctx.fillStyle = '#e52521'; ctx.fillRect(px + 6, py + 3, 1, 1);
+                } else {
+                    // STAR: a 5-point sprite (drawn via rays) that flashes + 2 eyes
+                    var bl = Math.floor(pu.t / 4) % 2;
+                    var col = bl ? '#ffe24a' : '#fff7a8';
+                    ctx.fillStyle = col;
+                    ctx.fillRect(px + 5, py, 3, 13);             // vertical
+                    ctx.fillRect(px, py + 5, 13, 3);             // horizontal
+                    ctx.fillRect(px + 2, py + 2, 9, 9);          // body
+                    ctx.fillStyle = bl ? '#ffb800' : '#ffd84a'; // point shading
+                    ctx.fillRect(px + 3, py + 10, 3, 3); ctx.fillRect(px + 7, py + 10, 3, 3); // legs
+                    ctx.fillStyle = '#000'; ctx.fillRect(px + 4, py + 5, 1, 2); ctx.fillRect(px + 8, py + 5, 1, 2); // eyes
+                }
             }
             for (var e = 0; e < W.enemies.length; e++) {
                 var en = W.enemies[e];
@@ -1940,7 +2384,7 @@
             for (var f = 0; f < W.fireballs.length; f++) { var fb = W.fireballs[f]; ctx.fillRect(Math.round(fb.x - camX), Math.round(fb.y), 5, 5); }
             for (var pa = 0; pa < W.particles.length; pa++) { var ptl = W.particles[pa]; ctx.fillStyle = ptl.color; ctx.fillRect(Math.round(ptl.x - camX), Math.round(ptl.y), 3, 3); }
 
-            drawFlag();
+            if (W.isBoss) drawPrison(); else drawFlag();
             drawPrincess();
             drawPlayer();
 
@@ -1954,53 +2398,262 @@
             ctx.globalAlpha = 1;
 
             ctx.restore(); // end world translate
+
+            // FULL-SCREEN CELEBRATION FLASH (screen space, over everything).
+            // A bright wash that fades out + an expanding shock ring → the "wah"
+            // moment when the princess is saved / all info collected.
+            if (flash.t > 0) {
+                var fr = flash.t / flash.max;             // 1 → 0
+                ctx.fillStyle = flash.col;
+                ctx.globalAlpha = Math.min(0.85, fr * 0.9);
+                ctx.fillRect(0, 0, VW, VH);
+                // expanding white ring from centre
+                ctx.globalAlpha = Math.min(0.6, fr);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                var rad = (1 - fr) * (VW * 0.7);
+                ctx.beginPath(); ctx.arc(VW / 2, VH / 2, rad, 0, Math.PI * 2); ctx.stroke();
+                ctx.globalAlpha = 1; ctx.lineWidth = 1;
+                flash.t--;
+            }
         }
 
-        // Captured/rescued princess near the final goal. Waves once rescued.
+        // Paint a detailed princess (Peach) into the offscreen ctx at native res.
+        // Native grid is W wide; crown occupies the top rows, gown flares to the
+        // bottom. Whole-pixel rects only → crisp when blitted.
+        var PR_VW = 16, PR_VH = 22;   // visual sprite size (crown + flared gown)
+        function paintPrincess(W, H, o) {
+            var cx = W / 2;
+            var hairC = '#f4cf5a', hairHi = '#ffe79a', hairDk = '#caa030';
+            var skin = '#ffd9b8', skinDk = '#e8b48f', gown = '#ff7ab6', gownHi = '#ffb4d6', gownDk = '#dd4f8c';
+            var headTop = 8;           // native y where the head starts (room for crown)
+            // crown
+            pc('#ffd84a'); px(cx - 8, headTop - 5, 16, 4);
+            px(cx - 8, headTop - 9, 4, 4); px(cx - 2, headTop - 11, 4, 5); px(cx + 4, headTop - 9, 4, 4);
+            pc('#fff3b0'); px(cx - 8, headTop - 5, 16, 1);
+            pc('#ff5a55'); px(cx - 1, headTop - 8, 3, 3);                 // ruby
+            pc('#5ab4ff'); px(cx - 7, headTop - 4, 2, 2); px(cx + 5, headTop - 4, 2, 2); // sapphires
+            // hair (behind + sides)
+            pc(hairDk); px(cx - 11, headTop, 4, 22); px(cx + 7, headTop, 4, 22);
+            pc(hairC); px(cx - 9, headTop - 1, 18, 9); px(cx - 11, headTop + 2, 3, 18); px(cx + 8, headTop + 2, 3, 18);
+            pc(hairHi); px(cx - 7, headTop, 7, 2);
+            // face
+            pc(skin); px(cx - 7, headTop + 6, 14, 9);
+            pc(skinDk); px(cx - 7, headTop + 13, 14, 2);
+            pc('#3a6ad6'); px(cx - 4, headTop + 9, 2, 3); px(cx + 3, headTop + 9, 2, 3); // eyes
+            pc('#fff'); px(cx - 4, headTop + 9, 1, 1); px(cx + 3, headTop + 9, 1, 1);
+            pc('#ff9ec4'); px(cx - 6, headTop + 11, 2, 2); px(cx + 5, headTop + 11, 2, 2); // blush
+            pc('#e0508f'); px(cx - 2, headTop + 13, 5, 1);               // lips
+            // gown (flared trapezoid) with side shading + jewel collar + hem
+            var gTop = headTop + 16, gBot = H - 2;
+            pc(gown);
+            for (var yy = gTop; yy < gBot; yy++) {
+                var t = (yy - gTop) / (gBot - gTop);
+                var halfw = 5 + t * 11;     // flares from 10px to 32px wide
+                px(cx - halfw, yy, halfw * 2, 1);
+            }
+            pc(gownHi); for (var y2 = gTop; y2 < gBot; y2++) { var t2 = (y2 - gTop) / (gBot - gTop); px(cx - (5 + t2 * 11), y2, 3, 1); }
+            pc(gownDk); for (var y3 = gTop; y3 < gBot; y3++) { var t3 = (y3 - gTop) / (gBot - gTop); px(cx + (5 + t3 * 11) - 3, y3, 3, 1); }
+            pc('#ffd84a'); px(cx - 6, gTop, 12, 2);                      // jewel collar
+            pc('#5ab4ff'); px(cx - 1, gTop, 2, 2);
+            pc('#fff'); px(cx - (5 + 11) , gBot - 2, (5 + 11) * 2, 2);   // hem
+            // gloved arms (pose)
+            pc('#fff');
+            if (o.wave) { px(cx + 7, gTop - 4, 5, 4); px(cx + 10, gTop - 9, 4, 6); }
+            else { px(cx + 7, gTop + 2, 5, 6); }
+            px(cx - 12, gTop + 2, 5, 6);                                 // resting hand
+        }
+
+        // Cave-prison cell at the boss-stage goal (item 4). A stone alcove with
+        // vertical iron bars; the bars swing OPEN once the princess is rescued.
+        // Purely cosmetic (no collision) — reaching prisonX is the goal.
+        function drawPrison() {
+            if (!W.prisonX) return;
+            var pr = W.princess;
+            var px0 = Math.round(W.prisonX - camX);
+            if (px0 < -80 || px0 > VW + 60) return;
+            var floorY = GROUND_R * TILE;
+            var cellW = 52, cellH = 56, cellTop = floorY - cellH;
+            // dark cave recess behind the cell
+            ctx.fillStyle = '#1a1322'; ctx.fillRect(px0 - 6, cellTop - 6, cellW + 12, cellH + 6);
+            ctx.fillStyle = '#0d0a14'; ctx.fillRect(px0, cellTop, cellW, cellH);
+            // stone frame
+            ctx.fillStyle = '#6a6a78'; ctx.fillRect(px0 - 6, cellTop - 6, cellW + 12, 6);          // lintel
+            ctx.fillStyle = '#4a4a58'; ctx.fillRect(px0 - 6, cellTop - 6, 6, cellH + 6); ctx.fillRect(px0 + cellW, cellTop - 6, 6, cellH + 6); // posts
+            ctx.fillStyle = '#7a7a88';
+            for (var by = cellTop - 6; by < floorY; by += 8) { ctx.fillRect(px0 - 6, by, 6, 2); ctx.fillRect(px0 + cellW, by, 6, 2); } // brick seams on posts
+            // iron bars — vertical, swing apart when rescued
+            var swing = (pr && pr.rescued) ? 18 : 0;   // bars hinged outward when freed
+            ctx.fillStyle = '#9aa0ab';
+            for (var i = 0; i < 5; i++) {
+                var bx = px0 + 6 + i * 10;
+                // left half swings left, right half swings right when open
+                if (swing && i < 2) bx -= swing;
+                else if (swing && i > 2) bx += swing;
+                else if (swing && i === 2) continue;   // centre bar removed (door gap)
+                ctx.fillRect(bx, cellTop, 3, cellH);
+                ctx.fillStyle = '#c4c8d0'; ctx.fillRect(bx, cellTop, 1, cellH); ctx.fillStyle = '#9aa0ab';
+            }
+            // horizontal bar bands
+            ctx.fillStyle = '#7a808b';
+            ctx.fillRect(px0 + 4, cellTop + 8, cellW - 8, 3); ctx.fillRect(px0 + 4, cellTop + cellH - 14, cellW - 8, 3);
+            // a torch on each side of the cell for cave mood
+            var fl = 1 + Math.sin(animT * 0.3) * 0.6;
+            [px0 - 14, px0 + cellW + 8].forEach(function (tx) {
+                ctx.fillStyle = '#2a2020'; ctx.fillRect(tx, cellTop + 10, 4, 12);
+                ctx.fillStyle = '#ff8a1e'; ctx.beginPath(); ctx.arc(tx + 2, cellTop + 8, 4 + fl, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(tx + 2, cellTop + 7, 2 + fl * 0.5, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
         function drawPrincess() {
             var pr = W.princess; if (!pr) return;
             pr.t++;
-            var sx = Math.round(pr.x - camX), sy = Math.round(pr.y);
-            if (sx < -20 || sx > VW + 20) return;
+            // When freed, the princess walks LEFT out of the cell toward Mario,
+            // then stops a couple tiles out and waves happily.
+            if (pr.freed && pr.x > W.prisonX - TILE * 2) { pr.x -= 0.6; }
             var bob = pr.rescued ? Math.round(Math.sin(pr.t * 0.18) * 2) : 0;
-            sy += bob;
-            // hair
-            ctx.fillStyle = '#f4c84a'; ctx.fillRect(sx + 1, sy, 10, 5); ctx.fillRect(sx, sy + 3, 2, 8); ctx.fillRect(sx + 10, sy + 3, 2, 8);
-            // crown
-            ctx.fillStyle = '#ffd84a'; ctx.fillRect(sx + 2, sy - 3, 8, 2); ctx.fillRect(sx + 2, sy - 5, 2, 2); ctx.fillRect(sx + 5, sy - 6, 2, 3); ctx.fillRect(sx + 8, sy - 5, 2, 2);
-            ctx.fillStyle = '#ff5a55'; ctx.fillRect(sx + 5, sy - 5, 2, 2); // crown gem
-            // face
-            ctx.fillStyle = '#ffd9b8'; ctx.fillRect(sx + 2, sy + 4, 8, 5);
-            ctx.fillStyle = '#000'; ctx.fillRect(sx + 4, sy + 6, 1, 2); ctx.fillRect(sx + 7, sy + 6, 1, 2);
-            ctx.fillStyle = '#ff7ab6'; ctx.fillRect(sx + 4, sy + 8, 4, 1); // smile
-            // pink gown (triangular)
-            ctx.fillStyle = '#ff7ab6';
-            ctx.beginPath(); ctx.moveTo(sx + 6, sy + 9); ctx.lineTo(sx - 1, sy + pr.h); ctx.lineTo(sx + 13, sy + pr.h); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = '#ffa6d0'; ctx.fillRect(sx + 4, sy + 10, 4, pr.h - 11); // gown highlight
-            // waving arm when rescued
-            if (pr.rescued && Math.floor(pr.t / 10) % 2) { ctx.fillStyle = '#ffd9b8'; ctx.fillRect(sx + 11, sy + 6, 4, 2); ctx.fillRect(sx + 13, sy + 3, 2, 3); }
-            else { ctx.fillStyle = '#ffd9b8'; ctx.fillRect(sx + 10, sy + 10, 3, 2); }
+            // anchor: centre sprite on hitbox, bottom-aligned; crown overhangs up
+            var sx = Math.round(pr.x - camX - (PR_VW - pr.w) / 2);
+            var sy = Math.round(pr.y - (PR_VH - pr.h)) + bob;
+            if (sx < -24 || sx > VW + 24) return;
+            var wave = pr.rescued && (Math.floor(pr.t / 10) % 2 === 0);
+            var key = 'princess|' + (wave ? 'w' : 'r');
+            var rec = getSprite(key, PR_VW, PR_VH, function (Wn, Hn) { paintPrincess(Wn, Hn, { wave: wave }); });
+            // contact shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath(); ctx.ellipse(Math.round(pr.x - camX) + pr.w / 2, Math.round(pr.y) + pr.h - 1, 9, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+            blit(rec, sx, sy, false);
+        }
+
+        // ------------------------------------------------------------
+        // FAR BACKDROP — the deepest parallax layer (slowest scroll). Gives
+        // each biome a sense of vast distance: mountain ranges, dunes, sea
+        // horizon, cavern depth, castle skyline. Drawn first (behind hills) so
+        // everything else overlaps it. Cosmetic only; uses world coords under
+        // the camY translate. Wrapped modulo a wide span so it tiles forever.
+        // ------------------------------------------------------------
+        function drawBackdrop() {
+            var B = W.biome, key = W.biomeKey;
+            var horizon = GROUND_R * TILE;
+            // a soft atmospheric haze band just above the horizon (depth cue)
+            var haze = shade(B.hills, key === 'underground' || key === 'castle' || key === 'finalcastle' ? -0.35 : 0.42);
+            ctx.fillStyle = haze;
+            ctx.globalAlpha = 0.35;
+            ctx.fillRect(0, horizon - 70, VW, 70);
+            ctx.globalAlpha = 1;
+
+            // Distant mountain range (two sub-layers) for outdoor biomes; for
+            // water it's a far sea/island silhouette; sky gets towering cloud
+            // banks; underground/castle get a jagged far wall.
+            function range(spanColor, n, span, baseDrop, peak, par, jag) {
+                ctx.fillStyle = spanColor;
+                var wrap = W.worldW + span;
+                for (var i = 0; i < n; i++) {
+                    var mx = ((i * span - camX * par) % wrap); if (mx < -span) mx += wrap;
+                    var b = horizon - baseDrop;
+                    if (jag) {
+                        // jagged triangular peaks (mountains / cave wall / skyline)
+                        ctx.beginPath();
+                        ctx.moveTo(mx, b);
+                        ctx.lineTo(mx + span * 0.5, b - peak);
+                        ctx.lineTo(mx + span, b);
+                        ctx.closePath(); ctx.fill();
+                    } else {
+                        // rounded distant hills/dunes
+                        ctx.beginPath(); ctx.moveTo(mx, b); ctx.arc(mx + span / 2, b, span / 2, Math.PI, 0); ctx.closePath(); ctx.fill();
+                    }
+                }
+            }
+
+            if (key === 'overworld' || key === 'forest' || key === 'desert') {
+                // two mountain ridges, far (pale) behind near (darker)
+                var farC = shade(B.hills, key === 'desert' ? 0.3 : 0.46);
+                var nearC = shade(B.hills, key === 'desert' ? 0.12 : 0.28);
+                range(farC, 8, 220, 4, 96, 0.10, true);
+                // snow/sun caps on the far ridge
+                ctx.fillStyle = shade(farC, 0.4);
+                for (var s = 0; s < 8; s++) {
+                    var cxp = ((s * 220 - camX * 0.10) % (W.worldW + 220)); if (cxp < -220) cxp += (W.worldW + 220);
+                    var px2 = cxp + 110, py2 = horizon - 4 - 96;
+                    ctx.beginPath(); ctx.moveTo(px2 - 10, py2 + 18); ctx.lineTo(px2, py2); ctx.lineTo(px2 + 10, py2 + 18); ctx.closePath(); ctx.fill();
+                }
+                range(nearC, 9, 180, 2, 70, 0.16, true);
+            } else if (key === 'water') {
+                // far sea horizon + distant islands + sun glints
+                ctx.fillStyle = shade(B.sky[1], -0.08);
+                ctx.fillRect(0, horizon - 26, VW, 26);                 // sea band
+                var isl = shade(B.hills, 0.18);
+                range(isl, 7, 200, 0, 26, 0.12, false);                // distant islands
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                for (var g = 0; g < 14; g++) {                          // sun glints on water
+                    var gx = ((g * 60 - camX * 0.2) % VW + VW) % VW;
+                    ctx.fillRect(gx, horizon - 20 + (g % 3) * 6, 8 + (g % 4) * 4, 1);
+                }
+            } else if (key === 'sky') {
+                // towering distant cloud banks (very pale, slow)
+                ctx.fillStyle = 'rgba(255,255,255,0.55)';
+                for (var cbk = 0; cbk < 7; cbk++) {
+                    var bxp = ((cbk * 200 - camX * 0.08) % (W.worldW + 200)); if (bxp < -200) bxp += (W.worldW + 200);
+                    var byp = horizon - 30 - (cbk % 3) * 26;
+                    ctx.beginPath();
+                    ctx.arc(bxp + 30, byp, 26, 0, Math.PI * 2); ctx.arc(bxp + 64, byp + 8, 32, 0, Math.PI * 2);
+                    ctx.arc(bxp + 100, byp, 24, 0, Math.PI * 2); ctx.fill();
+                }
+            } else if (key === 'underground') {
+                // far cavern wall + dim glow pockets
+                range(shade(B.ground, 0.06), 10, 150, -10, 60, 0.12, true);
+                ctx.fillStyle = 'rgba(90,150,255,0.10)';
+                for (var gp = 0; gp < 6; gp++) {
+                    var px3 = ((gp * 240 - camX * 0.12) % VW + VW) % VW;
+                    ctx.beginPath(); ctx.arc(px3, horizon - 50, 30, 0, Math.PI * 2); ctx.fill();
+                }
+            } else if (key === 'castle' || key === 'finalcastle') {
+                // far castle skyline: battlemented wall + towers in silhouette
+                var wallC = shade(B.ground, -0.05);
+                ctx.fillStyle = wallC;
+                ctx.fillRect(0, horizon - 56, VW, 56);
+                // crenellations
+                for (var cr = 0; cr < VW; cr += 16) ctx.fillRect(cr + ((Math.floor(camX*0.1))%16) * 0 , horizon - 62, 8, 8);
+                // a couple of distant towers
+                ctx.fillStyle = shade(B.ground, -0.12);
+                for (var tw = 0; tw < 6; tw++) {
+                    var txp = ((tw * 200 - camX * 0.12) % (W.worldW + 200)); if (txp < -200) txp += (W.worldW + 200);
+                    ctx.fillRect(txp + 60, horizon - 96, 26, 96);
+                    ctx.fillRect(txp + 56, horizon - 102, 34, 8);       // tower cap
+                    ctx.fillStyle = 'rgba(255,150,40,0.5)'; ctx.fillRect(txp + 70, horizon - 80, 6, 8); // lit window
+                    ctx.fillStyle = shade(B.ground, -0.12);
+                }
+            }
         }
 
         // Hills sit on the ground (world space; drawn under the camY translate).
-        // Layered for depth + a soft highlight so they read as more than flat blobs.
+        // Now THREE layers (far/mid/near) with sun highlights + scattered detail
+        // for a much richer, deeper landscape. Cosmetic only.
         function drawScenery() {
             var B = W.biome;
             var hillBase = (GROUND_R) * TILE;
-            // back layer (darker, slower)
+            // deep layer (palest, slowest)
+            ctx.fillStyle = shade(B.hills, 0.06);
+            for (var h3 = 0; h3 < 12; h3++) {
+                var dx = ((h3 * 130 - camX * 0.20) % (W.worldW + 260)); if (dx < -260) dx += (W.worldW + 260);
+                ctx.beginPath(); ctx.moveTo(dx, hillBase); ctx.arc(dx + 54, hillBase, 54, Math.PI, 0); ctx.closePath(); ctx.fill();
+            }
+            // back layer (darker, medium)
             ctx.fillStyle = shade(B.hills, -0.18);
-            for (var h2 = 0; h2 < 10; h2++) {
-                var bx = ((h2 * 150 - camX * 0.25) % (W.worldW + 200));
+            for (var h2 = 0; h2 < 12; h2++) {
+                var bx = ((h2 * 150 - camX * 0.32) % (W.worldW + 200)); if (bx < -200) bx += (W.worldW + 200);
                 ctx.beginPath(); ctx.moveTo(bx, hillBase); ctx.arc(bx + 42, hillBase, 42, Math.PI, 0); ctx.closePath(); ctx.fill();
             }
-            // front layer
-            ctx.fillStyle = B.hills;
-            for (var h = 0; h < 8; h++) {
-                var hx = ((h * 180 - camX * 0.4) % (W.worldW));
-                ctx.beginPath(); ctx.moveTo(hx, hillBase); ctx.arc(hx + 30, hillBase, 30, Math.PI, 0); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = shade(B.hills, 0.18); // tiny sun highlight
-                ctx.beginPath(); ctx.arc(hx + 22, hillBase - 6, 8, Math.PI, 0); ctx.closePath(); ctx.fill();
+            // front layer (full colour, fastest) + sun caps + base shade line
+            for (var h = 0; h < 10; h++) {
+                var hx = ((h * 180 - camX * 0.42) % (W.worldW + 180)); if (hx < -180) hx += (W.worldW + 180);
                 ctx.fillStyle = B.hills;
+                ctx.beginPath(); ctx.moveTo(hx, hillBase); ctx.arc(hx + 30, hillBase, 30, Math.PI, 0); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = shade(B.hills, 0.2);   // sun highlight
+                ctx.beginPath(); ctx.arc(hx + 22, hillBase - 6, 9, Math.PI, 0); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = shade(B.hills, -0.16);  // shaded right flank
+                ctx.beginPath(); ctx.arc(hx + 40, hillBase - 3, 6, Math.PI, 0); ctx.closePath(); ctx.fill();
             }
         }
 
@@ -2011,106 +2664,226 @@
         function drawDecor() {
             var B = W.biome, key = W.biomeKey;
             var gy = GROUND_R * TILE;                 // ground surface top (world y) — decor sits ON this line
-            var step = 56;                            // decor spacing (world px)
+            // DENSER decor: half the old spacing → ~2× as many anchored objects,
+            // and each anchor now stamps several sub-objects (flowers, rocks,
+            // mushrooms, birds…) → the "100× richer" feel without harming perf
+            // (still only the on-screen slice is iterated). Two pseudo-random
+            // values per anchor pick variant + sub-detail deterministically.
+            var step = 30;
             var first = Math.floor((camX - step) / step) * step;
             var last = camX + VW + step;
 
-            // 1) Surface grass tufts on grassy biomes — drawn for EVERY column so
-            //    the ground line never looks bare, always rooted exactly at gy.
+            // small deterministic rng from a seed → [0,1)
+            function rnd(seed, salt) { return (((seed ^ (salt * 374761393)) >>> 0) % 1000) / 1000; }
+
+            // 1) Dense surface ground-cover: grass blades + tiny flowers/pebbles
+            //    on grassy biomes, ripples on water, sand flecks on desert — for
+            //    EVERY few px so the ground line is lush, never bare.
             if (key === 'overworld' || key === 'forest') {
-                ctx.fillStyle = shade(B.groundTop, 0.18);
-                for (var tx = Math.floor(camX / 8) * 8; tx <= camX + VW; tx += 8) {
+                for (var tx = Math.floor(camX / 6) * 6; tx <= camX + VW; tx += 6) {
                     var tsx = Math.round(tx - camX);
-                    var sway = Math.sin(animT * 0.05 + tx * 0.3) * 1;
+                    var sway = Math.sin(animT * 0.05 + tx * 0.3);
+                    ctx.fillStyle = shade(B.groundTop, 0.2);
                     ctx.fillRect(tsx + sway, gy - 3, 1, 3);
-                    ctx.fillRect(tsx + 2 - sway, gy - 4, 1, 4);
+                    ctx.fillRect(tsx + 2 - sway, gy - 5, 1, 5);
+                    ctx.fillStyle = shade(B.hills, 0.1);
                     ctx.fillRect(tsx + 4 + sway, gy - 2, 1, 2);
+                    // sprinkle tiny flowers deterministically
+                    var fr = rnd((tx | 0), 7);
+                    if (fr < 0.10) {
+                        var fc = ['#ff5a8a', '#ffd84a', '#ff9ec4', '#7aa8ff'][(tx >> 1) & 3];
+                        ctx.fillStyle = fc; ctx.fillRect(tsx + 3, gy - 6, 2, 2);
+                        ctx.fillStyle = '#fff'; ctx.fillRect(tsx + 3 + (sway > 0 ? 1 : 0), gy - 6, 1, 1);
+                        ctx.fillStyle = '#2f8a33'; ctx.fillRect(tsx + 3, gy - 4, 1, 4);
+                    }
+                }
+            } else if (key === 'desert') {
+                ctx.fillStyle = shade(B.groundTop, 0.16);
+                for (var sx2 = Math.floor(camX / 10) * 10; sx2 <= camX + VW; sx2 += 10) {
+                    var ds = Math.round(sx2 - camX);
+                    ctx.fillRect(ds, gy - 1, 3, 1); ctx.fillRect(ds + 5, gy - 2, 2, 1);
                 }
             }
 
             for (var wx = first; wx <= last; wx += step) {
                 var sxp = Math.round(wx - camX);
                 var seed = (Math.floor(wx / step) * 2654435761) >>> 0; // stable pseudo-rng
-                var v = (seed % 100) / 100, v2 = ((seed >> 8) % 100) / 100;
+                var v = (seed % 100) / 100, v2 = ((seed >> 8) % 100) / 100, v3 = ((seed >> 16) % 100) / 100;
 
                 if (key === 'overworld' || key === 'forest') {
-                    if (v < 0.55) {
-                        // TREE — trunk rooted at gy, layered round canopy
-                        var th = key === 'forest' ? 30 + (v2 * 14) : 20 + (v2 * 8);
+                    if (v < 0.42) {
+                        // TREE — layered round canopy, varied height + a fruit dot
+                        var th = key === 'forest' ? 32 + (v2 * 18) : 20 + (v2 * 12);
                         var cxp = sxp + 14;
-                        ctx.fillStyle = '#6a4020'; ctx.fillRect(cxp - 2, gy - th, 4, th);     // trunk
-                        ctx.fillStyle = '#7d5028'; ctx.fillRect(cxp - 2, gy - th, 1, th);     // trunk light
-                        ctx.fillStyle = shade(B.hills, -0.12);                                // canopy shadow
-                        ctx.beginPath(); ctx.arc(cxp, gy - th - 4, 13, 0, Math.PI * 2); ctx.fill();
-                        ctx.fillStyle = B.hills;                                              // canopy
-                        ctx.beginPath(); ctx.arc(cxp + 1, gy - th - 6, 11, 0, Math.PI * 2); ctx.fill();
-                        ctx.fillStyle = shade(B.hills, 0.22);                                 // sun highlight
-                        ctx.beginPath(); ctx.arc(cxp - 4, gy - th - 9, 5, 0, Math.PI * 2); ctx.fill();
-                    } else {
-                        // BUSH — flat base sits exactly on gy (no float)
+                        ctx.fillStyle = '#5a3414'; ctx.fillRect(cxp - 3, gy - th, 6, th);     // trunk
+                        ctx.fillStyle = '#744521'; ctx.fillRect(cxp - 3, gy - th, 2, th);     // trunk light
+                        ctx.fillStyle = '#3a2410'; ctx.fillRect(cxp + 1, gy - th, 1, th);     // trunk shade
+                        ctx.fillStyle = shade(B.hills, -0.16);                                // canopy shadow
+                        ctx.beginPath(); ctx.arc(cxp, gy - th - 5, 15, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(cxp - 9, gy - th + 2, 9, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(cxp + 9, gy - th + 2, 9, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = B.hills;                                              // canopy mid
+                        ctx.beginPath(); ctx.arc(cxp + 1, gy - th - 7, 12, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(cxp - 8, gy - th, 7, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(cxp + 9, gy - th, 7, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = shade(B.hills, 0.24);                                 // sun highlight
+                        ctx.beginPath(); ctx.arc(cxp - 5, gy - th - 10, 6, 0, Math.PI * 2); ctx.fill();
+                        if (v3 < 0.5) { ctx.fillStyle = key === 'forest' ? '#ff5a55' : '#ffd84a'; ctx.fillRect(cxp + 4, gy - th - 4, 2, 2); ctx.fillRect(cxp - 6, gy - th + 1, 2, 2); }
+                    } else if (v < 0.70) {
+                        // BUSH cluster (3 lobes) + a flower
                         ctx.fillStyle = shade(B.hills, -0.05);
-                        ctx.beginPath(); ctx.arc(sxp + 9, gy, 8, Math.PI, 0); ctx.fill();
-                        ctx.beginPath(); ctx.arc(sxp + 16, gy, 6, Math.PI, 0); ctx.fill();
-                        ctx.fillStyle = shade(B.hills, 0.2);
-                        ctx.beginPath(); ctx.arc(sxp + 7, gy - 2, 3, Math.PI, 0); ctx.fill();
+                        ctx.beginPath(); ctx.arc(sxp + 8, gy, 9, Math.PI, 0); ctx.fill();
+                        ctx.beginPath(); ctx.arc(sxp + 17, gy, 7, Math.PI, 0); ctx.fill();
+                        ctx.beginPath(); ctx.arc(sxp + 24, gy, 5, Math.PI, 0); ctx.fill();
+                        ctx.fillStyle = shade(B.hills, 0.22);
+                        ctx.beginPath(); ctx.arc(sxp + 6, gy - 2, 3, Math.PI, 0); ctx.fill();
+                        if (v2 < 0.6) { ctx.fillStyle = '#ff5a8a'; ctx.fillRect(sxp + 14, gy - 9, 2, 2); ctx.fillStyle = '#ffd84a'; ctx.fillRect(sxp + 15, gy - 8, 1, 1); }
+                    } else if (v < 0.82) {
+                        // MUSHROOM toadstools (forest flavour)
+                        ctx.fillStyle = '#e9e2d0'; ctx.fillRect(sxp + 8, gy - 5, 3, 5);
+                        ctx.fillStyle = '#d23b3b'; ctx.beginPath(); ctx.arc(sxp + 9, gy - 5, 5, Math.PI, 0); ctx.fill();
+                        ctx.fillStyle = '#fff'; ctx.fillRect(sxp + 7, gy - 6, 1, 1); ctx.fillRect(sxp + 11, gy - 7, 1, 1);
+                    } else {
+                        // small ROCK + grass tuft
+                        ctx.fillStyle = '#9a9088'; ctx.beginPath(); ctx.arc(sxp + 10, gy, 5, Math.PI, 0); ctx.fill();
+                        ctx.fillStyle = '#b8aea4'; ctx.beginPath(); ctx.arc(sxp + 8, gy - 1, 2, Math.PI, 0); ctx.fill();
+                    }
+                    // occasional fluttering butterfly / bird above (animated)
+                    if (v3 < 0.16) {
+                        var by1 = gy - 40 - (seed % 30) + Math.sin(animT * 0.12 + seed) * 4;
+                        var fl1 = Math.floor(animT / 6 + seed) % 2;
+                        ctx.fillStyle = v2 < 0.5 ? '#ff8ad0' : '#3a3a3a';
+                        if (v2 < 0.5) { // butterfly
+                            ctx.fillRect(sxp + 10, by1, fl1 ? 4 : 2, 3); ctx.fillRect(sxp + 10 - (fl1 ? 4 : 2), by1, fl1 ? 4 : 2, 3);
+                        } else {        // bird (V wings)
+                            ctx.fillRect(sxp + 8, by1 + (fl1 ? 0 : 2), 3, 1); ctx.fillRect(sxp + 12, by1 + (fl1 ? 0 : 2), 3, 1);
+                        }
                     }
                 } else if (key === 'desert') {
-                    if (v < 0.4) {
-                        // CACTUS rooted at gy
-                        ctx.fillStyle = '#3f8a4a'; ctx.fillRect(sxp + 12, gy - 26, 6, 26);
-                        ctx.fillRect(sxp + 7, gy - 16, 5, 3); ctx.fillRect(sxp + 7, gy - 22, 3, 9);
-                        ctx.fillRect(sxp + 18, gy - 13, 5, 3); ctx.fillRect(sxp + 20, gy - 20, 3, 10);
-                        ctx.fillStyle = '#56a85e'; ctx.fillRect(sxp + 12, gy - 26, 2, 26);   // light edge
-                        ctx.fillStyle = '#2f6a38'; ctx.fillRect(sxp + 16, gy - 26, 2, 26);   // shade edge
-                    } else if (v < 0.7) {
-                        ctx.fillStyle = shade(B.ground, 0.12);                                // dune (flat on gy)
-                        ctx.beginPath(); ctx.arc(sxp + 16, gy, 18, Math.PI, 0); ctx.fill();
-                        ctx.fillStyle = shade(B.ground, 0.22);
-                        ctx.beginPath(); ctx.arc(sxp + 10, gy, 9, Math.PI, 0); ctx.fill();
+                    if (v < 0.3) {
+                        // tall CACTUS (saguaro) with two arms + flower
+                        ctx.fillStyle = '#3f8a4a'; ctx.fillRect(sxp + 12, gy - 30, 6, 30);
+                        ctx.fillRect(sxp + 7, gy - 18, 5, 3); ctx.fillRect(sxp + 7, gy - 24, 3, 9);
+                        ctx.fillRect(sxp + 18, gy - 14, 5, 3); ctx.fillRect(sxp + 20, gy - 22, 3, 11);
+                        ctx.fillStyle = '#56a85e'; ctx.fillRect(sxp + 12, gy - 30, 2, 30);
+                        ctx.fillStyle = '#2f6a38'; ctx.fillRect(sxp + 16, gy - 30, 2, 30);
+                        if (v2 < 0.5) { ctx.fillStyle = '#ff5a8a'; ctx.fillRect(sxp + 13, gy - 32, 4, 3); }
+                    } else if (v < 0.5) {
+                        // small barrel cactus + pebbles
+                        ctx.fillStyle = '#3f8a4a'; ctx.beginPath(); ctx.arc(sxp + 12, gy, 6, Math.PI, 0); ctx.fill();
+                        ctx.fillStyle = '#56a85e'; ctx.fillRect(sxp + 9, gy - 6, 1, 6); ctx.fillRect(sxp + 14, gy - 6, 1, 6);
+                        ctx.fillStyle = '#caa24a'; ctx.fillRect(sxp + 20, gy - 2, 4, 2);
+                    } else if (v < 0.74) {
+                        // layered DUNE
+                        ctx.fillStyle = shade(B.ground, 0.14); ctx.beginPath(); ctx.arc(sxp + 16, gy, 18, Math.PI, 0); ctx.fill();
+                        ctx.fillStyle = shade(B.ground, 0.24); ctx.beginPath(); ctx.arc(sxp + 9, gy, 9, Math.PI, 0); ctx.fill();
+                        ctx.fillStyle = shade(B.ground, 0.06); ctx.fillRect(sxp + 2, gy - 1, 28, 1);
+                    } else if (v < 0.9) {
+                        // bleached animal SKULL / rock pile
+                        ctx.fillStyle = '#e6ddcb'; ctx.beginPath(); ctx.arc(sxp + 10, gy - 2, 4, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = '#000'; ctx.fillRect(sxp + 8, gy - 3, 1, 1); ctx.fillRect(sxp + 11, gy - 3, 1, 1);
+                        ctx.fillStyle = '#caa24a'; ctx.fillRect(sxp + 16, gy - 3, 8, 3);
                     } else {
-                        ctx.fillStyle = '#caa24a'; ctx.fillRect(sxp + 8, gy - 4, 10, 4);      // rock
-                        ctx.fillStyle = '#e0bb66'; ctx.fillRect(sxp + 8, gy - 4, 10, 1);
+                        // dry tumbleweed (rolls slowly)
+                        var roll = (animT * 0.4 + seed) % (W.worldW);
+                        ctx.strokeStyle = '#9a7a3a'; ctx.fillStyle = '#9a7a3a';
+                        ctx.beginPath(); ctx.arc(sxp + 12, gy - 6, 6, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = shade(B.ground, -0.1); ctx.fillRect(sxp + 9, gy - 8, 6, 1); ctx.fillRect(sxp + 11, gy - 10, 2, 6);
                     }
                 } else if (key === 'underground') {
-                    // ceiling stalactites (hang from screen top) + floor stalagmites
+                    // dense stalactites/stalagmites + crystals + glow + drips
                     ctx.fillStyle = shade(B.ground, 0.12);
                     var stx = sxp + 8;
-                    ctx.beginPath(); ctx.moveTo(stx, camY); ctx.lineTo(stx + 5, camY); ctx.lineTo(stx + 2, camY + 12 + (v * 12)); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(stx, camY); ctx.lineTo(stx + 6, camY); ctx.lineTo(stx + 3, camY + 14 + (v * 16)); ctx.closePath(); ctx.fill();
+                    if (v2 < 0.5) { ctx.beginPath(); ctx.moveTo(stx + 14, camY); ctx.lineTo(stx + 19, camY); ctx.lineTo(stx + 16, camY + 9 + v2 * 10); ctx.closePath(); ctx.fill(); }
                     ctx.fillStyle = shade(B.ground, 0.2);                                     // stalagmite on floor
-                    ctx.beginPath(); ctx.moveTo(sxp + 26, gy); ctx.lineTo(sxp + 32, gy); ctx.lineTo(sxp + 29, gy - 8 - v2 * 8); ctx.closePath(); ctx.fill();
-                    if (v < 0.5) { ctx.fillStyle = 'rgba(120,200,255,' + (0.4 + 0.3 * Math.sin(animT * 0.1 + wx)) + ')'; ctx.fillRect(sxp + 18, gy - 5, 3, 5); }
+                    ctx.beginPath(); ctx.moveTo(sxp + 22, gy); ctx.lineTo(sxp + 30, gy); ctx.lineTo(sxp + 26, gy - 10 - v2 * 12); ctx.closePath(); ctx.fill();
+                    // glowing crystal cluster
+                    if (v3 < 0.4) {
+                        var glow = 0.4 + 0.35 * Math.sin(animT * 0.09 + seed);
+                        ctx.fillStyle = 'rgba(120,200,255,' + glow + ')';
+                        ctx.beginPath(); ctx.moveTo(sxp + 14, gy); ctx.lineTo(sxp + 17, gy - 9); ctx.lineTo(sxp + 20, gy); ctx.closePath(); ctx.fill();
+                        ctx.fillStyle = 'rgba(180,230,255,' + glow + ')'; ctx.fillRect(sxp + 16, gy - 6, 1, 4);
+                    }
+                    // dripping water glint from a stalactite
+                    if (v < 0.3) { var dy2 = camY + 16 + ((animT * 1.4 + seed) % 80); ctx.fillStyle = 'rgba(150,210,255,0.7)'; ctx.fillRect(stx + 3, dy2, 1, 3); }
                 } else if (key === 'water') {
-                    // seaweed rooted at gy (sways), + rising bubbles
-                    var sway = Math.sin(animT * 0.06 + wx) * 2.5;
+                    // tall swaying kelp forest + coral + shell + bubble streams + fish
+                    var sway = Math.sin(animT * 0.06 + wx) * 3;
                     ctx.fillStyle = '#2a9a78';
-                    ctx.fillRect(sxp + 9 + sway, gy - 20, 3, 20);
-                    ctx.fillRect(sxp + 15 - sway, gy - 13, 3, 13);
-                    ctx.fillStyle = '#3fc89a'; ctx.fillRect(sxp + 9 + sway, gy - 20, 1, 20);
-                    ctx.fillStyle = '#caa24a'; ctx.beginPath(); ctx.arc(sxp + 24, gy, 6, Math.PI, 0); ctx.fill(); // shell/rock
-                    var bubY = gy - ((animT * 0.6 + seed) % 90);
+                    ctx.fillRect(sxp + 8 + sway, gy - 26, 3, 26);
+                    ctx.fillRect(sxp + 14 - sway, gy - 18, 3, 18);
+                    ctx.fillRect(sxp + 20 + sway * 0.6, gy - 22, 3, 22);
+                    ctx.fillStyle = '#3fc89a'; ctx.fillRect(sxp + 8 + sway, gy - 26, 1, 26);
+                    // coral fan
+                    ctx.fillStyle = v2 < 0.5 ? '#ff7ab6' : '#ff9a4a';
+                    ctx.fillRect(sxp + 26, gy - 8, 2, 8); ctx.fillRect(sxp + 23, gy - 6, 2, 6); ctx.fillRect(sxp + 29, gy - 5, 2, 5);
+                    // shell on the seabed
+                    ctx.fillStyle = '#f0d8b0'; ctx.beginPath(); ctx.arc(sxp + 4, gy, 4, Math.PI, 0); ctx.fill();
+                    // bubble stream
+                    var bubY = gy - ((animT * 0.7 + seed) % 110);
                     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                    ctx.beginPath(); ctx.arc(sxp + 22, bubY, 1.5 + (v * 2), 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(sxp + 18, bubY, 1.5 + (v * 2), 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(sxp + 20, bubY + 20, 1 + v2, 0, Math.PI * 2); ctx.fill();
+                    // a little drifting fish
+                    if (v3 < 0.3) {
+                        var fishX = sxp + ((animT * 0.6 + seed) % 60) - 10, fishY = gy - 30 - (seed % 24);
+                        ctx.fillStyle = v < 0.5 ? '#ffae45' : '#7aa8ff';
+                        ctx.fillRect(fishX, fishY, 5, 3); ctx.fillRect(fishX - 2, fishY, 2, 3); // body+tail
+                        ctx.fillStyle = '#000'; ctx.fillRect(fishX + 3, fishY + 1, 1, 1);
+                    }
                 } else if (key === 'sky') {
-                    // distant fluffy cloud puffs drifting (behind play layer)
-                    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                    var cyy = gy - 36 - (seed % 46);
-                    ctx.beginPath(); ctx.arc(sxp + 10, cyy, 8, 0, Math.PI * 2); ctx.arc(sxp + 18, cyy + 1, 6, 0, Math.PI * 2); ctx.arc(sxp + 2, cyy + 2, 5, 0, Math.PI * 2); ctx.fill();
+                    // layered fluffy cloud platforms + drifting birds + sparkles
+                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                    var cyy = gy - 30 - (seed % 60);
+                    ctx.beginPath();
+                    ctx.arc(sxp + 10, cyy, 9, 0, Math.PI * 2); ctx.arc(sxp + 20, cyy + 2, 7, 0, Math.PI * 2);
+                    ctx.arc(sxp + 2, cyy + 3, 6, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = 'rgba(210,230,255,0.9)'; ctx.fillRect(sxp + 2, cyy + 6, 22, 2);   // cloud underside
+                    if (v2 < 0.4) {  // twinkle
+                        var tw2 = 0.4 + 0.5 * Math.sin(animT * 0.2 + seed);
+                        ctx.fillStyle = 'rgba(255,255,210,' + tw2 + ')'; ctx.fillRect(sxp + 14, cyy - 12, 2, 2); ctx.fillRect(sxp + 13, cyy - 11, 1, 1); ctx.fillRect(sxp + 16, cyy - 11, 1, 1);
+                    }
+                    if (v3 < 0.25) { // bird
+                        var bx3 = sxp + ((animT * 0.5 + seed) % 80), by3 = gy - 60 - (seed % 30), fl3 = Math.floor(animT / 6 + seed) % 2;
+                        ctx.fillStyle = '#4a4a5a'; ctx.fillRect(bx3, by3 + (fl3 ? 0 : 2), 3, 1); ctx.fillRect(bx3 + 4, by3 + (fl3 ? 0 : 2), 3, 1);
+                    }
                 } else if (key === 'castle' || key === 'finalcastle') {
-                    // stone pillar + wall torch with flickering flame
-                    ctx.fillStyle = shade(B.ground, -0.15); ctx.fillRect(sxp + 4, gy - 40, 8, 40);
-                    ctx.fillStyle = shade(B.ground, 0.1); ctx.fillRect(sxp + 4, gy - 40, 2, 40);
-                    ctx.fillStyle = '#2a2020'; ctx.fillRect(sxp + 22, gy - 22, 4, 12);
-                    var fl = 1 + Math.sin(animT * 0.3 + wx) * 0.6;
-                    ctx.fillStyle = '#ff8a1e'; ctx.beginPath(); ctx.arc(sxp + 24, gy - 24, 4 + fl, 0, Math.PI * 2); ctx.fill();
-                    ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(sxp + 24, gy - 25, 2 + fl * 0.5, 0, Math.PI * 2); ctx.fill();
+                    // stone pillars + wall torches + hanging banners + chains + cobwebs
+                    ctx.fillStyle = shade(B.ground, -0.15); ctx.fillRect(sxp + 4, gy - 44, 9, 44);
+                    ctx.fillStyle = shade(B.ground, 0.1); ctx.fillRect(sxp + 4, gy - 44, 2, 44);
+                    ctx.fillStyle = shade(B.ground, -0.3); ctx.fillRect(sxp + 4, gy - 44, 9, 2); // brick seam
+                    ctx.fillRect(sxp + 4, gy - 30, 9, 1); ctx.fillRect(sxp + 4, gy - 16, 9, 1);
+                    // torch + animated flame
+                    if (v < 0.6) {
+                        ctx.fillStyle = '#2a2020'; ctx.fillRect(sxp + 20, gy - 26, 4, 12);
+                        var fl = 1 + Math.sin(animT * 0.3 + wx) * 0.7;
+                        ctx.fillStyle = '#ff8a1e'; ctx.beginPath(); ctx.arc(sxp + 22, gy - 28, 4 + fl, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(sxp + 22, gy - 29, 2 + fl * 0.5, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = 'rgba(255,150,40,0.18)'; ctx.beginPath(); ctx.arc(sxp + 22, gy - 28, 12 + fl, 0, Math.PI * 2); ctx.fill();
+                    } else {
+                        // hanging banner with the couple's accent colour
+                        ctx.fillStyle = '#7a1020'; ctx.fillRect(sxp + 18, gy - 42, 8, 18);
+                        ctx.fillStyle = '#a01828'; ctx.fillRect(sxp + 19, gy - 41, 6, 14);
+                        ctx.fillStyle = '#ffd84a'; ctx.fillRect(sxp + 21, gy - 36, 2, 2);   // emblem
+                        ctx.fillStyle = '#7a1020'; ctx.beginPath(); ctx.moveTo(sxp + 18, gy - 24); ctx.lineTo(sxp + 22, gy - 20); ctx.lineTo(sxp + 26, gy - 24); ctx.closePath(); ctx.fill();
+                    }
+                    // cobweb in a top corner sometimes
+                    if (v3 < 0.3) { ctx.strokeStyle = 'rgba(220,220,230,0.4)'; ctx.fillStyle = 'rgba(220,220,230,0.3)'; ctx.beginPath(); ctx.moveTo(sxp, camY); ctx.lineTo(sxp + 12, camY + 12); ctx.lineTo(sxp, camY + 12); ctx.closePath(); ctx.fill(); }
                 }
             }
-            // Lava glow band at the very bottom for castle biomes. X is in
-            // SCREEN space (the camY translate only shifts Y), so span 0..VW.
+            // Lava glow band at the very bottom for castle biomes, now with
+            // bubbling pops. X is in SCREEN space (camY translate only shifts Y).
             if (B.lava) {
-                var pulse = 0.25 + 0.12 * Math.sin(animT * 0.12);
+                var pulse = 0.28 + 0.14 * Math.sin(animT * 0.12);
                 ctx.fillStyle = 'rgba(255,90,20,' + pulse + ')';
-                ctx.fillRect(0, camY + VH - 6, VW, 6);
+                ctx.fillRect(0, camY + VH - 8, VW, 8);
+                ctx.fillStyle = 'rgba(255,180,60,' + (pulse + 0.1) + ')';
+                for (var lb2 = 0; lb2 < 10; lb2++) {
+                    var lx = ((lb2 * 47 + animT * 0.6) % VW);
+                    var pop = Math.abs(Math.sin(animT * 0.1 + lb2));
+                    ctx.fillRect(lx, camY + VH - 8 - pop * 4, 3, 2 + pop * 3);
+                }
             }
         }
 
@@ -2367,6 +3140,25 @@
         var stageSelGrid = document.getElementById('rm-stagesel-grid');
         var stageSelCancel = document.getElementById('rm-stagesel-cancel');
 
+        // ---- Difficulty selector (cover): pick easy/medium/hard once at start ----
+        var diffWrap = document.getElementById('rm-diff');
+        function syncDiffUI() {
+            if (!diffWrap) return;
+            var opts = diffWrap.querySelectorAll('.rm-diff-opt');
+            for (var i = 0; i < opts.length; i++) {
+                opts[i].classList.toggle('is-sel', opts[i].getAttribute('data-diff') === gameDiff);
+            }
+        }
+        if (diffWrap) {
+            diffWrap.addEventListener('click', function (e) {
+                var b = e.target.closest ? e.target.closest('.rm-diff-opt') : null;
+                if (!b) return;
+                var d = b.getAttribute('data-diff');
+                if (d === 'easy' || d === 'medium' || d === 'hard') { gameDiff = d; persist(); syncDiffUI(); playSfx('coin'); }
+            });
+            syncDiffUI();
+        }
+
         if (btnStart) btnStart.addEventListener('click', function () {
             audioCtx();
             if (cover) cover.classList.add('rm-hidden');
@@ -2433,6 +3225,23 @@
         function buildStageSelect() {
             if (!stageSelGrid) return;
             stageSelGrid.innerHTML = '';
+            // CHEAT difficulty override (item 5): a cycle button rebuilds the
+            // current stage at the chosen difficulty so cheats can re-tune it.
+            var dbtn = document.createElement('button');
+            dbtn.type = 'button';
+            dbtn.className = 'rm-stagesel-item rm-stagesel-diff';
+            dbtn.style.gridColumn = '1 / -1';
+            function dlabel() { return '<span class="ss-world">DIFF: ' + gameDiff.toUpperCase() + '</span><span class="ss-biome">ketuk untuk ganti</span>'; }
+            dbtn.innerHTML = dlabel();
+            dbtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var i = DIFF_ORDER.indexOf(gameDiff);
+                gameDiff = DIFF_ORDER[(i + 1) % DIFF_ORDER.length];
+                persist(); dbtn.innerHTML = dlabel(); playSfx('coin');
+                goToStage(stageNum);                      // rebuild current stage at new diff
+                if (stageSelRoot) stageSelRoot.classList.remove('show');
+            });
+            stageSelGrid.appendChild(dbtn);
             WORLDS.forEach(function (w, idx) {
                 var n = idx + 1;
                 var b = document.createElement('button');

@@ -63,6 +63,14 @@
                     </svg>
                 </button>
 
+                <!-- Guest attendance QR (host app wires #btn-show-qr → shows the QR) -->
+                <button class="rm-iconbtn rm-qr-btn" id="btn-show-qr" type="button" aria-label="QR Kehadiran" title="QR Kehadiran">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#7bd47e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+                        <path d="M14 14h3v3M20 14v7M14 20h3"></path>
+                    </svg>
+                </button>
+
                 <!-- Settings (reset game) -->
                 <button class="rm-iconbtn rm-settings-btn" id="rm-settings-btn" type="button" aria-label="Pengaturan" title="Pengaturan">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -111,8 +119,25 @@
                     Kepada Yth.
                     <span class="guest-name" data-var="nama_tamu">{{nama_tamu}}</span>
                 </div>
+                <!-- Difficulty selector (chosen once at the start) -->
+                <div class="rm-diff" id="rm-diff" role="group" aria-label="Tingkat kesulitan">
+                    <div class="rm-diff-label">PILIH LEVEL</div>
+                    <div class="rm-diff-opts">
+                        <button class="rm-diff-opt" data-diff="easy"   type="button">EASY</button>
+                        <button class="rm-diff-opt is-sel" data-diff="medium" type="button">MEDIUM</button>
+                        <button class="rm-diff-opt" data-diff="hard"   type="button">HARD</button>
+                    </div>
+                </div>
                 <button class="rm-start-btn" id="rm-start-btn" type="button">
                     <span class="rm-start-blink">PRESS START</span>
+                </button>
+                <!-- Guest attendance QR (host app wires #btn-show-qr → shows the QR) -->
+                <button class="rm-cover-qr" id="btn-show-qr" type="button" aria-label="QR Kehadiran" title="QR Kehadiran">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+                        <path d="M14 14h3v3M20 14v7M14 20h3"></path>
+                    </svg>
+                    <span>QR KEHADIRAN</span>
                 </button>
                 <div class="rm-cover-hint">Mainkan petualangannya untuk membuka undangan kami</div>
             </div>
@@ -190,6 +215,26 @@
              Each <section> carries data-info="<key>" so JS can clone it into a
              modal when the matching info-block is hit. -->
         <div class="rm-invitation" id="rm-invitation">
+
+            <!-- ===== MARIO DECOR LAYER (cosmetic, behind the content) ===== -->
+            <!-- Pixel clouds, floating ? / brick blocks, coins, pipes, hills &
+                 goombas so the invitation page keeps the game's Mario flavour. -->
+            <div class="rm-deco" aria-hidden="true">
+                <span class="rm-deco-cloud d1"></span>
+                <span class="rm-deco-cloud d2"></span>
+                <span class="rm-deco-cloud d3"></span>
+                <span class="rm-deco-hill h1"></span>
+                <span class="rm-deco-hill h2"></span>
+                <span class="rm-deco-block qblock b1">?</span>
+                <span class="rm-deco-block brick b2"></span>
+                <span class="rm-deco-block qblock b3">?</span>
+                <span class="rm-deco-coin c1"></span>
+                <span class="rm-deco-coin c2"></span>
+                <span class="rm-deco-coin c3"></span>
+                <span class="rm-deco-pipe p1"></span>
+                <span class="rm-deco-goomba g1"></span>
+                <span class="rm-deco-ground"></span>
+            </div>
 
             <!-- COUPLE -->
             <section class="rm-sec" data-info="couple">

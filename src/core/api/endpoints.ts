@@ -257,13 +257,16 @@ export const themeApi = {
         return res.data;
     },
 
-    createTheme: async (data: CreateThemeRequest): Promise<ApiResponse<Theme>> => {
-        const res = await apiClient.post('', { action: 'createTheme', ...data });
+    createTheme: async (data: CreateThemeRequest, config: any = {}): Promise<ApiResponse<Theme>> => {
+        // Large theme payloads (HTML+CSS+JS up to 300K chars) trigger a slow
+        // multi-cell Google Sheets write on the backend; give it well past the
+        // 30s default so we don't abort a write that is still in progress.
+        const res = await apiClient.post('', { action: 'createTheme', ...data }, { timeout: 120000, ...config });
         return res.data;
     },
 
     updateTheme: async (data: UpdateThemeRequest, config: any = {}): Promise<ApiResponse<Theme>> => {
-        const res = await apiClient.post('', { action: 'updateTheme', ...data }, config);
+        const res = await apiClient.post('', { action: 'updateTheme', ...data }, { timeout: 120000, ...config });
         return res.data;
     },
 

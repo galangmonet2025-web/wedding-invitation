@@ -1452,10 +1452,15 @@ export function ThemeEditorPage() {
                 errMsg = error.message;
             }
             
-            // Format network or CORS/fetch failures with size context
-            if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('fetch') || !error.response) {
+            // Format network / timeout failures with size context.
+            const isTimeout = error.code === 'ECONNABORTED' || errMsg.toLowerCase().includes('timeout');
+            if (isTimeout) {
                 const totalChars = htmlCode.length + cssCode.length + jsCode.length;
-                errMsg = `Kesalahan Jaringan (Network Error) / Google Sheets limit. Jika total kode Anda besar (${totalChars.toLocaleString('id-ID')} karakter), pastikan tidak melampaui batas 50.000 karakter per kolom. Detail: ${errMsg}`;
+                errMsg = `Waktu tunggu habis (Timeout) saat menyimpan. Kode Anda besar (${totalChars.toLocaleString('id-ID')} karakter) sehingga penyimpanan ke server memakan waktu lama. Coba simpan ulang. Detail: ${errMsg}`;
+            } else if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('fetch') || !error.response) {
+                const totalChars = htmlCode.length + cssCode.length + jsCode.length;
+                // Per-template limit is 300.000 karakter (backend memecah ke 6 kolom @50.000).
+                errMsg = `Kesalahan Jaringan (Network Error). Pastikan tiap bagian (HTML/CSS/JS) tidak melebihi 300.000 karakter. Total kode saat ini: ${totalChars.toLocaleString('id-ID')} karakter. Detail: ${errMsg}`;
             }
             
             toast.error(errMsg, { id: loadingToast, duration: 10000 });
