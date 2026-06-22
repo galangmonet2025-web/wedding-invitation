@@ -1,0 +1,535 @@
+<!-- ======================================================================
+     RETRO MARIO WEDDING THEME
+     ----------------------------------------------------------------------
+     The guest plays a real 2D platformer; the invitation is discovered by
+     hitting "?" info-blocks inside the game. Each hit unlocks an inventory
+     icon (top-right) and a retro modal. Reaching the flag reveals the full
+     scrollable invitation, which is also the single source of bound data
+     (the modals clone these sections, so {{vars}} only appear once).
+
+     Binding contract (resolved by the host app before injection):
+       {{var}}            text/url substitution
+       data-var / data-img / data-if / data-unless / data-loop
+       {{#if flag}} ... {{/if}} / {{#unless}} / {{#each list}} this.x {{/each}}
+     ====================================================================== -->
+
+<div class="rm-shell">
+
+    <!-- ============ MOBILE FRAME (the game lives here) ============ -->
+    <div class="rm-frame" id="rm-frame">
+
+        <!-- ===== GAME STAGE ===== -->
+        <div class="rm-stage" id="rm-stage">
+            <canvas id="rm-canvas" class="rm-canvas"></canvas>
+
+            <!-- HUD -->
+            <div class="rm-hud" id="rm-hud">
+                <div class="hud-col">
+                    <span class="hud-label">{{groom_nickname}}&amp;{{bride_nickname}}</span>
+                    <span class="hud-value"><span class="rm-coin-ico"></span> <span id="rm-coins">×00</span></span>
+                </div>
+                <div class="hud-col hud-mid">
+                    <span class="hud-label">SCORE</span>
+                    <span class="hud-value" id="rm-score">000000</span>
+                </div>
+                <div class="hud-col hud-right">
+                    <span class="hud-label">WORLD</span>
+                    <span class="hud-value" id="rm-world">1-1</span>
+                </div>
+            </div>
+
+            <!-- Star cheat toggle (top-left) -->
+            <button class="rm-star-btn" id="rm-star-btn" type="button" aria-label="Mode Bintang (cheat)">
+                <svg viewBox="0 0 24 24" fill="#fac000" stroke="#000" stroke-width="1.5" stroke-linejoin="round">
+                    <path d="M12 2l2.9 6.1 6.6.8-4.9 4.5 1.3 6.6L12 17.8 6.1 20.6l1.3-6.6L2.5 8.9l6.6-.8z"></path>
+                </svg>
+            </button>
+
+            <!-- Inventory rail (top-right). Filled by JS from the active feature set. -->
+            <div class="rm-inv" id="rm-inv"></div>
+
+            <!-- On-screen toast for status messages -->
+            <div class="rm-toast" id="rm-toast"></div>
+
+            <!-- Touch controls -->
+            <div class="rm-controls" id="rm-controls">
+                <div class="rm-dpad">
+                    <button class="rm-btn rm-btn-move" id="rm-left"  type="button" aria-label="Kiri">◀</button>
+                    <button class="rm-btn rm-btn-move" id="rm-right" type="button" aria-label="Kanan">▶</button>
+                </div>
+                <div class="rm-actions">
+                    <button class="rm-btn rm-btn-act"  id="rm-act"  type="button" aria-label="Aksi">B<br><small>HIT</small></button>
+                    <button class="rm-btn rm-btn-jump" id="rm-jump" type="button" aria-label="Lompat">A</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== COVER ===== -->
+        <div class="rm-cover" id="rm-cover">
+            <div class="rm-cover-bricks"></div>
+            <div class="rm-cover-inner">
+                <div class="rm-cover-badge">SUPER WEDDING BROS</div>
+                <h1 class="rm-cover-couple">
+                    <span>{{groom_nickname}}</span>
+                    <span class="amp">&amp;</span>
+                    <span>{{bride_nickname}}</span>
+                </h1>
+                <div class="rm-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+                <div class="rm-cover-guest">
+                    Kepada Yth.
+                    <span class="guest-name" data-var="nama_tamu">{{nama_tamu}}</span>
+                </div>
+                <button class="rm-start-btn" id="rm-start-btn" type="button">
+                    <span class="rm-start-blink">PRESS START</span>
+                </button>
+                <div class="rm-cover-hint">Mainkan petualangannya untuk membuka undangan kami</div>
+            </div>
+        </div>
+
+        <!-- ===== INTRO STORY OVERLAY ===== -->
+        <div class="rm-overlay" id="rm-intro">
+            <div class="rm-overlay-pixtitle">WORLD 1-1</div>
+            <div class="rm-overlay-text">
+                Petualangan dimulai! Kumpulkan koin, injak musuh, dan
+                pukul kotak <strong>?</strong> untuk membuka rahasia undangan
+                pernikahan <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>.
+                <br><br>Capai bendera di ujung untuk menyelesaikan kisah.
+            </div>
+            <button class="rm-overlay-btn" id="rm-intro-go" type="button">GO! ▶</button>
+        </div>
+
+        <!-- ===== WIN OVERLAY (after flag) ===== -->
+        <div class="rm-overlay" id="rm-win">
+            <div class="rm-overlay-pixtitle">COURSE CLEAR!</div>
+            <div class="rm-overlay-text" id="rm-win-text">
+                Selamat! Kamu menamatkan petualangan dan membuka seluruh undangan.
+            </div>
+            <button class="rm-overlay-btn" id="rm-win-go" type="button">LIHAT UNDANGAN ▶</button>
+        </div>
+
+        <!-- ===== RETRO MODAL (info popup) ===== -->
+        <div class="rm-modal-root" id="rm-modal-root">
+            <div class="rm-modal">
+                <div class="rm-modal-head">
+                    <canvas class="mh-ico" id="rm-modal-ico" width="14" height="14"></canvas>
+                    <span class="mh-title" id="rm-modal-title">INFO</span>
+                    <button class="rm-modal-close" id="rm-modal-close" type="button">✕</button>
+                </div>
+                <div class="rm-modal-body" id="rm-modal-body"></div>
+            </div>
+        </div>
+
+        <!-- ===== INVITATION (revealed at the end; also data source for modals) =====
+             Each <section> carries data-info="<key>" so JS can clone it into a
+             modal when the matching info-block is hit. -->
+        <div class="rm-invitation" id="rm-invitation">
+
+            <!-- COUPLE -->
+            <section class="rm-sec" data-info="couple">
+                <div class="rm-sec-head">
+                    <div class="rm-sec-eyebrow">PLAYER 1 &amp; PLAYER 2</div>
+                    <h2 class="rm-sec-title">Mempelai</h2>
+                    <p class="rm-sec-quote">Dua hati yang memutuskan untuk memulai petualangan baru bersama.</p>
+                </div>
+                <div class="rm-couple-grid">
+                    <div class="rm-person">
+                        <div class="rm-person-photo" data-bg="photo_groom_photo" style="background-image: url('{{photo_groom_photo}}');"></div>
+                        <h3 class="rm-person-name" data-var="groom_name">{{groom_name}}</h3>
+                        <div class="rm-person-role">Mempelai Pria</div>
+                        <div data-if="flag_tampilkan_nama_orang_tua">
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="rm-person-parents">
+                                Putra dari<br>
+                                Bapak <span data-var="nama_bapak_laki_laki">{{nama_bapak_laki_laki}}</span>
+                                &amp; Ibu <span data-var="nama_ibu_laki_laki">{{nama_ibu_laki_laki}}</span>
+                            </div>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_tampilkan_sosial_media_mempelai">
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="rm-person-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank">@<span data-var="ig_laki_laki">{{ig_laki_laki}}</span></a>
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    <div class="rm-amp-pixel">&amp;</div>
+
+                    <div class="rm-person">
+                        <div class="rm-person-photo" data-bg="photo_bride_photo" style="background-image: url('{{photo_bride_photo}}');"></div>
+                        <h3 class="rm-person-name" data-var="bride_name">{{bride_name}}</h3>
+                        <div class="rm-person-role">Mempelai Wanita</div>
+                        <div data-if="flag_tampilkan_nama_orang_tua">
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="rm-person-parents">
+                                Putri dari<br>
+                                Bapak <span data-var="nama_bapak_perempuan">{{nama_bapak_perempuan}}</span>
+                                &amp; Ibu <span data-var="nama_ibu_perempuan">{{nama_ibu_perempuan}}</span>
+                            </div>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_tampilkan_sosial_media_mempelai">
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="rm-person-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank">@<span data-var="ig_perempuan">{{ig_perempuan}}</span></a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCHEDULE -->
+            <section class="rm-sec" data-info="schedule">
+                <div class="rm-sec-head">
+                    <div class="rm-sec-eyebrow">SAVE THE DATE</div>
+                    <h2 class="rm-sec-title">Acara</h2>
+                    <p class="rm-sec-quote">Hitung mundur menuju level terakhir kami.</p>
+                </div>
+
+                <div class="rm-card">
+                    <div class="rm-card-pixel-top"></div>
+                    <div class="rm-countdown" id="rm-countdown">
+                        <div class="rm-cd-box"><div class="rm-cd-num" id="rm-cd-days">00</div><div class="rm-cd-lab">Hari</div></div>
+                        <div class="rm-cd-box"><div class="rm-cd-num" id="rm-cd-hours">00</div><div class="rm-cd-lab">Jam</div></div>
+                        <div class="rm-cd-box"><div class="rm-cd-num" id="rm-cd-mins">00</div><div class="rm-cd-lab">Menit</div></div>
+                        <div class="rm-cd-box"><div class="rm-cd-num" id="rm-cd-secs">00</div><div class="rm-cd-lab">Detik</div></div>
+                    </div>
+                    <div class="rm-cal" id="rm-calendar" data-wedding-date="{{wedding_date_iso}}"></div>
+                </div>
+
+                <div class="rm-card rm-event">
+                    <div class="rm-card-pixel-top"></div>
+                    <div class="rm-sec-eyebrow">AKAD NIKAH</div>
+                    <div class="rm-event-when">
+                        <span data-var="tanggal_akad">{{tanggal_akad}}</span><br>
+                        <span data-var="jam_akad">{{jam_akad}}</span>
+                    </div>
+                    <div class="rm-event-where" data-var="nama_lokasi_akad">{{nama_lokasi_akad}}</div>
+                    <div class="rm-event-addr" data-var="keterangan_lokasi_akad">{{keterangan_lokasi_akad}}</div>
+                    <a class="rm-pixbtn green" href="{{akad_map}}" data-var="akad_map" target="_blank">▶ LIHAT PETA</a>
+                </div>
+
+                <div data-if="flag_lokasi_akad_dan_resepsi_berbeda">
+                    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                    <div class="rm-card rm-event">
+                        <div class="rm-card-pixel-top"></div>
+                        <div class="rm-sec-eyebrow">RESEPSI</div>
+                        <div class="rm-event-when">
+                            <span data-var="tanggal_resepsi">{{tanggal_resepsi}}</span><br>
+                            <span data-var="jam_resepsi">{{jam_resepsi}}</span>
+                        </div>
+                        <div class="rm-event-where" data-var="nama_lokasi_resepsi">{{nama_lokasi_resepsi}}</div>
+                        <div class="rm-event-addr" data-var="keterangan_lokasi_resepsi">{{keterangan_lokasi_resepsi}}</div>
+                        <a class="rm-pixbtn green" href="{{resepsi_map}}" data-var="resepsi_map" target="_blank">▶ LIHAT PETA</a>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+
+            <!-- GALLERY -->
+            <div data-if="is_fitur_gallery">
+                {{#if is_fitur_gallery}}
+                <section class="rm-sec" data-info="gallery">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">BONUS STAGE</div>
+                        <h2 class="rm-sec-title">Galeri</h2>
+                        <p class="rm-sec-quote">Koin kenangan yang kami kumpulkan sepanjang perjalanan.</p>
+                    </div>
+                    <div data-if="has_gallery">
+                        {{#if has_gallery}}
+                        <div class="rm-gallery-grid" data-loop="galleries">
+                            {{#each galleries}}
+                            <div class="rm-gallery-item">
+                                <img src="{{this.url}}" data-img="this.url" alt="Galeri">
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{/if}}
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- GIFT -->
+            <div data-if="tampilkan_amplop_online">
+                {{#if tampilkan_amplop_online}}
+                <section class="rm-sec" data-info="gift">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">1-UP</div>
+                        <h2 class="rm-sec-title">Wedding Gift</h2>
+                        <p class="rm-sec-quote">Doa restu adalah hadiah terindah. Bila ingin berbagi tanda kasih, gunakan menu ini.</p>
+                    </div>
+
+                    <div class="rm-card rm-gift-card">
+                        <div class="rm-card-pixel-top"></div>
+                        <div class="rm-gift-bank" data-var="bank_1">{{bank_1}}</div>
+                        <div data-if="flag_pakai_qris_rekening_1">
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <img class="rm-gift-qris" src="{{gambar_qris_rekening_1}}" data-img="gambar_qris_rekening_1" alt="QRIS">
+                            {{/if}}
+                        </div>
+                        <div class="rm-gift-numlabel">Nomor Rekening</div>
+                        <div class="rm-gift-num" id="rm-acc-1" data-var="rek_1">{{rek_1}}</div>
+                        <div class="rm-gift-name" data-var="nama_rek_1">{{nama_rek_1}}</div>
+                        <button class="rm-pixbtn" onclick="copyToClipboard('rm-acc-1', this)">SALIN NO. REK</button>
+                    </div>
+
+                    <div data-if="flag_pakai_2_rekening">
+                        {{#if flag_pakai_2_rekening}}
+                        <div class="rm-card rm-gift-card">
+                            <div class="rm-card-pixel-top"></div>
+                            <div class="rm-gift-bank" data-var="bank_2">{{bank_2}}</div>
+                            <div data-if="flag_pakai_qris_rekening_2">
+                                {{#if flag_pakai_qris_rekening_2}}
+                                <img class="rm-gift-qris" src="{{gambar_qris_rekening_2}}" data-img="gambar_qris_rekening_2" alt="QRIS">
+                                {{/if}}
+                            </div>
+                            <div class="rm-gift-numlabel">Nomor Rekening</div>
+                            <div class="rm-gift-num" id="rm-acc-2" data-var="rek_2">{{rek_2}}</div>
+                            <div class="rm-gift-name" data-var="nama_rek_2">{{nama_rek_2}}</div>
+                            <button class="rm-pixbtn" onclick="copyToClipboard('rm-acc-2', this)">SALIN NO. REK</button>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <div data-if="flag_kirim_hadiah_offline">
+                        {{#if flag_kirim_hadiah_offline}}
+                        <div class="rm-card rm-gift-card">
+                            <div class="rm-card-pixel-top"></div>
+                            <div class="rm-gift-bank">KIRIM HADIAH</div>
+                            <div class="rm-gift-name" data-var="nama_lokasi_kirim_hadiah_offline" style="font-weight:700;color:#fff;">{{nama_lokasi_kirim_hadiah_offline}}</div>
+                            <div class="rm-event-addr" id="rm-gift-addr" data-var="alamat_lokasi_kirim_hadiah_offline">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                            <button class="rm-pixbtn" onclick="copyToClipboard('rm-gift-addr', this)">SALIN ALAMAT</button>
+                        </div>
+                        {{/if}}
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- LOVE STORY -->
+            <div data-if="flag_pakai_timeline_kisah">
+                {{#if flag_pakai_timeline_kisah}}
+                <section class="rm-sec" data-info="story">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">PREVIOUSLY</div>
+                        <h2 class="rm-sec-title">Kisah Cinta</h2>
+                        <p class="rm-sec-quote">Setiap level membawa kami lebih dekat.</p>
+                    </div>
+                    <div class="rm-card" data-loop="timeline_kisah">
+                        <div class="rm-card-pixel-top"></div>
+                        {{#each timeline_kisah}}
+                        <div class="rm-story-item">
+                            <div class="rm-story-num">{{@index_plus_1}}</div>
+                            <div class="rm-story-body">
+                                <div class="rm-story-title" data-var="this.judul">{{this.judul}}</div>
+                                <div class="rm-story-date" data-var="this.tanggal">{{this.tanggal}}</div>
+                                <div class="rm-story-text" data-var="this.deskripsi">{{this.deskripsi}}</div>
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- LIVE STREAMING -->
+            <div data-if="is_fitur_live_streaming">
+                {{#if is_fitur_live_streaming}}
+                <section class="rm-sec" data-info="streaming">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">NOW PLAYING</div>
+                        <h2 class="rm-sec-title">Live Streaming</h2>
+                        <p class="rm-sec-quote">Tidak bisa hadir langsung? Saksikan momen kami secara live.</p>
+                    </div>
+                    <div class="rm-card rm-center">
+                        <div class="rm-card-pixel-top"></div>
+                        <div class="rm-live-badge"><span class="rm-live-dot"></span> LIVE</div>
+                        <p style="font-size:12px;line-height:1.7;color:rgba(255,255,255,0.75);margin:14px 0;">
+                            Saksikan rangkaian acara pernikahan kami dari mana saja.
+                        </p>
+                        <a class="rm-pixbtn green" href="{{link_live_streaming}}" data-var="link_live_streaming" target="_blank">▶ TONTON SEKARANG</a>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- SHARING HAPPINESS (Instagram story) -->
+            <div data-if="flag_pakai_additional_feature_story_balasan_instagram">
+                {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+                <section class="rm-sec" data-info="happiness">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">SHARE THE MOMENT</div>
+                        <h2 class="rm-sec-title">Berbagi Kebahagiaan</h2>
+                        <p class="rm-sec-quote">Bagikan kebahagiaan ini di Instagram Story-mu.</p>
+                    </div>
+                    <div class="rm-card rm-center">
+                        <div class="rm-card-pixel-top"></div>
+                        <div class="rm-gallery-grid" style="grid-template-columns:repeat(3,1fr);max-width:300px;">
+                            <div class="rm-gallery-item"><img src="{{sample_story_1}}" data-img="sample_story_1" alt=""></div>
+                            <div class="rm-gallery-item"><img src="{{sample_story_2}}" data-img="sample_story_2" alt=""></div>
+                            <div class="rm-gallery-item"><img src="{{sample_story_3}}" data-img="sample_story_3" alt=""></div>
+                        </div>
+                        <p style="font-size:12px;line-height:1.7;color:rgba(255,255,255,0.75);margin:14px 0;">
+                            Ambil tangkapan layar &amp; tandai kami
+                            <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong>!
+                        </p>
+                        <a class="rm-pixbtn" href="{{link_balasan_instagram}}" data-var="link_balasan_instagram" target="_blank">BAGIKAN MOMEN</a>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- RSVP -->
+            <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <section class="rm-sec" data-info="rsvp">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">PLAYER CHECK-IN</div>
+                        <h2 class="rm-sec-title">Konfirmasi Kehadiran</h2>
+                        <p class="rm-sec-quote">Beri tahu kami apakah kamu akan join di level terakhir.</p>
+                    </div>
+
+                    <div class="rm-card">
+                        <div class="rm-card-pixel-top"></div>
+                        <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
+                            {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                            <form id="rm-rsvp-form">
+                                <input class="rm-input" type="text" id="rm-rsvp-name" placeholder="Nama kamu" value="{{nama_tamu}}">
+                                <div class="rm-radio-row">
+                                    <label><input type="radio" name="rm-attend" value="1" checked><span>✔ Hadir</span></label>
+                                    <label><input type="radio" name="rm-attend" value="0"><span>✘ Tidak</span></label>
+                                </div>
+                                <input class="rm-input" type="number" id="rm-rsvp-count" placeholder="Jumlah tamu" min="1" value="1">
+                                <button type="button" id="rm-btn-rsvp" class="rm-pixbtn green" style="width:100%;">KIRIM</button>
+                            </form>
+                            {{/unless}}
+                        </div>
+                        <div data-if="is_sudah_isi_konfirmasi_kehadiran">
+                            {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                            <div class="rm-thanks" id="rm-rsvp-thanks">
+                                ⭐ Terima kasih <strong data-var="nama_tamu">{{nama_tamu}}</strong>!<br>
+                                Konfirmasimu sudah kami terima.
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </section>
+                {{/unless}}
+            </div>
+
+            <!-- WISHES -->
+            <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <section class="rm-sec" data-info="wishes">
+                    <div class="rm-sec-head">
+                        <div class="rm-sec-eyebrow">HIGH SCORES</div>
+                        <h2 class="rm-sec-title">Ucapan &amp; Doa</h2>
+                        <p class="rm-sec-quote">Tinggalkan pesan untuk kedua mempelai.</p>
+                    </div>
+                    <div class="rm-card">
+                        <div class="rm-card-pixel-top"></div>
+                        <div data-unless="is_sudah_isi_ucapan">
+                            {{#unless is_sudah_isi_ucapan}}
+                            <form id="rm-wish-form">
+                                <input class="rm-input" type="text" id="wish-name" placeholder="Nama kamu">
+                                <textarea class="rm-input" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa..."></textarea>
+                                <button type="button" id="btn-submit-ucapan" class="rm-pixbtn green" style="width:100%;">KIRIM UCAPAN</button>
+                            </form>
+                            {{/unless}}
+                        </div>
+                        <div data-if="is_sudah_isi_ucapan">
+                            {{#if is_sudah_isi_ucapan}}
+                            <div class="rm-thanks">⭐ Terima kasih atas ucapan &amp; doanya!</div>
+                            {{/if}}
+                        </div>
+                    </div>
+                    <div class="rm-wish-list" data-loop="wishes">
+                        {{#each wishes}}
+                        <div class="rm-wish-item">
+                            <div class="rm-wish-head">
+                                <span class="rm-wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
+                                <span class="rm-wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
+                            </div>
+                            <div class="rm-wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </section>
+                {{/unless}}
+            </div>
+
+            <!-- CLOSING -->
+            <section class="rm-sec" data-info="closing">
+                <div class="rm-closing">
+                    <div class="rm-closing-flag">🏁 THE END</div>
+                    <div class="rm-sec-eyebrow">WITH LOVE &amp; GRATITUDE</div>
+                    <h2 class="rm-sec-title" style="margin-bottom:16px;">Terima Kasih</h2>
+                    <p class="rm-closing-msg" data-var="kalimat_penutup">
+                        Merupakan kebahagiaan dan kehormatan bagi kami apabila Bapak/Ibu/Saudara/i
+                        berkenan hadir di hari bahagia kami.
+                    </p>
+                    <div class="rm-closing-sign">
+                        <span>{{groom_nickname}}</span> <span class="rm-amp-pixel">&amp;</span> <span>{{bride_nickname}}</span>
+                    </div>
+                    <button class="rm-pixbtn green rm-replay" id="rm-replay" type="button">↻ MAIN LAGI</button>
+                </div>
+
+                <footer class="rm-footer">
+                    <div data-var="site_name">{{site_name}}</div>
+                    <div><a href="{{site_url}}" target="_blank">{{site_url}}</a></div>
+                    <div>Digital wedding invitation &copy; 2026</div>
+                    <div class="rm-footer-social">
+                        <div data-if="flag_use_instagram_webconfig">
+                            {{#if flag_use_instagram_webconfig}}
+                            <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="20" height="20" x="2" y="2" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_youtube_webconfig">
+                            {{#if flag_use_youtube_webconfig}}
+                            <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_whatsapp_webconfig">
+                            {{#if flag_use_whatsapp_webconfig}}
+                            <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </footer>
+            </section>
+        </div>
+
+        <!-- ===== FAB (back to game / music) — shown only while invitation is open ===== -->
+        <div class="rm-fab" id="rm-fab">
+            <button class="rm-fab-btn" id="rm-back-game" type="button" aria-label="Kembali ke game">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button class="rm-fab-btn" id="btn-toggle-music" type="button" aria-label="Musik">
+                <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+                <svg id="pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+            </button>
+        </div>
+
+        <audio id="bg-music" loop>
+            <source src="https://vgmsite.com/soundtracks/super-mario-bros/qsxhpltcyo/01.%20Ground%20Theme.mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <!-- ============ DESKTOP SIDEBAR (decorative, drawn on canvas) ============ -->
+    <aside class="rm-sidebar" id="rm-sidebar">
+        <canvas class="rm-side-canvas" id="rm-side-canvas"></canvas>
+        <div class="rm-side-text">
+            <div class="rm-side-badge">SUPER WEDDING BROS</div>
+            <h2 class="rm-side-couple"><span>{{groom_nickname}}</span> <span class="amp">&amp;</span> <span>{{bride_nickname}}</span></h2>
+            <div class="rm-side-date" data-var="wedding_date">{{wedding_date}}</div>
+            <p class="rm-side-tip">Geser ke layar telepon di kiri untuk memainkan undangan kami. Gunakan tombol panah / A / B, atau sentuh layar di perangkat mobile.</p>
+        </div>
+    </aside>
+</div>
+
+<script src="index.js"></script>
