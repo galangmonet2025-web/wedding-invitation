@@ -1331,15 +1331,15 @@ export function ThemeEditorPage() {
         }
 
         // Proactive Google Sheets Cell Character Limit Validation
-        const MAX_CELL_CHARS = 150000;
+        const MAX_CELL_CHARS = 300000;
         if (htmlCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 150.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 300.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
         }
         if (cssCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 150.000 karakter (karena dibagi ke kolom ekstra). Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 300.000 karakter (karena dibagi ke kolom ekstra). Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
         }
         if (jsCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 150.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan kode JS Anda.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 300.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan kode JS Anda.`, { duration: 10000 });
         }
 
         setSaving(true);

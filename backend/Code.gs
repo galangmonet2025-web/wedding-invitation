@@ -505,9 +505,9 @@
       }
       if (sheetName === 'Themes') {
         rows.forEach(function(row) {
-          row.html_template = (row.html_template || '') + (row.html_extra_1 || '') + (row.html_extra_2 || '');
-          row.css_template = (row.css_template || '') + (row.css_extra_1 || '') + (row.css_extra_2 || '');
-          row.js_template = (row.js_template || '') + (row.js_extra_1 || '') + (row.js_extra_2 || '');
+          row.html_template = (row.html_template || '') + (row.html_extra_1 || '') + (row.html_extra_2 || '') + (row.html_extra_3 || '') + (row.html_extra_4 || '') + (row.html_extra_5 || '');
+          row.css_template = (row.css_template || '') + (row.css_extra_1 || '') + (row.css_extra_2 || '') + (row.css_extra_3 || '') + (row.css_extra_4 || '') + (row.css_extra_5 || '');
+          row.js_template = (row.js_template || '') + (row.js_extra_1 || '') + (row.js_extra_2 || '') + (row.js_extra_3 || '') + (row.js_extra_4 || '') + (row.js_extra_5 || '');
         });
       }
       return rows;
@@ -2342,7 +2342,10 @@
     return {
       main: s.substring(0, 50000),
       extra_1: s.substring(50000, 100000),
-      extra_2: s.substring(100000, 150000)
+      extra_2: s.substring(100000, 150000),
+      extra_3: s.substring(150000, 200000),
+      extra_4: s.substring(200000, 250000),
+      extra_5: s.substring(250000, 300000)
     };
   }
 
@@ -2393,15 +2396,15 @@
       var css_template = payload.css_template || '';
       var js_template = payload.js_template || '';
 
-      var MAX_TOTAL_CHARS = 150000;
+      var MAX_TOTAL_CHARS = 300000;
       if (html_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
       }
       if (css_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
+        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
       }
       if (js_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil JS Anda.', 400);
+        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil JS Anda.', 400);
       }
 
       var htmlSplits = splitStringIntoFields(html_template);
@@ -2414,12 +2417,21 @@
         html_template: htmlSplits.main,
         html_extra_1: htmlSplits.extra_1,
         html_extra_2: htmlSplits.extra_2,
+        html_extra_3: htmlSplits.extra_3,
+        html_extra_4: htmlSplits.extra_4,
+        html_extra_5: htmlSplits.extra_5,
         css_template: cssSplits.main,
         css_extra_1: cssSplits.extra_1,
         css_extra_2: cssSplits.extra_2,
+        css_extra_3: cssSplits.extra_3,
+        css_extra_4: cssSplits.extra_4,
+        css_extra_5: cssSplits.extra_5,
         js_template: jsSplits.main,
         js_extra_1: jsSplits.extra_1,
         js_extra_2: jsSplits.extra_2,
+        js_extra_3: jsSplits.extra_3,
+        js_extra_4: jsSplits.extra_4,
+        js_extra_5: jsSplits.extra_5,
         plan_type: sanitized.plan_type,
         style_category: sanitized.style_category || '',
         preview_image: sanitized.preview_image || '',
@@ -2438,10 +2450,19 @@
       theme.js_template = js_template;
       delete theme.html_extra_1;
       delete theme.html_extra_2;
+      delete theme.html_extra_3;
+      delete theme.html_extra_4;
+      delete theme.html_extra_5;
       delete theme.css_extra_1;
       delete theme.css_extra_2;
+      delete theme.css_extra_3;
+      delete theme.css_extra_4;
+      delete theme.css_extra_5;
       delete theme.js_extra_1;
       delete theme.js_extra_2;
+      delete theme.js_extra_3;
+      delete theme.js_extra_4;
+      delete theme.js_extra_5;
 
       return ResponseHelper.success(theme, 'Theme created successfully');
     },
@@ -2449,15 +2470,15 @@
     updateTheme: function(auth, payload) {
       Validator.required(payload, ['id']);
       
-      var MAX_TOTAL_CHARS = 150000;
+      var MAX_TOTAL_CHARS = 300000;
       if (payload.html_template !== undefined && payload.html_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
       }
       if (payload.css_template !== undefined && payload.css_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
+        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
       }
       if (payload.js_template !== undefined && payload.js_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas maksimal (150.000 karakter). Harap perkecil ukuran JS Anda.', 400);
+        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran JS Anda.', 400);
       }
       
       var updates = {};
@@ -2468,18 +2489,27 @@
         updates.html_template = htmlSplits.main;
         updates.html_extra_1 = htmlSplits.extra_1;
         updates.html_extra_2 = htmlSplits.extra_2;
+        updates.html_extra_3 = htmlSplits.extra_3;
+        updates.html_extra_4 = htmlSplits.extra_4;
+        updates.html_extra_5 = htmlSplits.extra_5;
       }
       if (payload.css_template !== undefined) {
         var cssSplits = splitStringIntoFields(payload.css_template);
         updates.css_template = cssSplits.main;
         updates.css_extra_1 = cssSplits.extra_1;
         updates.css_extra_2 = cssSplits.extra_2;
+        updates.css_extra_3 = cssSplits.extra_3;
+        updates.css_extra_4 = cssSplits.extra_4;
+        updates.css_extra_5 = cssSplits.extra_5;
       }
       if (payload.js_template !== undefined) {
         var jsSplits = splitStringIntoFields(payload.js_template);
         updates.js_template = jsSplits.main;
         updates.js_extra_1 = jsSplits.extra_1;
         updates.js_extra_2 = jsSplits.extra_2;
+        updates.js_extra_3 = jsSplits.extra_3;
+        updates.js_extra_4 = jsSplits.extra_4;
+        updates.js_extra_5 = jsSplits.extra_5;
       }
       
       if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
@@ -3116,7 +3146,7 @@
     // Order matters: setupSpreadsheet overwrites row 1 headers, so any mismatch
     // would misalign existing data underneath. Keep these in sync with the sheet.
     var sheets = {
-      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'css_template', 'css_extra_1', 'css_extra_2', 'js_template', 'js_extra_1', 'js_extra_2', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
+      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'html_extra_3', 'html_extra_4', 'html_extra_5', 'css_template', 'css_extra_1', 'css_extra_2', 'css_extra_3', 'css_extra_4', 'css_extra_5', 'js_template', 'js_extra_1', 'js_extra_2', 'js_extra_3', 'js_extra_4', 'js_extra_5', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
       'Tenants': ['id', 'bride_nickname', 'bride_name', 'groom_nickname', 'groom_name', 'religion', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
       'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
