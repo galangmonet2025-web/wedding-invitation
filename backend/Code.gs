@@ -505,9 +505,9 @@
       }
       if (sheetName === 'Themes') {
         rows.forEach(function(row) {
-          row.html_template = (row.html_template || '') + (row.html_extra_1 || '') + (row.html_extra_2 || '') + (row.html_extra_3 || '') + (row.html_extra_4 || '') + (row.html_extra_5 || '');
-          row.css_template = (row.css_template || '') + (row.css_extra_1 || '') + (row.css_extra_2 || '') + (row.css_extra_3 || '') + (row.css_extra_4 || '') + (row.css_extra_5 || '');
-          row.js_template = (row.js_template || '') + (row.js_extra_1 || '') + (row.js_extra_2 || '') + (row.js_extra_3 || '') + (row.js_extra_4 || '') + (row.js_extra_5 || '');
+          row.html_template = (row.html_template || '') + (row.html_extra_1 || '') + (row.html_extra_2 || '') + (row.html_extra_3 || '') + (row.html_extra_4 || '') + (row.html_extra_5 || '') + (row.html_extra_6 || '') + (row.html_extra_7 || '') + (row.html_extra_8 || '') + (row.html_extra_9 || '') + (row.html_extra_10 || '');
+          row.css_template = (row.css_template || '') + (row.css_extra_1 || '') + (row.css_extra_2 || '') + (row.css_extra_3 || '') + (row.css_extra_4 || '') + (row.css_extra_5 || '') + (row.css_extra_6 || '') + (row.css_extra_7 || '') + (row.css_extra_8 || '') + (row.css_extra_9 || '') + (row.css_extra_10 || '');
+          row.js_template = (row.js_template || '') + (row.js_extra_1 || '') + (row.js_extra_2 || '') + (row.js_extra_3 || '') + (row.js_extra_4 || '') + (row.js_extra_5 || '') + (row.js_extra_6 || '') + (row.js_extra_7 || '') + (row.js_extra_8 || '') + (row.js_extra_9 || '') + (row.js_extra_10 || '');
         });
       }
       return rows;
@@ -1969,13 +1969,21 @@
       content.url_instagram_webconfig = site_instagram;
       content.url_whatsapp_webconfig = wa_number !== '' ? ('https://wa.me/' + wa_number) : '';
 
+      // Theme resolution. Normally the tenant's selected theme (theme_id) is used.
+      // For the THEME PREVIEW URL (/#/preview/<theme_code>/<slug>), the frontend
+      // sends payload.theme_code to FORCE a specific theme regardless of what the
+      // tenant has chosen — letting an admin preview any theme on real tenant data.
       var theme = null;
-      if (tenant.theme_id) {
+      var previewCode = (payload.theme_code || '').toString().trim();
+      if (previewCode) {
+        theme = DB.findOne('Themes', 'code', previewCode);
+      }
+      if (!theme && tenant.theme_id) {
         theme = DB.findOne('Themes', 'id', tenant.theme_id);
-        if (theme) {
-          try { theme.image_types = JSON.parse(theme.image_types); } catch(e) { theme.image_types = []; }
-          try { theme.asset_media_list = JSON.parse(theme.asset_media_list); } catch(e) { theme.asset_media_list = []; }
-        }
+      }
+      if (theme) {
+        try { theme.image_types = JSON.parse(theme.image_types); } catch(e) { theme.image_types = []; }
+        try { theme.asset_media_list = JSON.parse(theme.asset_media_list); } catch(e) { theme.asset_media_list = []; }
       }
 
       var guest = null;
@@ -2345,7 +2353,12 @@
       extra_2: s.substring(100000, 150000),
       extra_3: s.substring(150000, 200000),
       extra_4: s.substring(200000, 250000),
-      extra_5: s.substring(250000, 300000)
+      extra_5: s.substring(250000, 300000),
+      extra_6: s.substring(300000, 350000),
+      extra_7: s.substring(350000, 400000),
+      extra_8: s.substring(400000, 450000),
+      extra_9: s.substring(450000, 500000),
+      extra_10: s.substring(500000, 550000)
     };
   }
 
@@ -2357,6 +2370,7 @@
     getThemes: function(auth) {
       var themes = DB.getAll('Themes');
       themes.forEach(function(t) {
+        t.code = t.code || '';
         t.style_category = t.style_category || '';
         t.flag_use_system_action_button = (t.flag_use_system_action_button === undefined || t.flag_use_system_action_button === null || t.flag_use_system_action_button === '' ? true : (t.flag_use_system_action_button === true || t.flag_use_system_action_button === 'true' || t.flag_use_system_action_button === 'TRUE' || t.flag_use_system_action_button === 1 || t.flag_use_system_action_button === '1'));
         try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
@@ -2387,24 +2401,41 @@
       return ResponseHelper.success(themes, 'Themes retrieved');
     },
 
+    // Returns true if another theme already uses this code (case-insensitive).
+    // excludeId lets updateTheme ignore the row it is editing.
+    isThemeCodeTaken: function(code, excludeId) {
+      var c = (code || '').toString().trim().toLowerCase();
+      if (!c) return false;
+      var all = DB.getAll('Themes') || [];
+      for (var i = 0; i < all.length; i++) {
+        if (excludeId && all[i].id === excludeId) continue;
+        if ((all[i].code || '').toString().trim().toLowerCase() === c) return true;
+      }
+      return false;
+    },
+
     createTheme: function(auth, payload) {
       Validator.required(payload, ['name', 'html_template', 'plan_type']);
       var sanitized = Validator.sanitizeObject(payload);
+
+      if (sanitized.code && this.isThemeCodeTaken(sanitized.code, null)) {
+        return ResponseHelper.error('Kode tema "' + sanitized.code + '" sudah dipakai tema lain.', 400);
+      }
       
       // We allow full HTML, so don't completely sanitize HTML template
       var html_template = payload.html_template || '';
       var css_template = payload.css_template || '';
       var js_template = payload.js_template || '';
 
-      var MAX_TOTAL_CHARS = 300000;
+      var MAX_TOTAL_CHARS = 550000;
       if (html_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+        return ResponseHelper.error('Ukuran template HTML (' + html_template.length + ' karakter) melebihi batas maksimal (550.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
       }
       if (css_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
+        return ResponseHelper.error('Ukuran template CSS (' + css_template.length + ' karakter) melebihi batas maksimal (550.000 karakter). Harap pindahkan asset ke file eksternal atau perkecil CSS Anda.', 400);
       }
       if (js_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil JS Anda.', 400);
+        return ResponseHelper.error('Ukuran template JS (' + js_template.length + ' karakter) melebihi batas maksimal (550.000 karakter). Harap perkecil JS Anda.', 400);
       }
 
       var htmlSplits = splitStringIntoFields(html_template);
@@ -2413,6 +2444,7 @@
 
       var theme = {
         id: DB.generateId(),
+        code: sanitized.code || '',
         name: sanitized.name,
         html_template: htmlSplits.main,
         html_extra_1: htmlSplits.extra_1,
@@ -2420,18 +2452,33 @@
         html_extra_3: htmlSplits.extra_3,
         html_extra_4: htmlSplits.extra_4,
         html_extra_5: htmlSplits.extra_5,
+        html_extra_6: htmlSplits.extra_6,
+        html_extra_7: htmlSplits.extra_7,
+        html_extra_8: htmlSplits.extra_8,
+        html_extra_9: htmlSplits.extra_9,
+        html_extra_10: htmlSplits.extra_10,
         css_template: cssSplits.main,
         css_extra_1: cssSplits.extra_1,
         css_extra_2: cssSplits.extra_2,
         css_extra_3: cssSplits.extra_3,
         css_extra_4: cssSplits.extra_4,
         css_extra_5: cssSplits.extra_5,
+        css_extra_6: cssSplits.extra_6,
+        css_extra_7: cssSplits.extra_7,
+        css_extra_8: cssSplits.extra_8,
+        css_extra_9: cssSplits.extra_9,
+        css_extra_10: cssSplits.extra_10,
         js_template: jsSplits.main,
         js_extra_1: jsSplits.extra_1,
         js_extra_2: jsSplits.extra_2,
         js_extra_3: jsSplits.extra_3,
         js_extra_4: jsSplits.extra_4,
         js_extra_5: jsSplits.extra_5,
+        js_extra_6: jsSplits.extra_6,
+        js_extra_7: jsSplits.extra_7,
+        js_extra_8: jsSplits.extra_8,
+        js_extra_9: jsSplits.extra_9,
+        js_extra_10: jsSplits.extra_10,
         plan_type: sanitized.plan_type,
         style_category: sanitized.style_category || '',
         preview_image: sanitized.preview_image || '',
@@ -2453,32 +2500,51 @@
       delete theme.html_extra_3;
       delete theme.html_extra_4;
       delete theme.html_extra_5;
+      delete theme.html_extra_6;
+      delete theme.html_extra_7;
+      delete theme.html_extra_8;
+      delete theme.html_extra_9;
+      delete theme.html_extra_10;
       delete theme.css_extra_1;
       delete theme.css_extra_2;
       delete theme.css_extra_3;
       delete theme.css_extra_4;
       delete theme.css_extra_5;
+      delete theme.css_extra_6;
+      delete theme.css_extra_7;
+      delete theme.css_extra_8;
+      delete theme.css_extra_9;
+      delete theme.css_extra_10;
       delete theme.js_extra_1;
       delete theme.js_extra_2;
       delete theme.js_extra_3;
       delete theme.js_extra_4;
       delete theme.js_extra_5;
+      delete theme.js_extra_6;
+      delete theme.js_extra_7;
+      delete theme.js_extra_8;
+      delete theme.js_extra_9;
+      delete theme.js_extra_10;
 
       return ResponseHelper.success(theme, 'Theme created successfully');
     },
 
     updateTheme: function(auth, payload) {
       Validator.required(payload, ['id']);
-      
-      var MAX_TOTAL_CHARS = 300000;
+
+      if (payload.code !== undefined && payload.code && this.isThemeCodeTaken(payload.code, payload.id)) {
+        return ResponseHelper.error('Kode tema "' + payload.code + '" sudah dipakai tema lain.', 400);
+      }
+
+      var MAX_TOTAL_CHARS = 550000;
       if (payload.html_template !== undefined && payload.html_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
+        return ResponseHelper.error('Ukuran template HTML (' + payload.html_template.length + ' karakter) melebihi batas maksimal (550.000 karakter). Harap perkecil ukuran HTML Anda.', 400);
       }
       if (payload.css_template !== undefined && payload.css_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
+        return ResponseHelper.error('Ukuran template CSS (' + payload.css_template.length + ' karakter) melebihi batas maksimal (550.000 karakter). Harap perkecil ukuran CSS Anda.', 400);
       }
       if (payload.js_template !== undefined && payload.js_template.length > MAX_TOTAL_CHARS) {
-        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas maksimal (300.000 karakter). Harap perkecil ukuran JS Anda.', 400);
+        return ResponseHelper.error('Ukuran template JS (' + payload.js_template.length + ' karakter) melebihi batas maksimal (550.000 karakter). Harap perkecil ukuran JS Anda.', 400);
       }
       
       var updates = {};
@@ -2492,6 +2558,11 @@
         updates.html_extra_3 = htmlSplits.extra_3;
         updates.html_extra_4 = htmlSplits.extra_4;
         updates.html_extra_5 = htmlSplits.extra_5;
+        updates.html_extra_6 = htmlSplits.extra_6;
+        updates.html_extra_7 = htmlSplits.extra_7;
+        updates.html_extra_8 = htmlSplits.extra_8;
+        updates.html_extra_9 = htmlSplits.extra_9;
+        updates.html_extra_10 = htmlSplits.extra_10;
       }
       if (payload.css_template !== undefined) {
         var cssSplits = splitStringIntoFields(payload.css_template);
@@ -2501,6 +2572,11 @@
         updates.css_extra_3 = cssSplits.extra_3;
         updates.css_extra_4 = cssSplits.extra_4;
         updates.css_extra_5 = cssSplits.extra_5;
+        updates.css_extra_6 = cssSplits.extra_6;
+        updates.css_extra_7 = cssSplits.extra_7;
+        updates.css_extra_8 = cssSplits.extra_8;
+        updates.css_extra_9 = cssSplits.extra_9;
+        updates.css_extra_10 = cssSplits.extra_10;
       }
       if (payload.js_template !== undefined) {
         var jsSplits = splitStringIntoFields(payload.js_template);
@@ -2510,8 +2586,14 @@
         updates.js_extra_3 = jsSplits.extra_3;
         updates.js_extra_4 = jsSplits.extra_4;
         updates.js_extra_5 = jsSplits.extra_5;
+        updates.js_extra_6 = jsSplits.extra_6;
+        updates.js_extra_7 = jsSplits.extra_7;
+        updates.js_extra_8 = jsSplits.extra_8;
+        updates.js_extra_9 = jsSplits.extra_9;
+        updates.js_extra_10 = jsSplits.extra_10;
       }
       
+      if (payload.code !== undefined) updates.code = Validator.sanitizeObject({c: payload.code}).c;
       if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
       if (payload.style_category !== undefined) updates.style_category = Validator.sanitizeObject({s: payload.style_category}).s;
       if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
@@ -3146,7 +3228,7 @@
     // Order matters: setupSpreadsheet overwrites row 1 headers, so any mismatch
     // would misalign existing data underneath. Keep these in sync with the sheet.
     var sheets = {
-      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'html_extra_3', 'html_extra_4', 'html_extra_5', 'css_template', 'css_extra_1', 'css_extra_2', 'css_extra_3', 'css_extra_4', 'css_extra_5', 'js_template', 'js_extra_1', 'js_extra_2', 'js_extra_3', 'js_extra_4', 'js_extra_5', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
+      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'html_extra_3', 'html_extra_4', 'html_extra_5', 'html_extra_6', 'html_extra_7', 'html_extra_8', 'html_extra_9', 'html_extra_10', 'css_template', 'css_extra_1', 'css_extra_2', 'css_extra_3', 'css_extra_4', 'css_extra_5', 'css_extra_6', 'css_extra_7', 'css_extra_8', 'css_extra_9', 'css_extra_10', 'js_template', 'js_extra_1', 'js_extra_2', 'js_extra_3', 'js_extra_4', 'js_extra_5', 'js_extra_6', 'js_extra_7', 'js_extra_8', 'js_extra_9', 'js_extra_10', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
       'Tenants': ['id', 'bride_nickname', 'bride_name', 'groom_nickname', 'groom_name', 'religion', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
       'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],

@@ -20,6 +20,11 @@ import { publicApi } from '@/core/api/endpoints';
 import { Theme, MstPlanType, MstPlanFeature, WebsiteConfig, ReviewAndRating, MstAdditionalFeature } from '@/types';
 import kosaIcon from '@/assets/img/kosa-icon.png';
 
+// Demo tenant slug used by the theme-preview URL (/#/preview/<theme_code>/<slug>).
+// The preview forces this theme onto the demo tenant's real invitation data.
+// Must match an ACTIVE tenant's domain_slug, otherwise the preview shows "not found".
+const PREVIEW_DEMO_SLUG = 'dini-galang';
+
 export function NewLandingPage() {
     // Data States
     const [config, setConfig] = useState<WebsiteConfig | null>(null);
@@ -249,9 +254,23 @@ export function NewLandingPage() {
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
                                     />
                                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center backdrop-blur-[2px]">
-                                        <button className="bg-white text-gray-900 px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500">
-                                            Preview Tema
-                                        </button>
+                                        {theme.code ? (
+                                            <a
+                                                href={`#/preview/${theme.code}/${PREVIEW_DEMO_SLUG}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="bg-white text-gray-900 px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 hover:bg-gold-500 hover:text-white"
+                                            >
+                                                Preview Tema
+                                            </a>
+                                        ) : (
+                                            <span
+                                                title="Tema ini belum punya kode preview"
+                                                className="bg-white/70 text-gray-500 px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 cursor-not-allowed"
+                                            >
+                                                Preview Tema
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-gold-600 shadow-xl">
                                         {theme.plan_type}

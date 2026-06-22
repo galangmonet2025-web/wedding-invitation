@@ -91,7 +91,7 @@ interface InvitationPageProps {
 }
 
 export function InvitationPage({ previewData }: InvitationPageProps) {
-    const { slug } = useParams<{ slug: string }>();
+    const { slug, themeCode } = useParams<{ slug: string; themeCode?: string }>();
     const location = useLocation();
     const { t, i18n } = useTranslation();
     const [data, setData] = useState<InvitationData | null>(null);
@@ -320,7 +320,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     useEffect(() => {
         if (slug && !previewData) fetchInvitation();
-    }, [slug, previewData]);
+    }, [slug, previewData, themeCode]);
 
     // Fetch Global Website Config for Favicon
     useEffect(() => {
@@ -448,9 +448,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     const fetchInvitation = async () => {
         try {
             const searchParams = new URLSearchParams(location.search);
-            const guestid = searchParams.get('guestid');
-            console.log("Fetching invitation for slug:", slug, "guestid:", guestid);
-            const res = await publicApi.getInvitation(slug!, guestid);
+            // Accept both ?guestid= and ?guestId= (the preview URL uses guestId)
+            const guestid = searchParams.get('guestid') || searchParams.get('guestId');
+            console.log("Fetching invitation for slug:", slug, "guestid:", guestid, "themeCode:", themeCode);
+            const res = await publicApi.getInvitation(slug!, guestid, themeCode);
             console.log("Response from getInvitation:", res);
             if (res.success) {
                 setData(res.data);

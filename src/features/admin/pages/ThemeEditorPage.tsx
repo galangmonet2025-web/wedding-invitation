@@ -87,6 +87,18 @@ const parseYoutubeUrl = (url: string): string | null => {
     return re.test(trimmed) ? trimmed : null;
 };
 
+// Validate a theme code: lowercase letters, digits, dash & underscore only;
+// no spaces/uppercase/other chars; and it must NOT be all digits (full-alphabet is fine).
+// Returns an error message (Indonesian) or '' when valid. Empty string is treated as valid (code optional).
+const validateThemeCode = (raw: string): string => {
+    if (!raw) return '';
+    if (/\s/.test(raw)) return 'Kode tidak boleh mengandung spasi.';
+    if (/[A-Z]/.test(raw)) return 'Kode tidak boleh mengandung huruf besar.';
+    if (!/^[a-z0-9_-]+$/.test(raw)) return 'Kode hanya boleh berisi huruf kecil, angka, tanda hubung (-), dan garis bawah (_).';
+    if (/^[0-9]+$/.test(raw)) return 'Kode tidak boleh berupa angka semua.';
+    return '';
+};
+
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -137,6 +149,8 @@ export function ThemeEditorPage() {
 
     // Form and Editor State
     const [name, setName] = useState('');
+    const [code, setCode] = useState('');
+    const [codeError, setCodeError] = useState('');
     const [planType, setPlanType] = useState<PlanType>('basic');
     const [styleCategory, setStyleCategory] = useState('Lainnya');
     const [previewImage, setPreviewImage] = useState('');
@@ -386,6 +400,7 @@ export function ThemeEditorPage() {
 
                 if (theme) {
                     setName(theme.name);
+                    setCode(theme.code || '');
                     setPlanType(theme.plan_type);
                     setStyleCategory(theme.style_category || 'Lainnya');
                     setPreviewImage(theme.preview_image || '');
@@ -409,6 +424,7 @@ export function ThemeEditorPage() {
                     const refetchedTheme = useThemeStore.getState().themes.find(t => t.id === id);
                     if (refetchedTheme) {
                         setName(refetchedTheme.name);
+                        setCode(refetchedTheme.code || '');
                         setPlanType(refetchedTheme.plan_type);
                         setStyleCategory(refetchedTheme.style_category || 'Lainnya');
                         setPreviewImage(refetchedTheme.preview_image || '');
@@ -434,6 +450,7 @@ export function ThemeEditorPage() {
             } else if (copiedTheme) {
                 // Pre-fill from copied theme
                 setName(`${copiedTheme.name} (Copy)`);
+                setCode('');
                 setPlanType(copiedTheme.plan_type);
                 setStyleCategory(copiedTheme.style_category || 'Lainnya');
                 setPreviewImage(copiedTheme.preview_image || '');
@@ -1322,6 +1339,22 @@ export function ThemeEditorPage() {
     const handleSave = async (isDraft: boolean) => {
         if (!name.trim()) return toast.error('Theme Name is required');
 
+        const codeErr = validateThemeCode(code);
+        if (codeErr) {
+            setCodeError(codeErr);
+            return toast.error('Kode Tema tidak valid: ' + codeErr);
+        }
+
+        // Code must be unique across themes (skip the theme being edited itself).
+        if (code.trim()) {
+            const dup = themes.some(t => (t.code || '').trim().toLowerCase() === code.trim().toLowerCase() && t.id !== id);
+            if (dup) {
+                const msg = 'Kode Tema "' + code.trim() + '" sudah dipakai tema lain.';
+                setCodeError(msg);
+                return toast.error(msg);
+            }
+        }
+
         // A full Save already writes asset_media_list, so cancel any pending debounced
         // asset persist to avoid a redundant duplicate request.
         if (assetPersistTimerRef.current) {
@@ -1331,15 +1364,15 @@ export function ThemeEditorPage() {
         }
 
         // Proactive Google Sheets Cell Character Limit Validation
-        const MAX_CELL_CHARS = 300000;
+        const MAX_CELL_CHARS = 550000;
         if (htmlCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 300.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode HTML terlalu besar (${htmlCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 550.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan atau kompres kode HTML Anda.`, { duration: 10000 });
         }
         if (cssCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 300.000 karakter (karena dibagi ke kolom ekstra). Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode CSS terlalu besar (${cssCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 550.000 karakter (karena dibagi ke kolom ekstra). Harap kurangi kode CSS, atau pindahkan style ke berkas eksternal.`, { duration: 10000 });
         }
         if (jsCode.length > MAX_CELL_CHARS) {
-            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 300.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan kode JS Anda.`, { duration: 10000 });
+            return toast.error(`Gagal menyimpan: Ukuran kode JS terlalu besar (${jsCode.length.toLocaleString('id-ID')} karakter). Batas maksimal yang didukung adalah 550.000 karakter (karena dibagi ke kolom ekstra). Harap sederhanakan kode JS Anda.`, { duration: 10000 });
         }
 
         setSaving(true);
@@ -1384,6 +1417,7 @@ export function ThemeEditorPage() {
 
             const payload = {
                 name,
+                code,
                 plan_type: planType,
                 style_category: styleCategory,
                 preview_image: finalPreviewUrl,
@@ -1459,8 +1493,8 @@ export function ThemeEditorPage() {
                 errMsg = `Waktu tunggu habis (Timeout) saat menyimpan. Kode Anda besar (${totalChars.toLocaleString('id-ID')} karakter) sehingga penyimpanan ke server memakan waktu lama. Coba simpan ulang. Detail: ${errMsg}`;
             } else if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('fetch') || !error.response) {
                 const totalChars = htmlCode.length + cssCode.length + jsCode.length;
-                // Per-template limit is 300.000 karakter (backend memecah ke 6 kolom @50.000).
-                errMsg = `Kesalahan Jaringan (Network Error). Pastikan tiap bagian (HTML/CSS/JS) tidak melebihi 300.000 karakter. Total kode saat ini: ${totalChars.toLocaleString('id-ID')} karakter. Detail: ${errMsg}`;
+                // Per-template limit is 550.000 karakter (backend memecah ke 11 kolom @50.000).
+                errMsg = `Kesalahan Jaringan (Network Error). Pastikan tiap bagian (HTML/CSS/JS) tidak melebihi 550.000 karakter. Total kode saat ini: ${totalChars.toLocaleString('id-ID')} karakter. Detail: ${errMsg}`;
             }
             
             toast.error(errMsg, { id: loadingToast, duration: 10000 });
@@ -2139,15 +2173,39 @@ export function ThemeEditorPage() {
                         {/* Settings Panel */}
                         <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 ${activeTabPanel === 'settings' ? 'block' : 'hidden'}`}>
                             <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Tema *</label>
-                                    <input
-                                        type="text"
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        className="input-field"
-                                        placeholder="Contoh: Gold Ivy Template"
-                                    />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Tema *</label>
+                                        <input
+                                            type="text"
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            className="input-field"
+                                            placeholder="Contoh: Gold Ivy Template"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kode Tema</label>
+                                        <input
+                                            type="text"
+                                            value={code}
+                                            onChange={e => {
+                                                // Auto-format while typing: lowercase + remove spaces.
+                                                const next = e.target.value.toLowerCase().replace(/\s+/g, '');
+                                                setCode(next);
+                                                let err = validateThemeCode(next);
+                                                if (!err && next.trim() && themes.some(t => (t.code || '').trim().toLowerCase() === next.trim() && t.id !== id)) {
+                                                    err = 'Kode "' + next.trim() + '" sudah dipakai tema lain.';
+                                                }
+                                                setCodeError(err);
+                                            }}
+                                            className={`input-field ${codeError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                            placeholder="Contoh: gold-ivy"
+                                        />
+                                        {codeError && (
+                                            <p className="mt-1 text-xs text-red-500">{codeError}</p>
+                                        )}
+                                    </div>
                                 </div>
                                 {/* Paket + Kategori Gaya + Floating Action Button — satu baris di layar lebar */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">

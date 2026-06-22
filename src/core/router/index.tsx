@@ -307,6 +307,12 @@ export const router = createHashRouter([
                 ],
             },
             {
+                // Theme preview URL: forces a specific theme (by code) onto a real
+                // tenant's invitation, e.g. /#/preview/kode-tema/dini-galang?guestid=XXX
+                path: 'preview/:themeCode/:slug',
+                element: <InvitationPage />,
+            },
+            {
                 path: ':slug',
                 element: <InvitationPage />,
             },

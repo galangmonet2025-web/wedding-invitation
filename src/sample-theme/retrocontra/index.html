@@ -1,0 +1,666 @@
+<!-- ======================================================================
+     CONTRA: OPERATION LOVE — RUN-AND-GUN WEDDING THEME
+     ----------------------------------------------------------------------
+     The guest plays a real 2D run-and-gun (Contra-style). The invitation is
+     discovered by SHOOTING floating power-up PODS inside the game. Each pod
+     that carries a piece unlocks an inventory icon (top-right) and a retro
+     modal. Clearing the gate/boss reveals the full scrollable invitation,
+     which is the single source of bound data (the modals clone these
+     sections, so {{vars}} only appear once).
+
+     Binding contract (resolved by the host app before injection):
+       {{var}}            text/url substitution
+       data-var / data-img / data-if / data-unless / data-loop
+       {{#if flag}} ... {{/if}} / {{#unless}} / {{#each list}} this.x {{/each}}
+
+     Host-contract IDs kept VERBATIM (the host queries/intercepts them):
+       btn-show-qr, btn-toggle-music, bg-music, play-icon, pause-icon,
+       btn-submit-ucapan, wish-name, wish-message.
+     ====================================================================== -->
+
+<div class="rc-shell">
+
+    <!-- ============ MOBILE FRAME (the game lives here) ============ -->
+    <div class="rc-frame" id="rc-frame">
+
+        <!-- ===== GAME STAGE ===== -->
+        <div class="rc-stage" id="rc-stage">
+            <canvas id="rc-canvas" class="rc-canvas"></canvas>
+
+            <!-- HUD -->
+            <div class="rc-hud" id="rc-hud">
+                <div class="hud-col">
+                    <span class="hud-label">{{groom_nickname}}&amp;{{bride_nickname}}</span>
+                    <span class="hud-value"><span class="rc-life-ico"></span> <span id="rc-lives">×3</span></span>
+                </div>
+                <div class="hud-col hud-mid">
+                    <span class="hud-label">SCORE</span>
+                    <span class="hud-value" id="rc-score">000000</span>
+                </div>
+                <div class="hud-col hud-right">
+                    <span class="hud-label">AREA</span>
+                    <span class="hud-world-row">
+                        <span class="hud-value" id="rc-world">1</span>
+                        <span class="hud-diff" id="rc-diff-badge" data-lvl="easy">EASY</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Current weapon chip -->
+            <div class="rc-weapon" id="rc-weapon"><span class="rc-weapon-ico" id="rc-weapon-ico">R</span><span id="rc-weapon-name">RIFLE</span></div>
+
+            <!-- Left-side floating button stack (cheat, view-invitation, qr, settings) -->
+            <div class="rc-leftbtns" id="rc-leftbtns">
+                <!-- Invincible cheat toggle -->
+                <button class="rc-iconbtn rc-star-btn" id="rc-star-btn" type="button" aria-label="Mode Kebal (cheat)">
+                    <svg viewBox="0 0 24 24" fill="#fac000" stroke="#000" stroke-width="1.5" stroke-linejoin="round">
+                        <path d="M12 2l2.9 6.1 6.6.8-4.9 4.5 1.3 6.6L12 17.8 6.1 20.6l1.3-6.6L2.5 8.9l6.6-.8z"></path>
+                    </svg>
+                </button>
+
+                <!-- Stage select (only shown while cheat mode is on) -->
+                <button class="rc-iconbtn rc-stagesel-btn" id="rc-stagesel-btn" type="button" aria-label="Pilih area" title="Pilih area" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#7aa8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect>
+                    </svg>
+                </button>
+
+                <!-- View full invitation (enabled after a finish or when cheat is on) -->
+                <button class="rc-iconbtn rc-view-btn is-locked" id="rc-view-btn" type="button" aria-label="Lihat undangan lengkap" title="Lihat undangan lengkap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fac000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"></path>
+                        <path d="M7 9h6M7 13h10M7 17h10"></path>
+                    </svg>
+                </button>
+
+                <!-- Guest attendance QR (host app wires #btn-show-qr → shows the QR) -->
+                <button class="rc-iconbtn rc-qr-btn" id="btn-show-qr" type="button" aria-label="QR Kehadiran" title="QR Kehadiran">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#7bd47e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+                        <path d="M14 14h3v3M20 14v7M14 20h3"></path>
+                    </svg>
+                </button>
+
+                <!-- Settings (reset game) -->
+                <button class="rc-iconbtn rc-settings-btn" id="rc-settings-btn" type="button" aria-label="Pengaturan" title="Pengaturan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Inventory rail (top-right). Filled by JS from the active feature set. -->
+            <div class="rc-inv" id="rc-inv"></div>
+
+            <!-- On-screen toast for status messages -->
+            <div class="rc-toast" id="rc-toast"></div>
+
+            <!-- Touch controls: analog 8-way joystick (left) + FIRE/JUMP buttons (right) -->
+            <div class="rc-controls" id="rc-controls">
+                <div class="rc-joy" id="rc-joy">
+                    <div class="rc-joy-ring">
+                        <span class="rc-joy-dir rc-joy-up">▲</span>
+                        <span class="rc-joy-dir rc-joy-down">▼</span>
+                        <span class="rc-joy-dir rc-joy-left">◀</span>
+                        <span class="rc-joy-dir rc-joy-right">▶</span>
+                    </div>
+                    <div class="rc-joy-nub" id="rc-joy-nub"></div>
+                </div>
+                <div class="rc-actions">
+                    <button class="rc-btn rc-btn-fire" id="rc-fire" type="button" aria-label="Tembak">B<br><small>FIRE</small></button>
+                    <button class="rc-btn rc-btn-jump" id="rc-jump" type="button" aria-label="Lompat">A</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== COVER ===== -->
+        <div class="rc-cover" id="rc-cover">
+            <div class="rc-cover-deco" aria-hidden="true">
+                <span class="rc-cd-cloud cc1"></span>
+                <span class="rc-cd-cloud cc2"></span>
+                <span class="rc-cd-jungle cj1"></span>
+                <span class="rc-cd-jungle cj2"></span>
+                <span class="rc-cd-bullet bl1"></span>
+                <span class="rc-cd-bullet bl2"></span>
+                <span class="rc-cd-pod cp1"></span>
+                <span class="rc-cd-heart ch1">♥</span>
+            </div>
+            <div class="rc-cover-scan"></div>
+            <div class="rc-cover-inner">
+                <div class="rc-cover-badge">★ OPERATION LOVE ★</div>
+                <div class="rc-cover-title">CONTRA</div>
+                <div class="rc-cover-invlabel">♥ UNDANGAN PERNIKAHAN ♥</div>
+                <h1 class="rc-cover-couple">
+                    <span>{{groom_nickname}}</span>
+                    <span class="amp">♥</span>
+                    <span>{{bride_nickname}}</span>
+                </h1>
+                <div class="rc-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+                <div class="rc-cover-guest">
+                    Kepada Yth.
+                    <span class="guest-name" data-var="nama_tamu">{{nama_tamu}}</span>
+                </div>
+                <!-- Difficulty selector (chosen once at the start) -->
+                <div class="rc-diff" id="rc-diff" role="group" aria-label="Tingkat kesulitan">
+                    <div class="rc-diff-label">PILIH LEVEL</div>
+                    <div class="rc-diff-opts">
+                        <button class="rc-diff-opt" data-diff="easy"   type="button">EASY</button>
+                        <button class="rc-diff-opt is-sel" data-diff="medium" type="button">MEDIUM</button>
+                        <button class="rc-diff-opt" data-diff="hard"   type="button">HARD</button>
+                    </div>
+                </div>
+                <!-- PRESS START only begins the GAME (does NOT start music). -->
+                <button class="rc-start-btn" id="rc-start-btn" type="button">
+                    <span class="rc-start-blink">PRESS START</span>
+                </button>
+                <!-- Guest attendance QR (host app wires #btn-show-qr → shows the QR) -->
+                <button class="rc-cover-qr" id="btn-show-qr" type="button" aria-label="QR Kehadiran" title="QR Kehadiran">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+                        <path d="M14 14h3v3M20 14v7M14 20h3"></path>
+                    </svg>
+                    <span>QR KEHADIRAN</span>
+                </button>
+                <div class="rc-cover-hint">Tembus markas &amp; tembak pod untuk membuka undangan kami</div>
+            </div>
+        </div>
+
+        <!-- ===== INTRO STORY OVERLAY ===== -->
+        <div class="rc-overlay" id="rc-intro">
+            <div class="rc-overlay-pixtitle">AREA 1</div>
+            <div class="rc-overlay-text">
+                Misi dimulai, Komando! Lompat, tembak musuh, dan hancurkan
+                <strong>POD</strong> melayang untuk membuka rahasia undangan
+                pernikahan <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>.
+                <br><br>Hancurkan gerbang inti di ujung untuk menuntaskan area.
+            </div>
+            <div class="rc-diff-info" id="rc-intro-diff"><!-- difficulty summary injected by JS --></div>
+            <button class="rc-overlay-btn" id="rc-intro-go" type="button">GO! ▶</button>
+        </div>
+
+        <!-- ===== STAGE CLEAR OVERLAY (between areas) ===== -->
+        <div class="rc-overlay" id="rc-stageclear">
+            <div class="rc-overlay-pixtitle" id="rc-stage-title">AREA CLEAR!</div>
+            <div class="rc-overlay-text" id="rc-stage-text"></div>
+            <button class="rc-overlay-btn" id="rc-stage-go" type="button">LANJUT ▶</button>
+        </div>
+
+        <!-- ===== WIN OVERLAY (after final boss) ===== -->
+        <div class="rc-overlay" id="rc-win">
+            <div class="rc-overlay-pixtitle">MISSION COMPLETE!</div>
+            <div class="rc-overlay-text" id="rc-win-text">
+                Selamat! Kamu menuntaskan misi dan membuka seluruh undangan.
+            </div>
+            <button class="rc-overlay-btn" id="rc-win-go" type="button">LIHAT UNDANGAN ▶</button>
+        </div>
+
+        <!-- ===== RESET CONFIRM DIALOG ===== -->
+        <div class="rc-confirm-root" id="rc-confirm-root">
+            <div class="rc-confirm">
+                <div class="rc-confirm-head">⚠ RESET GAME</div>
+                <div class="rc-confirm-body">
+                    Progres tersimpan akan dihapus: <strong>skor terbaik</strong>,
+                    <strong>undangan yang sudah terbuka</strong>, dan <strong>area tercapai</strong>.
+                    Kamu akan mulai lagi dari awal (Area 1).
+                    <br><br>Lanjutkan?
+                </div>
+                <div class="rc-confirm-btns">
+                    <button class="rc-pixbtn" id="rc-confirm-cancel" type="button">BATAL</button>
+                    <button class="rc-pixbtn green" id="rc-confirm-ok" type="button">YA, RESET</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== STAGE SELECT (cheat only) ===== -->
+        <div class="rc-confirm-root" id="rc-stagesel-root">
+            <div class="rc-confirm rc-stagesel">
+                <div class="rc-confirm-head" style="background:#2a5fd6;">PILIH AREA</div>
+                <div class="rc-stagesel-grid" id="rc-stagesel-grid"><!-- buttons injected by JS --></div>
+                <div class="rc-stagesel-hint" id="rc-stagesel-hint"><!-- pending-selection summary injected by JS --></div>
+                <div class="rc-confirm-btns">
+                    <button class="rc-pixbtn" id="rc-stagesel-cancel" type="button">TUTUP</button>
+                    <button class="rc-pixbtn green" id="rc-stagesel-ok" type="button">OK ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== RETRO MODAL (info popup) ===== -->
+        <div class="rc-modal-root" id="rc-modal-root">
+            <div class="rc-modal">
+                <div class="rc-modal-head">
+                    <canvas class="mh-ico" id="rc-modal-ico" width="14" height="14"></canvas>
+                    <span class="mh-title" id="rc-modal-title">INFO</span>
+                    <button class="rc-modal-close" id="rc-modal-close" type="button">✕</button>
+                </div>
+                <div class="rc-modal-body" id="rc-modal-body"></div>
+            </div>
+        </div>
+
+        <!-- ===== INVITATION (revealed at the end; also data source for modals) =====
+             Each <section> carries data-info="<key>" so JS can clone it into a
+             modal when the matching pod is shot. -->
+        <div class="rc-invitation" id="rc-invitation">
+
+            <!-- ===== CONTRA DECOR LAYER (cosmetic, behind the content) ===== -->
+            <div class="rc-deco" aria-hidden="true">
+                <span class="rc-deco-cloud d1"></span>
+                <span class="rc-deco-cloud d2"></span>
+                <span class="rc-deco-jungle j1"></span>
+                <span class="rc-deco-jungle j2"></span>
+                <span class="rc-deco-pod pd1"></span>
+                <span class="rc-deco-pod pd2"></span>
+                <span class="rc-deco-bullet bu1"></span>
+                <span class="rc-deco-heart hr1">♥</span>
+                <span class="rc-deco-heart hr2">♥</span>
+                <span class="rc-deco-ground"></span>
+            </div>
+
+            <!-- COUPLE -->
+            <section class="rc-sec" data-info="couple">
+                <div class="rc-sec-head">
+                    <div class="rc-sec-eyebrow">PLAYER 1 &amp; PLAYER 2</div>
+                    <h2 class="rc-sec-title">Mempelai</h2>
+                    <p class="rc-sec-quote">Dua komando yang memutuskan menjalani semua misi kehidupan bersama.</p>
+                </div>
+                <div class="rc-couple-grid">
+                    <div class="rc-person">
+                        <div class="rc-person-photo" data-bg="photo_groom_photo" style="background-image: url('{{photo_groom_photo}}');"></div>
+                        <h3 class="rc-person-name" data-var="groom_name">{{groom_name}}</h3>
+                        <div class="rc-person-role">Mempelai Pria</div>
+                        <div data-if="flag_tampilkan_nama_orang_tua">
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="rc-person-parents">
+                                Putra dari<br>
+                                Bapak <span data-var="nama_bapak_laki_laki">{{nama_bapak_laki_laki}}</span>
+                                &amp; Ibu <span data-var="nama_ibu_laki_laki">{{nama_ibu_laki_laki}}</span>
+                            </div>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_tampilkan_sosial_media_mempelai">
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="rc-person-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank">@<span data-var="ig_laki_laki">{{ig_laki_laki}}</span></a>
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    <div class="rc-amp-pixel">&amp;</div>
+
+                    <div class="rc-person">
+                        <div class="rc-person-photo" data-bg="photo_bride_photo" style="background-image: url('{{photo_bride_photo}}');"></div>
+                        <h3 class="rc-person-name" data-var="bride_name">{{bride_name}}</h3>
+                        <div class="rc-person-role">Mempelai Wanita</div>
+                        <div data-if="flag_tampilkan_nama_orang_tua">
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="rc-person-parents">
+                                Putri dari<br>
+                                Bapak <span data-var="nama_bapak_perempuan">{{nama_bapak_perempuan}}</span>
+                                &amp; Ibu <span data-var="nama_ibu_perempuan">{{nama_ibu_perempuan}}</span>
+                            </div>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_tampilkan_sosial_media_mempelai">
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="rc-person-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank">@<span data-var="ig_perempuan">{{ig_perempuan}}</span></a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCHEDULE -->
+            <section class="rc-sec" data-info="schedule">
+                <div class="rc-sec-head">
+                    <div class="rc-sec-eyebrow">SAVE THE DATE</div>
+                    <h2 class="rc-sec-title">Acara</h2>
+                    <p class="rc-sec-quote">Hitung mundur menuju misi terakhir kami.</p>
+                </div>
+
+                <div class="rc-card">
+                    <div class="rc-card-pixel-top"></div>
+                    <div class="rc-countdown" id="rc-countdown">
+                        <div class="rc-cd-box"><div class="rc-cd-num" id="rc-cd-days">00</div><div class="rc-cd-lab">Hari</div></div>
+                        <div class="rc-cd-box"><div class="rc-cd-num" id="rc-cd-hours">00</div><div class="rc-cd-lab">Jam</div></div>
+                        <div class="rc-cd-box"><div class="rc-cd-num" id="rc-cd-mins">00</div><div class="rc-cd-lab">Menit</div></div>
+                        <div class="rc-cd-box"><div class="rc-cd-num" id="rc-cd-secs">00</div><div class="rc-cd-lab">Detik</div></div>
+                    </div>
+                    <div class="rc-cal" id="rc-calendar" data-wedding-date="{{wedding_date_iso}}"></div>
+                </div>
+
+                <div class="rc-card rc-event">
+                    <div class="rc-card-pixel-top"></div>
+                    <div class="rc-sec-eyebrow">AKAD NIKAH</div>
+                    <div class="rc-event-when">
+                        <span data-var="tanggal_akad">{{tanggal_akad}}</span><br>
+                        <span data-var="jam_akad">{{jam_akad}}</span>
+                    </div>
+                    <div class="rc-event-where" data-var="nama_lokasi_akad">{{nama_lokasi_akad}}</div>
+                    <div class="rc-event-addr" data-var="keterangan_lokasi_akad">{{keterangan_lokasi_akad}}</div>
+                    <a class="rc-pixbtn green" href="{{akad_map}}" data-var="akad_map" target="_blank">▶ LIHAT PETA</a>
+                </div>
+
+                <div data-if="flag_lokasi_akad_dan_resepsi_berbeda">
+                    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                    <div class="rc-card rc-event">
+                        <div class="rc-card-pixel-top"></div>
+                        <div class="rc-sec-eyebrow">RESEPSI</div>
+                        <div class="rc-event-when">
+                            <span data-var="tanggal_resepsi">{{tanggal_resepsi}}</span><br>
+                            <span data-var="jam_resepsi">{{jam_resepsi}}</span>
+                        </div>
+                        <div class="rc-event-where" data-var="nama_lokasi_resepsi">{{nama_lokasi_resepsi}}</div>
+                        <div class="rc-event-addr" data-var="keterangan_lokasi_resepsi">{{keterangan_lokasi_resepsi}}</div>
+                        <a class="rc-pixbtn green" href="{{resepsi_map}}" data-var="resepsi_map" target="_blank">▶ LIHAT PETA</a>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+
+            <!-- GALLERY -->
+            <div data-if="is_fitur_gallery">
+                {{#if is_fitur_gallery}}
+                <section class="rc-sec" data-info="gallery">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">BONUS STAGE</div>
+                        <h2 class="rc-sec-title">Galeri</h2>
+                        <p class="rc-sec-quote">Kepingan kenangan yang kami kumpulkan sepanjang misi.</p>
+                    </div>
+                    <div data-if="has_gallery">
+                        {{#if has_gallery}}
+                        <div class="rc-gallery-grid" data-loop="galleries">
+                            {{#each galleries}}
+                            <div class="rc-gallery-item">
+                                <img src="{{this.url}}" data-img="this.url" alt="Galeri">
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{/if}}
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- GIFT -->
+            <div data-if="tampilkan_amplop_online">
+                {{#if tampilkan_amplop_online}}
+                <section class="rc-sec" data-info="gift">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">SUPPLY DROP</div>
+                        <h2 class="rc-sec-title">Wedding Gift</h2>
+                        <p class="rc-sec-quote">Doa restu adalah hadiah terindah. Bila ingin berbagi tanda kasih, gunakan menu ini.</p>
+                    </div>
+
+                    <div class="rc-card rc-gift-card">
+                        <div class="rc-card-pixel-top"></div>
+                        <div class="rc-gift-bank" data-var="bank_1">{{bank_1}}</div>
+                        <div data-if="flag_pakai_qris_rekening_1">
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <img class="rc-gift-qris" src="{{gambar_qris_rekening_1}}" data-img="gambar_qris_rekening_1" alt="QRIS">
+                            {{/if}}
+                        </div>
+                        <div class="rc-gift-numlabel">Nomor Rekening</div>
+                        <div class="rc-gift-num" id="rc-acc-1" data-var="rek_1">{{rek_1}}</div>
+                        <div class="rc-gift-name" data-var="nama_rek_1">{{nama_rek_1}}</div>
+                        <button class="rc-pixbtn" onclick="copyToClipboard('rc-acc-1', this)">SALIN NO. REK</button>
+                    </div>
+
+                    <div data-if="flag_pakai_2_rekening">
+                        {{#if flag_pakai_2_rekening}}
+                        <div class="rc-card rc-gift-card">
+                            <div class="rc-card-pixel-top"></div>
+                            <div class="rc-gift-bank" data-var="bank_2">{{bank_2}}</div>
+                            <div data-if="flag_pakai_qris_rekening_2">
+                                {{#if flag_pakai_qris_rekening_2}}
+                                <img class="rc-gift-qris" src="{{gambar_qris_rekening_2}}" data-img="gambar_qris_rekening_2" alt="QRIS">
+                                {{/if}}
+                            </div>
+                            <div class="rc-gift-numlabel">Nomor Rekening</div>
+                            <div class="rc-gift-num" id="rc-acc-2" data-var="rek_2">{{rek_2}}</div>
+                            <div class="rc-gift-name" data-var="nama_rek_2">{{nama_rek_2}}</div>
+                            <button class="rc-pixbtn" onclick="copyToClipboard('rc-acc-2', this)">SALIN NO. REK</button>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <div data-if="flag_kirim_hadiah_offline">
+                        {{#if flag_kirim_hadiah_offline}}
+                        <div class="rc-card rc-gift-card">
+                            <div class="rc-card-pixel-top"></div>
+                            <div class="rc-gift-bank">KIRIM HADIAH</div>
+                            <div class="rc-gift-name" data-var="nama_lokasi_kirim_hadiah_offline" style="font-weight:700;color:#fff;">{{nama_lokasi_kirim_hadiah_offline}}</div>
+                            <div class="rc-event-addr" id="rc-gift-addr" data-var="alamat_lokasi_kirim_hadiah_offline">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                            <button class="rc-pixbtn" onclick="copyToClipboard('rc-gift-addr', this)">SALIN ALAMAT</button>
+                        </div>
+                        {{/if}}
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- LOVE STORY -->
+            <div data-if="flag_pakai_timeline_kisah">
+                {{#if flag_pakai_timeline_kisah}}
+                <section class="rc-sec" data-info="story">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">MISSION LOG</div>
+                        <h2 class="rc-sec-title">Kisah Cinta</h2>
+                        <p class="rc-sec-quote">Setiap misi membawa kami lebih dekat.</p>
+                    </div>
+                    <div class="rc-card" data-loop="timeline_kisah">
+                        <div class="rc-card-pixel-top"></div>
+                        {{#each timeline_kisah}}
+                        <div class="rc-story-item">
+                            <div class="rc-story-num">{{@index_plus_1}}</div>
+                            <div class="rc-story-body">
+                                <div class="rc-story-title" data-var="this.judul">{{this.judul}}</div>
+                                <div class="rc-story-date" data-var="this.tanggal">{{this.tanggal}}</div>
+                                <div class="rc-story-text" data-var="this.deskripsi">{{this.deskripsi}}</div>
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- LIVE STREAMING -->
+            <div data-if="is_fitur_live_streaming">
+                {{#if is_fitur_live_streaming}}
+                <section class="rc-sec" data-info="streaming">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">NOW PLAYING</div>
+                        <h2 class="rc-sec-title">Live Streaming</h2>
+                        <p class="rc-sec-quote">Tidak bisa hadir langsung? Saksikan momen kami secara live.</p>
+                    </div>
+                    <div class="rc-card rc-center">
+                        <div class="rc-card-pixel-top"></div>
+                        <div class="rc-live-badge"><span class="rc-live-dot"></span> LIVE</div>
+                        <p style="font-size:12px;line-height:1.7;color:rgba(255,255,255,0.75);margin:14px 0;">
+                            Saksikan rangkaian acara pernikahan kami dari mana saja.
+                        </p>
+                        <a class="rc-pixbtn green" href="{{link_live_streaming}}" data-var="link_live_streaming" target="_blank">▶ TONTON SEKARANG</a>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- SHARING HAPPINESS (Instagram story) -->
+            <div data-if="flag_pakai_additional_feature_story_balasan_instagram">
+                {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+                <section class="rc-sec" data-info="happiness">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">SHARE THE MOMENT</div>
+                        <h2 class="rc-sec-title">Berbagi Kebahagiaan</h2>
+                        <p class="rc-sec-quote">Bagikan kebahagiaan ini di Instagram Story-mu.</p>
+                    </div>
+                    <div class="rc-card rc-center">
+                        <div class="rc-card-pixel-top"></div>
+                        <div class="rc-gallery-grid" style="grid-template-columns:repeat(3,1fr);max-width:300px;">
+                            <div class="rc-gallery-item"><img src="{{sample_story_1}}" data-img="sample_story_1" alt=""></div>
+                            <div class="rc-gallery-item"><img src="{{sample_story_2}}" data-img="sample_story_2" alt=""></div>
+                            <div class="rc-gallery-item"><img src="{{sample_story_3}}" data-img="sample_story_3" alt=""></div>
+                        </div>
+                        <p style="font-size:12px;line-height:1.7;color:rgba(255,255,255,0.75);margin:14px 0;">
+                            Ambil tangkapan layar &amp; tandai kami
+                            <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong>!
+                        </p>
+                        <a class="rc-pixbtn" href="{{link_balasan_instagram}}" data-var="link_balasan_instagram" target="_blank">BAGIKAN MOMEN</a>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- RSVP -->
+            <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <section class="rc-sec" data-info="rsvp">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">PLAYER CHECK-IN</div>
+                        <h2 class="rc-sec-title">Konfirmasi Kehadiran</h2>
+                        <p class="rc-sec-quote">Beri tahu kami apakah kamu akan join di misi terakhir.</p>
+                    </div>
+
+                    <div class="rc-card">
+                        <div class="rc-card-pixel-top"></div>
+                        <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
+                            {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                            <form id="rc-rsvp-form">
+                                <input class="rc-input" type="text" id="rc-rsvp-name" placeholder="Nama kamu" value="{{nama_tamu}}">
+                                <div class="rc-radio-row">
+                                    <label><input type="radio" name="rc-attend" value="1" checked><span>✔ Hadir</span></label>
+                                    <label><input type="radio" name="rc-attend" value="0"><span>✘ Tidak</span></label>
+                                </div>
+                                <input class="rc-input" type="number" id="rc-rsvp-count" placeholder="Jumlah tamu" min="1" value="1">
+                                <button type="button" id="rc-btn-rsvp" class="rc-pixbtn green" style="width:100%;">KIRIM</button>
+                            </form>
+                            {{/unless}}
+                        </div>
+                        <div data-if="is_sudah_isi_konfirmasi_kehadiran">
+                            {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                            <div class="rc-thanks" id="rc-rsvp-thanks">
+                                ⭐ Terima kasih <strong data-var="nama_tamu">{{nama_tamu}}</strong>!<br>
+                                Konfirmasimu sudah kami terima.
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </section>
+                {{/unless}}
+            </div>
+
+            <!-- WISHES -->
+            <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <section class="rc-sec" data-info="wishes">
+                    <div class="rc-sec-head">
+                        <div class="rc-sec-eyebrow">HIGH SCORES</div>
+                        <h2 class="rc-sec-title">Ucapan &amp; Doa</h2>
+                        <p class="rc-sec-quote">Tinggalkan pesan untuk kedua mempelai.</p>
+                    </div>
+                    <div class="rc-card">
+                        <div class="rc-card-pixel-top"></div>
+                        <div data-unless="is_sudah_isi_ucapan">
+                            {{#unless is_sudah_isi_ucapan}}
+                            <form id="rc-wish-form">
+                                <input class="rc-input" type="text" id="wish-name" placeholder="Nama kamu">
+                                <textarea class="rc-input" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa..."></textarea>
+                                <button type="button" id="btn-submit-ucapan" class="rc-pixbtn green" style="width:100%;">KIRIM UCAPAN</button>
+                            </form>
+                            {{/unless}}
+                        </div>
+                        <div data-if="is_sudah_isi_ucapan">
+                            {{#if is_sudah_isi_ucapan}}
+                            <div class="rc-thanks">⭐ Terima kasih atas ucapan &amp; doanya!</div>
+                            {{/if}}
+                        </div>
+                    </div>
+                    <div class="rc-wish-list" data-loop="wishes">
+                        {{#each wishes}}
+                        <div class="rc-wish-item">
+                            <div class="rc-wish-head">
+                                <span class="rc-wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
+                                <span class="rc-wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
+                            </div>
+                            <div class="rc-wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </section>
+                {{/unless}}
+            </div>
+
+            <!-- CLOSING -->
+            <section class="rc-sec" data-info="closing">
+                <div class="rc-closing">
+                    <div class="rc-closing-flag">🏁 MISSION COMPLETE</div>
+                    <div class="rc-sec-eyebrow">WITH LOVE &amp; GRATITUDE</div>
+                    <h2 class="rc-sec-title" style="margin-bottom:16px;">Terima Kasih</h2>
+                    <p class="rc-closing-msg" data-var="kalimat_penutup">
+                        Merupakan kebahagiaan dan kehormatan bagi kami apabila Bapak/Ibu/Saudara/i
+                        berkenan hadir di hari bahagia kami.
+                    </p>
+                    <div class="rc-closing-sign">
+                        <span>{{groom_nickname}}</span> <span class="rc-amp-pixel">&amp;</span> <span>{{bride_nickname}}</span>
+                    </div>
+                    <button class="rc-pixbtn green rc-replay" id="rc-replay" type="button">↻ MAIN LAGI</button>
+                </div>
+
+                <footer class="rc-footer">
+                    <div data-var="site_name">{{site_name}}</div>
+                    <div><a href="{{site_url}}" target="_blank">{{site_url}}</a></div>
+                    <div>Digital wedding invitation &copy; 2026</div>
+                    <div class="rc-footer-social">
+                        <div data-if="flag_use_instagram_webconfig">
+                            {{#if flag_use_instagram_webconfig}}
+                            <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="20" height="20" x="2" y="2" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_youtube_webconfig">
+                            {{#if flag_use_youtube_webconfig}}
+                            <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_whatsapp_webconfig">
+                            {{#if flag_use_whatsapp_webconfig}}
+                            <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </footer>
+            </section>
+        </div>
+
+        <!-- ===== LIGHTBOX (fullscreen gallery photo viewer) ===== -->
+        <div class="rc-lightbox" id="rc-lightbox">
+            <button class="rc-lightbox-close" id="rc-lightbox-close" type="button">✕</button>
+            <button class="rc-lightbox-nav rc-lightbox-prev" id="rc-lightbox-prev" type="button">‹</button>
+            <img class="rc-lightbox-img" id="rc-lightbox-img" alt="">
+            <button class="rc-lightbox-nav rc-lightbox-next" id="rc-lightbox-next" type="button">›</button>
+            <div class="rc-lightbox-count" id="rc-lightbox-count"></div>
+        </div>
+
+        <!-- Floating action button shown on the invitation page (back to game) -->
+        <button class="rc-fab" id="rc-fab" type="button" aria-label="Kembali ke game">
+            <span>▶</span><small>GAME</small>
+        </button>
+
+        <!-- Host-owned audio element. The host plays the tenant's chosen song and
+             dispatches play/pause events here; the theme only mirrors state. -->
+        <audio id="bg-music" loop preload="none"></audio>
+        <!-- Hidden host music-toggle mirror icons (host swaps display) -->
+        <span id="play-icon" style="display:none"></span>
+        <span id="pause-icon" style="display:none"></span>
+    </div>
+
+    <!-- ============ DESKTOP SIDEBAR (living scene) ============ -->
+    <aside class="rc-side" id="rc-side">
+        <canvas class="rc-side-canvas" id="rc-side-canvas"></canvas>
+    </aside>
+</div>

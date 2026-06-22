@@ -34,12 +34,28 @@
                 </div>
                 <div class="hud-col hud-right">
                     <span class="hud-label">WORLD</span>
-                    <span class="hud-value" id="rm-world">1-1</span>
+                    <span class="hud-world-row">
+                        <span class="hud-value" id="rm-world">1-1</span>
+                        <span class="hud-diff" id="rm-diff-badge" data-lvl="easy">EASY</span>
+                    </span>
                 </div>
             </div>
 
             <!-- Left-side floating button stack (cheat, view-invitation, settings) -->
             <div class="rm-leftbtns" id="rm-leftbtns">
+                <!-- Sound on/off — mutes the game SFX + 8-bit chiptune -->
+                <button class="rm-iconbtn rm-sound-btn" id="rm-sound-btn" type="button" aria-label="Suara" title="Suara on/off">
+                    <svg class="rm-snd-on" viewBox="0 0 24 24" fill="none" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 5 6 9H2v6h4l5 4V5z"></path>
+                        <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+                        <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+                    </svg>
+                    <svg class="rm-snd-off" viewBox="0 0 24 24" fill="none" stroke="#9aa0ab" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                        <path d="M11 5 6 9H2v6h4l5 4V5z"></path>
+                        <line x1="22" y1="9" x2="16" y2="15"></line><line x1="16" y1="9" x2="22" y2="15"></line>
+                    </svg>
+                </button>
+
                 <!-- Star cheat toggle -->
                 <button class="rm-iconbtn rm-star-btn" id="rm-star-btn" type="button" aria-label="Mode Bintang (cheat)">
                     <svg viewBox="0 0 24 24" fill="#fac000" stroke="#000" stroke-width="1.5" stroke-linejoin="round">
@@ -106,12 +122,32 @@
 
         <!-- ===== COVER ===== -->
         <div class="rm-cover" id="rm-cover">
+            <!-- Playful pixel-Mario decor floating behind the cover content. It
+                 makes the start screen feel like a game title card while the
+                 wedding cues (heart badge, "UNDANGAN PERNIKAHAN", couple plaque)
+                 keep it unmistakably an invitation. Cosmetic, non-interactive. -->
+            <div class="rm-cover-deco" aria-hidden="true">
+                <span class="rm-cd-cloud cc1"></span>
+                <span class="rm-cd-cloud cc2"></span>
+                <span class="rm-cd-cloud cc3"></span>
+                <span class="rm-cd-hill ch1"></span>
+                <span class="rm-cd-hill ch2"></span>
+                <span class="rm-cd-block qblock cb1">?</span>
+                <span class="rm-cd-block heart cb2">♥</span>
+                <span class="rm-cd-block qblock cb3">?</span>
+                <span class="rm-cd-coin co1"></span>
+                <span class="rm-cd-coin co2"></span>
+                <span class="rm-cd-star cs1"></span>
+                <span class="rm-cd-pipe cp1"></span>
+                <span class="rm-cd-goomba cg1"></span>
+            </div>
             <div class="rm-cover-bricks"></div>
             <div class="rm-cover-inner">
-                <div class="rm-cover-badge">SUPER WEDDING BROS</div>
+                <div class="rm-cover-badge">★ SUPER WEDDING BROS ★</div>
+                <div class="rm-cover-invlabel">♥ UNDANGAN PERNIKAHAN ♥</div>
                 <h1 class="rm-cover-couple">
                     <span>{{groom_nickname}}</span>
-                    <span class="amp">&amp;</span>
+                    <span class="amp">♥</span>
                     <span>{{bride_nickname}}</span>
                 </h1>
                 <div class="rm-cover-date" data-var="wedding_date">{{wedding_date}}</div>
@@ -128,6 +164,11 @@
                         <button class="rm-diff-opt" data-diff="hard"   type="button">HARD</button>
                     </div>
                 </div>
+                <!-- PRESS START only begins the GAME. Music must NOT play during
+                     the game: the host already started the tenant's song when its
+                     own "Buka Undangan" cover was dismissed, so the theme PAUSES it
+                     on game start and only resumes it when the inner invitation
+                     page is opened (see pauseHostMusic/playHostMusic in index.js). -->
                 <button class="rm-start-btn" id="rm-start-btn" type="button">
                     <span class="rm-start-blink">PRESS START</span>
                 </button>
@@ -152,7 +193,21 @@
                 pernikahan <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>.
                 <br><br>Capai bendera di ujung untuk menyelesaikan kisah.
             </div>
+            <div class="rm-diff-info" id="rm-intro-diff"><!-- difficulty summary injected by JS --></div>
             <button class="rm-overlay-btn" id="rm-intro-go" type="button">GO! ▶</button>
+        </div>
+
+        <!-- ===== CONTINUE / NEW GAME OVERLAY (shown after PRESS START if a save exists) ===== -->
+        <div class="rm-overlay" id="rm-continue">
+            <div class="rm-overlay-pixtitle">SELAMAT DATANG KEMBALI</div>
+            <div class="rm-overlay-text" id="rm-continue-text">
+                Progres tersimpan ditemukan.
+            </div>
+            <div class="rm-continue-summary" id="rm-continue-summary"><!-- filled by JS --></div>
+            <div class="rm-continue-btns">
+                <button class="rm-overlay-btn" id="rm-continue-load" type="button">▶ LANJUTKAN</button>
+                <button class="rm-overlay-btn rm-overlay-btn-alt" id="rm-continue-new" type="button">↻ MULAI BARU</button>
+            </div>
         </div>
 
         <!-- ===== STAGE CLEAR OVERLAY (between stages) ===== -->
@@ -193,8 +248,10 @@
             <div class="rm-confirm rm-stagesel">
                 <div class="rm-confirm-head" style="background:#2a5fd6;">PILIH STAGE</div>
                 <div class="rm-stagesel-grid" id="rm-stagesel-grid"><!-- buttons injected by JS --></div>
+                <div class="rm-stagesel-hint" id="rm-stagesel-hint"><!-- pending-selection summary injected by JS --></div>
                 <div class="rm-confirm-btns">
                     <button class="rm-pixbtn" id="rm-stagesel-cancel" type="button">TUTUP</button>
+                    <button class="rm-pixbtn green" id="rm-stagesel-ok" type="button">OK ▶</button>
                 </div>
             </div>
         </div>
@@ -231,6 +288,8 @@
                 <span class="rm-deco-coin c1"></span>
                 <span class="rm-deco-coin c2"></span>
                 <span class="rm-deco-coin c3"></span>
+                <span class="rm-deco-star s1"></span>
+                <span class="rm-deco-star s2"></span>
                 <span class="rm-deco-pipe p1"></span>
                 <span class="rm-deco-goomba g1"></span>
                 <span class="rm-deco-ground"></span>
@@ -637,19 +696,25 @@
             </button>
         </div>
 
-        <audio id="bg-music" loop>
-            <source src="https://vgmsite.com/soundtracks/super-mario-bros/qsxhpltcyo/01.%20Ground%20Theme.mp3" type="audio/mpeg">
-        </audio>
+        <!-- Background music element.
+             The HOST app owns playback: it reads the tenant's chosen song
+             (link_backsound_music, incl. YouTube), plays it from its own Audio
+             object, toggles play/pause when #btn-toggle-music is clicked, and
+             then DISPATCHES native 'play'/'pause' events on THIS element so the
+             theme can sync its button icon. We therefore keep this element (as
+             the host's event target) but ship NO hardcoded <source> — a baked-in
+             track would play the wrong song and fight the tenant's music. -->
+        <audio id="bg-music" loop></audio>
     </div>
 
     <!-- ============ DESKTOP SIDEBAR (decorative, drawn on canvas) ============ -->
     <aside class="rm-sidebar" id="rm-sidebar">
         <canvas class="rm-side-canvas" id="rm-side-canvas"></canvas>
         <div class="rm-side-text">
-            <div class="rm-side-badge">SUPER WEDDING BROS</div>
-            <h2 class="rm-side-couple"><span>{{groom_nickname}}</span> <span class="amp">&amp;</span> <span>{{bride_nickname}}</span></h2>
+            <div class="rm-side-badge">★ SUPER WEDDING BROS ★</div>
+            <h2 class="rm-side-couple"><span>{{groom_nickname}}</span> <span class="amp">♥</span> <span>{{bride_nickname}}</span></h2>
             <div class="rm-side-date" data-var="wedding_date">{{wedding_date}}</div>
-            <p class="rm-side-tip">Geser ke layar telepon di kiri untuk memainkan undangan kami. Gunakan tombol panah / A / B, atau sentuh layar di perangkat mobile.</p>
+            <p class="rm-side-tip">Petualangan dua hati menuju level terindah — pernikahan! Mainkan undangannya di layar telepon sebelah kiri: tombol panah / A / B, atau sentuh layar di perangkat mobile.</p>
         </div>
     </aside>
 </div>

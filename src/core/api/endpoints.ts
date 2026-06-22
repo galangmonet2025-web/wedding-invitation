@@ -322,9 +322,11 @@ const publicClient = axios.create({
 });
 
 export const publicApi = {
-    getInvitation: async (slug: string, guestid?: string | null) => {
+    getInvitation: async (slug: string, guestid?: string | null, themeCode?: string | null) => {
         const payload: any = { action: 'getPublicInvitation', slug };
         if (guestid) payload.guestid = guestid;
+        // Theme preview: force a specific theme by its code (see backend getInvitation)
+        if (themeCode) payload.theme_code = themeCode;
         const res = await publicClient.post('', JSON.stringify(payload));
         return res.data;
     },

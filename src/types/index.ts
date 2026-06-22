@@ -145,6 +145,7 @@ export interface ThemeAssetMedia {
 
 export interface Theme {
     id: string;
+    code?: string;
     name: string;
     html_template?: string;
     css_template?: string;

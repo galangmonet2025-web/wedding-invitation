@@ -59,7 +59,7 @@
     position: relative;
     background: #000;
     overflow: hidden;            /* game stage never scrolls; invitation scrolls inside its own layer */
-    box-shadow: 14px 0 60px rgba(0, 0, 0, 0.7);
+    /* box-shadow: 14px 0 60px rgba(0, 0, 0, 0.7); */
     z-index: 10;
     flex: 1 1 auto;
 }
@@ -79,9 +79,13 @@
     .rm-sidebar { display: block; flex: 1 1 auto; min-width: 0; height: 100vh; }
 }
 .rm-side-canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+/* The text sits at the TOP now so the wedding tableau (centre/bottom of the
+   canvas — Mario & the bride under the arch) stays fully visible. A soft top
+   gradient keeps the pixel title legible over the sky. */
 .rm-side-text {
-    position: absolute; left: 0; bottom: 0; padding: 56px; z-index: 4; width: 100%;
-    background: linear-gradient(180deg, transparent, rgba(8, 12, 30, 0.55));
+    position: absolute; left: 0; top: 0; padding: 48px 56px 64px; z-index: 4; width: 100%;
+    background: linear-gradient(180deg, rgba(8, 12, 30, 0.55), rgba(8, 12, 30, 0.22) 60%, transparent);
+    text-align: center;
 }
 .rm-side-badge {
     font-family: var(--rm-pixel); font-size: 10px; letter-spacing: 2px;
@@ -90,12 +94,12 @@
     margin-bottom: 18px;
 }
 .rm-side-couple {
-    font-family: var(--rm-pixel); font-size: 2.6rem; line-height: 1.25; margin: 0;
+    font-family: var(--rm-pixel); font-size: 2.4rem; line-height: 1.25; margin: 0;
     text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
 }
 .rm-side-couple .amp { color: var(--rm-coin); }
-.rm-side-date { font-family: var(--rm-pixel); font-size: 12px; margin-top: 18px; color: #fff; opacity: 0.9; }
-.rm-side-tip { margin-top: 18px; font-size: 13px; max-width: 420px; line-height: 1.7; color: rgba(255, 255, 255, 0.85); }
+.rm-side-date { font-family: var(--rm-pixel); font-size: 12px; margin-top: 16px; color: #fff; opacity: 0.92; }
+.rm-side-tip { margin: 16px auto 0; font-size: 13px; max-width: 460px; line-height: 1.7; color: rgba(255, 255, 255, 0.9); text-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
 
 /* ============ GAME STAGE ============ */
 .rm-stage {
@@ -125,53 +129,122 @@
 .rm-hud .hud-right { text-align: right; }
 .rm-hud .hud-label { color: #fff; opacity: 0.85; }
 .rm-hud .hud-value { color: var(--rm-coin); }
+/* WORLD value + difficulty badge share ONE row so the badge no longer stacks
+   DOWN into the inventory rail (top:44px) and overlaps the first item. The
+   badge sits to the LEFT of the world number — inline in the top bar, beside
+   the stage number (bible §14 readability: HUD stays clear of the play area
+   and the discoverable-info icons). */
+.rm-hud .hud-world-row {
+    display: inline-flex; align-items: center; justify-content: flex-end;
+    gap: 5px;
+}
+/* Difficulty badge — shows the EFFECTIVE level (world base + chosen mode),
+   colour-coded so the guest always knows how hard the current stage is. */
+.rm-hud .hud-diff {
+    flex: none;
+    font-family: var(--rm-pixel); font-size: 7px; line-height: 1;
+    color: #fff; padding: 3px 5px; border: 1.5px solid #000;
+    border-radius: 3px; text-shadow: 1px 1px 0 #000;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.4); letter-spacing: 0.5px;
+}
+.rm-hud .hud-diff[data-lvl="easy"]   { background: #2e9e3a; }
+.rm-hud .hud-diff[data-lvl="medium"] { background: #e08a1e; }
+.rm-hud .hud-diff[data-lvl="hard"]   { background: #d22d2d; }
 .rm-coin-ico {
     display: inline-block; width: 9px; height: 12px; vertical-align: -1px;
     background: var(--rm-coin); border: 1.5px solid #000; border-radius: 50%;
     box-shadow: inset -2px 0 0 var(--rm-coin-deep);
 }
 
-/* ----- Left-side floating button stack (cheat / view / settings) ----- */
+/* ----- Left-side floating button stack (sound / cheat / view / settings) -----
+   FLAT NES PIXEL-ART (matches the in-game ? blocks, coins & pipes): square
+   corners, a chunky solid black outline, FLAT colour fills (no gradients), a
+   1px top highlight + 1px bottom shade for the cube bevel, and a HARD offset
+   block shadow (solid black, no blur). Pressing nudges the button down into
+   its shadow — the classic NES button feel. No glows, no rounded corners. */
 .rm-leftbtns {
     position: absolute; top: 46px; left: 10px; z-index: 31;
-    display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
 }
 .rm-iconbtn {
-    width: 44px; height: 44px; padding: 0;
-    background: rgba(20, 16, 40, 0.7); border: 3px solid #000;
-    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: auto; transition: transform 0.1s;
+    position: relative; width: 44px; height: 44px; padding: 0;
+    background: #2a2452;                          /* flat panel fill */
+    border: 3px solid #000; border-radius: 0;
+    box-shadow: 4px 4px 0 #000,                                   /* hard block shadow */
+                inset 0 2px 0 rgba(255,255,255,0.35),             /* 1px top highlight */
+                inset 0 -3px 0 rgba(0,0,0,0.45);                  /* bottom shade */
+    image-rendering: pixelated;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    pointer-events: auto; transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
 }
-.rm-iconbtn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4); }
-.rm-iconbtn svg { width: 24px; height: 24px; }
+.rm-iconbtn:hover { background: #38326a; }
+.rm-iconbtn:active {                                              /* press into the shadow */
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 #000, inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -3px 0 rgba(0,0,0,0.45);
+}
+.rm-iconbtn svg { width: 24px; height: 24px; position: relative; z-index: 1; }
 .rm-star-btn svg { width: 26px; height: 26px; }
-.rm-star-btn.is-on { background: var(--rm-coin); animation: rm-star-pulse 0.5s steps(2) infinite; }
-@keyframes rm-star-pulse { 0% { filter: hue-rotate(0); } 100% { filter: hue-rotate(60deg); } }
+/* star/cheat ON — flat gold, hard pixel flash (no blur glow) */
+.rm-star-btn.is-on {
+    background: #fac000; border-color: #000;
+    box-shadow: 4px 4px 0 #000, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 0 rgba(154,94,0,0.7);
+    animation: rm-star-pulse 0.4s steps(2) infinite;
+}
+@keyframes rm-star-pulse { 0% { background: #fac000; } 100% { background: #ffe07a; } }
+/* per-button flat accent fills so the stack reads at a glance */
+.rm-sound-btn { background: #1f4a5a; }
+.rm-sound-btn:hover { background: #2a5e72; }
+.rm-sound-btn.is-muted { background: #3a3a44; }
+.rm-qr-btn { background: #1f5a32; }
+.rm-qr-btn:hover { background: #2a7340; }
 
-/* View-invitation button: dimmed/locked until earned */
-.rm-view-btn.is-locked { filter: grayscale(1) brightness(0.55); opacity: 0.6; cursor: not-allowed; }
-.rm-view-btn:not(.is-locked) { background: rgba(67, 176, 71, 0.5); }
-.rm-view-btn.just-unlocked { animation: rm-pop 0.5s ease; }
+/* View-invitation button: locked = flat grey & dim; open = flat Mario green */
+.rm-view-btn.is-locked { background: #2a2a32; filter: brightness(0.8); opacity: 0.6; cursor: not-allowed; }
+.rm-view-btn:not(.is-locked) {
+    background: #2f9e3a; border-color: #000;
+    box-shadow: 4px 4px 0 #000, inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(15,58,18,0.8);
+}
+.rm-view-btn:not(.is-locked):hover { background: #3fb84a; }
+.rm-view-btn.just-unlocked { animation: rm-pop 0.5s steps(4); }
 
-/* ----- Inventory rail (top-right) ----- */
+/* ----- Inventory rail (top-right) -----
+   FLAT NES PIXEL-ART to match the left stack: square black-outlined cells with
+   a hard block shadow. Locked = flat dark + greyed icon; unlocked = flat gold
+   (like a collected coin/?-block) with a 1px bevel. No gradients, no glow,
+   no rounded corners — it reads as a row of pixel item-slots. */
 .rm-inv {
-    position: absolute; top: 44px; right: 8px; z-index: 31;
-    display: flex; flex-direction: column; gap: 6px; pointer-events: auto;
+    position: absolute; top: 50px; right: 8px; z-index: 31;
+    display: grid; grid-template-columns: repeat(2, 34px); gap: 6px;
+    justify-content: end; align-content: start; pointer-events: auto;
 }
 .rm-inv-item {
-    width: 38px; height: 38px; padding: 0; cursor: default;
-    background: rgba(20, 16, 40, 0.55); border: 3px solid #000;
-    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+    position: relative; width: 34px; height: 34px; padding: 0; cursor: default;
+    background: #1c1838; border: 3px solid #000; border-radius: 0;
+    box-shadow: 3px 3px 0 #000, inset 0 2px 0 rgba(255,255,255,0.18), inset 0 -3px 0 rgba(0,0,0,0.4);
+    image-rendering: pixelated;
     display: flex; align-items: center; justify-content: center;
-    position: relative; transition: transform 0.12s;
+    transition: transform 0.06s steps(1), box-shadow 0.06s steps(1);
     filter: grayscale(1) brightness(0.55); opacity: 0.7;
 }
-.rm-inv-item canvas { width: 24px; height: 24px; image-rendering: pixelated; }
-.rm-inv-item.is-enabled { filter: none; opacity: 1; cursor: pointer; background: rgba(67, 176, 71, 0.45); border-color: var(--rm-green); }
-.rm-inv-item.is-enabled:hover { transform: scale(1.08); }
-.rm-inv-item.just-unlocked { animation: rm-pop 0.5s ease; }
-@keyframes rm-pop { 0% { transform: scale(0.4) rotate(-12deg); } 60% { transform: scale(1.25) rotate(6deg); } 100% { transform: scale(1); } }
+.rm-inv-item canvas { width: 22px; height: 22px; image-rendering: pixelated; position: relative; z-index: 1; }
+.rm-inv-item.is-enabled {
+    filter: none; opacity: 1; cursor: pointer;
+    background: #f0a830; border-color: #000;
+    box-shadow: 3px 3px 0 #000, inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 0 rgba(154,94,0,0.7);
+}
+.rm-inv-item.is-enabled:hover { background: #ffc24a; transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 0 rgba(154,94,0,0.7); }
+.rm-inv-item.is-enabled:active { transform: translate(3px, 3px); box-shadow: 0 0 0 #000, inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -3px 0 rgba(154,94,0,0.7); }
+.rm-inv-item.just-unlocked { animation: rm-pop 0.5s steps(5); }
+@keyframes rm-pop { 0% { transform: scale(0.4); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+/* Flying item token: animates from a hit "?" block up to its inventory slot. */
+.rm-fly-token {
+    position: fixed; width: 28px; height: 28px; z-index: 9999;
+    image-rendering: pixelated; pointer-events: none;
+    transition: transform 0.62s cubic-bezier(0.34, 0.9, 0.4, 1), opacity 0.62s ease;
+    filter: drop-shadow(2px 2px 0 #000);   /* hard pixel shadow (matches NES buttons) */
+    will-change: transform, opacity;
+}
 
 /* "new / unseen" notification badge on a freshly-unlocked icon */
 .rm-inv-item .rm-badge {
@@ -277,17 +350,65 @@
     background: repeating-linear-gradient(90deg, var(--rm-ground) 0 30px, var(--rm-ground-2) 30px 32px);
     border-top: 4px solid #000; z-index: 1;
 }
+
+/* ----- Playful pixel decor floating on the cover ----- */
+.rm-cover-deco { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.rm-cover-deco > span { position: absolute; image-rendering: pixelated; }
+.rm-cd-cloud {
+    width: 30px; height: 12px; background: #fff; border-radius: 7px;
+    box-shadow: 16px -7px 0 0 #fff, 34px 0 0 0 #fff, -3px 0 0 0 #fff; opacity: 0.9;
+    animation: rm-cd-drift 24s linear infinite;
+}
+.rm-cd-cloud.cc1 { top: 10%; left: -16%; }
+.rm-cd-cloud.cc2 { top: 24%; left: -22%; transform: scale(1.3); animation-duration: 34s; }
+.rm-cd-cloud.cc3 { top: 16%; left: -12%; transform: scale(0.8); animation-duration: 29s; animation-delay: -8s; }
+@keyframes rm-cd-drift { from { transform: translateX(0); } to { transform: translateX(150vw); } }
+.rm-cd-hill { bottom: 40px; width: 130px; height: 64px; background: #3a8a3a; border-radius: 64px 64px 0 0; opacity: 0.5; }
+.rm-cd-hill.ch1 { left: -34px; }
+.rm-cd-hill.ch2 { right: -44px; width: 170px; height: 86px; background: #2f6a2f; }
+.rm-cd-block {
+    width: 30px; height: 30px; border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    font-family: var(--rm-pixel); font-size: 14px; display: flex; align-items: center; justify-content: center;
+    animation: rm-deco-bob 3s ease-in-out infinite;
+}
+.rm-cd-block.qblock { background: var(--rm-coin); color: #000; }
+.rm-cd-block.heart  { background: var(--rm-red); color: #fff; font-size: 15px; }
+.rm-cd-block.cb1 { top: 18%; left: 9%; }
+.rm-cd-block.cb2 { top: 12%; right: 11%; animation-delay: -1s; }
+.rm-cd-block.cb3 { top: 40%; right: 8%; animation-delay: -2s; }
+.rm-cd-coin { width: 16px; height: 20px; background: #fde36a; border: 2px solid #b56f00; border-radius: 4px; box-shadow: 0 0 0 1.5px #000; opacity: 0.95; animation: rm-deco-spin 1.6s steps(8) infinite; }
+.rm-cd-coin.co1 { top: 34%; left: 14%; }
+.rm-cd-coin.co2 { top: 48%; right: 16%; animation-delay: -0.6s; }
+.rm-cd-star {
+    width: 24px; height: 24px; background: var(--rm-coin);
+    clip-path: polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+    top: 50%; left: 8%; opacity: 0.9; animation: rm-deco-bob 2.6s ease-in-out infinite;
+}
+.rm-cd-pipe { bottom: 40px; right: 7%; width: 48px; height: 60px; background: #43b047; border: 3px solid #000; opacity: 0.85; box-shadow: inset -8px 0 0 rgba(0,0,0,0.18), inset 8px 0 0 rgba(255,255,255,0.22); }
+.rm-cd-pipe::before { content: ''; position: absolute; top: -10px; left: -7px; right: -7px; height: 14px; background: #43b047; border: 3px solid #000; }
+.rm-cd-goomba { bottom: 44px; left: 12%; width: 28px; height: 24px; background: #9a5a2a; border: 3px solid #000; border-radius: 14px 14px 4px 4px; opacity: 0.9; animation: rm-deco-walk 3s ease-in-out infinite; }
+.rm-cd-goomba::before, .rm-cd-goomba::after { content: ''; position: absolute; top: 8px; width: 5px; height: 6px; background: #fff; }
+.rm-cd-goomba::before { left: 4px; } .rm-cd-goomba::after { right: 4px; }
+
 .rm-cover-inner { position: relative; z-index: 2; }
 .rm-cover-badge {
     font-family: var(--rm-pixel); font-size: 9px; letter-spacing: 2px; color: #fff;
     background: var(--rm-red); display: inline-block; padding: 8px 12px; border: 3px solid #000;
-    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35); margin-bottom: 22px;
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35); margin-bottom: 12px;
+}
+/* Clear "this is a wedding invitation" line, styled as a coin-pill ribbon. */
+.rm-cover-invlabel {
+    font-family: var(--rm-pixel); font-size: 8px; letter-spacing: 1.5px; color: #000;
+    background: var(--rm-coin); display: inline-block; padding: 6px 12px; border: 3px solid #000;
+    border-radius: 3px; box-shadow: 2px 2px 0 rgba(0,0,0,0.4); margin-bottom: 20px;
+    animation: rm-deco-bob 2.4s ease-in-out infinite;
 }
 .rm-cover-couple {
     font-family: var(--rm-pixel); font-size: 1.7rem; line-height: 1.5; color: #fff;
     text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4); margin: 0 0 6px;
 }
-.rm-cover-couple .amp { color: var(--rm-coin); display: block; font-size: 1.1rem; margin: 8px 0; }
+.rm-cover-couple .amp { color: var(--rm-red); display: block; font-size: 1.2rem; margin: 8px 0; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); animation: rm-heart-beat 1.3s ease-in-out infinite; }
+@keyframes rm-heart-beat { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.22); } 45% { transform: scale(1.05); } }
 .rm-cover-date { font-family: var(--rm-pixel); font-size: 11px; color: #fff; opacity: 0.95; margin-bottom: 8px; }
 .rm-cover-guest {
     margin-top: 22px; font-size: 13px; color: rgba(255, 255, 255, 0.9); line-height: 1.6;
@@ -346,6 +467,22 @@
     box-shadow: 0 5px 0 var(--rm-green-2);
 }
 .rm-overlay-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--rm-green-2); }
+/* alt (secondary) overlay button — used for "MULAI BARU" */
+.rm-overlay-btn-alt { background: #d2d2dc; box-shadow: 0 5px 0 #8a8a98; }
+.rm-overlay-btn-alt:active { transform: translateY(3px); box-shadow: 0 2px 0 #8a8a98; }
+
+/* Continue / New-Game overlay layout */
+.rm-continue-btns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 26px; }
+.rm-continue-btns .rm-overlay-btn { margin-top: 0; }
+.rm-continue-summary {
+    margin-top: 18px; display: flex; flex-direction: column; gap: 8px;
+    background: rgba(0,0,0,0.32); border: 3px solid #000; border-radius: 8px;
+    padding: 14px 18px; max-width: 360px; width: 100%;
+    font-family: var(--rm-sans); font-size: 13px; color: rgba(255,255,255,0.92);
+}
+.rm-continue-summary .cs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rm-continue-summary .cs-key { font-family: var(--rm-pixel); font-size: 8px; letter-spacing: 1px; color: rgba(255,255,255,0.6); }
+.rm-continue-summary .cs-val { font-weight: 700; color: var(--rm-coin); text-align: right; }
 
 /* ============ RETRO MODAL (invitation info popups) ============ */
 .rm-modal-root {
@@ -416,7 +553,8 @@
 
 /* The modal body re-uses the live invitation sections (cloned), so the data
    binding only has to exist once. These give a consistent retro look. */
-.rm-modal-body .rm-sec { display: block !important; }
+.rm-modal-body .rm-sec { display: block !important; padding: 0; background: none !important; }
+.rm-modal-body .rm-sec::after { display: none; } /* no biome ground strip inside modals */
 .rm-modal-body .rm-sec-head { display: none; } /* hide the duplicate big header inside modals */
 
 /* ============ RESET CONFIRM DIALOG ============ */
@@ -450,6 +588,36 @@
 .rm-stagesel-item .ss-world { color: var(--rm-coin); display: block; margin-bottom: 4px; }
 .rm-stagesel-item .ss-biome { font-family: var(--rm-sans); font-size: 11px; color: rgba(255,255,255,0.7); }
 .rm-stagesel-item.is-current { border-color: var(--rm-coin); background: rgba(67,176,71,0.3); }
+/* Pending selection (item 3): a stage tapped but not yet applied glows; the
+   currently-playing world keeps its coin border. */
+.rm-stagesel-item.is-selected { outline: 3px solid #ffd24a; outline-offset: -1px; background: rgba(255,210,74,0.18); }
+.rm-stagesel-item.rm-stagesel-diff { background: #2a5fd6; }
+.rm-stagesel-item.rm-stagesel-diff .ss-world { color: #fff; }
+
+/* Stage-select pending summary (mode + stage + what the mode changes). */
+.rm-stagesel-hint {
+    margin: 0 16px 4px; padding: 10px 12px; background: #120e26;
+    border: 3px solid #000; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06);
+}
+.rm-stagesel-hint .ss-hint-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rm-stagesel-hint .ss-hint-key { font-family: var(--rm-pixel); font-size: 8px; color: rgba(255,255,255,0.6); }
+.rm-stagesel-hint .ss-hint-val { font-family: var(--rm-pixel); font-size: 9px; color: var(--rm-coin); }
+.rm-stagesel-hint .ss-hint-desc { margin-top: 6px; font-family: var(--rm-sans); font-size: 11px; line-height: 1.5; color: rgba(255,255,255,0.78); }
+
+/* Difficulty info on the intro overlay (item 4). */
+.rm-diff-info {
+    margin-top: 18px; max-width: 360px; display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+}
+.rm-diff-info-badge {
+    font-family: var(--rm-pixel); font-size: 9px; color: #fff;
+    padding: 6px 12px; border: 3px solid #000; border-radius: 4px;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.45); text-shadow: 1px 1px 0 #000; letter-spacing: 0.5px;
+}
+.rm-diff-info-badge[data-lvl="easy"]   { background: #2e9e3a; }
+.rm-diff-info-badge[data-lvl="medium"] { background: #e08a1e; }
+.rm-diff-info-badge[data-lvl="hard"]   { background: #d22d2d; }
+.rm-diff-info-desc { font-family: var(--rm-sans); font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.78); }
 
 /* ============ INVITATION (revealed after reaching the goal) ============ */
 .rm-invitation {
@@ -464,12 +632,12 @@
    the scrolling content as a translucent accent (sections are opaque, so a
    behind-layer would be hidden — this sits above at low opacity instead). */
 .rm-deco { position: fixed; inset: 0; z-index: 81; pointer-events: none; overflow: hidden; }
-.rm-deco > span { position: absolute; image-rendering: pixelated; opacity: 0.5; }
+.rm-deco > span { position: absolute; image-rendering: pixelated; opacity: 0.55; }
 /* pixel clouds (built from box-shadow puffs) */
 .rm-deco-cloud {
     width: 26px; height: 10px; background: #fff; border-radius: 6px;
     box-shadow: 14px -6px 0 0 #fff, 30px 0 0 0 #fff, -2px 0 0 0 #fff;
-    opacity: 0.28 !important; animation: rm-deco-drift 26s linear infinite;
+    opacity: 0.4 !important; animation: rm-deco-drift 26s linear infinite;
 }
 .rm-deco-cloud.d1 { top: 8%;  left: -12%; }
 .rm-deco-cloud.d2 { top: 34%; left: -18%; transform: scale(1.4); animation-duration: 38s; }
@@ -481,9 +649,9 @@
 .rm-deco-hill.h2 { right: -40px; width: 160px; height: 90px; background: #2f6a2f; }
 /* floating ? / brick blocks (bob gently) */
 .rm-deco-block {
-    width: 26px; height: 26px; border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
-    font-family: var(--rm-pixel); font-size: 13px; color: #000; display: flex;
-    align-items: center; justify-content: center; opacity: 0.4 !important; animation: rm-deco-bob 3s ease-in-out infinite;
+    width: 30px; height: 30px; border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,0.45);
+    font-family: var(--rm-pixel); font-size: 14px; color: #000; display: flex;
+    align-items: center; justify-content: center; opacity: 0.6 !important; animation: rm-deco-bob 3s ease-in-out infinite;
 }
 .rm-deco-block.qblock { background: #fac000; }
 .rm-deco-block.brick  { background: #b86a2c; box-shadow: inset 0 0 0 2px #7a3d12, 3px 3px 0 rgba(0,0,0,0.4); }
@@ -492,39 +660,107 @@
 .rm-deco-block.b3 { top: 78%;  right: 9%; animation-delay: -2s; }
 @keyframes rm-deco-bob { 50% { transform: translateY(-7px); } }
 /* spinning coins */
-.rm-deco-coin { width: 14px; height: 18px; background: #fde36a; border: 2px solid #b56f00; border-radius: 4px; opacity: 0.45 !important; animation: rm-deco-spin 1.6s steps(8) infinite; }
+.rm-deco-coin { width: 16px; height: 20px; background: #fde36a; border: 2px solid #b56f00; border-radius: 4px; opacity: 0.65 !important; box-shadow: 0 0 0 1.5px #000; animation: rm-deco-spin 1.6s steps(8) infinite; }
 .rm-deco-coin.c1 { top: 22%; left: 12%; }
 .rm-deco-coin.c2 { top: 55%; right: 14%; animation-delay: -0.6s; }
 .rm-deco-coin.c3 { top: 88%; left: 18%; animation-delay: -1s; }
 @keyframes rm-deco-spin { 50% { transform: scaleX(0.2); } }
 /* a green pipe pinned to a side */
-.rm-deco-pipe { bottom: 0; right: 5%; width: 46px; height: 70px; background: #43b047; border: 3px solid #000; opacity: 0.3 !important; box-shadow: inset -8px 0 0 rgba(0,0,0,0.18), inset 8px 0 0 rgba(255,255,255,0.18); }
+.rm-deco-pipe { bottom: 0; right: 5%; width: 50px; height: 78px; background: #43b047; border: 3px solid #000; opacity: 0.5 !important; box-shadow: inset -8px 0 0 rgba(0,0,0,0.18), inset 8px 0 0 rgba(255,255,255,0.22); }
 .rm-deco-pipe::before { content: ''; position: absolute; top: -10px; left: -7px; right: -7px; height: 14px; background: #43b047; border: 3px solid #000; }
 /* a little goomba */
-.rm-deco-goomba { bottom: 4px; left: 8%; width: 26px; height: 22px; background: #9a5a2a; border: 3px solid #000; border-radius: 13px 13px 4px 4px; opacity: 0.4 !important; animation: rm-deco-walk 2.4s ease-in-out infinite; }
+.rm-deco-goomba { bottom: 4px; left: 8%; width: 28px; height: 24px; background: #9a5a2a; border: 3px solid #000; border-radius: 14px 14px 4px 4px; opacity: 0.6 !important; animation: rm-deco-walk 2.4s ease-in-out infinite; }
 .rm-deco-goomba::before, .rm-deco-goomba::after { content: ''; position: absolute; top: 8px; width: 5px; height: 6px; background: #fff; }
 .rm-deco-goomba::before { left: 4px; } .rm-deco-goomba::after { right: 4px; }
 @keyframes rm-deco-walk { 50% { transform: translateX(22px) scaleX(-1); } }
+/* a spinning star prop */
+.rm-deco-star {
+    width: 22px; height: 22px; background: var(--rm-coin);
+    clip-path: polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+    opacity: 0.55 !important; animation: rm-deco-bob 2.6s ease-in-out infinite;
+}
+.rm-deco-star.s1 { top: 30%; left: 9%; animation-delay: -0.8s; }
+.rm-deco-star.s2 { top: 70%; right: 8%; animation-delay: -1.6s; }
 /* thin ground strip along the very bottom */
-.rm-deco-ground { left: 0; right: 0; bottom: 0; height: 14px; background: repeating-linear-gradient(90deg, #c84c0c 0 14px, #b03f08 14px 16px); border-top: 3px solid #e07b2a; opacity: 0.35 !important; }
-@media (min-width: 900px) { .rm-deco-pipe, .rm-deco-goomba, .rm-deco-hill { opacity: 0.18 !important; } }
+.rm-deco-ground { left: 0; right: 0; bottom: 0; height: 16px; background: repeating-linear-gradient(90deg, #c84c0c 0 16px, #b03f08 16px 18px); border-top: 3px solid #e07b2a; opacity: 0.5 !important; }
+@media (min-width: 900px) { .rm-deco-pipe, .rm-deco-goomba, .rm-deco-hill { opacity: 0.3 !important; } }
 
+/* ===== BOLD MARIO SECTIONS =====
+   Each section is its own little "world": an overworld-sky band and an
+   underground-brick band alternate down the page, separated by a solid pixel
+   ground strip + a row of dirt blocks, so scrolling the invitation feels like
+   travelling through Mario stages instead of reading flat panels. */
 .rm-sec {
-    position: relative; padding: 54px 22px; border-bottom: 4px solid #000;
-    background: var(--rm-panel);
+    position: relative; padding: 60px 22px 56px; border-bottom: 0;
+    background:
+        radial-gradient(circle at 18% 22%, rgba(255,255,255,0.08) 0 7px, transparent 8px),
+        radial-gradient(circle at 82% 16%, rgba(255,255,255,0.06) 0 5px, transparent 6px),
+        linear-gradient(180deg, #2a4fb0 0%, #3a6ad6 55%, #2b5ac0 100%);
 }
-.rm-sec:nth-child(even) { background: #221a3c; }
-.rm-sec-head { text-align: center; margin-bottom: 26px; }
-.rm-sec-eyebrow { font-family: var(--rm-pixel); font-size: 8px; letter-spacing: 2px; color: var(--rm-coin); }
-.rm-sec-title { font-family: var(--rm-pixel); font-size: 15px; color: #fff; margin: 12px 0 0; line-height: 1.5; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
-.rm-sec-quote { margin-top: 14px; font-size: 13px; line-height: 1.7; color: rgba(255, 255, 255, 0.78); }
+/* odd sections (1,3,5…) read as bright "overworld sky"; even ones as the
+   darker "underground" brick world for clear visual rhythm. */
+.rm-sec:nth-child(even) {
+    background:
+        linear-gradient(180deg, #1a1430 0%, #251a44 100%),
+        repeating-linear-gradient(0deg, transparent 0 30px, rgba(0,0,0,0.18) 30px 32px);
+    background-blend-mode: normal;
+}
+/* solid ground strip + brick course capping every section bottom */
+.rm-sec::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 18px;
+    background:
+        repeating-linear-gradient(90deg, #c84c0c 0 30px, #a83e08 30px 32px);
+    border-top: 4px solid #e07b2a;
+    box-shadow: inset 0 4px 0 rgba(0,0,0,0.25);
+}
+.rm-sec:nth-child(even)::after {
+    background: repeating-linear-gradient(90deg, #6a4422 0 30px, #523218 30px 32px);
+    border-top: 4px solid #8a5a2c;
+}
 
-/* pixel card */
-.rm-card {
-    background: #15102a; border: 4px solid #000; box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
-    padding: 18px; margin: 0 auto 16px; max-width: 340px;
+.rm-sec-head { text-align: center; margin-bottom: 30px; position: relative; z-index: 1; }
+/* eyebrow → a coin-counter pill */
+.rm-sec-eyebrow {
+    display: inline-block; font-family: var(--rm-pixel); font-size: 8px; letter-spacing: 2px;
+    color: #000; background: var(--rm-coin); border: 3px solid #000; border-radius: 3px;
+    padding: 6px 10px; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); text-shadow: none;
 }
-.rm-card-pixel-top { height: 6px; background: repeating-linear-gradient(90deg, var(--rm-coin) 0 6px, transparent 6px 12px); margin: -18px -18px 14px; }
+/* title → a chunky "world card" plaque with brick texture + 3D shadow */
+.rm-sec-title {
+    display: inline-block; font-family: var(--rm-pixel); font-size: 15px; color: #fff;
+    margin: 16px 0 0; line-height: 1.5; padding: 14px 20px;
+    background: linear-gradient(180deg, var(--rm-red) 0%, var(--rm-red-2) 100%);
+    border: 4px solid #000; border-radius: 4px;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18);
+}
+/* coin floating above each title plaque */
+.rm-sec-title::before {
+    content: ''; position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    width: 14px; height: 18px; background: var(--rm-coin);
+    border: 2px solid #b56f00; border-radius: 4px;
+    box-shadow: 0 0 0 2px #000;
+    animation: rm-deco-spin 1.6s steps(8) infinite;
+}
+.rm-sec-quote { margin-top: 18px; font-size: 13px; line-height: 1.7; color: rgba(255, 255, 255, 0.9); text-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
+
+/* pixel card → a thicker double-bordered block with a ? badge in the corner */
+.rm-card {
+    position: relative; z-index: 1;
+    background: #15102a; border: 4px solid #000;
+    box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(255,255,255,0.06);
+    padding: 22px 18px 18px; margin: 0 auto 20px; max-width: 340px;
+}
+/* floating ? question-block tab on the top-right of every card */
+.rm-card::before {
+    content: '?'; position: absolute; top: -16px; right: 14px;
+    width: 28px; height: 28px; background: var(--rm-coin);
+    border: 3px solid #000; border-radius: 3px; box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    font-family: var(--rm-pixel); font-size: 13px; color: #000;
+    display: flex; align-items: center; justify-content: center;
+    animation: rm-deco-bob 3s ease-in-out infinite;
+}
+.rm-card-pixel-top { height: 6px; background: repeating-linear-gradient(90deg, var(--rm-coin) 0 6px, transparent 6px 12px); margin: -22px -18px 16px; }
 
 /* couple */
 .rm-couple-grid { display: flex; flex-direction: column; gap: 18px; align-items: center; }
