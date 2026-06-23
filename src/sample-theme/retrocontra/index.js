@@ -645,25 +645,35 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             toast('🎉 SEMUA INFO TERKUMPUL! 🎉<br><span style="font-size:8px;color:#fac000">Undangan terbuka — selamat! ✨</span>', 2200);
             if (viewBtn) viewBtn.classList.add('just-unlocked');
             setTimeout(function () { if (viewBtn) viewBtn.classList.remove('just-unlocked'); }, 700);
-            setTimeout(function () { showCongrats(); }, 1700);
+            // All info collected → the invitation can already be opened. But the
+            // princess is still held in the enemy lair: offer the OPTIONAL bonus-area
+            // rescue (item 3) instead of jumping straight to the congrats dialog.
+            setTimeout(function () { showRescueOffer(); }, 1700);
         }
 
-        function showCongrats() {
+        // BONUS RESCUE OFFER (item 3) — shown once every invitation pod is
+        // collected. Tells the guest the undangan is ready BUT the princess is
+        // still held in the enemy lair, and frames the remaining boss area as an
+        // OPTIONAL bonus (extra points + rescuing the princess). Two routes:
+        //   • "YA, SELAMATKAN" → resume play toward the boss lair.
+        //   • "Buka Undangan"  → open the full invitation right now.
+        function showRescueOffer() {
             running = false;
-            var winText = document.getElementById('rc-win-text');
-            var titleEl = document.querySelector('#rc-win .rc-overlay-pixtitle');
             var groom = val('groom_nickname', 'Mempelai Pria');
             var bride = val('bride_nickname', 'Mempelai Wanita');
-            if (titleEl) titleEl.innerHTML = '🎉 SELAMAT! 🎉';
-            if (winText) {
-                winText.innerHTML =
-                    '<div style="color:#ffd24a;font-size:11px;line-height:1.9;margin-bottom:10px">' +
-                    'Kamu sudah mengumpulkan SEMUA kepingan undangan ' +
-                    '<strong>' + esc(groom) + '</strong> &amp; <strong>' + esc(bride) + '</strong>! 💌✨</div>' +
-                    '<div style="font-size:11px;line-height:1.9;color:rgba(255,255,255,0.9)">' +
-                    'Undangan kini terbuka penuh. Tekan tombol di bawah untuk membaca undangan lengkap kami. 🎆</div>';
+            var el = document.getElementById('rc-rescue-text');
+            if (el) {
+                el.innerHTML =
+                    '<div style="color:#ffd24a;font-size:12px;line-height:1.85;margin-bottom:10px">' +
+                    'Kamu sudah mengumpulkan <strong>SEMUA</strong> kepingan undangan — ' +
+                    'halaman undangan kami siap dibuka! 💌</div>' +
+                    '<div style="font-size:12.5px;line-height:1.8;color:rgba(255,255,255,0.92)">' +
+                    'Tapi tunggu… sang putri <strong>' + esc(bride) + '</strong> ' +
+                    'masih <strong>ditawan oleh monster</strong> di markas inti! 👹🏰<br>' +
+                    'Maukah kamu membantu <strong>' + esc(groom) + '</strong> ' +
+                    'menyelamatkannya?</div>';
             }
-            showOverlay('rc-win');
+            showOverlay('rc-rescue');
         }
 
         var modalRoot = document.getElementById('rc-modal-root');
@@ -2315,7 +2325,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         // ============================================================
         // OVERLAYS / FLOW
         // ============================================================
-        var OVERLAYS = ['rc-intro', 'rc-stageclear', 'rc-win'];
+        var OVERLAYS = ['rc-intro', 'rc-stageclear', 'rc-win', 'rc-rescue'];
         var DIFF_LVL_DESC = [
             'Banyak power-up, musuh sedikit, peluru lambat — santai untuk belajar.',
             'Musuh menembak balik lebih sering, jurang sedang, hadir turret & sniper.',
@@ -2385,7 +2395,9 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             persist(); running = false; stopBgm(); hideOverlays(); closeModal();
             if (invitation) { invitation.classList.add('show'); invitation.scrollTop = 0; }
             if (fab) fab.classList.add('show');
-            playHostMusic();
+            // MUSIC REMOVED (item 4): no tenant song on the invitation either —
+            // force the host's auto-started track to stay paused so the page is silent.
+            pauseHostMusic();
         }
 
         // ---- Host music control ----
@@ -2421,7 +2433,13 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             setTimeout(function () { reconcileMusic(gen, true); }, 320);
             setTimeout(function () { reconcileMusic(gen, true); }, 900);
         }
-        function playHostMusic() { setMusicWanted(true); }
+        // MUSIC REMOVED (item 4): the host's background-music playback kept
+        // misbehaving on the invitation, so the theme no longer plays the tenant
+        // song anywhere — not in the game, not on the invitation. (This theme never
+        // had a visible music button either.) We only ever PAUSE; never resume.
+        // playHostMusic is a deliberate NO-OP so existing call sites stay valid
+        // without forcing music back on.
+        function playHostMusic() { /* intentionally silent — music disabled */ }
         function pauseHostMusic() { setMusicWanted(false); }
 
         if (viewBtn) viewBtn.addEventListener('click', function () {
@@ -2499,6 +2517,24 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         });
         if (btnStageGo) btnStageGo.addEventListener('click', function () { nextStage(); startBgm(); });
         if (btnWinGo) btnWinGo.addEventListener('click', function () { hideOverlays(); openInvitation(); });
+
+        // ---- Bonus rescue offer (item 3) ----
+        // "YA, SELAMATKAN" → resume the live game so the guest can play on toward
+        // the boss lair and free the princess. The run was paused (running=false)
+        // when the offer appeared; restart the loop where it left off.
+        var btnRescueGo = document.getElementById('rc-rescue-go');
+        var btnRescueSkip = document.getElementById('rc-rescue-skip');
+        if (btnRescueGo) btnRescueGo.addEventListener('click', function () {
+            hideOverlays();
+            if (started && W && player && !player.win) {
+                running = true; lastT = performance.now(); startBgm();
+                toast('Selamatkan sang putri! ⚔ Lanjut ke markas inti ▶', 2000);
+            } else {
+                startGame(stageNum || 1); running = true; lastT = performance.now(); startBgm();
+            }
+        });
+        // "Buka Undangan" → open the full invitation right away (skip the bonus).
+        if (btnRescueSkip) btnRescueSkip.addEventListener('click', function () { hideOverlays(); openInvitation(); });
         if (btnReplay) btnReplay.addEventListener('click', function () {
             if (invitation) invitation.classList.remove('show');
             if (fab) fab.classList.remove('show');
@@ -2712,8 +2748,99 @@ The host app has already bound all {{vars}} into the DOM before this runs.
                 var groundY = h - 70;
                 sctx.fillStyle = '#3a6a30'; sctx.fillRect(0, groundY, w, h - groundY);
                 sctx.fillStyle = '#5aa048'; sctx.fillRect(0, groundY, w, 8);
+                // dirt speckle texture on the jungle floor
+                sctx.fillStyle = 'rgba(0,0,0,0.12)';
+                for (var dt = 0; dt < w; dt += 26) { sctx.fillRect(dt + 5, groundY + 18, 7, 5); sctx.fillRect(dt + 16, groundY + 30, 7, 5); }
 
-                sU = clamp(Math.round(Math.min(w, h * 0.9) / 70), 3, 9);
+                // ============================================================
+                // CONTRA BATTLEFIELD (item 1: "perbanyak object & environment")
+                // A busy run-and-gun scene around the couple — sandbags, a pillbox
+                // turret firing tracers, supply crates, an enemy soldier, floating
+                // info PODs, and a core gate at the far right. Drawn in device px at
+                // scale eU so it reads as a real Contra stage, not just decor.
+                // ============================================================
+                var eU = clamp(Math.round(w / 130), 3, 6);
+
+                // --- sandbag bunkers (stacked khaki sacks on the ground) ---
+                function sandbags(bxc, rows) {
+                    for (var r = 0; r < rows; r++) {
+                        var ry = groundY - (r + 1) * eU * 3;
+                        var cols = rows - r;
+                        for (var cc = 0; cc < cols; cc++) {
+                            var bx = bxc + (cc - (cols - 1) / 2) * eU * 5;
+                            sctx.fillStyle = '#b8a35a'; sctx.fillRect(bx - eU * 2.4, ry, eU * 4.8, eU * 3);
+                            sctx.fillStyle = '#8c7838'; sctx.fillRect(bx - eU * 2.4, ry + eU * 2.4, eU * 4.8, eU * 0.6);
+                            sctx.fillStyle = '#cdb96e'; sctx.fillRect(bx - eU * 2.4, ry, eU * 4.8, eU * 0.6);
+                        }
+                    }
+                }
+                sandbags(w * 0.12, 3); sandbags(w * 0.70, 2);
+
+                // --- pillbox turret firing periodic tracers to the right ---
+                var turX = w * 0.20, turY = groundY - eU * 6;
+                sctx.fillStyle = '#4a4a52'; sctx.fillRect(turX - eU * 5, turY, eU * 10, eU * 6);     // bunker body
+                sctx.fillStyle = '#2c2c34'; sctx.fillRect(turX - eU * 5, turY, eU * 10, eU * 1.4);   // top shade
+                sctx.fillStyle = '#1a1a20'; sctx.fillRect(turX - eU * 2, turY + eU * 2, eU * 4, eU * 2.2); // slit
+                sctx.fillStyle = '#6a6a74'; sctx.fillRect(turX + eU * 3, turY + eU * 2.2, eU * 6, eU * 1.6); // barrel
+                // tracer bullets streaming from the barrel
+                for (var tr = 0; tr < 3; tr++) {
+                    var txp = turX + eU * 9 + ((sT * 4 + tr * 60) % (w * 0.4));
+                    sctx.fillStyle = '#ffd84a'; sctx.fillRect(txp, turY + eU * 2.6, eU * 2.2, eU * 0.9);
+                    sctx.fillStyle = 'rgba(255,150,40,0.6)'; sctx.fillRect(txp - eU, turY + eU * 2.7, eU, eU * 0.7);
+                }
+
+                // --- supply crates (wooden ammo boxes) ---
+                function crate(cxp, cyp, cs) {
+                    sctx.fillStyle = '#7a5a2a'; sctx.fillRect(cxp, cyp, cs, cs);
+                    sctx.fillStyle = '#5a3f18'; sctx.fillRect(cxp, cyp, cs, eU); sctx.fillRect(cxp, cyp + cs - eU, cs, eU);
+                    sctx.fillStyle = '#9a7a3a'; sctx.fillRect(cxp + eU, cyp + eU, cs - eU * 2, cs - eU * 2);
+                    sctx.fillStyle = '#5a3f18';                                                       // painted X
+                    sctx.fillRect(cxp + eU, cyp + eU, cs - eU * 2, 1); sctx.fillRect(cxp + cs / 2, cyp + eU, 1, cs - eU * 2);
+                }
+                crate(w * 0.42, groundY - eU * 7, eU * 7);
+                crate(w * 0.47, groundY - eU * 7, eU * 7);
+
+                // --- an enemy soldier marching (simple 2-frame stride) ---
+                function soldier(sx, sy, ss) {
+                    var step = Math.floor(sT / 16) % 2;
+                    sctx.fillStyle = '#b03a2e'; sctx.fillRect(sx - ss * 3, sy - ss * 11, ss * 6, ss * 2); // helmet
+                    sctx.fillStyle = '#e8b58a'; sctx.fillRect(sx - ss * 2.5, sy - ss * 9, ss * 5, ss * 3); // face
+                    sctx.fillStyle = '#3a5a32'; sctx.fillRect(sx - ss * 3, sy - ss * 6, ss * 6, ss * 6);   // torso
+                    sctx.fillStyle = '#26261c'; sctx.fillRect(sx + ss * 2, sy - ss * 5, ss * 6, ss * 1.4); // rifle
+                    sctx.fillStyle = '#2a3a22';
+                    sctx.fillRect(sx - ss * 3, sy, ss * 2.6, ss * 2 + (step ? ss : 0));
+                    sctx.fillRect(sx + ss * 0.4, sy, ss * 2.6, ss * 2 + (step ? 0 : ss));
+                }
+                soldier(w * 0.58, groundY, eU);
+
+                // --- floating info PODs bobbing in the air (what the guest shoots) ---
+                function pod(pxc, pyc, ps) {
+                    var glow = 0.5 + 0.5 * Math.sin(sT * 0.12 + pxc);
+                    sctx.fillStyle = 'rgba(122,168,255,' + (0.25 + glow * 0.25) + ')';
+                    sctx.fillRect(pxc - ps * 1.4, pyc - ps * 1.4, ps * 2.8, ps * 2.8);                // halo
+                    sctx.fillStyle = '#1c2c4a'; sctx.fillRect(pxc - ps, pyc - ps, ps * 2, ps * 2);     // shell
+                    sctx.fillStyle = '#7aa8ff'; sctx.fillRect(pxc - ps * 0.6, pyc - ps * 0.6, ps * 1.2, ps * 1.2); // core
+                    sctx.fillStyle = '#fff'; sctx.fillRect(pxc - ps * 0.2, pyc - ps * 0.5, ps * 0.4, ps * 1.0);    // glint
+                }
+                pod(w * 0.30, groundY - eU * 24 + Math.sin(sT * 0.07) * eU * 2, eU * 3);
+                pod(w * 0.55, groundY - eU * 30 + Math.sin(sT * 0.07 + 2) * eU * 2, eU * 3);
+
+                // --- core gate at the far right (the area "boss" objective) ---
+                var gtX = w - eU * 12, gtY = groundY - eU * 30;
+                sctx.fillStyle = '#3a3a44'; sctx.fillRect(gtX, gtY, eU * 9, eU * 30);                 // gate column
+                sctx.fillStyle = '#26262e'; sctx.fillRect(gtX, gtY, eU * 9, eU * 2);
+                sctx.fillStyle = '#1a1a20'; sctx.fillRect(gtX + eU * 1.5, gtY + eU * 2, eU * 6, eU * 26);
+                var corePulse = 0.5 + 0.5 * Math.sin(sT * 0.1);
+                sctx.fillStyle = 'rgba(229,37,33,' + (0.5 + corePulse * 0.5) + ')';
+                sctx.fillRect(gtX + eU * 2.6, gtY + eU * 11, eU * 4, eU * 6);                          // glowing core
+                sctx.fillStyle = '#ffae9a'; sctx.fillRect(gtX + eU * 3.4, gtY + eU * 12.4, eU * 2.4, eU * 3.2);
+
+                // ============================================================
+                // WEDDING TABLEAU (shrunk per item 1) — the couple + heart now sit
+                // smaller and centred so the Contra battlefield around them reads as
+                // a real stage, not just a backdrop.
+                // ============================================================
+                sU = clamp(Math.round(Math.min(w, h * 0.9) / 120), 3, 6);   // SMALLER than before (was 3-9)
                 var bob = Math.sin(sT * 0.05) * (sU * 0.6);
                 var cxc = w / 2, feetY = groundY + 2, boxH = 34 * sU, boxW = 24 * sU;
 

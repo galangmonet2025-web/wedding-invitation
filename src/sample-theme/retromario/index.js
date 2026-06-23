@@ -1019,33 +1019,37 @@
                 if (viewBtn) viewBtn.classList.add('just-unlocked');
                 setTimeout(function () { if (viewBtn) viewBtn.classList.remove('just-unlocked'); }, 700);
                 setTimeout(function () { triggerFlash(30, '#ffd84a'); }, 700);
-                // open the congratulations dialog automatically (not just a toast)
-                setTimeout(function () { showCongrats(); }, 1700);
+                // All info collected → the invitation can already be opened. But the
+                // princess is still caged by the boss: offer the OPTIONAL bonus-stage
+                // rescue (item 3) instead of jumping straight to the congrats dialog.
+                setTimeout(function () { showRescueOffer(); }, 1700);
             }
 
-            // Shared "congratulations" dialog used when the guest unlocks everything
-            // manually (without finishing the full 8-world run). Reuses the win
-            // overlay but with collect-themed wording, and routes its button to the
-            // full invitation.
-            function showCongrats() {
+            // BONUS RESCUE OFFER (item 3) — shown once every invitation piece is
+            // collected. Tells the guest the undangan is ready BUT the princess is
+            // still held by the monster, and frames the remaining boss run as an
+            // OPTIONAL bonus stage (extra coins + rescuing the princess). Two routes:
+            //   • "YA, SELAMATKAN" → resume play toward the boss stage.
+            //   • "Buka Undangan"  → open the full invitation right now.
+            function showRescueOffer() {
                 running = false;
-                var winText = document.getElementById('rm-win-text');
-                var titleEl = document.querySelector('#rm-win .rm-overlay-pixtitle');
                 var groom = val('groom_nickname', 'Mempelai Pria');
                 var bride = val('bride_nickname', 'Mempelai Wanita');
-                if (titleEl) titleEl.innerHTML = '🎉 SELAMAT! 🎉';
-                if (winText) {
-                    winText.innerHTML =
-                        '<div style="color:#ffd24a;font-size:11px;line-height:1.9;margin-bottom:10px">' +
-                        'Kamu sudah mengumpulkan SEMUA kepingan undangan ' +
-                        '<strong>' + esc(groom) + '</strong> &amp; <strong>' + esc(bride) + '</strong>! 💌✨' +
+                var el = document.getElementById('rm-rescue-text');
+                if (el) {
+                    el.innerHTML =
+                        '<div style="color:#ffd24a;font-size:12px;line-height:1.85;margin-bottom:10px">' +
+                        'Kamu sudah mengumpulkan <strong>SEMUA</strong> kepingan undangan — ' +
+                        'halaman undangan kami siap dibuka! 💌' +
                         '</div>' +
-                        '<div style="font-size:11px;line-height:1.9;color:rgba(255,255,255,0.9)">' +
-                        'Undangan kini terbuka penuh. Tekan tombol di bawah untuk membaca ' +
-                        'undangan lengkap kami. 🎆' +
+                        '<div style="font-size:12.5px;line-height:1.8;color:rgba(255,255,255,0.92)">' +
+                        'Tapi tunggu… sang putri <strong>' + esc(bride) + '</strong> ' +
+                        'masih <strong>ditawan oleh monster</strong>! 👹🏰<br>' +
+                        'Maukah kamu membantu <strong>' + esc(groom) + '</strong> ' +
+                        'menyelamatkannya?' +
                         '</div>';
                 }
-                showOverlay('rm-win');
+                showOverlay('rm-rescue');
             }
 
             var modalRoot = document.getElementById('rm-modal-root');
@@ -3509,7 +3513,7 @@
             // ============================================================
             // OVERLAYS / FLOW
             // ============================================================
-            var OVERLAYS = ['rm-intro', 'rm-stageclear', 'rm-win', 'rm-continue'];
+            var OVERLAYS = ['rm-intro', 'rm-stageclear', 'rm-win', 'rm-continue', 'rm-rescue'];
             // Per-level characteristics shown to the guest (bible §13 scaling).
             var DIFF_LVL_DESC = [
                 'Banyak power-up, musuh sedikit, jurang sempit — santai untuk belajar.',
@@ -3604,10 +3608,10 @@
                 closeModal();
                 if (invitation) { invitation.classList.add('show'); invitation.scrollTop = 0; }
                 if (fab) fab.classList.add('show');
-                // The tenant's music should play ONLY while the invitation page is
-                // open — so resume it here (the host already opened + auto-started
-                // it on its own cover, but we PAUSE during the game; see below).
-                playHostMusic();
+                // MUSIC REMOVED (item 4): no tenant song on the invitation either.
+                // Force the host's auto-started track to stay paused so the page is
+                // silent (the music play/pause button was deleted too).
+                pauseHostMusic();
             }
 
             // ---- Host music control (tenant song plays ONLY on the invitation) ----
@@ -3682,9 +3686,17 @@
                     }
                 } catch (e) {}
             }
-            // Resume the tenant's music (invitation page open).
-            function playHostMusic() { setMusicWanted(true); }
-            // Pause the tenant's music (in the game / title screen).
+            // MUSIC REMOVED (item 4): the host's background-music playback kept
+            // misbehaving on the invitation, so the theme no longer plays the
+            // tenant song anywhere — not in the game, not on the invitation. The
+            // user-facing music button was deleted too. We only ever PAUSE (to
+            // silence the host's auto-started track); we never resume it.
+            //
+            // playHostMusic is now a deliberate NO-OP — keeping the name so every
+            // existing call site (openInvitation, etc.) stays valid without forcing
+            // music back on.
+            function playHostMusic() { /* intentionally silent — music disabled */ }
+            // Pause the host's auto-started tenant music (keeps everything silent).
             function pauseHostMusic() { setMusicWanted(false); }
 
             if (viewBtn) viewBtn.addEventListener('click', function () {
@@ -3845,6 +3857,30 @@
             if (btnStageGo) btnStageGo.addEventListener('click', function () { nextStage(); startBgMusic(); startBgm(); });
 
             if (btnWinGo) btnWinGo.addEventListener('click', function () {
+                hideOverlays();
+                openInvitation();
+            });
+
+            // ---- Bonus rescue offer (item 3) ----
+            // "YA, SELAMATKAN" → resume the live game so the guest can play on
+            // toward the boss stage and free the princess. The run was paused
+            // (running=false) when the offer appeared; restart the loop where it
+            // left off (same stage, same world) without rebuilding anything.
+            var btnRescueGo = document.getElementById('rm-rescue-go');
+            var btnRescueSkip = document.getElementById('rm-rescue-skip');
+            if (btnRescueGo) btnRescueGo.addEventListener('click', function () {
+                hideOverlays();
+                if (started && W && player && !player.win) {
+                    running = true; lastT = performance.now();
+                    startBgm();
+                    toast('Selamatkan sang putri! ⚔ Lanjut ke ujung petualangan ▶', 2000);
+                } else {
+                    // No live run to return to (e.g. unlocked via cheat) — just start.
+                    startGame(stageNum || 1); running = true; lastT = performance.now(); startBgm();
+                }
+            });
+            // "Buka Undangan" → open the full invitation right away (skip the bonus).
+            if (btnRescueSkip) btnRescueSkip.addEventListener('click', function () {
                 hideOverlays();
                 openInvitation();
             });
@@ -4280,13 +4316,122 @@
                     sctx.fillStyle = '#8a3408';
                     for (var gx = 0; gx < w; gx += 28) { sctx.fillRect(gx + 6, groundY + 18, 8, 6); sctx.fillRect(gx + 20, groundY + 30, 8, 6); }
 
-                    // art scale: size the tableau to the panel (clamped so it reads
-                    // big on wide screens but never overflows a narrow one).
-                    sU = clamp(Math.round(Math.min(w, h * 0.9) / 70), 3, 9);
+                    // ============================================================
+                    // MARIO ENVIRONMENT (item 1: "perbanyak object & environment")
+                    // A busy little overworld scene around the couple — bushes,
+                    // pipes (one with a peeking goomba), a brick + ? block row, a
+                    // coin arc, and a goal flag at the far right. Drawn in device px
+                    // at scale eU so it reads as a real Mario stage, not just decor.
+                    // ============================================================
+                    var eU = clamp(Math.round(w / 130), 3, 6);   // env pixel unit
+
+                    // --- pixel-brick ground texture across the whole band ---
+                    sctx.fillStyle = 'rgba(0,0,0,0.10)';
+                    for (var bx = 0; bx < w; bx += eU * 8) {
+                        sctx.fillRect(bx, groundY + eU * 2, eU * 8 - 2, 1);
+                        sctx.fillRect(bx + eU * 4, groundY + eU * 4, 1, eU * 2);
+                        sctx.fillRect(bx, groundY + eU * 6, eU * 8 - 2, 1);
+                    }
+
+                    // --- bushes (rounded green clumps sitting on the grass) ---
+                    function bush(bxc, scale) {
+                        sctx.fillStyle = '#3fa83a';
+                        var r = eU * 2.4 * scale;
+                        sctx.beginPath();
+                        sctx.arc(bxc - r, groundY, r, Math.PI, 0);
+                        sctx.arc(bxc, groundY, r * 1.25, Math.PI, 0);
+                        sctx.arc(bxc + r, groundY, r, Math.PI, 0);
+                        sctx.closePath(); sctx.fill();
+                        sctx.fillStyle = '#5ec85a';
+                        sctx.fillRect(bxc - r * 1.8, groundY - 2, r * 3.6, 2);
+                    }
+                    bush(w * 0.10, 1.1); bush(w * 0.62, 0.9); bush(w * 0.88, 1.15);
+
+                    // --- a green pipe with a goomba peeking out beside it ---
+                    function pipe(px, ph) {
+                        var pw = eU * 9, py0 = groundY - ph;
+                        sctx.fillStyle = '#1f9e3a'; sctx.fillRect(px, py0, pw, ph);
+                        sctx.fillStyle = '#3fd860'; sctx.fillRect(px + 2, py0, eU * 2, ph);     // left sheen
+                        sctx.fillStyle = '#0d6b22'; sctx.fillRect(px + pw - eU * 1.5, py0, eU * 1.5, ph); // right shade
+                        // lip (wider rim)
+                        sctx.fillStyle = '#1f9e3a'; sctx.fillRect(px - eU, py0 - eU * 2.5, pw + eU * 2, eU * 2.5);
+                        sctx.fillStyle = '#3fd860'; sctx.fillRect(px - eU + 2, py0 - eU * 2.5, eU * 2, eU * 2.5);
+                        sctx.fillStyle = '#0d6b22'; sctx.fillRect(px + pw, py0 - eU * 2.5, eU - 2, eU * 2.5);
+                    }
+                    // walking goomba helper (little brown mushroom-foe)
+                    function goomba(gx, gy, gs) {
+                        var step = Math.floor(sT / 16) % 2;            // 2-frame waddle
+                        sctx.fillStyle = '#8a4b1d'; sctx.fillRect(gx - gs * 4, gy - gs * 5, gs * 8, gs * 5);     // cap
+                        sctx.fillStyle = '#b96a2a'; sctx.fillRect(gx - gs * 4, gy - gs * 5, gs * 8, gs * 1.4);
+                        sctx.fillStyle = '#f2d2a0'; sctx.fillRect(gx - gs * 3, gy - gs * 2, gs * 6, gs * 2);     // face band
+                        sctx.fillStyle = '#000';
+                        sctx.fillRect(gx - gs * 2.4, gy - gs * 2, gs * 1.2, gs * 1.6);                          // eyes
+                        sctx.fillRect(gx + gs * 1.2, gy - gs * 2, gs * 1.2, gs * 1.6);
+                        sctx.fillStyle = '#3a1d0c';                                                             // feet (waddle)
+                        sctx.fillRect(gx - gs * 3.6, gy, gs * 3, gs * 1.4 + (step ? gs : 0));
+                        sctx.fillRect(gx + gs * 0.6, gy, gs * 3, gs * 1.4 + (step ? 0 : gs));
+                    }
+                    var pipeX = w * 0.13;
+                    pipe(pipeX, eU * 12);
+                    goomba(pipeX + eU * 16, groundY, eU * 0.9);
+                    pipe(w * 0.70, eU * 9);
+                    goomba(w * 0.45, groundY, eU * 0.9);
+
+                    // --- floating brick + ? block row (left of the arch) ---
+                    function qmark(qx, qy, qS2) {
+                        var f2 = Math.floor(sT / 18) % 3;
+                        sctx.fillStyle = f2 === 0 ? '#f4b400' : (f2 === 1 ? '#ffc21a' : '#ffce3a');
+                        sctx.fillRect(qx, qy, qS2, qS2);
+                        sctx.fillStyle = '#c87f00'; sctx.fillRect(qx, qy, qS2, eU); sctx.fillRect(qx, qy + qS2 - eU, qS2, eU);
+                        sctx.fillStyle = '#7a4d00'; sctx.fillRect(qx, qy, eU, qS2); sctx.fillRect(qx + qS2 - eU, qy, eU, qS2);
+                        sctx.fillStyle = '#000'; var mm = qS2 / 8;
+                        sctx.fillRect(qx + 3 * mm, qy + 2 * mm, 3 * mm, mm); sctx.fillRect(qx + 5 * mm, qy + 3 * mm, mm, mm);
+                        sctx.fillRect(qx + 4 * mm, qy + 4 * mm, mm, mm); sctx.fillRect(qx + 4 * mm, qy + 6 * mm, mm, mm);
+                    }
+                    function brick(bxp, byp, bS) {
+                        sctx.fillStyle = '#c1521f'; sctx.fillRect(bxp, byp, bS, bS);
+                        sctx.fillStyle = '#7a2f10';
+                        sctx.fillRect(bxp, byp + bS / 2, bS, 1); sctx.fillRect(bxp + bS / 2, byp, 1, bS / 2);
+                        sctx.fillRect(bxp, byp, bS, 1); sctx.fillRect(bxp + bS / 4, byp + bS / 2, 1, bS / 2); sctx.fillRect(bxp + 3 * bS / 4, byp + bS / 2, 1, bS / 2);
+                    }
+                    var rowS = eU * 7, rowY = groundY - eU * 24;
+                    var rowX0 = w * 0.06;
+                    brick(rowX0, rowY, rowS);
+                    qmark(rowX0 + rowS, rowY, rowS);
+                    brick(rowX0 + rowS * 2, rowY, rowS);
+                    // a coin arc hopping over the block row
+                    for (var ca = 0; ca < 5; ca++) {
+                        var caX = rowX0 + rowS * 0.5 + ca * rowS * 0.7;
+                        var caY = rowY - eU * 6 - Math.sin(ca / 4 * Math.PI) * eU * 8;
+                        var caW = (2 + Math.abs(Math.sin(sT * 0.1 + ca)) * 2) * eU;
+                        sctx.fillStyle = '#9a5e00'; sctx.fillRect(caX - caW / 2, caY, caW, eU * 3);
+                        sctx.fillStyle = '#fde36a'; sctx.fillRect(caX - caW / 2 + 1, caY + 1, Math.max(1, caW - 2), eU * 3 - 2);
+                    }
+
+                    // --- goal flag at the far right (Mario level-end pole) ---
+                    var flgX = w - eU * 10, flgTop = groundY - eU * 30;
+                    sctx.fillStyle = '#cfe8cf'; sctx.fillRect(flgX, flgTop, 2, groundY - flgTop);   // pole
+                    sctx.fillStyle = '#2f8a33'; sctx.fillRect(flgX - eU * 1.2, flgTop - eU * 1.2, eU * 2.4, eU * 2.4); // ball
+                    var fw2 = Math.sin(sT * 0.12) * eU;                                              // gentle wave
+                    sctx.fillStyle = '#43b047';
+                    sctx.beginPath();
+                    sctx.moveTo(flgX + 2, flgTop + eU * 2);
+                    sctx.lineTo(flgX + 2 - eU * 8 + fw2, flgTop + eU * 4);
+                    sctx.lineTo(flgX + 2, flgTop + eU * 6);
+                    sctx.closePath(); sctx.fill();
+
+                    // ============================================================
+                    // WEDDING TABLEAU (shrunk per item 1) — the couple + arch now
+                    // sit smaller and slightly right-of-centre so the Mario world
+                    // around them reads as a real stage, not just a backdrop.
+                    // ============================================================
+                    // art scale: SMALLER than before (was 3-9) so the couple no
+                    // longer dominates the panel.
+                    sU = clamp(Math.round(Math.min(w, h * 0.9) / 120), 3, 6);
                     var coupleBob = Math.sin(sT * 0.05) * (sU * 0.6);
 
                     // wedding arch behind the couple (flowered trellis)
-                    var archCx = w / 2, archTopY = groundY - sU * 44;
+                    var archCx = w * 0.5, archTopY = groundY - sU * 44;
                     var archW = sU * 40, archH = sU * 40;
                     sctx.lineWidth = Math.max(4, sU * 1.4);
                     sctx.strokeStyle = '#43b047';
@@ -4345,22 +4490,9 @@
                         sctx.globalAlpha = 1;
                     }
 
-                    // ? blocks floating to either side of the arch (Mario flavour),
-                    // gently bobbing — drawn directly in device px at scale sU.
-                    var qbob = Math.sin(sT * 0.07) * sU * 1.2;
-                    var qS = sU * 7;
-                    [archCx - boxW * 0.95 - qS, archCx + boxW * 0.95].forEach(function (qx, qi) {
-                        var qy = archTopY + sU * 8 + (qi ? -qbob : qbob);
-                        var f = Math.floor(sT / 18) % 3;
-                        sctx.fillStyle = f === 0 ? '#f4b400' : (f === 1 ? '#ffc21a' : '#ffce3a');
-                        sctx.fillRect(qx, qy, qS, qS);
-                        sctx.fillStyle = '#c87f00'; sctx.fillRect(qx, qy, qS, sU); sctx.fillRect(qx, qy + qS - sU, qS, sU);
-                        sctx.fillStyle = '#7a4d00'; sctx.fillRect(qx, qy, sU, qS); sctx.fillRect(qx + qS - sU, qy, sU, qS);
-                        sctx.fillStyle = '#000';
-                        var m = qS / 8;
-                        sctx.fillRect(qx + 3 * m, qy + 2 * m, 3 * m, m); sctx.fillRect(qx + 5 * m, qy + 3 * m, m, m);
-                        sctx.fillRect(qx + 4 * m, qy + 4 * m, m, m); sctx.fillRect(qx + 4 * m, qy + 6 * m, m, m);
-                    });
+                    // (The floating ? block + coin arc now live in the Mario-world
+                    // layer to the left of the arch — see the environment section
+                    // above — so we no longer flank the arch with duplicate blocks.)
 
                     // twinkling coins arcing above the arch
                     for (var cc = 0; cc < 5; cc++) {

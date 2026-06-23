@@ -184,17 +184,43 @@
             </div>
         </div>
 
-        <!-- ===== INTRO STORY OVERLAY ===== -->
+        <!-- ===== INTRO STORY OVERLAY (detailed mission briefing) ===== -->
         <div class="rm-overlay" id="rm-intro">
-            <div class="rm-overlay-pixtitle">WORLD 1-1</div>
-            <div class="rm-overlay-text">
-                Petualangan dimulai! Kumpulkan koin, injak musuh, dan
-                pukul kotak <strong>?</strong> untuk membuka rahasia undangan
-                pernikahan <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>.
-                <br><br>Capai bendera di ujung untuk menyelesaikan kisah.
+            <div class="rm-overlay-pixtitle">★ MISI KAMU ★</div>
+            <div class="rm-mission">
+                <p class="rm-mission-lead">
+                    Informasi pernikahan
+                    <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>
+                    <strong>tersebar &amp; disembunyikan</strong> di sepanjang petualangan ini!
+                </p>
+                <div class="rm-mission-steps">
+                    <div class="rm-mission-step">
+                        <span class="rm-qblock" aria-hidden="true">?</span>
+                        <span class="rm-mission-step-txt">
+                            Setiap kepingan undangan disembunyikan di dalam
+                            <strong>kotak <span class="rm-qblock-inline">?</span></strong>
+                            yang tersebar di tiap stage.
+                        </span>
+                    </div>
+                    <div class="rm-mission-step">
+                        <span class="rm-mission-ico">🎮</span>
+                        <span class="rm-mission-step-txt">
+                            <strong>Mainkan game-nya</strong> — lompat &amp; lari, lalu
+                            <strong>pukul kotak <span class="rm-qblock-inline">?</span> dari bawah</strong>
+                            untuk membongkar isinya.
+                        </span>
+                    </div>
+                    <div class="rm-mission-step">
+                        <span class="rm-mission-ico">💌</span>
+                        <span class="rm-mission-step-txt">
+                            <strong>Kumpulkan semuanya</strong> supaya halaman undangan
+                            kami bisa terbuka sepenuhnya.
+                        </span>
+                    </div>
+                </div>
             </div>
             <div class="rm-diff-info" id="rm-intro-diff"><!-- difficulty summary injected by JS --></div>
-            <button class="rm-overlay-btn" id="rm-intro-go" type="button">GO! ▶</button>
+            <button class="rm-overlay-btn" id="rm-intro-go" type="button">MULAI MISI ▶</button>
         </div>
 
         <!-- ===== CONTINUE / NEW GAME OVERLAY (shown after PRESS START if a save exists) ===== -->
@@ -224,6 +250,28 @@
                 Selamat! Kamu menamatkan petualangan dan membuka seluruh undangan.
             </div>
             <button class="rm-overlay-btn" id="rm-win-go" type="button">LIHAT UNDANGAN ▶</button>
+        </div>
+
+        <!-- ===== BONUS RESCUE OFFER (shown the moment the LAST info-block is got) =====
+             All invitation pieces are collected → the undangan can already be
+             opened. But the princess is still caged by the boss: this offers the
+             OPTIONAL bonus stage (rescue her for extra coins). Two routes:
+             open the invitation now, or keep playing toward the boss. -->
+        <div class="rm-overlay" id="rm-rescue">
+            <div class="rm-overlay-pixtitle">★ INFO LENGKAP! ★</div>
+            <div class="rm-rescue-body" id="rm-rescue-text"><!-- filled by JS (uses couple nicknames) --></div>
+            <div class="rm-rescue-bonus">
+                <span class="rm-rescue-bonus-tag">BONUS</span>
+                <span class="rm-rescue-bonus-txt">
+                    Stage ini <strong>opsional</strong> — tidak wajib diselesaikan.
+                    Tapi kalau kamu tuntaskan, kamu kumpulkan <strong>banyak koin</strong>
+                    &amp; ikut menyelamatkan sang putri! 🪙
+                </span>
+            </div>
+            <div class="rm-rescue-btns">
+                <button class="rm-overlay-btn" id="rm-rescue-go" type="button">⚔ YA, SELAMATKAN! ▶</button>
+                <button class="rm-overlay-btn rm-overlay-btn-alt" id="rm-rescue-skip" type="button">💌 Buka Undangan</button>
+            </div>
         </div>
 
         <!-- ===== RESET CONFIRM DIALOG ===== -->
@@ -684,37 +732,77 @@
             <div class="rm-lightbox-count" id="rm-lightbox-count"></div>
         </div>
 
-        <!-- ===== FAB (close / back to game / music) — shown only while invitation is open ===== -->
+        <!-- ===== FAB (close / back to game) — shown only while invitation is open =====
+             The music play/pause button was REMOVED on purpose: the host's
+             background-music playback kept misbehaving on the invitation, so the
+             theme no longer surfaces any music control here. Music is kept OFF
+             throughout (see the hidden pause-lever below). -->
         <div class="rm-fab" id="rm-fab">
             <!-- Close: hide the invitation and resume the game at the SAME stage -->
             <button class="rm-fab-btn" id="rm-close-inv" type="button" aria-label="Tutup undangan">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
             </button>
-            <button class="rm-fab-btn" id="btn-toggle-music" type="button" aria-label="Musik">
-                <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
-                <svg id="pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+        </div>
+
+        <!-- HIDDEN music pause-lever. The HOST auto-starts the tenant's song when
+             its own cover is dismissed; #btn-toggle-music is the ONLY hook the
+             theme has to flip the host's play state. We keep it (display:none) so
+             the theme can PAUSE that auto-started music and keep the whole
+             experience SILENT — but the guest never sees a music control. The
+             theme never re-plays it, so the song stays off on the invitation too.
+             The host also syncs #play-icon/#pause-icon + dispatches play/pause on
+             #bg-music, so we keep those elements as its (invisible) targets. -->
+        <div id="rm-music-lever" style="display:none !important;" aria-hidden="true">
+            <button id="btn-toggle-music" type="button" tabindex="-1" aria-hidden="true">
+                <svg id="play-icon" width="1" height="1" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+                <svg id="pause-icon" width="1" height="1" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
             </button>
         </div>
 
-        <!-- Background music element.
-             The HOST app owns playback: it reads the tenant's chosen song
-             (link_backsound_music, incl. YouTube), plays it from its own Audio
-             object, toggles play/pause when #btn-toggle-music is clicked, and
-             then DISPATCHES native 'play'/'pause' events on THIS element so the
-             theme can sync its button icon. We therefore keep this element (as
-             the host's event target) but ship NO hardcoded <source> — a baked-in
-             track would play the wrong song and fight the tenant's music. -->
+        <!-- Background music element (host's event target). Ships NO <source>. -->
         <audio id="bg-music" loop></audio>
     </div>
 
-    <!-- ============ DESKTOP SIDEBAR (decorative, drawn on canvas) ============ -->
+    <!-- ============ DESKTOP SIDEBAR (decorative, drawn on canvas) ============
+         On desktop the game lives in the phone frame (left); this panel fills the
+         rest of the screen with a small wedding tableau (groom + bride under an
+         arch) surrounded by a busy Mario world (pipes, bricks, goombas, flag,
+         coins), plus a KEYBOARD SHORTCUT MAP so PC players know the controls. -->
     <aside class="rm-sidebar" id="rm-sidebar">
         <canvas class="rm-side-canvas" id="rm-side-canvas"></canvas>
         <div class="rm-side-text">
             <div class="rm-side-badge">★ SUPER WEDDING BROS ★</div>
             <h2 class="rm-side-couple"><span>{{groom_nickname}}</span> <span class="amp">♥</span> <span>{{bride_nickname}}</span></h2>
             <div class="rm-side-date" data-var="wedding_date">{{wedding_date}}</div>
-            <p class="rm-side-tip">Petualangan dua hati menuju level terindah — pernikahan! Mainkan undangannya di layar telepon sebelah kiri: tombol panah / A / B, atau sentuh layar di perangkat mobile.</p>
+            <p class="rm-side-tip">Petualangan dua hati menuju level terindah — pernikahan! Mainkan undangannya di layar telepon di sebelah kiri.</p>
+
+            <!-- KEYBOARD SHORTCUT MAP (PC controls) -->
+            <div class="rm-keymap" aria-label="Peta tombol keyboard">
+                <div class="rm-keymap-title">⌨ KONTROL KEYBOARD</div>
+                <div class="rm-keymap-grid">
+                    <div class="rm-keyrow">
+                        <span class="rm-keys"><kbd>←</kbd><kbd>→</kbd><span class="rm-keyor">/</span><kbd>A</kbd><kbd>D</kbd></span>
+                        <span class="rm-keyact">Jalan kiri / kanan</span>
+                    </div>
+                    <div class="rm-keyrow">
+                        <span class="rm-keys"><kbd>↑</kbd><span class="rm-keyor">/</span><kbd>W</kbd><span class="rm-keyor">/</span><kbd class="rm-key-wide">Space</kbd></span>
+                        <span class="rm-keyact">Lompat</span>
+                    </div>
+                    <div class="rm-keyrow">
+                        <span class="rm-keys"><kbd>↓</kbd><span class="rm-keyor">/</span><kbd>S</kbd></span>
+                        <span class="rm-keyact">Menunduk</span>
+                    </div>
+                    <div class="rm-keyrow">
+                        <span class="rm-keys"><kbd>E</kbd></span>
+                        <span class="rm-keyact">Aksi / pukul kotak <span class="rm-keyq">?</span> / tembak</span>
+                    </div>
+                    <div class="rm-keyrow">
+                        <span class="rm-keys"><kbd class="rm-key-wide">Esc</kbd></span>
+                        <span class="rm-keyact">Tutup popup</span>
+                    </div>
+                </div>
+                <div class="rm-keymap-foot">Di ponsel: gunakan joystick &amp; tombol <b>A</b> / <b>B</b> di layar.</div>
+            </div>
         </div>
     </aside>
 </div>

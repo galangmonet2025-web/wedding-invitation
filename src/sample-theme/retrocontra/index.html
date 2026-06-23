@@ -167,17 +167,43 @@
             </div>
         </div>
 
-        <!-- ===== INTRO STORY OVERLAY ===== -->
+        <!-- ===== INTRO STORY OVERLAY (detailed mission briefing) ===== -->
         <div class="rc-overlay" id="rc-intro">
-            <div class="rc-overlay-pixtitle">AREA 1</div>
-            <div class="rc-overlay-text">
-                Misi dimulai, Komando! Lompat, tembak musuh, dan hancurkan
-                <strong>POD</strong> melayang untuk membuka rahasia undangan
-                pernikahan <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>.
-                <br><br>Hancurkan gerbang inti di ujung untuk menuntaskan area.
+            <div class="rc-overlay-pixtitle">★ MISI KAMU ★</div>
+            <div class="rc-mission">
+                <p class="rc-mission-lead">
+                    Komando! Informasi pernikahan
+                    <strong><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></strong>
+                    <strong>tersebar &amp; disembunyikan</strong> di sepanjang medan pertempuran ini!
+                </p>
+                <div class="rc-mission-steps">
+                    <div class="rc-mission-step">
+                        <span class="rc-pod" aria-hidden="true">◎</span>
+                        <span class="rc-mission-step-txt">
+                            Setiap kepingan undangan disembunyikan di dalam
+                            <strong>POD melayang <span class="rc-pod-inline">◎</span></strong>
+                            yang tersebar di tiap area.
+                        </span>
+                    </div>
+                    <div class="rc-mission-step">
+                        <span class="rc-mission-ico">🔫</span>
+                        <span class="rc-mission-step-txt">
+                            <strong>Mainkan game-nya</strong> — lompat &amp; lari, lalu
+                            <strong>tembak POD <span class="rc-pod-inline">◎</span></strong>
+                            sampai hancur untuk membongkar isinya.
+                        </span>
+                    </div>
+                    <div class="rc-mission-step">
+                        <span class="rc-mission-ico">💌</span>
+                        <span class="rc-mission-step-txt">
+                            <strong>Kumpulkan semuanya</strong> supaya halaman undangan
+                            kami bisa terbuka sepenuhnya.
+                        </span>
+                    </div>
+                </div>
             </div>
             <div class="rc-diff-info" id="rc-intro-diff"><!-- difficulty summary injected by JS --></div>
-            <button class="rc-overlay-btn" id="rc-intro-go" type="button">GO! ▶</button>
+            <button class="rc-overlay-btn" id="rc-intro-go" type="button">MULAI MISI ▶</button>
         </div>
 
         <!-- ===== STAGE CLEAR OVERLAY (between areas) ===== -->
@@ -194,6 +220,28 @@
                 Selamat! Kamu menuntaskan misi dan membuka seluruh undangan.
             </div>
             <button class="rc-overlay-btn" id="rc-win-go" type="button">LIHAT UNDANGAN ▶</button>
+        </div>
+
+        <!-- ===== BONUS RESCUE OFFER (shown the moment the LAST pod is collected) =====
+             All invitation pieces are collected → the undangan can already be
+             opened. But the princess is still held in the enemy lair: this offers
+             the OPTIONAL bonus area (rescue her for extra points). Two routes:
+             open the invitation now, or keep playing toward the boss lair. -->
+        <div class="rc-overlay" id="rc-rescue">
+            <div class="rc-overlay-pixtitle">★ INFO LENGKAP! ★</div>
+            <div class="rc-rescue-body" id="rc-rescue-text"><!-- filled by JS (uses couple nicknames) --></div>
+            <div class="rc-rescue-bonus">
+                <span class="rc-rescue-bonus-tag">BONUS</span>
+                <span class="rc-rescue-bonus-txt">
+                    Area ini <strong>opsional</strong> — tidak wajib diselesaikan.
+                    Tapi kalau kamu tuntaskan, kamu kumpulkan <strong>banyak poin</strong>
+                    &amp; ikut menyelamatkan sang putri! 🎖️
+                </span>
+            </div>
+            <div class="rc-rescue-btns">
+                <button class="rc-overlay-btn" id="rc-rescue-go" type="button">⚔ YA, SELAMATKAN! ▶</button>
+                <button class="rc-overlay-btn rc-overlay-btn-alt" id="rc-rescue-skip" type="button">💌 Buka Undangan</button>
+            </div>
         </div>
 
         <!-- ===== RESET CONFIRM DIALOG ===== -->
@@ -659,8 +707,51 @@
         <span id="pause-icon" style="display:none"></span>
     </div>
 
-    <!-- ============ DESKTOP SIDEBAR (living scene) ============ -->
+    <!-- ============ DESKTOP SIDEBAR (living scene) ============
+         On desktop the game lives in the phone frame (left); this panel fills the
+         rest of the screen with a small wedding tableau (commando groom + bride
+         under a heart) surrounded by a busy Contra battlefield (pillbox turret,
+         supply crates, an enemy soldier, info PODs, tracer bullets, a core gate),
+         plus a KEYBOARD SHORTCUT MAP so PC players know the controls. -->
     <aside class="rc-side" id="rc-side">
         <canvas class="rc-side-canvas" id="rc-side-canvas"></canvas>
+        <div class="rc-side-text">
+            <div class="rc-side-badge">★ OPERATION LOVE ★</div>
+            <h2 class="rc-side-couple"><span>{{groom_nickname}}</span> <span class="amp">♥</span> <span>{{bride_nickname}}</span></h2>
+            <div class="rc-side-date" data-var="wedding_date">{{wedding_date}}</div>
+            <p class="rc-side-tip">Dua komando menembus semua misi menuju level terindah — pernikahan! Mainkan undangannya di layar telepon di sebelah kiri.</p>
+
+            <!-- KEYBOARD SHORTCUT MAP (PC controls) -->
+            <div class="rc-keymap" aria-label="Peta tombol keyboard">
+                <div class="rc-keymap-title">⌨ KONTROL KEYBOARD</div>
+                <div class="rc-keymap-grid">
+                    <div class="rc-keyrow">
+                        <span class="rc-keys"><kbd>←</kbd><kbd>→</kbd><span class="rc-keyor">/</span><kbd>A</kbd><kbd>D</kbd></span>
+                        <span class="rc-keyact">Jalan kiri / kanan</span>
+                    </div>
+                    <div class="rc-keyrow">
+                        <span class="rc-keys"><kbd>↑</kbd><span class="rc-keyor">/</span><kbd>W</kbd></span>
+                        <span class="rc-keyact">Bidik ke atas</span>
+                    </div>
+                    <div class="rc-keyrow">
+                        <span class="rc-keys"><kbd>↓</kbd><span class="rc-keyor">/</span><kbd>S</kbd></span>
+                        <span class="rc-keyact">Menunduk / bidik bawah</span>
+                    </div>
+                    <div class="rc-keyrow">
+                        <span class="rc-keys"><kbd class="rc-key-wide">Space</kbd><span class="rc-keyor">/</span><kbd>L</kbd><span class="rc-keyor">/</span><kbd>X</kbd></span>
+                        <span class="rc-keyact">Lompat</span>
+                    </div>
+                    <div class="rc-keyrow">
+                        <span class="rc-keys"><kbd>J</kbd><span class="rc-keyor">/</span><kbd>Z</kbd><span class="rc-keyor">/</span><kbd>K</kbd><span class="rc-keyor">/</span><kbd class="rc-key-wide">Ctrl</kbd></span>
+                        <span class="rc-keyact">Tembak <span class="rc-keypod">◎</span> POD</span>
+                    </div>
+                    <div class="rc-keyrow">
+                        <span class="rc-keys"><kbd class="rc-key-wide">Esc</kbd></span>
+                        <span class="rc-keyact">Tutup popup</span>
+                    </div>
+                </div>
+                <div class="rc-keymap-foot">Di ponsel: gunakan joystick &amp; tombol <b>A</b> (lompat) / <b>B</b> (tembak) di layar.</div>
+            </div>
+        </div>
     </aside>
 </div>
