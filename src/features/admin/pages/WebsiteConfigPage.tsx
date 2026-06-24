@@ -889,7 +889,7 @@ export function WebsiteConfigPage() {
                                     <div className="flex items-center gap-4">
                                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{previewDevice} VIEW</span>
                                          <a 
-                                            href={window.location.origin + window.location.pathname + '#/home'} 
+                                            href={window.location.origin + window.location.pathname + '#/landing-page'} 
                                             target="_blank" 
                                             rel="noreferrer"
                                             className="p-1.5 text-gray-400 hover:text-gold-500"
@@ -909,7 +909,7 @@ export function WebsiteConfigPage() {
                                     }`}>
                                         <iframe 
                                             ref={iframeRef}
-                                            src={window.location.origin + window.location.pathname + '#/home'}
+                                            src={window.location.origin + window.location.pathname + '#/landing-page'}
                                             className="w-full h-full"
                                             title="Landing Page Preview"
                                             onLoad={() => {

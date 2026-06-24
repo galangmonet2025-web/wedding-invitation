@@ -79,7 +79,7 @@ export const router = createHashRouter([
         children: [
             {
                 index: true,
-                element: <Navigate to="/home" replace />,
+                element: <Navigate to="/landing-page" replace />,
             },
             {
                 path: 'home',

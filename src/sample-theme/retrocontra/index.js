@@ -49,11 +49,28 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         document.body.removeChild(ta);
     }
 
+    // VERSION MARKER — bump this whenever the file changes so we can confirm,
+    // at a glance, which build the host actually loaded. If the on-screen badge
+    // or this console line does NOT show v3, the app is running an OLD copy of
+    // this script (re-paste + re-save in Manage Tema / Theme Editor).
+    var RC_BUILD = 'v11-contra-pixelmap';
+    try { console.log('%c[retrocontra] BUILD ' + RC_BUILD, 'background:#e52521;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
+
     function start() {
         var canvas = document.getElementById('rc-canvas');
         var stage = document.getElementById('rc-stage');
         if (!canvas || !stage) return;
-        var ctx = canvas.getContext('2d');
+        var screenCtx = canvas.getContext('2d');   // final on-screen surface
+
+        // Modern non-retro look: the world is drawn to an OFFSCREEN buffer at the
+        // virtual resolution (1 unit = 1 px, identity transform → no chunky
+        // nearest-neighbour upscale inside the draw code), then that whole buffer
+        // is blitted to the screen ONCE with imageSmoothing ON. That single smooth
+        // upscale anti-aliases every tile, sprite, and edge in one pass — killing
+        // the pixelated/retro feel without rewriting any draw function. All draw
+        // code keeps using `ctx`, which now points at this buffer.
+        var vbuf = document.createElement('canvas');
+        var ctx = vbuf.getContext('2d');
 
         // ============================================================
         // CONSTANTS
@@ -61,13 +78,21 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         var TILE = 16;
         var ROWS = 40;
         var GROUND_R = ROWS - 2;
-        var BASE_VIS_COLS = 15;     // a bit wider than Mario — gunfights need read room
+        // Item 3 (closer/bigger view): was 15 visible columns. Dropping to 8
+        // roughly DOUBLES the on-screen tile size (a 16px brick now blits ~2×
+        // larger, the "4 looks like 8" the brief asked for). This costs forward
+        // read-room (BIBLE §9 wants ~13 tiles ahead), so the enemy-engagement
+        // ranges and bullet speed below are trimmed to keep fights fair (§1.3).
+        var BASE_VIS_COLS = 8;      // ~2× zoom vs the old 15
         var COLS_VIS = BASE_VIS_COLS;
         var VW = COLS_VIS * TILE;
         var VH = 14 * TILE;
         var camY = 0;
         var BOTTOM_SAFE = 0;
-        var BOTTOM_SAFE_TILES = 7;
+        // At the 2× zoom (8 cols) fewer tile-rows fit vertically, so the old 7-tile
+        // mobile reserve below the ground would shove the surface off-screen. 4 keeps
+        // the commando's feet comfortably above the touch controls.
+        var BOTTOM_SAFE_TILES = 4;
 
         // Physics (responsive, not floaty)
         var GRAV = 0.55;
@@ -284,7 +309,11 @@ The host app has already bound all {{vars}} into the DOM before this runs.
                 enemyMul: lvl === 2 ? 2 : (lvl === 1 ? 1.5 : 1),
                 soldierSpace: lvl === 2 ? 3 : (lvl === 1 ? 4 : 5),
                 fireRate: lvl === 2 ? 70 : (lvl === 1 ? 100 : 150), // frames between enemy shots
-                bulletSpd: lvl === 2 ? 2.2 : (lvl === 1 ? 1.9 : 1.6)
+                // Enemy bullets trimmed ~12% (2.2/1.9/1.6 → 2.0/1.7/1.4): at the 2×
+                // zoom a bullet covers the visible screen in half the time, so it
+                // must move slower in world-space to stay dodgeable vs the player's
+                // run (RUN_MAX 3.4) per BIBLE §4.3.
+                bulletSpd: lvl === 2 ? 2.0 : (lvl === 1 ? 1.7 : 1.4)
             };
         }
 
@@ -929,19 +958,29 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         }
 
         // ============================================================
-        // SHOOTING — 8-direction aim from current input.
+        // SHOOTING — full 8-direction aim (→ ↗ ↑ ↖ ← ↙ ↓ ↘) from input.
         // ============================================================
+        // Horizontal component (ux) comes from left/right or, if neither is held,
+        // the facing direction. Vertical component (uy) from up/down. The only
+        // special case is DOWN on flat ground: standing still + down is "prone"
+        // (a low flat shot, handled by player.prone), so a *pure* straight-down
+        // there would just hit the floor — instead it resolves to a flat shot.
+        // But down WHILE MOVING on the ground, or down in the air, gives the real
+        // downward aims (↓ ↙ ↘) the brief asked for. Up always works (↑ ↖ ↗).
         function aimVector() {
-            // Returns {ax, ay} unit-ish direction based on keys + facing.
             var ux = 0, uy = 0;
+            if (keys.left) ux = -1; else if (keys.right) ux = 1;
             if (keys.up) uy = -1;
-            if (keys.down && !player.onGround) uy = 1;     // aim down only mid-air
-            if (keys.left) ux = -1;
-            else if (keys.right) ux = 1;
-            // prone (down on ground) shoots flat in facing dir
-            if (uy === 0 && ux === 0) ux = player.face;     // straight ahead
-            if (uy !== 0 && ux === 0) ux = 0;               // straight up/down
-            // normalize diagonal
+            else if (keys.down) {
+                // prone = grounded + (nearly) still: keep the classic low flat shot.
+                if (player.prone) uy = 0;
+                else uy = 1;                                 // airborne OR moving → aim down
+            }
+            // No vertical + no horizontal held → shoot straight ahead (facing).
+            if (ux === 0 && uy === 0) ux = player.face;
+            // Pure down on the ground with no horizontal → bias to facing so the
+            // shot travels down-forward instead of uselessly straight into the floor.
+            if (uy === 1 && ux === 0 && player.onGround) ux = player.face;
             if (ux !== 0 && uy !== 0) { var m = Math.SQRT1_2; return { ax: ux * m, ay: uy * m }; }
             return { ax: ux, ay: uy };
         }
@@ -1105,7 +1144,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             var atCp = player.x > W.checkpointX && W.checkpointX > 0;
             resetPlayer(atCp);
             player.weapon = 'R'; setWeaponHUD();
-            camX = clamp(player.x - VW / 3, 0, W.worldW - VW);
+            camX = clamp(player.x - VW * 0.30, 0, W.worldW - VW);
             setHUD();
         }
 
@@ -1135,8 +1174,11 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             if (player.dead || player.win) return;
             var dx = (player.x + player.w / 2) - (e.x + e.w / 2);
             var dy = (player.y + player.h / 2) - (e.y + e.h / 2);
-            // only shoot when roughly on screen & facing the player
-            if (Math.abs(dx) > VW * 0.7) return;
+            // Only engage once clearly on-screen AND not so close that the shot is
+            // unreadable. At the tighter 2× zoom the forward read-room is ~VW*0.70;
+            // capping engagement at VW*0.58 guarantees the player sees the enemy
+            // (and its fire telegraph) before any bullet leaves it (BIBLE §1.3/§9).
+            if (Math.abs(dx) > VW * 0.58) return;
             e.fireCd--;
             if (e.fireCd > 0) return;
             e.fireCd = W.fireRate + Math.floor(Math.random() * 40);
@@ -1508,9 +1550,20 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         // CAMERA + RENDER
         // ============================================================
         function updateCamera() {
-            var target = player.x - VW / 3;
+            // Bias the player further left of centre than before (0.30 vs the old
+            // 0.33) so the tighter zoom keeps as much forward read-room as possible
+            // — the run-and-gun moves right, danger comes from ahead (BIBLE §9).
+            var target = player.x - VW * 0.30;
             camX += (target - camX) * 0.16;
+            // Kill the infinite fractional easing tail: once we're within a pixel
+            // of the target, snap exactly. Otherwise camX keeps drifting by tiny
+            // fractions every frame, and the smoothed sprite shimmers/judders even
+            // when the player is standing still.
+            if (Math.abs(target - camX) < 0.6) camX = target;
             camX = clamp(camX, 0, Math.max(0, W.worldW - VW));
+            // Snap the camera to a whole virtual pixel when the player is idle so
+            // the static sprite lands on a stable pixel grid (no sub-pixel resample).
+            if (player && player.onGround && Math.abs(player.vx) < 0.05) camX = Math.round(camX);
         }
 
         function shade(hex, f) {
@@ -1530,17 +1583,27 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             var B = W.biome, key = W.biomeKey;
             if (ch === '#') {
                 var surface = (c !== undefined) ? isSurfaceTile(c, r) : true;
-                // base earth body with a subtle vertical shade gradient
-                ctx.fillStyle = B.ground; ctx.fillRect(sx, sy, TILE, TILE);
-                ctx.fillStyle = shade(B.ground, -0.12); ctx.fillRect(sx, sy + 8, TILE, TILE - 8);
-                ctx.fillStyle = shade(B.ground, -0.28); ctx.fillRect(sx, sy + 13, TILE, 3);
-                // speckle texture (deterministic by column so it never shimmers)
-                ctx.fillStyle = B.groundDark;
+                // Item 2 (modern look): earth body is now a smooth vertical gradient
+                // (light top → dark bottom) instead of hard banded fillRects, so the
+                // ground reads as lit volume rather than flat pixel rows.
+                var eg = ctx.createLinearGradient(0, sy, 0, sy + TILE);
+                eg.addColorStop(0, shade(B.ground, 0.10));
+                eg.addColorStop(0.5, B.ground);
+                eg.addColorStop(1, shade(B.ground, -0.30));
+                ctx.fillStyle = eg; ctx.fillRect(sx, sy, TILE, TILE);
+                // soft speckle texture (rounded, deterministic by column so it never shimmers)
                 var sp = (c || 0) & 3;
-                ctx.fillRect(sx + 2 + sp, sy + 6, 3, 2); ctx.fillRect(sx + 9 - sp, sy + 9, 3, 2);
-                ctx.fillRect(sx + 5, sy + 12, 4, 2);
-                ctx.fillStyle = shade(B.ground, 0.14);
-                ctx.fillRect(sx + 11, sy + 6, 2, 1); ctx.fillRect(sx + 3, sy + 10, 2, 1);
+                ctx.fillStyle = shade(B.ground, -0.22);
+                ctx.beginPath();
+                ctx.arc(sx + 3.5 + sp, sy + 7, 1.6, 0, Math.PI * 2);
+                ctx.arc(sx + 10.5 - sp, sy + 10, 1.6, 0, Math.PI * 2);
+                ctx.arc(sx + 7, sy + 13, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = shade(B.ground, 0.18);
+                ctx.beginPath();
+                ctx.arc(sx + 12, sy + 6, 1, 0, Math.PI * 2);
+                ctx.arc(sx + 4, sy + 10.5, 1, 0, Math.PI * 2);
+                ctx.fill();
 
                 if (surface) {
                     // biome-specific surface cap
@@ -1573,126 +1636,199 @@ The host app has already bound all {{vars}} into the DOM before this runs.
                 ctx.fillRect(sx + TILE - 1, sy + (surface ? 4 : 0), 1, TILE - (surface ? 4 : 0));
                 ctx.fillStyle = shade(B.ground, -0.4); ctx.fillRect(sx, sy + TILE - 1, TILE, 1);
             } else if (ch === 'B') {
-                // ammo crate: bevelled wood/metal box with rivets + cross strap
-                ctx.fillStyle = '#6f5f2c'; ctx.fillRect(sx, sy, TILE, TILE);                 // body
-                ctx.fillStyle = '#8a7838'; ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);  // inner panel
-                ctx.fillStyle = '#a8964a'; ctx.fillRect(sx + 1, sy + 1, TILE - 2, 2);          // top light
-                ctx.fillStyle = '#4a3e18'; ctx.fillRect(sx + 1, sy + TILE - 3, TILE - 2, 2);   // bottom shade
-                ctx.fillStyle = '#5a4e22';                                                     // diagonal-ish straps
+                // ammo crate: gradient-lit wood/metal box with rounded rivets + strap
+                var cg = ctx.createLinearGradient(0, sy, 0, sy + TILE);
+                cg.addColorStop(0, '#a8964a'); cg.addColorStop(0.5, '#8a7838'); cg.addColorStop(1, '#4a3e18');
+                ctx.fillStyle = '#3a3020'; ctx.fillRect(sx, sy, TILE, TILE);                   // frame
+                ctx.fillStyle = cg; ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);          // lit panel
+                ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(sx + 1, sy + 1, TILE - 2, 2); // top sheen
+                ctx.fillStyle = '#5a4e22';                                                     // cross straps
                 ctx.fillRect(sx + 1, sy + 7, TILE - 2, 2); ctx.fillRect(sx + 7, sy + 1, 2, TILE - 2);
-                ctx.fillStyle = '#3a3020'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy, 1, TILE); // hard edges
-                ctx.fillStyle = '#caa24a';                                                     // corner rivets
-                ctx.fillRect(sx + 2, sy + 2, 1, 1); ctx.fillRect(sx + TILE - 3, sy + 2, 1, 1);
-                ctx.fillRect(sx + 2, sy + TILE - 3, 1, 1); ctx.fillRect(sx + TILE - 3, sy + TILE - 3, 1, 1);
+                ctx.fillStyle = '#caa24a';                                                     // rounded corner rivets
+                var rv = [[2, 2], [TILE - 3, 2], [2, TILE - 3], [TILE - 3, TILE - 3]];
+                ctx.beginPath();
+                for (var ri = 0; ri < 4; ri++) ctx.arc(sx + rv[ri][0] + 0.5, sy + rv[ri][1] + 0.5, 1, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = '#ffd24a'; ctx.fillRect(sx + TILE / 2 - 1, sy + TILE / 2 - 1, 2, 1); // stencil mark
             } else if (ch === 'X') {
-                // riveted steel block
-                ctx.fillStyle = '#4a4a52'; ctx.fillRect(sx, sy, TILE, TILE);
-                ctx.fillStyle = '#6a6a74'; ctx.fillRect(sx + 1, sy + 1, TILE - 2, 2);
-                ctx.fillStyle = '#2a2a30'; ctx.fillRect(sx + 1, sy + TILE - 2, TILE - 2, 1);
-                ctx.fillStyle = '#5a5a64'; ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
-                ctx.fillStyle = '#80808a'; ctx.fillRect(sx + 3, sy + 3, 1, 1); ctx.fillRect(sx + TILE - 4, sy + 3, 1, 1);
-                ctx.fillStyle = '#2a2a30'; ctx.fillRect(sx + 3, sy + TILE - 4, 1, 1); ctx.fillRect(sx + TILE - 4, sy + TILE - 4, 1, 1);
+                // riveted steel block — gradient face + soft bevel
+                var xg = ctx.createLinearGradient(0, sy, 0, sy + TILE);
+                xg.addColorStop(0, '#6a6a74'); xg.addColorStop(0.5, '#4a4a52'); xg.addColorStop(1, '#2a2a30');
+                ctx.fillStyle = '#2a2a30'; ctx.fillRect(sx, sy, TILE, TILE);
+                ctx.fillStyle = xg; ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(sx + 1, sy + 1, TILE - 2, 1);
+                ctx.fillStyle = '#80808a';
+                ctx.beginPath();
+                ctx.arc(sx + 3.5, sy + 3.5, 1, 0, Math.PI * 2); ctx.arc(sx + TILE - 3.5, sy + 3.5, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2a2a30';
+                ctx.beginPath();
+                ctx.arc(sx + 3.5, sy + TILE - 3.5, 1, 0, Math.PI * 2); ctx.arc(sx + TILE - 3.5, sy + TILE - 3.5, 1, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
 
-        // ---- sprite cache (offscreen, crisp) ----
-        var SPR_SS = 3;
+        // ---- sprite cache (offscreen, supersampled) ----
+        // Art is authored against a pw*SPR_SS × ph*SPR_SS buffer (the W2,H2 paint()
+        // receives). The whole frame is later downscaled smoothly to the screen via
+        // the world buffer, so sprites just need to be authored at a high-enough
+        // sub-pixel resolution here; the final smoothing happens once, globally.
+        var SPR_SS = 4;          // authored sub-pixel grid (art coords use W2,H2 = pw*SS)
         var spriteCache = {}, octx = null;
         function px(x, y, w, h) { octx.fillRect(x, y, (w || 1), (h || 1)); }
         function pc(col) { octx.fillStyle = col; }
-        // `pw,ph` = paint-grid size the art is authored in (the offscreen buffer
-        // is pw*SPR_SS × ph*SPR_SS, drawn nearest-neighbour). `dispW,dispH`
-        // (optional) = the on-screen size to blit at; defaults to the paint size.
-        // This lets a sprite be MAGNIFIED on screen (e.g. ×3 commando) while its
-        // art is still authored on a small grid — crisp, no art rewrite.
+        // `pw,ph` = paint-grid size the art is authored in. `dispW,dispH`
+        // (optional) = the on-screen size (virtual units) to blit at.
         function getSprite(key, pw, ph, paint, dispW, dispH) {
             var rec = spriteCache[key]; if (rec) return rec;
             var W2 = Math.round(pw * SPR_SS), H2 = Math.round(ph * SPR_SS);
             var cv = document.createElement('canvas'); cv.width = W2; cv.height = H2;
-            var prev = octx; octx = cv.getContext('2d'); octx.imageSmoothingEnabled = false;
-            paint(W2, H2); octx = prev;
+            var prev = octx; octx = cv.getContext('2d');
+            octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = 'high';
+            paint(W2, H2);
+            octx = prev;
             rec = { cv: cv, vw: dispW || pw, vh: dispH || ph }; spriteCache[key] = rec; return rec;
         }
-        function blit(rec, ax, ay, flip) {
-            var dw = rec.vw, dh = rec.vh, dx = Math.round(ax), dy = Math.round(ay);
-            ctx.imageSmoothingEnabled = false;
+        function blit(rec, ax, ay, flip, crisp) {
+            // crisp = snap size+position to whole pixels and turn smoothing OFF, so
+            // a static sprite doesn't shimmer from sub-pixel resampling each frame.
+            var dw = crisp ? Math.round(rec.vw) : rec.vw;
+            var dh = crisp ? Math.round(rec.vh) : rec.vh;
+            var dx = crisp ? Math.round(ax) : ax;
+            var dy = crisp ? Math.round(ay) : ay;
+            ctx.imageSmoothingEnabled = crisp ? false : true; ctx.imageSmoothingQuality = 'high';
             if (flip) { ctx.save(); ctx.translate(dx + dw, dy); ctx.scale(-1, 1); ctx.drawImage(rec.cv, 0, 0, dw, dh); ctx.restore(); }
             else ctx.drawImage(rec.cv, dx, dy, dw, dh);
         }
 
         // ---- Commando sprite ----
         // The art is authored on an 18×18 paint grid (P_PW×P_PH). The on-screen
-        // sprite is drawn LARGER (×P_SCALE) so the commando reads big without
-        // changing the physics hitbox (player.w/h stay 11×14). Only the blit
-        // destination size and the anchor offsets scale — the art grid does not.
-        var P_PW = 18, P_PH = 18;           // paint grid (art coordinates)
-        var P_SCALE = 3;                    // visual magnification of the sprite
-        var P_VW = P_PW * P_SCALE, P_VH = P_PH * P_SCALE; // on-screen sprite size
-        function paintCommando(Wn, Hn, frame, aimUp) {
-            var cx = Math.round(Wn / 2);
-            var band = '#e52521', bandDk = '#a81b18';
-            var skin = '#ffce9e', skinDk = '#e3a06f';
-            var vest = '#2f6a3a', vestHi = '#3f8a4a', vestDk = '#1f4a28';
-            var pants = '#3a4a2a', boot = '#2a2014';
-            var hair = '#3a2410', gun = '#3a3a44', gunHi = '#6a6a78';
-
-            var isJump = frame === 'jump', isFall = frame === 'fall', isProne = frame === 'prone';
-            var hipY = Hn - 18;
-
+        // sprite size is P_PW/P_PH × RC_TUNE.cmdScale. DEV: the scale (and a few
+        // other visual knobs) live in RC_TUNE so the on-screen slider panel can
+        // tweak them live. P_VW/P_VH are GETTERS-by-function (recomputed each draw)
+        // — never cache them in a var, or the slider won't take effect.
+        // Paint grid = the authentic Contra 16×16 sprite cell. The commando art
+        // fills it; on-screen size = grid × cmdScale.
+        // Width is wider than 16 so the long forward rifle (extends to ~+11) isn't
+        // clipped; the figure stays centred and the extra width is just air.
+        var P_PW = 20, P_PH = 16;           // paint grid = pixel-map (20 cols × 16 rows)
+        // Live-tunable visual knobs (DEV slider panel writes here).
+        var RC_TUNE = {
+            cmdScale: 1.6,     // sprite magnification (×) → height = 16*cmdScale ≈ 26px (~1.6 tile)
+            cmdYOff: 0,        // vertical nudge of the commando sprite (px, + = down)
+            smooth: 1,         // 0 = crisp pixels, 1 = smooth (imageSmoothing)
+            visCols: 8         // visible columns (zoom); lower = closer
+        };
+        function pVW() { return P_PW * RC_TUNE.cmdScale; }
+        function pVH() { return P_PH * RC_TUNE.cmdScale; }
+        // kept for any legacy reads; recomputed lazily where it matters.
+        var P_VW = P_PW * RC_TUNE.cmdScale, P_VH = P_PH * RC_TUNE.cmdScale;
+        // ===========================================================
+        // COMMANDO — authored to MATCH the classic Contra (NES) commando:
+        // small red-bandana head, BARE skin torso (muscles, not a vest), BLUE
+        // pants, two clearly-separate legs in a stride, a long horizontal rifle,
+        // and a back arm so he's never one-armed. Authored on a fixed pixel grid
+        // (PXG) so it reads as authentic chunky pixel art, drawn through a 1px
+        // black outline pass for that NES look. Every rect snaps to whole buffer
+        // pixels (kills the sub-pixel leg-judder).
+        // ===========================================================
+        var CMD_COLS = {
+            band: '#d83018', bandDk: '#9c1c10',
+            skin: '#f0a060', skinHi: '#ffc890', skinDk: '#b06028',
+            hair: '#101010',
+            pants: '#2840c8', pantsHi: '#5a78ff', pantsDk: '#16247a',
+            boot: '#101018', gun: '#202028', gunHi: '#7a7a8a',
+            out: '#101014'      // dark outline
+        };
+        // Pixel-map of the classic Contra running-fire commando, transcribed
+        // row-by-row (16 cols × 16 rows). Each char = a palette key:
+        //   . = transparent   o = outline(black)   s = skin   h = skin-hi
+        //   k = skin-dark   b = bandana red   r = bandana dark   a = hair/eye
+        //   p = pants blue   q = pants-hi   w = pants-dark   t = boot
+        //   g = gun   n = gun-hi
+        // The figure faces RIGHT, leans forward, legs in a wide running lunge,
+        // long rifle held low out front. drawPlayer mirrors for left-facing.
+        // 20 cols × 16 rows. Body sits centred (cols ~3-11); the long rifle
+        // extends right (cols 9-19). Left col padding keeps the trailing leg/boot.
+        var CMD_MAP_FWD = [
+            '......bbbb..........',  // 0  bandana top
+            '.....brrrrb.........',  // 1  bandana band
+            '....basssk..........',  // 2  head: hair(b-side), skin, eye(a)
+            '.....ksssk..........',  // 3  jaw
+            '.....hssssk.........',  // 4  neck/shoulders
+            '....hssssssgg.......',  // 5  chest + gun receiver
+            '...hssssssgggggggn..',  // 6  torso + long barrel
+            '...hsssssgggggggggo.',  // 7  belly + barrel + muzzle tip
+            '...hsssssk..........',  // 8  lower torso
+            '....pppww...........',  // 9  hips
+            '...ppppwww..........',  // 10 thighs
+            '..ppq...pww.........',  // 11 legs split (front | back)
+            '.ppq.....pww........',  // 12 lunge widens
+            'ppq.......pww.......',  // 13 lower legs angle out
+            'tt.........ttw......',  // 14 boots
+            'tt.........tttt.....'   // 15 boot soles
+        ];
+        var CMD_MAP_COL = {
+            o: CMD_COLS.out, s: CMD_COLS.skin, h: CMD_COLS.skinHi, k: CMD_COLS.skinDk,
+            b: CMD_COLS.band, r: CMD_COLS.bandDk, a: CMD_COLS.hair,
+            p: CMD_COLS.pants, q: CMD_COLS.pantsHi, w: CMD_COLS.pantsDk,
+            t: CMD_COLS.boot, g: CMD_COLS.gun, n: CMD_COLS.gunHi
+        };
+        function paintMap(map, Wn, Hn, cols) {
+            cols = cols || 16;
+            var rows = map.length;
+            var U = Hn / rows;             // buffer px per art row
+            var Ux = Wn / cols;            // buffer px per art col
+            for (var ry = 0; ry < rows; ry++) {
+                var line = map[ry];
+                for (var rx = 0; rx < line.length; rx++) {
+                    var ch = line.charAt(rx);
+                    if (ch === '.' || ch === ' ') continue;
+                    var col = CMD_MAP_COL[ch]; if (!col) continue;
+                    pc(col);
+                    var x = Math.round(rx * Ux), x2 = Math.round((rx + 1) * Ux);
+                    var y = Math.round(ry * U), y2 = Math.round((ry + 1) * U);
+                    octx.fillRect(x, y, x2 - x, y2 - y);
+                }
+            }
+        }
+        function paintCommando(Wn, Hn, frame, aimUp, aimDown) {
+            // The pixel-map IS the forward-firing pose (Contra's running shot).
+            // For aimUp/aimDown we still use the same body but rotate the gun
+            // pixels by overdrawing a vertical barrel; legs animate via a tiny
+            // horizontal jitter handled by the walk frames in drawPlayer's key.
+            var isProne = frame === 'prone';
             if (isProne) {
-                // lying flat, gun forward
-                var py = Hn - 16;
-                pc(skin); px(cx - 2, py - 2, 6, 5);                 // head
-                pc(hair); px(cx - 2, py - 2, 6, 2);
-                pc(vest); px(cx - 12, py + 2, 18, 6);               // body horizontal
-                pc(vestHi); px(cx - 12, py + 2, 18, 1);
-                pc(pants); px(cx - 18, py + 4, 8, 4);               // legs
-                pc(boot); px(cx - 20, py + 4, 3, 4);
-                pc(gun); px(cx + 4, py + 1, 12, 3);                 // gun forward
-                pc(gunHi); px(cx + 4, py + 1, 12, 1);
+                var C = CMD_COLS, PXG = 16, U = Hn / PXG, cx = Math.round(Wn / 2);
+                function Gp(gx, gy, gw, gh) {
+                    var x = Math.round(cx + gx * U), y = Math.round(gy * U);
+                    var x2 = Math.round(cx + (gx + (gw || 1)) * U), y2 = Math.round((gy + (gh || 1)) * U);
+                    octx.fillRect(x, y, x2 - x, y2 - y);
+                }
+                pc(C.band); Gp(-2, 9, 5, 1.5);
+                pc(C.skin); Gp(-2, 10.5, 5, 2);
+                pc(C.skin); Gp(-7, 11, 9, 3); pc(C.skinHi); Gp(-7, 11, 9, 1);
+                pc(C.pants); Gp(-11, 12.5, 5, 2.5); pc(C.boot); Gp(-13, 12.5, 2.5, 2.5);
+                pc(C.gun); Gp(2, 10.5, 8, 1.5); pc(C.gunHi); Gp(2, 10.5, 8, 0.6);
                 return;
             }
-
-            // HEAD with red bandana
-            var headTop = 3, hx = cx - 5;
-            pc(skin); px(hx, headTop + 3, 10, 8);
-            pc(skinDk); px(hx, headTop + 10, 10, 1);
-            pc(hair); px(hx, headTop + 3, 2, 7); px(hx + 8, headTop + 3, 2, 7);
-            pc(band); px(hx - 1, headTop + 1, 12, 3);              // bandana
-            pc(bandDk); px(hx - 1, headTop + 3, 12, 1);
-            pc(band); px(hx - 3, headTop + 2, 3, 2);               // bandana tail
-            pc('#000'); px(cx + 1, headTop + 5, 2, 2);            // eye
-            // TORSO vest
-            var shoulder = headTop + 11;
-            pc(vest); px(cx - 6, shoulder, 12, hipY - shoulder);
-            pc(vestHi); px(cx - 6, shoulder, 2, hipY - shoulder);
-            pc(vestDk); px(cx + 4, shoulder, 2, hipY - shoulder);
-            pc('#caa24a'); px(cx - 4, shoulder + 2, 8, 1);        // ammo strap
-            pc('#caa24a'); px(cx - 5, shoulder + 4, 2, 2); px(cx + 1, shoulder + 5, 2, 2);
-            // ARMS + GUN (aim direction)
-            pc(skin);
-            if (aimUp) {
-                px(cx + 3, shoulder - 6, 3, 8);                  // arm up
-                pc(gun); px(cx + 2, shoulder - 14, 4, 10);       // gun up
-                pc(gunHi); px(cx + 2, shoulder - 14, 1, 10);
-            } else {
-                px(cx + 4, shoulder + 2, 6, 3);                  // arm forward
-                pc(gun); px(cx + 8, shoulder + 1, 12, 4);        // gun forward
-                pc(gunHi); px(cx + 8, shoulder + 1, 12, 1);
-                pc('#222'); px(cx + 18, shoulder + 1, 2, 4);     // muzzle
+            // Draw the base body from the pixel map (20 cols wide).
+            paintMap(CMD_MAP_FWD, Wn, Hn, 20);
+            // Overlay a vertical barrel for up/down aims (drawn over the body).
+            // Coords are in ART pixels: X uses 20-col basis, Y uses 16-row basis.
+            var C2 = CMD_COLS, Ux = Wn / 20, Uy = Hn / 16;
+            function Gv(gx, gy, gw, gh) {
+                var x = Math.round(gx * Ux), x2 = Math.round((gx + gw) * Ux);
+                var y = Math.round(gy * Uy), y2 = Math.round((gy + gh) * Uy);
+                octx.fillRect(x, y, x2 - x, y2 - y);
             }
-            // LEGS
-            var legTopY = hipY, legH = Hn - legTopY;
-            var lDx = 0, rDx = 0;
-            if (frame === 'walk0') { lDx = -3; rDx = 2; }
-            else if (frame === 'walk1') { lDx = 2; rDx = -3; }
-            else if (isJump) { lDx = -2; rDx = 3; }
-            else if (isFall) { lDx = -4; rDx = 4; }
-            pc(pants); px(cx - 5 + lDx, legTopY, 5, legH - 3);
-            pc(boot); px(cx - 6 + lDx, Hn - 4, 6, 4);
-            pc(pants); px(cx + 1 + rDx, legTopY, 5, legH - 3);
-            pc(boot); px(cx + rDx, Hn - 4, 6, 4);
+            if (aimUp) {
+                pc(C2.gun); Gv(9, -3, 2, 8);          // barrel up from chest (col ~9)
+                pc(C2.gunHi); Gv(9, -3, 0.7, 8);
+            } else if (aimDown) {
+                pc(C2.gun); Gv(9, 7, 2, 8);           // barrel down
+                pc(C2.gunHi); Gv(9, 7, 0.7, 8);
+            }
         }
 
         function drawPlayer() {
@@ -1701,6 +1837,10 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             var moving = Math.abs(player.vx) > 0.3 && player.onGround;
             var airborne = !player.onGround;
             var aimUp = keys.up && !player.auto;
+            // Item 4: down-aim pose mirrors aimVector — down held, not aiming up,
+            // and not prone (prone keeps the flat low shot). Shown mid-air or while
+            // moving on the ground, matching when the shot actually goes downward.
+            var aimDown = keys.down && !keys.up && !player.prone && !player.auto;
 
             var frameName;
             if (player.prone) frameName = 'prone';
@@ -1708,26 +1848,36 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             else if (moving) frameName = (Math.floor(animT / 7) % 2 ? 'walk1' : 'walk0');
             else frameName = 'idle';
 
-            var key = 'cmd|' + frameName + '|' + (aimUp ? 'u' : 'f');
-            var rec = getSprite(key, P_PW, P_PH, function (Wn, Hn) { paintCommando(Wn, Hn, frameName, aimUp); }, P_VW, P_VH);
+            var aimTag = aimUp ? 'u' : (aimDown ? 'd' : 'f');
+            // include the live scale in the key so a slider change rebuilds the art
+            var vw = pVW(), vh = pVH();
+            var key = 'cmd|' + frameName + '|' + aimTag + '|' + RC_TUNE.cmdScale.toFixed(2);
+            var rec = getSprite(key, P_PW, P_PH, function (Wn, Hn) { paintCommando(Wn, Hn, frameName, aimUp, aimDown); }, vw, vh);
 
             var feetWorldY = player.y + player.h;
-            var sx = Math.round(player.x - camX - (P_VW - player.w) / 2);
-            var sy = Math.round(feetWorldY - P_VH);
+            var sx = Math.round(player.x - camX - (vw - player.w) / 2);
+            var sy = Math.round(feetWorldY - vh + Math.round(RC_TUNE.cmdYOff));
 
             if (!airborne) {
                 ctx.fillStyle = 'rgba(0,0,0,0.22)';
                 ctx.beginPath(); ctx.ellipse(Math.round(player.x - camX) + player.w / 2, feetWorldY - 1, player.w * 0.62, 2.2, 0, 0, Math.PI * 2); ctx.fill();
             }
-            blit(rec, sx, sy, face < 0);
+            // ALWAYS render the commando CRISP + pixel-snapped. The sprite is
+            // authentic chunky pixel art (Contra), so it must stay sharp; smoothing
+            // it while the camera eases sub-pixel is exactly what caused the judder.
+            blit(rec, sx, sy, face < 0, true);
             // muzzle flash — offsets scale with the (now larger) sprite so the
             // flash sits at the gun barrel tip, not inside the body.
             if (player.fireCd > (WEAPONS[player.weapon].cd - 3) && !player.auto) {
-                ctx.fillStyle = '#ffe24a';
                 var aim = aimVector();
-                var mx = Math.round(player.x + player.w / 2 - camX + aim.ax * 22);
-                var my = Math.round(player.y + (player.prone ? player.h - 5 : 5) + aim.ay * 18);
-                ctx.fillRect(mx - 3, my - 3, 7, 7);
+                // muzzle offsets scale with the smaller sprite (~22px now)
+                var mx = player.x + player.w / 2 - camX + aim.ax * 10;
+                var my = player.y + (player.prone ? player.h - 5 : 5) + aim.ay * 8;
+                // soft round flash (modern look) instead of a hard square
+                ctx.fillStyle = 'rgba(255,200,60,0.5)';
+                ctx.beginPath(); ctx.arc(mx, my, 3.5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ffe24a';
+                ctx.beginPath(); ctx.arc(mx, my, 2, 0, Math.PI * 2); ctx.fill();
             }
         }
 
@@ -2294,6 +2444,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             stepBgm();
             updateCamera();
             render();
+            present();
         }
 
         // ============================================================
@@ -2302,22 +2453,51 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         function resize() {
             var rect = stage.getBoundingClientRect();
             if (!rect.width || !rect.height) return;
-            var s = rect.width / (BASE_VIS_COLS * TILE);
-            VW = BASE_VIS_COLS * TILE;
+            var cols = Math.round(RC_TUNE.visCols) || BASE_VIS_COLS;   // live zoom
+            var s = rect.width / (cols * TILE);
+            VW = cols * TILE;
             VH = Math.ceil((rect.height / s) / TILE) * TILE;
-            COLS_VIS = BASE_VIS_COLS;
+            COLS_VIS = cols;
 
             var touch = !(window.matchMedia && window.matchMedia('(min-width: 900px) and (hover: hover) and (pointer: fine)').matches);
             BOTTOM_SAFE = touch ? BOTTOM_SAFE_TILES * TILE : TILE;
             camY = (GROUND_R + 1) * TILE - VH + BOTTOM_SAFE;
             if (camY < 0) camY = 0;
 
+            // On-screen canvas at device resolution.
             var dpr = Math.min(window.devicePixelRatio || 1, 3);
             canvas.width = Math.max(1, Math.round(rect.width * dpr));
             canvas.height = Math.max(1, Math.round(rect.height * dpr));
             canvas.style.width = '100%'; canvas.style.height = '100%';
-            ctx.setTransform(canvas.width / VW, 0, 0, canvas.width / VW, 0, 0);
-            ctx.imageSmoothingEnabled = false;
+            screenCtx.imageSmoothingEnabled = true; screenCtx.imageSmoothingQuality = 'high';
+
+            // Size the offscreen world buffer to (at least) the device canvas size
+            // so the final blit is ~1:1 — sharp, no chunky pixels AND no blur. The
+            // world→buffer scale is buffer_width / VW (how many device px per
+            // virtual unit). Drawing happens in virtual units via this transform.
+            vbuf.width = canvas.width;
+            vbuf.height = canvas.height;
+            var sx = canvas.width / VW, sy = canvas.height / VH;
+            ctx.setTransform(sx, 0, 0, sy, 0, 0);
+            ctx.imageSmoothingEnabled = !!RC_TUNE.smooth; ctx.imageSmoothingQuality = 'high';
+        }
+        // Blit the finished world buffer to the screen, scaled to fill, smoothed.
+        function present() {
+            screenCtx.setTransform(1, 0, 0, 1, 0, 0);
+            screenCtx.imageSmoothingEnabled = !!RC_TUNE.smooth; screenCtx.imageSmoothingQuality = 'high';
+            screenCtx.clearRect(0, 0, canvas.width, canvas.height);
+            screenCtx.drawImage(vbuf, 0, 0, vbuf.width, vbuf.height, 0, 0, canvas.width, canvas.height);
+            // TEMP build badge (top-left). Remove once visuals are confirmed.
+            screenCtx.save();
+            screenCtx.font = 'bold 12px monospace';
+            screenCtx.textBaseline = 'top';
+            var label = RC_BUILD + '  cmd=' + pVH().toFixed(0) + 'px/' + (pVH() / TILE).toFixed(1) + 'tile';
+            var wlab = screenCtx.measureText(label).width + 12;
+            screenCtx.fillStyle = 'rgba(0,0,0,0.6)';
+            screenCtx.fillRect(4, 4, wlab, 18);
+            screenCtx.fillStyle = '#7bff7b';
+            screenCtx.fillText(label, 8, 6);
+            screenCtx.restore();
         }
         window.addEventListener('resize', resize);
         onCleanup(function () { window.removeEventListener('resize', resize); });
@@ -2355,7 +2535,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             resetPlayer(false);
             camX = 0;
             running = true; started = true;
-            setHUD(); resize(); render();
+            setHUD(); resize(); render(); present();
         }
         function nextStage() {
             stageNum++;
@@ -2363,7 +2543,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             W = buildWorld(stageNum);
             resetPlayer(false);
             camX = 0; running = true;
-            setHUD(); hideOverlays(); lastT = performance.now(); render();
+            setHUD(); hideOverlays(); lastT = performance.now(); render(); present();
         }
         function goToStage(n) {
             stageNum = clamp(n, 1, TOTAL_STAGES);
@@ -2373,7 +2553,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
             setHUD(); hideOverlays(); closeModal();
             if (invitation) invitation.classList.remove('show');
             if (fab) fab.classList.remove('show');
-            lastT = performance.now(); render();
+            lastT = performance.now(); render(); present();
         }
 
         // ============================================================
@@ -2901,6 +3081,92 @@ The host app has already bound all {{vars}} into the DOM before this runs.
         }
 
         // ============================================================
+        // DEV TUNING PANEL (slider) — lets you dial the visuals live. Writes to
+        // RC_TUNE; the draw code reads RC_TUNE every frame so changes are instant.
+        // Remove this whole block (and RC_TUNE usages) once the look is locked.
+        // ============================================================
+        function buildTunePanel() {
+            if (document.getElementById('rc-tune')) return;
+            var box = document.createElement('div');
+            box.id = 'rc-tune';
+            box.style.cssText = [
+                'position:fixed', 'top:8px', 'right:8px', 'z-index:99999',
+                'background:rgba(12,16,24,0.92)', 'color:#e8f0ff', 'font:12px/1.4 monospace',
+                'padding:10px 12px', 'border:1px solid #2a3a55', 'border-radius:8px',
+                'width:210px', 'box-shadow:0 6px 24px rgba(0,0,0,0.5)', 'user-select:none'
+            ].join(';');
+
+            var head = document.createElement('div');
+            head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:bold;color:#7bff7b';
+            head.innerHTML = '<span>⚙ RETRO TUNE</span>';
+            var hide = document.createElement('button');
+            hide.textContent = '–';
+            hide.style.cssText = 'background:#223;border:1px solid #345;color:#cde;border-radius:4px;cursor:pointer;width:22px;height:20px';
+            head.appendChild(hide);
+            box.appendChild(head);
+
+            var body = document.createElement('div');
+            box.appendChild(body);
+            hide.addEventListener('click', function () {
+                body.style.display = body.style.display === 'none' ? 'block' : 'none';
+                hide.textContent = body.style.display === 'none' ? '+' : '–';
+            });
+
+            // each row: label + value + range input
+            function row(key, label, min, max, step, onChange) {
+                var wrap = document.createElement('div');
+                wrap.style.cssText = 'margin:8px 0';
+                var lab = document.createElement('div');
+                lab.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:2px';
+                var nm = document.createElement('span'); nm.textContent = label;
+                var vl = document.createElement('span'); vl.style.color = '#ffd24a';
+                lab.appendChild(nm); lab.appendChild(vl);
+                var inp = document.createElement('input');
+                inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step;
+                inp.value = RC_TUNE[key];
+                inp.style.cssText = 'width:100%;cursor:pointer';
+                function show() { vl.textContent = (+RC_TUNE[key]).toFixed(step < 1 ? 2 : 0); }
+                show();
+                inp.addEventListener('input', function () {
+                    RC_TUNE[key] = parseFloat(inp.value);
+                    show();
+                    onChange && onChange();
+                });
+                wrap.appendChild(lab); wrap.appendChild(inp);
+                body.appendChild(wrap);
+            }
+
+            row('cmdScale', 'Ukuran karakter (×)', 0.6, 2.5, 0.01);
+            row('cmdYOff', 'Geser vertikal (px)', -16, 16, 1);
+            row('visCols', 'Zoom (kolom terlihat)', 5, 16, 1, function () { resize(); });
+            row('smooth', 'Halus (0=tajam 1=halus)', 0, 1, 1, function () { resize(); });
+
+            // readout + copy button so you can hand me the final numbers
+            var out = document.createElement('div');
+            out.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid #2a3a55;font-size:11px;color:#9fb';
+            var copy = document.createElement('button');
+            copy.textContent = '📋 Salin nilai';
+            copy.style.cssText = 'margin-top:6px;width:100%;background:#1b6;border:0;color:#fff;padding:6px;border-radius:5px;cursor:pointer;font-weight:bold';
+            copy.addEventListener('click', function () {
+                var txt = 'cmdScale=' + RC_TUNE.cmdScale.toFixed(2) +
+                    ', cmdYOff=' + RC_TUNE.cmdYOff +
+                    ', visCols=' + Math.round(RC_TUNE.visCols) +
+                    ', smooth=' + Math.round(RC_TUNE.smooth);
+                out.textContent = txt;
+                try {
+                    if (navigator.clipboard) navigator.clipboard.writeText(txt);
+                } catch (e) {}
+                copy.textContent = '✔ tersalin — kirim ke saya';
+                setTimeout(function () { copy.textContent = '📋 Salin nilai'; }, 1800);
+            });
+            body.appendChild(copy);
+            body.appendChild(out);
+
+            document.body.appendChild(box);
+            onCleanup(function () { var el = document.getElementById('rc-tune'); if (el) el.remove(); });
+        }
+
+        // ============================================================
         // BOOT
         // ============================================================
         resize();
@@ -2909,6 +3175,7 @@ The host app has already bound all {{vars}} into the DOM before this runs.
 
         buildInventory();
         updateViewBtn();
+        buildTunePanel();
 
         setTimeout(function () { try { pauseHostMusic(); } catch (e) {} }, 0);
     }

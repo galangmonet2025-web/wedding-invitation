@@ -152,6 +152,10 @@ export function ThemeWrapper({
         loadScript('uikit-js', 'https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js');
         loadScript('uikit-icons', 'https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js');
         loadScript('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js');
+        // Phaser 3 — HTML5 game framework for canvas-based game themes (UMD global
+        // `window.Phaser`). Game themes wait for it via window.__phaserReady (set in
+        // the onload below) so their IIFE can `new Phaser.Game(...)`. Locked version.
+        loadScript('phaser-js', 'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js');
 
         return () => {
             // Remove CSS to prevent bleeding into the admin dashboard or other react components

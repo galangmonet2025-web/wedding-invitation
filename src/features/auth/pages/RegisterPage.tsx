@@ -399,7 +399,7 @@ export function RegisterPage() {
 
                 {/* 6. Foreground Content */}
                 <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
-                    <Link to="/home" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group overflow-hidden p-3">
+                    <Link to="/landing-page" className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-lg flex items-center justify-center mb-8 shadow-2xl hover:bg-white/30 transition-all duration-300 group overflow-hidden p-3">
                         <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" />
                     </Link>
                     <h1 className="text-4xl font-display font-bold mb-4 text-center">{displaySiteName}</h1>
@@ -434,7 +434,7 @@ export function RegisterPage() {
                 </div>
 
                 <div className="w-full max-w-md">
-                    <Link to="/home" className="lg:hidden flex items-center justify-center gap-3 mb-6 group">
+                    <Link to="/landing-page" className="lg:hidden flex items-center justify-center gap-3 mb-6 group">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold group-hover:scale-105 transition-transform duration-300 overflow-hidden p-2">
                             <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain" />
                         </div>
