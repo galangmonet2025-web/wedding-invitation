@@ -1,0 +1,50 @@
+[
+  {
+    "orderNumber": 1,
+    "name": "enemy_rush.png",
+    "width": 288,
+    "height": 76,
+    "deskripsi": "Sprite sheet penyerbu darat merah marun (ganti t_e_rush). 6 frame horizontal, tiap sel 48x76, hadap kanan. Frame: 0 walk_1 (kaki depan membuka, badan condong maju), 1 walk_2 (kaki rapat lewat tengah), 2 walk_3 (kaki bertukar membuka), 3 walk_4 (kaki rapat lagi) -> loop 0-1-2-3 jadi lari, 4 hurt (tersentak ke belakang, sedikit merah), 5 die (tumbang/terjengkang). Lari ke arah pemain, tak menembak, mati 1 tembakan."
+  },
+
+  {
+    "orderNumber": 2,
+    "name": "enemy_range.png",
+    "width": 240,
+    "height": 76,
+    "deskripsi": "Sprite sheet penembak ungu (ganti t_e_range). 5 frame horizontal, tiap sel 48x76, hadap kanan. Frame: 0 idle (berdiri siaga, senapan turun), 1 aim (senapan terangkat horizontal, badan menegang), 2 fire (recoil + kilatan moncong, badan tersentak), 3 hurt, 4 die. Diam membidik lalu menembak lurus, mati 1 tembakan."
+  },
+
+  {
+    "orderNumber": 3,
+    "name": "enemy_turret.png",
+    "width": 380,
+    "height": 56,
+    "deskripsi": "Sprite sheet meriam statis abu logam laras ujung merah (ganti t_turret). 5 frame horizontal, tiap sel 76x56, hadap kanan. Frame: 0 idle (laras netral), 1 aim (laras mengarah pemain, lampu merah menyala), 2 fire (recoil + kilatan moncong), 3 hurt (berkedip kena pukul), 4 wreck (hancur/asap). Tidak bergerak, hanya membidik & menembak. HP 3."
+  },
+
+  {
+    "orderNumber": 4,
+    "name": "enemy_drone.png",
+    "width": 256,
+    "height": 40,
+    "deskripsi": "Sprite sheet drone terbang abu-biru (ganti t_drone). 4 frame horizontal, tiap sel 64x40, badan di tengah sel (melayang, tak menapak). Frame: 0 hover_1 (rotor blur posisi A, lampu sensor merah), 1 hover_2 (rotor blur posisi B) -> loop 0-1 baling-baling berputar, 2 drop (palka bawah terbuka jatuhkan bom), 3 wreck (pecah/jatuh). Terbang naik-turun, menjatuhkan bom. HP 2."
+  },
+
+  {
+    "orderNumber": 5,
+    "name": "enemy_tank.png",
+    "width": 640,
+    "height": 80,
+    "deskripsi": "Sprite sheet tank berat hijau militer (ganti t_tank). 5 frame horizontal, tiap sel 128x80, hadap kanan, roda/rantai menapak baris bawah. Frame: 0 roll_1 (rantai/roda fase A), 1 roll_2 (fase B) -> loop 0-1 saat bergerak, 2 aim (meriam terangkat sedikit ke atas, moncong menyala), 3 fire (recoil meriam + kilatan moncong), 4 wreck (terbakar/hancur). Lambat maju, menembak melambung (lob). HP 8."
+  },
+
+  {
+    "orderNumber": 6,
+    "name": "enemy_boss.png",
+    "width": 1560,
+    "height": 280,
+    "deskripsi": "Sprite sheet boss 'Jenderal Pembatal Nikah' merah tua (ganti t_boss). 6 frame horizontal, tiap sel 260x280, hadap kanan, kaki di bawah sel. Titik lemah kuning (#ffd447 + inti #fff4b0) wajib jelas & kontras di frame 0-4 (target tembak). Frame: 0 idle_1 (siaga, dada naik), 1 idle_2 (nafas turun) -> loop 0-1 saat menganggur, 2 telegraph (moncong/lengan-meriam menyala, badan sedikit mundur, dipakai semua fase saat tell), 3 fire (menembak kipas peluru, recoil + kilatan moncong besar), 4 enraged (fase 2-3: lebih merah/rusak, mata menyala, asap), 5 defeated (tumbang/meledak sebelum hancur & sangkar mempelai terbuka, boleh tanpa titik lemah). Bertarung 3 fase."
+  }
+
+]

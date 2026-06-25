@@ -83,7 +83,7 @@
                     <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
                     <span data-var="bride_nickname">{{bride_nickname}}</span>
                 </span>
-                <span class="msw-hud-val"><span class="msw-life-ico">✦</span> <span id="msw-lives">×10</span></span>
+                <span class="msw-hud-val" title="Granat — lempar pakai tombol hijau / tombol C"><span class="msw-life-ico">💣</span> <span class="msw-life-tag">GRANAT</span> <span id="msw-lives">×10</span></span>
             </div>
             <div class="msw-hud-col msw-hud-mid">
                 <span class="msw-hud-label">SCORE</span>
@@ -210,12 +210,13 @@
             </div>
         </div>
 
-        <!-- win / rescue couple (celebration trigger #2) -->
+        <!-- win / rescue couple (celebration trigger #2) — appears 5s AFTER the victory visual -->
         <div class="msw-overlay" id="msw-win">
             <div class="msw-overlay-card">
-                <div class="msw-overlay-pixtitle" style="color:#ffd447">HAPPILY EVER AFTER!</div>
+                <div class="msw-overlay-pixtitle" style="color:#ffd447">MISI BERHASIL!</div>
                 <div class="msw-overlay-text" id="msw-win-text"></div>
                 <button class="msw-bigbtn" id="msw-win-view" type="button">💌 BUKA UNDANGAN</button>
+                <button class="msw-textbtn" id="msw-win-close" type="button">Tutup</button>
             </div>
         </div>
 
@@ -254,6 +255,37 @@
         <button class="msw-reveal-close" id="msw-reveal-close" type="button" aria-label="Kembali ke game">✕ KEMBALI KE GAME</button>
         <div class="msw-reveal-scroll" id="msw-reveal-scroll"></div>
     </div>
+</div>
+
+<!-- ======================================================================
+     PLAYER SPRITE ASSETS (PNG) — hidden. The theme JS reads each img's src
+     and loads it into the matching Phaser texture (see player-assets.json /
+     ASSET.md). If a src is missing/empty/{{unresolved}}, that frame falls back
+     to the procedural drawing automatically. Host may override src with an
+     uploaded URL; default is the bundled relative path.
+     ====================================================================== -->
+<!-- Upload these 13 PNG (assets/ folder) in Theme Editor IN THIS ORDER. Host resolves
+     {{asset_image_N}} → uploaded URL; if not uploaded it stays "{{...}}" and the game
+     falls back to procedural sprites (see assetUrl() in index.js). -->
+<div id="msw-assets" aria-hidden="true" style="display:none">
+    <img data-asset="player_idle_1"          src="{{asset_image_1}}"  alt=""><!-- player_idle_1.png -->
+    <img data-asset="player_idle_2"          src="{{asset_image_2}}"  alt=""><!-- player_idle_2.png -->
+    <img data-asset="player_run_1"           src="{{asset_image_3}}"  alt=""><!-- player_run_1.png -->
+    <img data-asset="player_run_2"           src="{{asset_image_4}}"  alt=""><!-- player_run_2.png -->
+    <img data-asset="player_run_3"           src="{{asset_image_5}}"  alt=""><!-- player_run_3.png -->
+    <img data-asset="player_run_4"           src="{{asset_image_6}}"  alt=""><!-- player_run_4.png -->
+    <img data-asset="player_jump_shoot_up"   src="{{asset_image_7}}"  alt=""><!-- player_jump_shoot_up.png -->
+    <img data-asset="player_jump_shoot_side" src="{{asset_image_8}}"  alt=""><!-- player_jump_shoot_side.png -->
+    <img data-asset="player_jump_shoot_down" src="{{asset_image_9}}"  alt=""><!-- player_jump_shoot_down.png -->
+    <img data-asset="player_crouch"          src="{{asset_image_10}}" alt=""><!-- player_crouch.png -->
+    <img data-asset="player_hurt"            src="{{asset_image_11}}" alt=""><!-- player_hurt.png -->
+    <img data-asset="player_dead"            src="{{asset_image_12}}" alt=""><!-- player_dead.png -->
+    <img data-asset="player_static"          src="{{asset_image_13}}" alt=""><!-- player_static.png -->
+    <!-- EXPLOSION spritesheet (10x5 = 50 frames, 100x100 each). Upload assets/explosion.png as image 14. -->
+    <img data-asset="explosion"              src="{{asset_image_14}}" alt=""><!-- explosion.png (1000x500, 50 frames) -->
+    <!-- ENEMY + BOSS sprite sheet (1408x768, 6 rows). The .js slices it per assets/frame-map.json
+         into t_e_rush/t_e_range/t_turret/t_drone/t_tank/t_boss. Upload assets/enemy-sprite-sheet.png as image 15. -->
+    <img data-asset="enemy_sheet"            src="{{asset_image_15}}" alt=""><!-- enemy-sprite-sheet.png -->
 </div>
 
 <!-- ======================================================================

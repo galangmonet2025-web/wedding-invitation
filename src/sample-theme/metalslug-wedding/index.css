@@ -24,7 +24,12 @@
 /* ---------- shell ---------- */
 .msw-shell {
     margin: 0;
+    /* Mobile: lock to the VISIBLE viewport. 100dvh excludes the browser
+       URL bar (unlike 100vh), so the game frame — ground + touch controls —
+       fits on screen instead of being pushed below the fold. */
     min-height: 100vh;
+    min-height: 100dvh;
+    height: 100dvh;
     background:
         radial-gradient(1200px 600px at 50% -10%, #1c2a1a 0%, transparent 70%),
         repeating-linear-gradient(0deg, #0c130f 0, #0c130f 2px, #0a110d 2px, #0a110d 4px),
@@ -130,8 +135,13 @@
     position: relative;
     width: 100%;
     max-width: var(--msw-frame-max);
-    aspect-ratio: 9 / 16;
-    max-height: 100vh;
+    /* Mobile: fill the visible viewport height directly (no 9/16 aspect box,
+       which on tall phones over/under-shoots the screen and crams the ground +
+       FIRE/JMP buttons off the bottom). The measured BH then matches what the
+       player actually sees, so GROUND_Y lands on screen. Desktop re-overrides
+       this in the @media (min-width:980px) block below. */
+    height: 100dvh;
+    max-height: 100dvh;
     background: #060a07;
     overflow: hidden;
     border-left: 4px solid var(--msw-olive-d);
@@ -154,7 +164,8 @@
 .msw-hud-right { align-items: flex-end; }
 .msw-hud-label { font-size: 9px; letter-spacing: 1px; color: var(--msw-khaki); }
 .msw-hud-val { font-size: 15px; font-weight: 800; color: var(--msw-cream); }
-.msw-life-ico { color: var(--msw-red); }
+.msw-life-ico { font-size: 13px; }
+.msw-life-tag { font-size: 9px; font-weight: 700; letter-spacing: .5px; color: var(--msw-khaki); }
 .msw-hud-area-row { display: flex; align-items: center; gap: 6px; }
 .msw-hud-diff {
     font-size: 8px; padding: 1px 5px; border-radius: 2px; background: var(--msw-olive); color: var(--msw-cream); letter-spacing: 1px;

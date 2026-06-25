@@ -1,0 +1,227 @@
+[
+  {
+    "orderNumber": 1,
+    "kategori": "karakter",
+    "name": "pow.png",
+    "engineTexture": "t_pow",
+    "width": 48,
+    "height": 80,
+    "deskripsi": "Sandera/kurir undangan (POW) - kakek berjenggot putih lebat, baju compang-camping cokelat tan, rambut cokelat. Melayang pelan (bob) sambil membawa amplop di atas kepalanya; ditembak/disentuh pemain = diselamatkan -> membuka 1 kepingan info undangan. Hadap kanan, kaki di dasar kanvas. (2x dari 24x40 prosedural.)"
+  },
+  {
+    "orderNumber": 2,
+    "kategori": "item",
+    "name": "amplop.png",
+    "engineTexture": "t_amplop",
+    "width": 56,
+    "height": 40,
+    "deskripsi": "Amplop undangan krem dengan segel hati merah. DUA fungsi: (a) penanda melayang di atas kepala POW, (b) pickup senjata setelah peti pecah - engine MEMBERI TINT warna sesuai senjata (H=kuning, S=oranye, F=merah, R=biru) + huruf di tengah. Buat versi NETRAL/putih-krem agar tint engine tetap jelas. (2x dari 28x20.)"
+  },
+  {
+    "orderNumber": 3,
+    "kategori": "item",
+    "name": "crate.png",
+    "engineTexture": "t_crate",
+    "width": 64,
+    "height": 64,
+    "deskripsi": "Peti senjata kayu cokelat bertanda silang besi + bintang kuning di tengah. Ditembak = pecah dan menjatuhkan pickup amplop (senjata). Diam di tanah. (2x dari 32x32.)"
+  },
+  {
+    "orderNumber": 4,
+    "kategori": "item",
+    "name": "barrel.png",
+    "engineTexture": "t_barrel",
+    "width": 52,
+    "height": 72,
+    "deskripsi": "Tong peledak kayu cokelat dgn pita besi gelap + simbol bahaya kuning. Cover destruktif; HP 2, meledak (AoE) saat hancur & bisa memicu tong lain. Diam di tanah, hadap depan. (2x dari 26x36.)"
+  },
+  {
+    "orderNumber": 5,
+    "kategori": "proyektil",
+    "name": "bullet.png",
+    "engineTexture": "t_bullet",
+    "width": 24,
+    "height": 10,
+    "deskripsi": "Peluru pemain - kapsul kuning terang dgn inti emas & ujung oranye (arah tembak). Engine memutar (rotate) mengikuti arah 8-arah. Horizontal menghadap kanan. (2x dari 12x5.)"
+  },
+  {
+    "orderNumber": 6,
+    "kategori": "proyektil",
+    "name": "ebullet.png",
+    "engineTexture": "t_ebullet",
+    "width": 18,
+    "height": 18,
+    "deskripsi": "Peluru musuh - bola oranye-merah dgn kilau putih. Dipakai semua musuh penembak + bom drone + kipas peluru boss. Bulat simetris. (2x dari 9x9.)"
+  },
+  {
+    "orderNumber": 7,
+    "kategori": "proyektil",
+    "name": "rocket.png",
+    "engineTexture": "t_rocket",
+    "width": 36,
+    "height": 18,
+    "deskripsi": "Roket - badan abu-abu, hulu ledak merah di depan, semburan api kuning di belakang. Dipakai senjata Roket pemain & serangan boss fase 3. Engine memutar mengikuti arah. Hadap kanan. (2x dari 18x9.)"
+  },
+  {
+    "orderNumber": 8,
+    "kategori": "proyektil",
+    "name": "nade.png",
+    "engineTexture": "t_nade",
+    "width": 22,
+    "height": 24,
+    "deskripsi": "Granat - bulat hijau militer dgn highlight & tuas/pin gelap di atas. Dilempar pemain (melambung) lalu meledak. (2x dari 11x12.)"
+  },
+  {
+    "orderNumber": 9,
+    "kategori": "hazard",
+    "name": "flame.png",
+    "engineTexture": "t_flame",
+    "width": 32,
+    "height": 32,
+    "deskripsi": "Semburan api - lapis oranye/kuning/krem konsentris. Hazard tanah periodik (nyala-padam tiap ~1.3 dtk); kena = pemain terpental. Boleh transparan di tepi (api). (2x dari 16x16.)"
+  },
+  {
+    "orderNumber": 10,
+    "kategori": "efek",
+    "name": "spark.png",
+    "engineTexture": "t_spark",
+    "width": 14,
+    "height": 14,
+    "deskripsi": "Percikan partikel - titik putih dgn inti kuning. Tekstur PARTIKEL (emitter ledakan/hit, blend ADD). Kecil & bulat. (2x dari 7x7.)"
+  },
+  {
+    "orderNumber": 11,
+    "kategori": "efek",
+    "name": "heart.png",
+    "engineTexture": "t_heart",
+    "width": 22,
+    "height": 22,
+    "deskripsi": "Hati toska kecil. Tekstur PARTIKEL (muncul saat menyelamatkan POW, melayang naik). (2x dari 11x11.)"
+  },
+  {
+    "orderNumber": 12,
+    "kategori": "terrain",
+    "name": "ground.png",
+    "engineTexture": "t_ground",
+    "width": 128,
+    "height": 128,
+    "deskripsi": "Ubin tanah dasar (tileable) - tanah hijau gelap dgn pucuk rumput terang di baris atas + bintik-bintik. WAJIB seamless kiri-kanan (di-tile horizontal sepanjang level). (2x dari 64x64.)"
+  },
+  {
+    "orderNumber": 13,
+    "kategori": "terrain",
+    "name": "plat.png",
+    "engineTexture": "t_plat",
+    "width": 192,
+    "height": 40,
+    "deskripsi": "Platform melayang hijau dgn tepi rumput atas + garis papan. Pijakan; juga dipakai (di-scale) sebagai dinding arena boss tak terlihat. Tileable horizontal lebih baik. (2x dari 96x20.)"
+  },
+  {
+    "orderNumber": 14,
+    "kategori": "hazard",
+    "name": "spike.png",
+    "engineTexture": "t_spike",
+    "width": 96,
+    "height": 36,
+    "deskripsi": "Deretan duri logam di alas cokelat. Hazard tanah (lompati); kena = pemain terpental. Tileable horizontal. (2x dari 48x18.)"
+  },
+  {
+    "orderNumber": 15,
+    "kategori": "struktur",
+    "name": "cage.png",
+    "engineTexture": "t_cage",
+    "width": 152,
+    "height": 192,
+    "deskripsi": "Sangkar jeruji emas/krem (garis vertikal+horizontal + bingkai tebal). Mengurung mempelai di arena boss; hilang (tween) saat boss kalah. Transparan di antara jeruji. (2x dari 76x96.)"
+  },
+  {
+    "orderNumber": 16,
+    "kategori": "karakter",
+    "name": "couple_caged.png",
+    "engineTexture": "t_couple_caged",
+    "width": 120,
+    "height": 160,
+    "deskripsi": "Silhouette mempelai berdua di balik sangkar: mempelai pria berjas hitam + dasi merah (kiri), mempelai wanita bergaun putih + kerudung + buket merah muda (kanan). Tampil statis di belakang t_cage di arena boss. Origin kaki di bawah. (2x dari 60x80.)"
+  },
+  {
+    "orderNumber": 17,
+    "kategori": "struktur",
+    "name": "arch.png",
+    "engineTexture": "t_arch",
+    "width": 240,
+    "height": 260,
+    "deskripsi": "Gapura/altar pelaminan: dua tiang krem, palang atas dihias bunga merah muda + tanaman rambat hijau. Latar belakang tujuan di ujung kanan arena boss. (2x dari 120x130.)"
+  },
+  {
+    "orderNumber": 18,
+    "kategori": "scenery",
+    "name": "palm.png",
+    "engineTexture": "t_palm",
+    "width": 140,
+    "height": 220,
+    "deskripsi": "Pohon palem - batang cokelat + pelepah hijau menyebar + kelapa kuning. Properti parallax dekorasi (tak ada tabrakan). Origin di pangkal batang (bawah). (2x dari 70x110.)"
+  },
+  {
+    "orderNumber": 19,
+    "kategori": "scenery",
+    "name": "bush.png",
+    "engineTexture": "t_bush",
+    "width": 108,
+    "height": 60,
+    "deskripsi": "Semak hijau gumpal (beberapa lingkaran). Dekorasi parallax dasar. (2x dari 54x30.)"
+  },
+  {
+    "orderNumber": 20,
+    "kategori": "scenery",
+    "name": "sandbag.png",
+    "engineTexture": "t_sandbag",
+    "width": 92,
+    "height": 60,
+    "deskripsi": "Tumpukan karung pasir cokelat-tan (2 baris bertumpuk). Dekorasi/cover visual di tema kota/pangkalan. (2x dari 46x30.)"
+  },
+  {
+    "orderNumber": 21,
+    "kategori": "scenery",
+    "name": "flag.png",
+    "engineTexture": "t_flag",
+    "width": 80,
+    "height": 120,
+    "deskripsi": "Bendera tiang krem + kain segitiga merah dgn emblem hati/bulat kuning. Penanda dekoratif (mis. titik aman/checkpoint visual). Origin di pangkal tiang. (2x dari 40x60.)"
+  },
+  {
+    "orderNumber": 22,
+    "kategori": "scenery",
+    "name": "cloud.png",
+    "engineTexture": "t_cloud",
+    "width": 180,
+    "height": 80,
+    "deskripsi": "Awan putih lembut (gumpalan lingkaran). Parallax langit jauh. Transparan di tepi. (2x dari 90x40.)"
+  },
+  {
+    "orderNumber": 23,
+    "kategori": "scenery",
+    "name": "mountain.png",
+    "engineTexture": "t_mountain",
+    "width": 520,
+    "height": 300,
+    "deskripsi": "Siluet gunung biru-abu dgn puncak bersalju. Lapisan parallax jauh di belakang. (2x dari 260x150.)"
+  },
+  {
+    "orderNumber": 24,
+    "kategori": "scenery",
+    "name": "hill.png",
+    "engineTexture": "t_hill",
+    "width": 560,
+    "height": 400,
+    "deskripsi": "Bukit hijau gelap (elips besar). Lapisan parallax tengah di belakang ground. (2x dari 280x200.)"
+  },
+  {
+    "orderNumber": 25,
+    "kategori": "kendaraan (NONAKTIF)",
+    "name": "slug.png",
+    "engineTexture": "t_slug",
+    "width": 160,
+    "height": 92,
+    "deskripsi": "Tank/kendaraan 'Slug' hijau (badan + turret + meriam + roda rantai). CATATAN: teksturnya DIGAMBAR tapi BELUM dipakai engine (tidak ada spawn). Sertakan hanya jika nanti fitur kendaraan diaktifkan. (2x dari 80x46.)"
+  }
+]

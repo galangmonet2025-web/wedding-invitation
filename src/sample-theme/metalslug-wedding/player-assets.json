@@ -1,0 +1,93 @@
+[
+  {
+    "orderNumber": 1,
+    "name": "player_idle_1.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Diam berdiri, pose netral (nafas turun). Frame dasar saat karakter berhenti."
+  },
+  {
+    "orderNumber": 2,
+    "name": "player_idle_2.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Diam berdiri, badan/kepala naik +-1 px (nafas naik). Engine bolak-balik idle_1 <-> idle_2 saat diam. Beda tipis dari frame 1."
+  },
+  {
+    "orderNumber": 3,
+    "name": "player_run_1.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Lari frame 1 - kaki depan membuka lebar (langkah maju), badan condong maju."
+  },
+  {
+    "orderNumber": 4,
+    "name": "player_run_2.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Lari frame 2 - kaki rapat (melewati tengah), badan naik sedikit."
+  },
+  {
+    "orderNumber": 5,
+    "name": "player_run_3.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Lari frame 3 - kaki bertukar membuka lebar (kebalikan frame 1)."
+  },
+  {
+    "orderNumber": 6,
+    "name": "player_run_4.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Lari frame 4 - kaki rapat lagi (kebalikan frame 2). Engine memutar 1->2->3->4 jadi siklus lari halus."
+  },
+  {
+    "orderNumber": 7,
+    "name": "player_jump_shoot_up.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Melompat NAIK (kaki menekuk terangkat) sambil menembak ke ATAS - lengan + laras lurus ke atas. Dipakai juga sebagai pose lompat default saat naik."
+  },
+  {
+    "orderNumber": 8,
+    "name": "player_jump_shoot_side.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Melompat / melayang sambil menembak ke SAMPING (depan) - lengan + laras horizontal. Dipakai juga sebagai pose saat sedang turun/jatuh."
+  },
+  {
+    "orderNumber": 9,
+    "name": "player_jump_shoot_down.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Melompat sambil menembak ke BAWAH - lengan + laras serong/lurus ke bawah (nembak tanah saat melayang)."
+  },
+  {
+    "orderNumber": 10,
+    "name": "player_crouch.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Jongkok / merunduk - badan pendek & lebih lebar, kepala turun, senjata ke depan. Telapak kaki tetap di baris bawah, tinggi efektif +-60% badan berdiri."
+  },
+  {
+    "orderNumber": 11,
+    "name": "player_hurt.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Kena tembak / terpental - pose tersentak ke belakang, ekspresi kesakitan (boleh sedikit merah). Tampil sesaat saat kena hit (kebal+kedip)."
+  },
+  {
+    "orderNumber": 12,
+    "name": "player_dead.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "MATI / tumbang - tergeletak/terjengkang, kepala di bawah, senjata terlepas. Pose gaya Metal Slug saat tewas."
+  },
+  {
+    "orderNumber": 13,
+    "name": "player_static.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Pose diam tunggal (fallback). Boleh sama persis dengan player_idle_1 - cadangan kalau animasi belum jalan."
+  }
+]

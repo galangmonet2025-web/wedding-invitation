@@ -32,7 +32,7 @@
     };
 
     var BUILD = 'metalslug-wedding';
-    var VERSION = 'v1.4.1';
+    var VERSION = 'v1.5.5';   // PRESS START robust on live invite: capture-phase delegation + guarded init + global fallback
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#e23b2e;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -60,7 +60,17 @@
         quotaShape: [3, 3, 2, 2, 1, 0],  /* per-sector POW quota; sum scaled to N real sections */
         grenades: 10,
         sectors: 6,
-        storeKey: 'msw_v1'
+        storeKey: 'msw_v1',
+        /* DENSITY ENGINE "NO DEAD AIR" (MS2 Bible §3.3 / APPENDIX E.2). Per-screen FLOORS
+           (one screen = BW). minEnemies scales by difficulty; the rest are hard floors.
+           maxDeadPx = ≤0.75×BW empty run; rewardEveryPx = item/POW cadence. */
+        density: {
+            minEnemies:     { easy: 3, normal: 4, hard: 6 },
+            minPlatforms:   1,     // elevated platforms per screen
+            minDestructible: 2,    // barrels/crates per screen
+            maxDeadPx:      0.75,  // × BW — longest allowed empty run
+            rewardEveryPx:  2.5    // × BW — reward (POW/crate) cadence
+        }
     };
 
     var SECTOR_NAMES = ['Markas Latih', 'Kota Tua', 'Jembatan Sungai', 'Gurun Konvoi', 'Pangkalan Musuh', 'Markas Pelaminan'];
@@ -89,6 +99,93 @@
     }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+    /* =================================================================
+       PLAYER PNG ASSETS (ASSET.md / player-assets.json) — read URL from the
+       hidden #msw-assets <img data-asset>. Empty/unresolved → null (fallback
+       to procedural). Each asset maps 1:1 to an engine texture key; PNGs that
+       load REPLACE the procedural draw (tex() guard skips existing keys).
+       Sprites are 60x84 (2x); the player is rendered at scale 0.5 so every
+       world-space number (hitbox, GROUND_Y, camera) stays identical.
+       ================================================================= */
+    function assetUrl(name) {
+        var el = document.querySelector('#msw-assets img[data-asset="' + name + '"]');
+        if (!el) return null;
+        var v = (el.getAttribute('src') || '').trim();
+        if (!v || v.indexOf('{{') > -1) return null;
+        return v;
+    }
+    // data-asset name -> engine texture key
+    var PLAYER_ASSETS = [
+        { name: 'player_idle_1',          key: 't_player_idle0' },
+        { name: 'player_idle_2',          key: 't_player_idle1' },
+        { name: 'player_run_1',           key: 't_player_run0' },
+        { name: 'player_run_2',           key: 't_player_run1' },
+        { name: 'player_run_3',           key: 't_player_run2' },
+        { name: 'player_run_4',           key: 't_player_run3' },
+        { name: 'player_jump_shoot_up',   key: 't_player_jump' },
+        { name: 'player_jump_shoot_side', key: 't_player_fall' },
+        { name: 'player_jump_shoot_down', key: 't_player_jumpdown' },
+        { name: 'player_crouch',          key: 't_player_prone' },
+        { name: 'player_hurt',            key: 't_player_hurt' },
+        { name: 'player_dead',            key: 't_player_dead' },
+        { name: 'player_static',          key: 't_player' }
+    ];
+    var ASSET_FRAME = { w: 60, h: 84 };   // native PNG size
+    // becomes true in create() once at least the idle frames loaded
+    var usingPlayerAssets = false;
+
+    /* =================================================================
+       ENEMY + BOSS sprite sheet (assets/enemy-sprite-sheet.png, 1408x768).
+       ONE whole image uploaded as {{asset_image_15}} (data-asset="enemy_sheet");
+       the engine SLICES it itself into the existing procedural texture keys.
+       Layout is per-ROW, frames are PACKED with no separators and VARY in width
+       (muzzle-flash / wreck poses are wider). Each frame therefore needs its OWN
+       explicit rect — a uniform pitch/cell overruns into the neighbour and made the
+       boss show a 2nd mech ("ada 2 boss" bug). Rects are measured & verified
+       (assets/frame-map.json). Per row: `top`/`ch` = row band (constant height),
+       `rects` = [[x, w], …] per frame (same top/ch). `dh` = display height (old
+       procedural texture height) → scale = dh/ch, applied UNIFORMLY so wider frames
+       just render wider (no distortion, feet/height stay constant). `hb` = world
+       hitbox (matches the old procedural feel). `grav:false` = floats (drone/turret).
+       ================================================================= */
+    var ENEMY_SHEET_KEY = 't_enemy_sheet';
+    var ENEMY_SHEET = [
+        {
+            key: 't_e_rush', top: 9, ch: 111, dh: 38, hb: { w: 18, h: 34 },
+            frames: ['walk_1', 'walk_2', 'walk_3', 'walk_4', 'hurt', 'die'],
+            rects: [[5, 63], [96, 63], [180, 74], [295, 51], [364, 86], [470, 109]]
+        },
+        {
+            key: 't_e_range', top: 135, ch: 110, dh: 38, hb: { w: 18, h: 34 },
+            frames: ['idle', 'aim', 'fire', 'hurt', 'die'],
+            rects: [[6, 82], [102, 89], [199, 118], [323, 71], [421, 95]]
+        },
+        {
+            key: 't_turret', top: 260, ch: 80, dh: 28, grav: false, hb: { w: 34, h: 24 },
+            frames: ['idle', 'aim', 'fire', 'hurt', 'wreck'],
+            rects: [[5, 112], [135, 113], [268, 132], [400, 132], [532, 132]]
+        },
+        {
+            key: 't_drone', top: 353, ch: 78, dh: 20, grav: false, hb: { w: 30, h: 18 },
+            frames: ['hover_1', 'hover_2', 'drop', 'wreck'],
+            rects: [[5, 121], [149, 119], [291, 125], [446, 103]]
+        },
+        {
+            key: 't_tank', top: 434, ch: 118, dh: 40, hb: { w: 56, h: 36 },
+            frames: ['roll_1', 'roll_2', 'aim', 'fire', 'wreck'],
+            rects: [[3, 179], [201, 179], [398, 197], [609, 197], [806, 197]]
+        },
+        {
+            key: 't_boss', top: 555, ch: 195, dh: 140, grav: false, hb: { w: 116, h: 128 },
+            frames: ['idle_1', 'idle_2', 'telegraph', 'fire', 'enraged', 'defeated'],
+            rects: [[6, 181], [210, 180], [413, 202], [633, 256], [902, 187], [1152, 229]]
+        }
+    ];
+    // becomes true in create() once the sheet sliced successfully
+    var usingEnemyAssets = false;
+    // per texKey -> { scaleX, scaleY } to render the big cell at the engine display size
+    var ENEMY_DISP = {};
 
     var toastTimer;
     function toast(msg, ms) {
@@ -368,14 +465,17 @@
         if (STORE.completed) { revealFullInvitation(); return; }
         STORE.completed = true; saveStore();
         var sc = GAME && GAME.scene && GAME.scene.getScene('Game');
+        // VICTORY VISUAL first (confetti/hearts beat), THEN the congratulations dialog after 5s.
+        // The dialog offers "Buka Undangan" or "Tutup" — it does NOT auto-open the invitation.
         if (sc && sc.celebrate) sc.celebrate('boss');
         setTimeout(function () {
             var t = $('msw-win-text');
-            if (t) t.innerHTML = 'Markas Pelaminan ditaklukkan! ' +
+            if (t) t.innerHTML = 'Selamat! Misi penyelamatan berhasil — ' +
                 '<b>' + esc(val('groom_nickname', 'Mempelai')) + '</b> &amp; <b>' + esc(val('bride_nickname', 'Mempelai')) + '</b> ' +
-                'berhasil diselamatkan. Selamat menempuh hidup baru — buka undangannya!';
+                'telah dibebaskan dari Markas Pelaminan. Terima kasih sudah menuntaskan misinya. ' +
+                'Buka undangannya sekarang, atau tutup dialog ini dulu.';
             showOverlay('msw-win');
-        }, 4500);
+        }, 5000);
     }
 
     /* =================================================================
@@ -484,18 +584,19 @@
     // forward decl; real definition appended below
     var defineAndBoot;
 
-    /* ===== KICKOFF: wire UI, scan, then wait for PRESS START ===== */
+    /* ===== KICKOFF: wire UI, scan, then wait for PRESS START =====
+       wireUI() is FIRST and standalone so the delegated click listener (PRESS
+       START etc.) is attached even if any later step throws on the live page
+       (e.g. a missing element during a host re-injection). Each step is guarded
+       so one failure can never leave the game un-clickable. */
     function init() {
-        scanInfos();
-        QUOTA = buildQuota(N());
-        STORE.diff = STORE.diff || 'normal';
-        buildIndicators();
-        wireUI();
-        wireMusicMirror();
-        drawCoupleCanvas();
-        var v = $('msw-version'); if (v) v.textContent = VERSION;
+        try { wireUI(); } catch (e) { try { console.error('[msw] wireUI', e); } catch (e2) {} }
+        try { scanInfos(); QUOTA = buildQuota(N()); STORE.diff = STORE.diff || 'normal'; buildIndicators(); } catch (e) {}
+        try { wireMusicMirror(); } catch (e) {}
+        try { drawCoupleCanvas(); } catch (e) {}
+        try { var v = $('msw-version'); if (v) v.textContent = VERSION; } catch (e) {}
         // if everything already unlocked from a prior session, light the 💌
-        updateProgress();
+        try { updateProgress(); } catch (e) {}
     }
 
     /* =================================================================
@@ -624,50 +725,82 @@
             var badge = $('msw-diff-badge');
             if (badge) { badge.textContent = d.toUpperCase(); badge.dataset.lvl = d; }
         }
-        document.querySelectorAll('.msw-diff-opt, .msw-diffopt').forEach(function (b) {
-            b.addEventListener('click', function () { pickDiff(b.dataset.diff); });
-        });
+        // (difficulty clicks handled by the delegated listener below — no per-button bind)
         pickDiff(STORE.diff);
 
         // PRESS START (cover + side)
         function start() { startRun(0); }
-        bindClick('msw-start', start);
-        bindClick('msw-side-start', start);
 
-        // skip → open invitation directly
-        bindClick('msw-cover-view', openInvitationDirect);
-        bindClick('msw-side-open', openInvitationDirect);
-        bindClick('msw-gameover-view', openInvitationDirect);
-        bindClick('msw-allpieces-view', function () { hideOverlays(); revealFullInvitation(); });
-        bindClick('msw-allpieces-keep', function () { hideOverlays(); resumeGame(); });
-        bindClick('msw-win-view', function () { hideOverlays(); revealFullInvitation(); });
-
-        // 💌 view button
-        bindClick('msw-view-btn', function () {
-            if (allInfoUnlocked() || cheat.on) { revealFullInvitation(); }
-            else { toast('Selamatkan semua POW dulu — atau tekan ★ untuk buka langsung'); }
+        // ----------------------------------------------------------------
+        // DELEGATED CLICK (robust on the LIVE invitation). In the Theme
+        // Editor the theme runs in an isolated <iframe> so direct per-element
+        // binding is stable. On the real invitation the host injects this
+        // theme via dangerouslySetInnerHTML and RE-INJECTS the DOM + JS when
+        // htmlBase/isOpened change (image resolve, RSVP submit, etc.). Direct
+        // listeners bound in a previous pass die with the replaced nodes, so
+        // PRESS START "stops working". A single delegated listener on
+        // `document` (matched by id via closest) survives every re-injection.
+        // ----------------------------------------------------------------
+        var ACTIONS = {
+            'msw-start': start,
+            'msw-side-start': start,
+            'msw-cover-view': openInvitationDirect,
+            'msw-side-open': openInvitationDirect,
+            'msw-gameover-view': openInvitationDirect,
+            'msw-allpieces-view': function () { hideOverlays(); revealFullInvitation(); },
+            'msw-allpieces-keep': function () { hideOverlays(); resumeGame(); },
+            'msw-win-view': function () { hideOverlays(); revealFullInvitation(); },
+            'msw-win-close': function () { hideOverlays(); resumeGame(); },
+            'msw-view-btn': function () {
+                if (allInfoUnlocked() || cheat.on) { revealFullInvitation(); }
+                else { toast('Selamatkan semua POW dulu — atau tekan ★ untuk buka langsung'); }
+            },
+            'msw-star-btn': toggleCheat,
+            'msw-stagesel-btn': openStageSelect,
+            'msw-stagesel-ok': function () { hideOverlays(); startRun(pendingStage); },
+            'msw-stagesel-close': function () { hideOverlays(); resumeGame(); },
+            'msw-reset-btn': function () { showOverlay('msw-resetconfirm'); pauseGame(); },
+            'msw-reset-yes': function () { resetGame(); },
+            'msw-reset-no': function () { hideOverlays(); resumeGame(); },
+            'msw-briefing-go': function () { hideOverlays(); beginSector(); },
+            'msw-clear-next': function () { hideOverlays(); nextSector(); },
+            'msw-retry': function () { hideOverlays(); startRun(0); },
+            'msw-modal-close': closeModal,
+            'msw-reveal-close': closeReveal,
+            'msw-lightbox-close': function () { var lb = $('msw-lightbox'); if (lb) lb.classList.remove('show'); }
+        };
+        // difficulty buttons handled here too (data-diff), plus backdrop dismiss for modal/lightbox.
+        var delegated = function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            // difficulty pick (cover + side)
+            var diffBtn = t.closest('.msw-diff-opt, .msw-diffopt');
+            if (diffBtn && diffBtn.dataset.diff) { pickDiff(diffBtn.dataset.diff); return; }
+            // id-mapped actions
+            for (var id in ACTIONS) {
+                if (t.closest('#' + id)) { ACTIONS[id](); return; }
+            }
+            // backdrop dismiss (click the dim area, not the card)
+            if (t.id === 'msw-modal-root') { closeModal(); return; }
+            if (t.id === 'msw-lightbox') { t.classList.remove('show'); return; }
+        };
+        // CAPTURE PHASE on the live invitation: the host (ThemeWrapper) intercepts
+        // some clicks in capture phase and may stopImmediatePropagation() before a
+        // bubble-phase listener ever runs. Capture-phase here guarantees PRESS START
+        // and the other game buttons fire first. Also bind on BOTH document and the
+        // stage element (defense-in-depth) and de-dupe via a global guard so a stale
+        // listener from a half-cleaned prior injection can never double-fire or block.
+        if (window.__mswDelegated) { try { document.removeEventListener('click', window.__mswDelegated, true); } catch (e) {} }
+        window.__mswDelegated = delegated;
+        document.addEventListener('click', delegated, true);
+        onCleanup(function () {
+            document.removeEventListener('click', delegated, true);
+            if (window.__mswDelegated === delegated) window.__mswDelegated = null;
         });
 
-        // cheat / stage-select / reset
-        bindClick('msw-star-btn', toggleCheat);
-        bindClick('msw-stagesel-btn', openStageSelect);
-        bindClick('msw-stagesel-ok', function () { hideOverlays(); startRun(pendingStage); });
-        bindClick('msw-stagesel-close', function () { hideOverlays(); resumeGame(); });
-        bindClick('msw-reset-btn', function () { showOverlay('msw-resetconfirm'); pauseGame(); });
-        bindClick('msw-reset-yes', function () { resetGame(); });
-        bindClick('msw-reset-no', function () { hideOverlays(); resumeGame(); });
-
-        // briefing / clear / retry
-        bindClick('msw-briefing-go', function () { hideOverlays(); beginSector(); });
-        bindClick('msw-clear-next', function () { hideOverlays(); nextSector(); });
-        bindClick('msw-retry', function () { hideOverlays(); startRun(0); });
-
-        // modal / reveal / lightbox
-        bindClick('msw-modal-close', closeModal);
-        $('msw-modal-root').addEventListener('click', function (e) { if (e.target === $('msw-modal-root')) closeModal(); });
-        bindClick('msw-reveal-close', closeReveal);
-        bindClick('msw-lightbox-close', function () { $('msw-lightbox').classList.remove('show'); });
-        $('msw-lightbox').addEventListener('click', function (e) { if (e.target === $('msw-lightbox')) e.currentTarget.classList.remove('show'); });
+        // GLOBAL FALLBACK: lets the game be started even if event delegation is
+        // somehow blocked in an exotic host wrapper — callable from console/onclick.
+        window.__mswStart = function () { try { startRun(0); } catch (e) {} };
 
         // host QR button is intercepted by host (capture phase) — leave verbatim, no handler needed.
     }
@@ -936,6 +1069,19 @@
             tex(scene, 't_player_fall', 30, 42, function (g) { drawCommando(g, { bob: 1, legPhase: -1 }); });
             tex(scene, 't_player_prone', 30, 42, function (g) { drawCommando(g, { prone: true }); });
             tex(scene, 't_player_hurt', 30, 42, function (g) { drawCommando(g, { bob: 0, hurt: true }); });
+            // new pose keys (PNG override these when present): jump+shoot-down & dead.
+            // Procedural fallbacks so the game never shows a blank sprite if PNG missing.
+            tex(scene, 't_player_jumpdown', 30, 42, function (g) { drawCommando(g, { bob: 1, legPhase: -2 }); }); // falling-ish pose
+            tex(scene, 't_player_dead', 30, 42, function (g) {
+                // lying down: low wide body + head to the side (hurt tint)
+                g.fillStyle(0x3a6b4a, 1); g.fillRect(3, 33, 22, 7);
+                g.fillStyle(0x2e3a25, 1); g.fillRect(2, 38, 26, 3);
+                g.fillStyle(0xff9a9a, 1); g.fillRect(22, 28, 8, 8);        // head fallen
+                g.fillStyle(0x10140d, 1); g.fillRect(25, 31, 2, 2);
+                g.fillStyle(0x4fd6c8, 1); g.fillRect(20, 26, 9, 3);         // beret off
+                g.fillStyle(0x2a2a2a, 1); g.fillRect(4, 30, 12, 3);         // dropped rifle
+                g.lineStyle(2, 0x10140d, 1); g.strokeRect(2, 26, 28, 14);
+            });
             // ---- BULLETS / projectiles ----
             tex(scene, 't_bullet', 12, 5, function (g) { g.fillStyle(0xfff4b0, 1); g.fillRect(0, 0, 12, 5); g.fillStyle(0xffd447, 1); g.fillRect(0, 2, 12, 3); g.fillStyle(0xff8a3d, 1); g.fillRect(0, 1, 3, 3); });
             tex(scene, 't_ebullet', 9, 9, function (g) { g.fillStyle(0xff8a3d, 1); g.fillCircle(4.5, 4.5, 4.5); g.fillStyle(0xff5a4d, 1); g.fillCircle(4.5, 4.5, 3); g.fillStyle(0xfff, 0.8); g.fillCircle(3, 3, 1.2); });
@@ -1157,9 +1303,45 @@
         GameScene.prototype = Object.create(P.Scene.prototype);
         GameScene.prototype.constructor = GameScene;
 
+        /* PRELOAD player PNGs into their engine texture keys (ASSET.md). Phaser runs
+           this before create(); any frame that loads will then SKIP its procedural
+           draw (tex() guards on textures.exists). loaderror → remove key → fallback. */
+        GameScene.prototype.preload = function () {
+            var self = this;
+            PLAYER_ASSETS.forEach(function (a) {
+                var url = assetUrl(a.name);
+                if (!url) return;
+                // if a stale texture exists from a prior boot, drop it so load wins
+                try { if (self.textures.exists(a.key)) self.textures.remove(a.key); } catch (e) {}
+                self.load.image(a.key, url);
+            });
+            // EXPLOSION spritesheet (like metalslug-2): 10x5 grid, 100x100 frames (50 total).
+            var explUrl = assetUrl('explosion');
+            if (explUrl) {
+                try { if (self.textures.exists('t_explosion')) self.textures.remove('t_explosion'); } catch (e) {}
+                self.load.spritesheet('t_explosion', explUrl, { frameWidth: 100, frameHeight: 100 });
+            }
+            // ENEMY + BOSS sheet (one whole image; sliced per-row in create() → sliceEnemySheet).
+            var enemyUrl = assetUrl('enemy_sheet');
+            if (enemyUrl) {
+                try { if (self.textures.exists(ENEMY_SHEET_KEY)) self.textures.remove(ENEMY_SHEET_KEY); } catch (e) {}
+                self.load.image(ENEMY_SHEET_KEY, enemyUrl);
+            }
+            this.load.on('loaderror', function (file) { try { self.textures.remove(file.key); } catch (e) {} });
+        };
+
         GameScene.prototype.create = function () {
             var self = this;
+            // Slice the enemy/boss sheet FIRST: registers per-frame regions on ENEMY_SHEET_KEY
+            // and records display scales. buildTextures() then auto-skips the procedural draw for
+            // any enemy key we successfully sliced (its tex() guard sees nothing to remove — we
+            // never created the standalone keys, so the spawn code reads ENEMY_SHEET frames).
+            this.sliceEnemySheet();
             buildTextures(this);
+            // PNG assets win when present; flag asset-mode if the core idle frame loaded.
+            usingPlayerAssets = this.textures.exists('t_player_idle0') &&
+                                this.textures.get('t_player_idle0').source[0] &&
+                                this.textures.get('t_player_idle0').source[0].width === ASSET_FRAME.w;
             this.buildAnims();
 
             this.diff = C.diff[STORE.diff];
@@ -1201,9 +1383,15 @@
             // bullet aimed at an enemy standing ON a platform gets eaten by the platform corner
             // first and looks like it "passed through" the enemy ("peluru nembus musuh di atas balok").
             this.physics.add.overlap(this.bullets, this.enemies, function (b, e) { self.hitEnemy(b, e); });
+            // Bullets DIE on the solid ground, but PASS THROUGH floating ledges (t_plat) so the
+            // player can shoot enemies perched above without the ledge eating the shot (issue #2).
+            // processCallback returns false → no collision → bullet keeps flying.
             this.physics.add.collider(this.bullets, this.platforms,
                 function (b) { self.killBullet(b); },
-                function (b) { return !self.bulletOverEnemy(b); });
+                function (b, plat) {
+                    if (plat && plat.texture && plat.texture.key === 't_plat') return false; // ledge = bullet-transparent
+                    return !self.bulletOverEnemy(b);
+                });
             this.physics.add.overlap(this.bullets, this.crates, function (b, c) { self.killBullet(b); self.breakCrate(c); });
             this.physics.add.overlap(this.bullets, this.pows, function (b, p) { self.killBullet(b); self.rescuePOW(p); });
             this.physics.add.overlap(this.player, this.pows, function (pl, p) { self.rescuePOW(p); });
@@ -1247,6 +1435,164 @@
             mk('p_fall', ['t_player_fall'], 1, 0);
             mk('p_prone', ['t_player_prone'], 1, 0);
             mk('p_hurt', ['t_player_hurt'], 1, 0);
+            mk('p_jumpdown', ['t_player_jumpdown'], 1, 0);   // airborne + shoot-down pose
+            mk('p_dead', ['t_player_dead'], 1, 0);           // tumbang (brief, before respawn)
+            // EXPLOSION sprite anim (metalslug-2 style): 50 frames @ 40fps, play once.
+            this.useExplosion = this.textures.exists('t_explosion');
+            if (this.useExplosion && !this.anims.exists('expl_anim')) {
+                this.anims.create({
+                    key: 'expl_anim',
+                    frames: this.anims.generateFrameNumbers('t_explosion', { start: 0, end: 49 }),
+                    frameRate: 40, repeat: 0
+                });
+            }
+            this.buildEnemyAnims();
+        };
+
+        /* Slice the one uploaded enemy sheet into per-frame regions on ENEMY_SHEET_KEY.
+           Each frame becomes a named texture-frame "<texKey>__<frameName>" (e.g.
+           "t_e_rush__walk_1"). Records ENEMY_DISP[texKey] = {sx,sy} = scale to render
+           the big cell at the engine display size (dw×dh). Sets usingEnemyAssets. No-op
+           (procedural fallback) if the sheet didn't load. */
+        /* The uploaded sheet may be FULLY OPAQUE with a painted gray checkerboard "transparency"
+           background (as exported by some pixel editors). Key it out: flood-fill from the image
+           borders, clearing only low-saturation light-gray pixels CONNECTED to the edge. Interior
+           grays (gun metal, white highlights) are surrounded by sprite pixels → never reached →
+           preserved. Returns a NEW canvas texture (transparent) under ENEMY_SHEET_KEY, or leaves
+           the original untouched if it already has real transparency / keying fails. */
+        GameScene.prototype.keyOutCheckerboard = function () {
+            var tex = this.textures.get(ENEMY_SHEET_KEY);
+            var srcObj = tex.source[0]; if (!srcObj) return;
+            var img = srcObj.image || srcObj.source; if (!img) return;
+            var W = srcObj.width, H = srcObj.height;
+            try {
+                var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+                var ctx = cv.getContext('2d');
+                ctx.drawImage(img, 0, 0, W, H);
+                var id = ctx.getImageData(0, 0, W, H), d = id.data;
+                // already transparent? (sample a chunk for any alpha<250) → keep original.
+                var hasAlpha = false;
+                for (var s = 3; s < d.length; s += 4 * 97) { if (d[s] < 250) { hasAlpha = true; break; } }
+                if (hasAlpha) return;
+                function isBg(p) {
+                    var r = d[p], g = d[p + 1], b = d[p + 2];
+                    var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                    return (mx - mn) <= 22 && mn >= 150;   // neutral & light → checkerboard
+                }
+                var seen = new Uint8Array(W * H);
+                var stack = [];
+                for (var x = 0; x < W; x++) { stack.push(x); stack.push((H - 1) * W + x); }
+                for (var y = 0; y < H; y++) { stack.push(y * W); stack.push(y * W + W - 1); }
+                while (stack.length) {
+                    var idx = stack.pop(); if (seen[idx]) continue;
+                    if (!isBg(idx * 4)) continue; seen[idx] = 1;
+                    var cx = idx % W, cy = (idx / W) | 0;
+                    if (cx > 0) stack.push(idx - 1); if (cx < W - 1) stack.push(idx + 1);
+                    if (cy > 0) stack.push(idx - W); if (cy < H - 1) stack.push(idx + W);
+                }
+                for (var i = 0; i < W * H; i++) if (seen[i]) d[i * 4 + 3] = 0;
+                ctx.putImageData(id, 0, 0);
+                this.textures.remove(ENEMY_SHEET_KEY);
+                this.textures.addCanvas(ENEMY_SHEET_KEY, cv);
+            } catch (e) { /* CORS-tainted or no canvas → leave original (will show bg, but works) */ }
+        };
+
+        GameScene.prototype.sliceEnemySheet = function () {
+            usingEnemyAssets = false; ENEMY_DISP = {};
+            if (!this.textures.exists(ENEMY_SHEET_KEY)) return;
+            var src0 = this.textures.get(ENEMY_SHEET_KEY).source[0];
+            if (!src0 || !src0.width) return;
+            // sanity: the art is 1408x768; if a very different image was uploaded, bail to
+            // procedural rather than slice garbage.
+            if (src0.width < 600 || src0.height < 400) { try { this.textures.remove(ENEMY_SHEET_KEY); } catch (e) {} return; }
+            // strip the painted checkerboard "transparency" if the PNG is fully opaque
+            this.keyOutCheckerboard();
+            var tex = this.textures.get(ENEMY_SHEET_KEY);
+            var src = tex.source[0];
+            if (!src || !src.width) return;
+            var ok = 0;
+            ENEMY_SHEET.forEach(function (row) {
+                var fh = row.ch, fy = row.top;
+                if (fy + fh > src.height) fh = src.height - fy;
+                for (var i = 0; i < row.frames.length; i++) {
+                    var fx = row.rects[i][0], fw = row.rects[i][1];   // explicit per-frame rect
+                    if (fx + fw > src.width) fw = src.width - fx;
+                    if (fw <= 0 || fh <= 0) continue;
+                    var fname = row.key + '__' + row.frames[i];
+                    try { if (tex.has(fname)) tex.remove(fname); } catch (e) {}
+                    tex.add(fname, 0, fx, fy, fw, fh);
+                    ok++;
+                }
+                // UNIFORM scale = dh/ch (height-driven). Display height is constant across frames;
+                // width follows the frame's own source width (wider flash frames look wider, no
+                // distortion). cw0 = frame-0 source width (used to floor-anchor the body).
+                var scale = row.dh / fh;
+                ENEMY_DISP[row.key] = {
+                    scale: scale, dh: row.dh, ch: fh, cw0: row.rects[0][1],
+                    hb: row.hb, grav: row.grav !== false
+                };
+            });
+            usingEnemyAssets = ok > 0;
+        };
+
+        /* Enemy/boss anims built on the sliced sheet frames (guard re-create). Only created
+           when usingEnemyAssets; the spawn/update code checks usingEnemyAssets before play(). */
+        GameScene.prototype.buildEnemyAnims = function () {
+            if (!usingEnemyAssets) return;
+            var self = this;
+            function frames(texKey, names) {
+                return names.map(function (n) { return { key: ENEMY_SHEET_KEY, frame: texKey + '__' + n }; });
+            }
+            function mk(animKey, texKey, names, rate, repeat) {
+                if (self.anims.exists(animKey)) return;
+                self.anims.create({ key: animKey, frames: frames(texKey, names), frameRate: rate, repeat: repeat == null ? -1 : repeat });
+            }
+            // rush: 4-frame walk loop + one-shot hurt/die
+            mk('e_rush_walk', 't_e_rush', ['walk_1', 'walk_2', 'walk_3', 'walk_4'], 10);
+            mk('e_rush_hurt', 't_e_rush', ['hurt'], 1, 0);
+            mk('e_rush_die', 't_e_rush', ['die'], 1, 0);
+            // range: idle / aim / fire / hurt / die
+            mk('e_range_idle', 't_e_range', ['idle'], 1, 0);
+            mk('e_range_aim', 't_e_range', ['aim'], 1, 0);
+            mk('e_range_fire', 't_e_range', ['fire'], 1, 0);
+            mk('e_range_hurt', 't_e_range', ['hurt'], 1, 0);
+            mk('e_range_die', 't_e_range', ['die'], 1, 0);
+            // turret: idle / aim / fire / hurt / wreck
+            mk('e_turret_idle', 't_turret', ['idle'], 1, 0);
+            mk('e_turret_aim', 't_turret', ['aim'], 1, 0);
+            mk('e_turret_fire', 't_turret', ['fire'], 1, 0);
+            mk('e_turret_hurt', 't_turret', ['hurt'], 1, 0);
+            mk('e_turret_wreck', 't_turret', ['wreck'], 1, 0);
+            // drone: hover loop / drop / wreck
+            mk('e_drone_hover', 't_drone', ['hover_1', 'hover_2'], 12);
+            mk('e_drone_drop', 't_drone', ['drop'], 1, 0);
+            mk('e_drone_wreck', 't_drone', ['wreck'], 1, 0);
+            // tank: roll loop / aim / fire / wreck
+            mk('e_tank_roll', 't_tank', ['roll_1', 'roll_2'], 6);
+            mk('e_tank_aim', 't_tank', ['aim'], 1, 0);
+            mk('e_tank_fire', 't_tank', ['fire'], 1, 0);
+            mk('e_tank_wreck', 't_tank', ['wreck'], 1, 0);
+            // boss: idle loop / telegraph / fire / enraged / defeated
+            mk('e_boss_idle', 't_boss', ['idle_1', 'idle_2'], 3);
+            mk('e_boss_tell', 't_boss', ['telegraph'], 1, 0);
+            mk('e_boss_fire', 't_boss', ['fire'], 1, 0);
+            mk('e_boss_enraged', 't_boss', ['enraged', 'idle_2'], 4);
+            mk('e_boss_dead', 't_boss', ['defeated'], 1, 0);
+        };
+
+        /* helper: configure a freshly-created enemy sprite to use the sliced sheet (uniform
+           height-driven scale + idle/walk anim) instead of the procedural texture. Safe no-op
+           if !assets. UNIFORM setScale (not setDisplaySize) keeps each frame's natural aspect, so
+           a wider muzzle-flash frame renders wider without squashing — and the constant scale
+           keeps height + feet position identical across frames. */
+        GameScene.prototype.applyEnemyAsset = function (e, texKey, idleAnim) {
+            if (!usingEnemyAssets) return;
+            var d = ENEMY_DISP[texKey]; if (!d) return;
+            var row = ENEMY_SHEET.filter(function (r) { return r.key === texKey; })[0];
+            e.setTexture(ENEMY_SHEET_KEY, texKey + '__' + row.frames[0]);
+            e.setScale(d.scale);
+            // body is sized/anchored in spawnEnemy (or boss builder) AFTER this.
+            if (idleAnim && this.anims.exists(idleAnim)) e.play(idleAnim);
         };
 
         /* sector palettes (sky top, sky bottom, sun color/alpha) */
@@ -1338,12 +1684,28 @@
             // backdrop (sky + parallax + biome props) — depends on worldW + sector
             this.buildBackdrop(idx);
 
-            // ground (static tiled, 64px texture)
+            // ground (static tiled, 64px texture) — the collidable top row sits at GROUND_Y.
             for (var x = 0; x < len + 64; x += 64) {
                 var gnd = this.platforms.create(x + 32, GROUND_Y + 32, 't_ground');
                 gnd.refreshBody();
             }
             this.groundTop = GROUND_Y;
+
+            // DIRT FILL below the collidable row → no blank band between grass and the
+            // touch controls (issue #3). Visual only (non-colliding); matches the ground
+            // body so the green/brown earth runs all the way to the bottom of the play area.
+            if (!this.groundFill) this.groundFill = this.add.group();
+            this.groundFill.clear(true, true);
+            var fillTop = GROUND_Y + 64;            // just under the tile row
+            if (fillTop < BH + 64) {
+                var fill = this.add.graphics().setDepth(-3);
+                fill.fillStyle(0x3a4a2a, 1);        // same earth tone as t_ground base
+                fill.fillRect(0, fillTop, len, (BH + 80) - fillTop);
+                // subtle darker striations so it isn't a flat slab
+                fill.fillStyle(0x2e3a22, 1);
+                for (var fx = 0; fx < len; fx += 96) { fill.fillRect(fx + 18, fillTop + 10, 8, 8); fill.fillRect(fx + 60, fillTop + 34, 6, 6); }
+                this.groundFill.add(fill);
+            }
 
             // foreground decor on the ground (non-collidable eye-candy)
             if (!this.decor) this.decor = this.add.group();
@@ -1362,65 +1724,185 @@
             this.player.respawnX = 120;
             this.cameras.main.scrollX = 0;
 
+            // reset the camera-relative spawn pointer + record list (MS2 Bible §5.2 / T.7)
+            this.spawnList = [];      // inert enemy records {x:triggerX, type, y} sorted ↑ x
+            this._spawnNext = 0;
+
             if (isBoss) { this.buildBossArena(len); this.updateHUD(); return; }
 
-            // POW pieces for this sector (deterministic slice), only those not yet unlocked
-            var pieces = infosForSector(idx).filter(function (i) { return !unlocked[i.key]; });
-
-            // spine encounters: spread across the level after a 600px safe zone
-            var density = this.diff.density;
-            var slots = Math.floor((len - 1100) / 360);
-            var powEvery = pieces.length ? Math.max(2, Math.floor(slots / pieces.length)) : 999;
-            var pi = 0, enemyTypes = this.sectorEnemyPool(idx);
-
-            // closer encounter spacing (denser action) — slot every 300px
-            for (var s = 0; s < slots; s++) {
-                var sx = 640 + s * 300 + (Math.sin(s * 1.3) * 40);
-                // POW placement (gradual)
-                if (pi < pieces.length && s % powEvery === 1) {
-                    this.spawnPOW(sx, pieces[pi].key); pi++;
-                    continue; // POW slot stays light (safe-ish)
-                }
-
-                // ELEVATION: jump-pad platforms at varied heights (every ~3 slots)
-                if (s % 3 === 2) {
-                    var ph = [150, 240, 110][s % 3];        // varied heights
-                    var py = GROUND_Y - ph;
-                    var pl = this.platforms.create(sx, py, 't_plat'); pl.refreshBody();
-                    // turret or ranged perched on the ledge (cover-fire from above)
-                    if (idx >= 1 && Math.random() < 0.5) this.spawnEnemy('turret', sx, py - 22);
-                    else if (Math.random() < 0.5) this.spawnEnemy('range', sx, py - 28);
-                    // a second lower platform sometimes → stepping path
-                    if (Math.random() < 0.4) { var pl2 = this.platforms.create(sx + 120, GROUND_Y - 90, 't_plat'); pl2.refreshBody(); }
-                }
-
-                // EXPLOSIVE BARRELS as destructible cover (every ~5 slots)
-                if (s % 5 === 3) this.spawnBarrel(sx + 40);
-
-                // enemies (≤2 types/wave, ≥1 ranged sweet-spot) — denser via density
-                var roll = Math.random();
-                if (roll < 0.45 * density) this.spawnEnemy('rush', sx, GROUND_Y - 30);
-                else if (roll < 0.78 * density) this.spawnEnemy('range', sx, GROUND_Y - 30);
-                else if (roll < 0.9 * density && idx >= 1) this.spawnEnemy('drone', sx, GROUND_Y - 220);
-                else if (roll < 1.0 * density && idx >= 3) this.spawnEnemy('tank', sx, GROUND_Y - 30);
-                // occasional second rusher → small wave
-                if (Math.random() < 0.25 * density) this.spawnEnemy('rush', sx + 80, GROUND_Y - 30);
-
-                // hazards: flame jets (sector 2+) and pits (sector 1+)
-                if (idx >= 2 && s % 5 === 4) this.spawnFlame(sx);
-                if (idx >= 1 && s % 7 === 6) this.spawnPit(sx, 90);
-
-                // weapon crate occasionally (Relevance Rule: enemies follow in later slots)
-                if (s > 0 && s < slots - 2 && s % 4 === 3) this.spawnCrate(sx, GROUND_Y - 30, this.rollWeapon(idx));
-            }
-
-            // any remaining pieces (rounding) → place near the end on the main path
-            for (; pi < pieces.length; pi++) this.spawnPOW(len - 700 - pi * 200, pieces[pi].key);
+            this.populateSector(idx, len);
 
             // sector exit flag (reach right edge → clear)
             this.exitX = len - 160;
             this.sectorCleared = false;
             this.updateHUD();
+        };
+
+        /* =================================================================
+           DENSITY ENGINE "NO DEAD AIR" (MS2 Bible §3.3 / APPENDIX A / E.2).
+           Combat slots are filled to a per-screen FLOOR (never "kadang ada
+           kadang nggak"): every screen gets ≥minEnemies, ≥1 elevation, and
+           ≥2 destructibles; reward (POW/crate) cadence ≤2.5×BW; the longest
+           empty run is bounded by maxDeadPx. Enemies are emitted as INERT
+           SPAWN RECORDS (no hitbox until born at the camera edge, §5.2).
+           ================================================================= */
+        GameScene.prototype.recordEnemy = function (type, x, y) {
+            // off-screen enemy = DATA, not entity. Born at the right edge in update().
+            this.spawnList.push({ type: type, x: Math.round(x), y: y });
+        };
+        GameScene.prototype.populateSector = function (idx, len) {
+            var self = this, C2 = CONFIG.density, density = this.diff.density;
+            var pool = this.sectorEnemyPool(idx);
+            var minE = C2.minEnemies[STORE.diff] || C2.minEnemies.normal;
+            var maxDead = Math.round(BW * C2.maxDeadPx);
+            var rewardEvery = Math.round(BW * C2.rewardEveryPx);
+
+            var SAFE = 640;                 // onboarding safe zone (no enemies)
+            var STEP = 300;                 // base encounter spacing
+            var combatStart = SAFE, combatEnd = len - 360;
+            var slots = Math.max(1, Math.floor((combatEnd - combatStart) / STEP));
+
+            // POW pieces for this sector (deterministic slice), only those not yet unlocked
+            var pieces = infosForSector(idx).filter(function (i) { return !unlocked[i.key]; });
+            var powEvery = pieces.length ? Math.max(2, Math.floor(slots / pieces.length)) : 999;
+            var pi = 0;
+
+            // density bookkeeping (per BW-wide screen window)
+            var screens = Math.ceil(len / BW);
+            var enemyPerScreen = new Array(screens + 1).join('0').split('').map(Number);
+            var platPerScreen  = enemyPerScreen.slice();
+            var destrPerScreen = enemyPerScreen.slice();
+            var lastEventX = SAFE;          // for dead-air tracking
+            var lastRewardX = 0;            // for reward cadence
+            function screenOf(x) { return Math.min(screens - 1, Math.floor(x / BW)); }
+            function noteEvent(x) { if (x > lastEventX) lastEventX = x; }
+
+            // helper: emit a single rolled enemy type as a spawn RECORD (not an entity)
+            function emitEnemy(type, x, y) {
+                self.recordEnemy(type, x, y);
+                enemyPerScreen[screenOf(x)]++;
+                noteEvent(x);
+            }
+            function rollGroundType(roll) {
+                if (roll < 0.55) return 'rush';
+                if (roll < 0.85) return 'range';
+                if (pool.indexOf('drone') >= 0 && roll < 0.93) return 'drone';
+                if (pool.indexOf('tank') >= 0) return 'tank';
+                return 'rush';
+            }
+
+            // ---- main spine: deterministic floor + difficulty-scaled extras ----
+            for (var s = 0; s < slots; s++) {
+                var sx = combatStart + s * STEP + Math.round(Math.sin(s * 1.3) * 30);
+
+                // POW reward slot (kept lighter — one guard, not a wave)
+                if (pi < pieces.length && s % powEvery === 1) {
+                    this.spawnPOW(sx, pieces[pi].key); pi++;
+                    lastRewardX = sx; noteEvent(sx);
+                    emitEnemy('rush', sx + 150, GROUND_Y - 30);   // 1 guard so the reward isn't free
+                    continue;
+                }
+
+                // ELEVATION: guaranteed climbing platforms (floor = ≥1 per screen).
+                // Every 2nd slot lays a ledge so no screen is flat ("pijakan kurang" fix).
+                if (s % 2 === 1) {
+                    var ph = [150, 240, 110, 200][s % 4];
+                    var py = GROUND_Y - ph;
+                    var pl = this.platforms.create(sx, py, 't_plat'); pl.refreshBody();
+                    platPerScreen[screenOf(sx)]++;
+                    // cover-fire perched on the ledge
+                    if (idx >= 1) emitEnemy('turret', sx, py - 22);
+                    else emitEnemy('range', sx, py - 28);
+                    // stepping ledge → reachable path up
+                    var pl2 = this.platforms.create(sx + 120, GROUND_Y - 90, 't_plat'); pl2.refreshBody();
+                    platPerScreen[screenOf(sx + 120)]++;
+                    noteEvent(sx);
+                }
+
+                // DESTRUCTIBLE cover (floor = ≥2 per screen): barrels are recorded as
+                // spawn records too (they have a damageable hitbox → off-screen-kill risk).
+                if (s % 3 === 0) { emitEnemy('barrel', sx + 40, GROUND_Y - 18); destrPerScreen[screenOf(sx + 40)]++; }
+                if (s % 3 === 2) { emitEnemy('barrel', sx - 30, GROUND_Y - 18); destrPerScreen[screenOf(sx - 30)]++; }
+
+                // GROUND COMBAT (≤2 types/wave). Always emit ≥1 ground enemy on combat
+                // slots so the floor is met deterministically; difficulty adds more.
+                emitEnemy(rollGroundType((s * 0.137) % 1), sx, GROUND_Y - 30);
+                if (Math.random() < 0.45 * density) emitEnemy('rush', sx + 80, GROUND_Y - 30);
+                if (idx >= 1 && Math.random() < 0.25 * density) emitEnemy('drone', sx + 40, GROUND_Y - 220);
+
+                // hazards: flame jets (sector 2+) and spikes (sector 1+)
+                if (idx >= 2 && s % 5 === 4) this.spawnFlame(sx);
+                if (idx >= 1 && s % 7 === 6) this.spawnPit(sx, 90);
+
+                // weapon crate (Relevance Rule: enemies follow). Counts as reward + destructible.
+                if (s > 0 && s < slots - 2 && s % 4 === 3) {
+                    this.spawnCrate(sx, GROUND_Y - 30, this.rollWeapon(idx));
+                    destrPerScreen[screenOf(sx)]++; lastRewardX = sx; noteEvent(sx);
+                }
+            }
+
+            // any remaining POW pieces (rounding) → place near the end on the main path
+            for (; pi < pieces.length; pi++) this.spawnPOW(len - 700 - pi * 200, pieces[pi].key);
+
+            // ---- DENSITY VALIDATOR pass (APPENDIX E.2): patch any screen below floor ----
+            for (var sc = 0; sc < screens; sc++) {
+                var sLeft = sc * BW, sRight = sLeft + BW;
+                var isSafe = sRight <= SAFE;            // first ~screen is onboarding
+                if (isSafe) continue;
+                if (sRight > combatEnd + BW) continue;  // tail near exit/boss gate — leave airy
+                // enemy floor
+                while (enemyPerScreen[sc] < minE) {
+                    var ex = sLeft + 120 + enemyPerScreen[sc] * 130;
+                    emitEnemy(rollGroundType((sc * 0.31 + enemyPerScreen[sc] * 0.17) % 1), Math.min(ex, sRight - 60), GROUND_Y - 30);
+                }
+                // elevation floor
+                while (platPerScreen[sc] < CONFIG.density.minPlatforms) {
+                    var px = sLeft + BW * 0.5;
+                    var p = this.platforms.create(px, GROUND_Y - 170, 't_plat'); p.refreshBody();
+                    platPerScreen[sc]++;
+                }
+                // destructible floor
+                while (destrPerScreen[sc] < CONFIG.density.minDestructible) {
+                    var dx = sLeft + 90 + destrPerScreen[sc] * 140;
+                    emitEnemy('barrel', Math.min(dx, sRight - 40), GROUND_Y - 18);
+                    destrPerScreen[sc]++;
+                }
+            }
+
+            // ---- DEAD-AIR + reward-cadence fill: walk the spine and patch gaps ----
+            this.spawnList.sort(function (a, b) { return a.x - b.x; });
+            var prevX = SAFE, patched = [];
+            for (var k = 0; k < this.spawnList.length; k++) {
+                var gap = this.spawnList[k].x - prevX;
+                if (gap > maxDead) {
+                    // insert a rush mid-gap so no viewport is empty (≤maxDeadPx rule)
+                    var midX = prevX + Math.round(gap / 2);
+                    patched.push({ type: 'rush', x: midX, y: GROUND_Y - 30 });
+                }
+                prevX = this.spawnList[k].x;
+            }
+            if (patched.length) {
+                this.spawnList = this.spawnList.concat(patched).sort(function (a, b) { return a.x - b.x; });
+            }
+
+            // reward cadence: if a long stretch has no POW/crate, drop a crate (≤2.5×BW)
+            // (lightweight: scan crate group + POW group positions already placed)
+            var rewardXs = [];
+            this.crates.getChildren().forEach(function (c) { if (c.active) rewardXs.push(c.x); });
+            this.pows.getChildren().forEach(function (p) { if (p.active) rewardXs.push(p.x); });
+            rewardXs.sort(function (a, b) { return a - b; });
+            var rPrev = SAFE;
+            for (var ri = 0; ri <= rewardXs.length; ri++) {
+                var rx = ri < rewardXs.length ? rewardXs[ri] : combatEnd;
+                if (rx - rPrev > rewardEvery) {
+                    var cX = rPrev + Math.round(rewardEvery * 0.8);
+                    if (cX < combatEnd - 200) this.spawnCrate(cX, GROUND_Y - 30, this.rollWeapon(idx));
+                }
+                rPrev = rx;
+            }
+
+            // final ordering guarantee for the camera-relative pointer
+            this.spawnList.sort(function (a, b) { return a.x - b.x; });
         };
 
         GameScene.prototype.sectorEnemyPool = function (idx) {
@@ -1449,23 +1931,54 @@
         };
 
         GameScene.prototype.spawnEnemy = function (type, x, y) {
-            var e;
-            if (type === 'rush') e = this.enemies.create(x, y, 't_e_rush');
-            else if (type === 'range') e = this.enemies.create(x, y, 't_e_range');
-            else if (type === 'drone') { e = this.enemies.create(x, y, 't_drone'); e.body.setAllowGravity(false); }
-            else if (type === 'tank') e = this.enemies.create(x, y, 't_tank');
-            else if (type === 'turret') { e = this.enemies.create(x, y, 't_turret'); e.body.setAllowGravity(false); e.body.setImmovable(true); }
-            else e = this.enemies.create(x, y, 't_e_rush');
+            // barrel is an enemy-group entity too (destructible cover) — born via the same path
+            if (type === 'barrel') return this.spawnBarrel(x, y);
+            // texKey + idle anim per type (idle anim only used in asset mode)
+            var texKey = type === 'range' ? 't_e_range'
+                : type === 'drone' ? 't_drone'
+                    : type === 'tank' ? 't_tank'
+                        : type === 'turret' ? 't_turret'
+                            : 't_e_rush';
+            var idleAnim = type === 'range' ? 'e_range_idle'
+                : type === 'drone' ? 'e_drone_hover'
+                    : type === 'tank' ? 'e_tank_roll'
+                        : type === 'turret' ? 'e_turret_idle'
+                            : 'e_rush_walk';
+            var e = this.enemies.create(x, y, texKey);
+            if (type === 'drone') e.body.setAllowGravity(false);
+            else if (type === 'turret') { e.body.setAllowGravity(false); e.body.setImmovable(true); }
+            // ASSET MODE: re-texture to the sliced sheet cell at the engine display size, play
+            // the idle/locomotion anim. Body is set below in SOURCE-frame px so it matches the
+            // world hitbox after the cell's scale is applied (mirrors the player asset path).
+            this.applyEnemyAsset(e, texKey, idleAnim);
             e.setData('type', type);
             e.setData('hp', type === 'tank' ? 8 : (type === 'turret' ? 3 : (type === 'drone' ? 2 : 1)));
             e.setData('aimT', type === 'turret' ? 400 : 0); e.setData('baseY', y); e.setData('seed', Math.random() * 6.28);
+            e.setData('animState', ''); e.setData('texKey', texKey);
             e.body.setCollideWorldBounds(false);
-            if (type === 'tank') e.body.setSize(56, 36);
+            // body sizing.
+            //  PROCEDURAL: texture == display, so the default body already matches → only tank
+            //  needs its classic tighter 56×36 box.
+            //  ASSET MODE: the arcade body is in SOURCE px and is NOT scaled by setDisplaySize, so
+            //  the default body would be the whole giant cell (e.g. 96×111) — that's why enemies
+            //  sank / floated. Size the body in SOURCE px to the world hitbox (÷ the uniform scale)
+            //  and FLOOR-ANCHOR it to the cell bottom, where the character's feet are (padBot≈0–1).
+            var d = usingEnemyAssets ? ENEMY_DISP[texKey] : null;
+            if (d) {
+                var bw = d.hb.w / d.scale, bh = d.hb.h / d.scale;   // source px (uniform scale)
+                e.body.setSize(bw, bh);
+                // floor-anchor to cell bottom; horizontally centered on the frame-0 cell width.
+                // drone floats → body vertically centered on its mass instead.
+                var offY = d.grav ? (d.ch - bh) - 1 : (d.ch - bh) / 2;
+                e.body.setOffset((d.cw0 - bw) / 2, Math.max(0, offY));
+            } else if (type === 'tank') {
+                e.body.setSize(56, 36);
+            }
             return e;
         };
         // explosive barrel: destructible, AoE on death (level juice + cover)
-        GameScene.prototype.spawnBarrel = function (x) {
-            var e = this.enemies.create(x, GROUND_Y - 18, 't_barrel');
+        GameScene.prototype.spawnBarrel = function (x, y) {
+            var e = this.enemies.create(x, y != null ? y : GROUND_Y - 18, 't_barrel');
             e.setData('type', 'barrel'); e.setData('hp', 2); e.setData('explosive', true);
             e.setData('aimT', 0); e.setData('seed', 0);
             e.body.setImmovable(true); e.body.setAllowGravity(false);
@@ -1532,30 +2045,64 @@
             // appeared instantly with no player visible.)
             this.bossActive = false;
             this.bossDead = false;
-            this.arenaX = len - Math.round(BW * 0.9);   // where the fight begins
+            // WIDER arena than one screen so the player has real attack distance and the
+            // caged couple sits FAR to the right of the boss (was cramped: boss jammed
+            // against the cage with no room). Camera pans within [arenaLeft, len] (clamped).
+            this.arenaW = Math.min(len, Math.round(BW * 1.6));
+            this.arenaLeft = len - this.arenaW;
+            // Activate the boss as soon as the player steps INTO the arena (near its left edge),
+            // so the camera locks early and the whole wide arena is visible — player on the left,
+            // boss to the right, cage far right. (Was: activate ~on top of the boss → cramped.)
+            this.arenaX = this.arenaLeft + Math.round(BW * 0.25);
             this.exitX = 99999;                          // no walk-exit; win by boss defeat
 
-            // approach corridor: a couple of guards so it isn't empty
-            this.spawnEnemy('range', this.arenaX - 700, GROUND_Y - 30);
-            this.spawnEnemy('rush', this.arenaX - 400, GROUND_Y - 30);
-            this.spawnEnemy('rush', this.arenaX - 250, GROUND_Y - 30);
+            // approach corridor: guards as camera-relative spawn records (born at the edge as
+            // the player walks in) — not eager far-X entities (anti off-screen-kill, §5.2).
+            this.recordEnemy('range', this.arenaX - 700, GROUND_Y - 30);
+            this.recordEnemy('rush', this.arenaX - 400, GROUND_Y - 30);
+            this.recordEnemy('rush', this.arenaX - 250, GROUND_Y - 30);
+            this.recordEnemy('barrel', this.arenaX - 520, GROUND_Y - 18);
+            this.spawnList.sort(function (a, b) { return a.x - b.x; });
 
-            // arena platforms (placed within the locked view)
-            var p1 = this.platforms.create(len - BW * 0.62, GROUND_Y - 160, 't_plat'); p1.refreshBody();
-            var p2 = this.platforms.create(len - BW * 0.30, GROUND_Y - 250, 't_plat'); p2.refreshBody();
+            // arena platforms (cover at left & mid so the player can reposition while fighting)
+            var p1 = this.platforms.create(this.arenaLeft + BW * 0.30, GROUND_Y - 160, 't_plat'); p1.refreshBody();
+            var p2 = this.platforms.create(this.arenaLeft + BW * 0.70, GROUND_Y - 250, 't_plat'); p2.refreshBody();
 
-            // wedding altar arch + caged couple in the background (visible goal)
-            this.add.image(len - 90, GROUND_Y + 2, 't_arch').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-8).setScale(1.3);
-            this.caged = this.add.image(len - 90, GROUND_Y - 36, 't_couple_caged').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-6);
-            this.cage = this.add.image(len - 90, GROUND_Y - 30, 't_cage').setOrigin(0.5, 1).setScrollFactor(1).setAlpha(0.9).setDepth(-5);
+            // wedding altar arch + caged couple — pinned to the FAR RIGHT edge (the goal),
+            // well clear of the boss so they don't crowd the fight.
+            var cageX = len - 70;
+            this.add.image(cageX, GROUND_Y + 2, 't_arch').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-8).setScale(1.3);
+            this.caged = this.add.image(cageX, GROUND_Y - 36, 't_couple_caged').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-6);
+            this.cage = this.add.image(cageX, GROUND_Y - 30, 't_cage').setOrigin(0.5, 1).setScrollFactor(1).setAlpha(0.9).setDepth(-5);
 
-            // boss created up-front but kept INACTIVE via the bossActive flag (NOT setActive(false)
-            // — that disables the arcade body so bullets stop overlapping; the old "boss never
-            // dies" bug). We keep the body enabled and just hide it with alpha until activation.
-            var b = this.physics.add.sprite(len - 240, GROUND_Y - 90, 't_boss');
+            // boss sits in the LEFT-CENTER of the wide arena → big gap to the cage on the right,
+            // and the player (spawns at the left wall) has a proper attack corridor.
+            // INACTIVE via the bossActive flag (NOT setActive(false) — disabling the body stops
+            // bullet overlap; the old "boss never dies" bug). Hidden with alpha until activation.
+            var bossX = this.arenaLeft + Math.round(this.arenaW * 0.62);
+            // ASSET MODE: the PNG mech fills its cell (feet at the very bottom), so its feet sit at
+            // center + dh/2. Plant them on the ground by homing at GROUND_Y - dh/2 (procedural boss
+            // had bottom padding, hence its old GROUND_Y - 90). Otherwise it floats.
+            var bdPre = usingEnemyAssets ? ENEMY_DISP['t_boss'] : null;
+            var bossHomeY = bdPre ? (GROUND_Y - Math.round(bdPre.dh / 2)) : (GROUND_Y - 90);
+            var b = this.physics.add.sprite(bossX, bossHomeY, 't_boss');
             b.body.setAllowGravity(false); b.body.setImmovable(true);
+            // re-texture to the sliced boss cell (uniform scale) + play idle. The art faces RIGHT;
+            // initial face-left toward the player (who spawns far left). updateBoss() then flips it
+            // toward the player every frame, and the muzzle follows the facing.
+            this.applyEnemyAsset(b, 't_boss', 'e_boss_idle');
+            if (usingEnemyAssets) b.setFlipX(true);
+            // size the contact body in SOURCE px to the visible mech (not the giant cell), centered
+            // & floor-anchored, so the player only takes touch damage near the actual body.
+            var bd = bdPre;
+            if (bd) {
+                var bbw = bd.hb.w / bd.scale, bbh = bd.hb.h / bd.scale;
+                b.body.setSize(bbw, bbh);
+                b.body.setOffset((bd.cw0 - bbw) / 2, (bd.ch - bbh) - 1);
+            }
             b.setData('hp', 36); b.setData('maxhp', 36); b.setData('phase', 1);  // TTK ~9s pistol
-            b.setData('atkT', 2200); b.setData('homeY', GROUND_Y - 90);
+            b.setData('atkT', 2200); b.setData('homeY', bossHomeY);
+            b.setData('animState', usingEnemyAssets ? 'e_boss_idle' : '');
             b.setAlpha(0);                       // hidden until activation
             this.boss = b;
             // NOTE: bullet hits handled MANUALLY in updateBoss (manualBossHits) — physics overlap
@@ -1619,13 +2166,16 @@
             if (this.bossHpBg) this.bossHpBg.setVisible(true);
             if (this.bossHpFill) this.bossHpFill.setVisible(true);
             this.updateBossHp();
-            // lock the camera to the arena (right side of the world)
-            this.cameras.main.setBounds(len - BW, 0, BW, BH);
+            // lock the camera to the WIDE arena [arenaLeft, len]; it keeps following the player
+            // (clamped to these bounds) so there's real room to move during the fight.
+            var aLeft = (this.arenaLeft != null) ? this.arenaLeft : (len - BW);
+            var aW = (this.arenaW != null) ? this.arenaW : BW;
+            this.cameras.main.setBounds(aLeft, 0, aW, BH);
             // wall on the left of the arena so the player can't retreat out of view
-            var wall = this.platforms.create(len - BW + 8, GROUND_Y - 200, 't_plat');
+            var wall = this.platforms.create(aLeft + 8, GROUND_Y - 200, 't_plat');
             wall.setScale(0.2, 24).refreshBody(); wall.setVisible(false);
             // player respawn point inside arena (so death respawns in-fight, not pit)
-            this.player.respawnX = len - BW + 80;
+            this.player.respawnX = aLeft + 80;
             this.flash(0xffffff, 120); this.addTrauma(0.3);
             SFX.boss();
             toast('⚠ BOSS: Jenderal Pembatal Nikah — selamatkan mempelai!');
@@ -1651,8 +2201,14 @@
             this.flash(0xffffff, 120); this.addTrauma(0.3); this.freeze(100);
             SFX.boss();
             toast('Boss naik fase!');
-            boss.setTint(0xff8888); var self = this;
-            this.time.delayedCall(200, function () { boss.clearTint(); });
+            var self = this;
+            // ASSET MODE: switch to the enraged loop on phase-up; procedural uses a red tint pulse.
+            if (usingEnemyAssets) {
+                this.enemyAnim(boss, 'e_boss_enraged', true);
+            } else {
+                boss.setTint(0xff8888);
+                this.time.delayedCall(200, function () { boss.clearTint(); });
+            }
         };
         GameScene.prototype.defeatBoss = function (boss) {
             var self = this;
@@ -1660,9 +2216,25 @@
             if (this.bossHpBg) this.bossHpBg.setVisible(false);
             if (this.bossHpFill) this.bossHpFill.setVisible(false);
             this.burst(boss.x, boss.y, 0xffd447, 24); this.addTrauma(0.5); this.flash(0xffffff, 150); this.freeze(120);
-            try { boss.destroy(); } catch (e) {}
+            // multi-blast boss death: a chain of sprite explosions across the big body
+            var bx = boss.x, by = boss.y;
+            this.playExplosion(bx, by, 1.4);
+            for (var i = 0; i < 5; i++) (function (i) {
+                self.time.delayedCall(120 + i * 130, function () {
+                    self.playExplosion(bx + Phaser_rand(self, -50, 50), by + Phaser_rand(self, -40, 40), 1.0 + Math.random() * 0.5);
+                });
+            })(i);
             if (this.cage) this.tweens.add({ targets: this.cage, alpha: 0, scaleY: 0, duration: 600 });
             SFX.win();
+            // ASSET MODE: hold the defeated frame under the explosion chain (~0.8s) before removing
+            // the body, so the dedicated death pose is seen; procedural removes it immediately.
+            if (usingEnemyAssets) {
+                boss.clearTint(); boss.body.enable = false;
+                this.enemyAnim(boss, 'e_boss_dead', true);
+                this.time.delayedCall(820, function () { try { boss.destroy(); } catch (e) {} });
+            } else {
+                try { boss.destroy(); } catch (e) {}
+            }
             bossFinale();
         };
 
@@ -1673,6 +2245,7 @@
             this.bullets.killAndHide(b); if (b.body) b.body.enable = false;
         };
         GameScene.prototype.explodeGrenade = function (x, y) {
+            this.playExplosion(x, y, 0.8);   // sprite-sheet boom (ms2 style) sized to the ~70px AoE
             this.burst(x, y, 0xff8a3d, 14); this.addTrauma(0.25); this.flash(0xffaa44, 80); SFX.grenade();
             var self = this, R = 70;
             this.enemies.getChildren().forEach(function (e) {
@@ -1710,11 +2283,33 @@
                 var ty = e.getData('type');
                 this.score += (ty === 'tank' ? 500 : ty === 'turret' ? 200 : ty === 'barrel' ? 50 : 100);
                 this.burst(e.x, e.y, 0xffd447, 8); this.addTrauma(0.1);
+                // armored kills get a sprite explosion (mooks stay as a spark pop)
+                if (ty === 'tank') this.playExplosion(e.x, e.y, 0.9);
+                else if (ty === 'turret') this.playExplosion(e.x, e.y, 0.6);
                 var m = e.getData('mark'); if (m) m.destroy();
                 var ex = e.x, ey = e.y, expl = e.getData('explosive');
-                e.destroy(); SFX.hit(); this.updateHUD();
+                SFX.hit(); this.updateHUD();
+                // ASSET MODE: hold the die/wreck pose for a short beat before removing the
+                // sprite, so the dedicated death frame is actually seen (mirrors player tumbang).
+                var dieAnim = ty === 'rush' ? 'e_rush_die' : ty === 'range' ? 'e_range_die'
+                    : ty === 'turret' ? 'e_turret_wreck' : ty === 'tank' ? 'e_tank_wreck'
+                        : ty === 'drone' ? 'e_drone_wreck' : null;
+                if (usingEnemyAssets && dieAnim && ty !== 'barrel') {
+                    var dd = e; dd.clearTint(); dd.body.enable = false;
+                    this.enemyAnim(dd, dieAnim, true);
+                    this.time.delayedCall(220, function () { try { dd.destroy(); } catch (e2) {} });
+                } else {
+                    e.destroy();
+                }
                 if (expl) this.explodeGrenade(ex, ey);   // barrel chain-explosion (cover + AoE)
-            } else { e.setTintFill(0xffffff); var ee = e; this.time.delayedCall(60, function () { if (ee.active) ee.clearTint(); }); }
+            } else {
+                e.setTintFill(0xffffff); var ee = e; this.time.delayedCall(60, function () { if (ee.active) ee.clearTint(); });
+                if (usingEnemyAssets) {
+                    var ht = e.getData('type');
+                    var hurtAnim = ht === 'rush' ? 'e_rush_hurt' : ht === 'range' ? 'e_range_hurt' : ht === 'turret' ? 'e_turret_hurt' : null;
+                    if (hurtAnim) { this.enemyAnim(e, hurtAnim, true); e.setData('animState', ''); } // clear so loco anim resumes next frame
+                }
+            }
         };
         GameScene.prototype.rescuePOW = function (p) {
             if (!p || !p.active || p.getData('rescued')) return;
@@ -1747,15 +2342,28 @@
             this.player.body.setVelocity(kb, -220);
             this.player.invuln = C.player.invulnMs; this.player._hurtAnimT = 350; this.player.blink();
         };
-        // pit fall → relocate to a safe backtrack point (a few meters back)
+        // pit fall → brief "tumbang" beat (dead pose), then relocate to a safe backtrack point.
+        // Still NO game-over (invitation): the dead frame is a short ~0.55s flourish, then respawn.
         GameScene.prototype.pitRespawn = function () {
-            if (this.player.cheat) { /* cheat can't fall to death either */ }
-            this.flash(0xff3b30, 80); this.addTrauma(0.3); SFX.hit();
-            var safe = this.findSafeRespawn(this.player.x);
-            this.player.setPosition(safe, GROUND_Y - 70);
-            this.player.body.setVelocity(0, 0);
-            this.player.invuln = C.player.invulnMs; this.player.blink();
+            var self = this, pl = this.player;
+            if (pl._respawning) return;            // guard: one beat at a time
+            pl._respawning = true;
+            this.flash(0xff3b30, 80); this.addTrauma(0.3); SFX.die();
+            var safe = this.findSafeRespawn(pl.x);
+            // show the tumbang pose at a visible spot (top of the safe column) for the beat
+            pl.dead = true;
+            pl.setPosition(safe, GROUND_Y - 70);
+            pl.body.setVelocity(0, 0); pl.body.setAllowGravity(false);
+            // step() early-returns while dead, so drive the tumbang frame directly here
+            if (pl.play) pl.play('p_dead', true);
+            pl.setScale((pl.assetMode ? 0.5 : 1) * (pl.facing < 0 ? -1 : 1), pl.assetMode ? 0.5 : 1);
+            pl.setAngle(0);
             this.freezeNearbyEnemies(safe);
+            this.time.delayedCall(550, function () {
+                pl.dead = false; pl._respawning = false;
+                pl.body.setAllowGravity(true);
+                pl.invuln = C.player.invulnMs; pl.blink();
+            });
         };
         // scan backward ~200px from death x for a spot that (a) has ground, (b) isn't on a
         // hazard, (c) has no enemy within 220px. Falls back to the last checkpoint-ish x.
@@ -1784,15 +2392,27 @@
 
         /* ================= JUICE (Bible §10) ================= */
         GameScene.prototype.burst = function (x, y, color, n) { this.pSpark.explode(n || 8, x, y); };
+        // Sprite-sheet EXPLOSION (metalslug-2 style). Plays t_explosion anim once at (x,y),
+        // self-destructs on complete. Always pairs with a spark burst so it still reads even
+        // if the asset is missing (fallback). scale defaults to ~boom size.
+        GameScene.prototype.playExplosion = function (x, y, scale) {
+            if (this.useExplosion && this.anims.exists('expl_anim')) {
+                var sp = this.add.sprite(x, y, 't_explosion').setDepth(6).setScale(scale || 1);
+                sp.play('expl_anim');
+                sp.once('animationcomplete', function () { sp.destroy(); });
+            }
+        };
         GameScene.prototype.flash = function (color, dur) { var c = P.Display.Color.IntegerToColor(color); this.cameras.main.flash(dur || 80, c.red, c.green, c.blue); };
         GameScene.prototype.addTrauma = function (t) { this.trauma = clamp(this.trauma + t, 0, 1); };
         GameScene.prototype.freeze = function (ms) { this.freezeUntil = Math.max(this.freezeUntil, this.time.now + Math.min(ms, 500)); };
         GameScene.prototype.celebrate = function (kind) {
-            // ~4.5s celebratory beat before the dialog (called by announceAllCollected/bossFinale)
+            // celebratory beat shown BEFORE the dialog. For the boss win the dialog appears at 5s
+            // (bossFinale), so keep the confetti/hearts going ~the full 5s (≈14×350ms) — no dead air.
             var self = this, n = 0;
+            var reps = kind === 'boss' ? 13 : 11;   // pieces beat stays ~4.5s
             this.flash(0xffffff, 150); this.addTrauma(0.5);
             var ev = this.time.addEvent({
-                delay: 350, repeat: 11, callback: function () {
+                delay: 350, repeat: reps, callback: function () {
                     var x = Phaser_rand(self, 60, BW - 60) + self.cameras.main.scrollX;
                     var y = Phaser_rand(self, 80, GROUND_Y - 60);
                     self.pHeart.explode(10, x, y); self.burst(x, y, 0xffd447, 8);
@@ -1807,6 +2427,12 @@
             if (time < this.freezeUntil) { return; }
 
             pollEdges();
+
+            // CAMERA-RELATIVE SPAWN (MS2 Bible §5.2 / T.7) — off-screen enemies are inert
+            // records with NO hitbox; they are BORN at the right screen edge as the camera
+            // reaches their triggerX. This makes off-screen-kill structurally impossible:
+            // a bullet can never hit an enemy that does not yet exist as an entity.
+            this.processSpawnPointer();
 
             // player
             if (this.player && this.player.active) this.player.step(time, delta);
@@ -1843,13 +2469,42 @@
             }
         };
 
+        // Cull bullets at the VIEWPORT EDGE (MS2 Bible §6 / E.3): a player bullet leaving the
+        // screen is disabled within ≤1 frame, so it can never travel into far off-screen space
+        // and strike something the player can't see. 16px margin per the bible.
         GameScene.prototype.cullGroup = function (grp) {
-            var view = this.cameras.main.worldView;
+            var cam = this.cameras.main, left = cam.scrollX - 16, right = cam.scrollX + BW + 16;
             grp.getChildren().forEach(function (b) {
                 if (!b.active) return;
-                if (b.x < view.x - 80 || b.x > view.right + 80 || b.y < -40 || b.y > BH + 40) {
+                if (b.x < left || b.x > right || b.y < -40 || b.y > BH + 40) {
                     b.setActive(false).setVisible(false); if (b.body) b.body.enable = false;
                     grp.killAndHide(b);
+                }
+            });
+        };
+
+        // CAMERA-RELATIVE SPAWN POINTER (MS2 Bible §5.2 / T.7). spawnList is sorted ↑x; we
+        // birth every record whose triggerX has reached the right edge, AT the edge (not at a
+        // far world-X). Also self-despawns enemies that scroll far off the LEFT (anti-leak).
+        GameScene.prototype.processSpawnPointer = function () {
+            if (!this.spawnList) return;
+            var cam = this.cameras.main, edge = cam.scrollX + BW;
+            while (this._spawnNext < this.spawnList.length && edge >= this.spawnList[this._spawnNext].x) {
+                var r = this.spawnList[this._spawnNext++];
+                // born at/just inside the right edge so wide sprites slide in cleanly
+                var bx = Math.max(r.x, edge - 8);
+                this.spawnEnemy(r.type, bx, r.y);
+            }
+            // despawn enemies that have scrolled well off the left (return to pool)
+            var leftCull = cam.scrollX - 80;
+            this.enemies.getChildren().forEach(function (e) {
+                if (!e.active || !e.body) return;
+                // never cull barrels you walked past (they're cover the player may still shoot
+                // from afar is fine — they're on-screen-bounded by the spawn too); cull only
+                // when truly behind the camera so populations stay near-screen.
+                if (e.body.right < leftCull) {
+                    var m = e.getData('mark'); if (m) m.destroy();
+                    e.destroy();
                 }
             });
         };
@@ -1865,8 +2520,8 @@
                 if (t === 'rush') {
                     e.body.setVelocityX(px < e.x ? -90 : 90);
                     e.setFlipX(px < e.x);
-                    // walk-cycle bob
-                    e.setScale(1, 1 + Math.sin(time / 80 + e.getData('seed')) * 0.06);
+                    if (usingEnemyAssets) self.enemyAnim(e, 'e_rush_walk');
+                    else e.setScale(1, 1 + Math.sin(time / 80 + e.getData('seed')) * 0.06); // procedural walk-bob
                 } else if (t === 'range') {
                     e.body.setVelocityX(0); e.setFlipX(px < e.x);
                     self.enemyAim(e, time, 600);
@@ -1874,9 +2529,11 @@
                     var seed = e.getData('seed');
                     e.y = e.getData('baseY') + Math.sin(time / 400 + seed) * 30;
                     e.body.setVelocityX(px < e.x ? -50 : 50);
+                    if (usingEnemyAssets) self.enemyAnim(e, 'e_drone_hover');
                     if (Math.random() < 0.004 * self.diff.density) self.dropBomb(e);
                 } else if (t === 'tank') {
                     e.body.setVelocityX(px < e.x ? -40 : 40); e.setFlipX(px < e.x);
+                    if (usingEnemyAssets) self.enemyAnim(e, 'e_tank_roll');
                     self.enemyAim(e, time, 1000, true);
                 } else if (t === 'turret') {
                     e.body.setVelocityX(0); e.setFlipX(px < e.x);
@@ -1885,13 +2542,38 @@
                 // barrels are static cover — no AI
             });
         };
+        // play an enemy anim only when the requested anim differs from the current state
+        // (avoids restarting a loop every frame). Skips one-shot states while they run.
+        GameScene.prototype.enemyAnim = function (e, animKey, forceRestart) {
+            if (!usingEnemyAssets || !e || !e.active) return;
+            if (!this.anims.exists(animKey)) return;
+            if (!forceRestart && e.getData('animState') === animKey) return;
+            e.setData('animState', animKey);
+            e.play(animKey, true);
+        };
         GameScene.prototype.enemyAim = function (e, time, tell, lob) {
             var aimT = e.getData('aimT') - 16;
             if (aimT <= 0) {
-                e.setTintFill(0xff5a4d);
-                var self = this, ee = e, isLob = lob;
+                var self = this, ee = e, isLob = lob, t = e.getData('type');
+                // telegraph: ASSET MODE plays the 'aim' frame; procedural uses the red tint.
+                if (usingEnemyAssets) {
+                    var aimAnim = t === 'tank' ? 'e_tank_aim' : t === 'turret' ? 'e_turret_aim' : 'e_range_aim';
+                    this.enemyAnim(e, aimAnim, true);
+                } else {
+                    e.setTintFill(0xff5a4d);
+                }
                 this.time.delayedCall(tell * (1 + this.diff.tellAdd), function () {
-                    if (!ee.active) return; ee.clearTint();
+                    if (!ee.active) return;
+                    if (usingEnemyAssets) {
+                        var fireAnim = t === 'tank' ? 'e_tank_fire' : t === 'turret' ? 'e_turret_fire' : 'e_range_fire';
+                        self.enemyAnim(ee, fireAnim, true);
+                        // brief muzzle pose then back to idle/roll locomotion
+                        self.time.delayedCall(140, function () {
+                            if (!ee.active) return;
+                            var back = t === 'tank' ? 'e_tank_roll' : t === 'turret' ? 'e_turret_idle' : 'e_range_idle';
+                            self.enemyAnim(ee, back, true);
+                        });
+                    } else ee.clearTint();
                     self.enemyFire(ee, isLob);
                 });
                 e.setData('aimT', tell + 1200);
@@ -1916,17 +2598,32 @@
         GameScene.prototype.updateBoss = function (time, delta) {
             var b = this.boss, self = this;
             var ph = b.getData('phase');
+            // FACE THE PLAYER: art faces right, so flipX when the player is to the LEFT. Mirror the
+            // muzzle to whichever side the boss now faces so shots leave from the cannon, not its back.
+            if (usingEnemyAssets) b.setFlipX(self.player && self.player.x < b.x);
             var atk = b.getData('atkT') - delta;
             if (atk <= 0) {
                 var tell = (ph === 3 ? 1100 : ph === 2 ? 700 : 800) * (1 + this.diff.tellAdd);
-                b.setTint(0xff8888);
+                // telegraph: ASSET MODE plays the telegraph frame; procedural keeps the red tint.
+                if (usingEnemyAssets) this.enemyAnim(b, 'e_boss_tell', true);
+                else b.setTint(0xff8888);
                 this.time.delayedCall(tell, function () {
-                    if (!b.active || !self.bossActive) return; b.clearTint();
+                    if (!b.active || !self.bossActive) return;
+                    if (usingEnemyAssets) {
+                        self.enemyAnim(b, 'e_boss_fire', true);
+                        // after the volley, settle back to idle (ph1) or enraged loop (ph2+)
+                        self.time.delayedCall(260, function () {
+                            if (!b.active || !self.bossActive) return;
+                            self.enemyAnim(b, b.getData('phase') >= 2 ? 'e_boss_enraged' : 'e_boss_idle', true);
+                        });
+                    } else b.clearTint();
                     // AIM AT THE PLAYER: aim vector from boss muzzle to player, with a small
                     // spread fan so it's dodgeable. (Bug fix: previously always fired flat-left.)
                     var count = ph === 1 ? 3 : (ph === 2 ? 5 : 4);
                     var spd = 300 * self.diff.bulletSpd;
-                    var mx = b.x - 50, my = b.y - 6;
+                    // muzzle on the side the boss faces (toward the player), not hardcoded left.
+                    var faceLeft = self.player ? (self.player.x < b.x) : true;
+                    var mx = b.x + (faceLeft ? -50 : 50), my = b.y - 6;
                     for (var i = 0; i < count; i++) {
                         (function (i) {
                             self.time.delayedCall(i * 100, function () {
@@ -1995,8 +2692,19 @@
         Player.prototype = Object.create(P.Physics.Arcade.Sprite.prototype);
         Player.prototype.constructor = Player;
         Player.prototype.init = function () {
-            this.body.setSize(C.player.w, C.player.h);
-            this.body.setOffset((this.width - C.player.w) / 2, this.height - C.player.h);  // center & floor-anchor
+            // PNG assets are 60x84 (2x). Render at 0.5 so the player looks the same size as
+            // the 30x42 procedural sprite — every world number (hitbox/GROUND_Y/camera) stays
+            // valid. body.setSize/offset are in TEXTURE px, so they scale with the sprite.
+            this.assetMode = usingPlayerAssets;
+            if (this.assetMode) {
+                this.setScale(0.5);
+                // body in texture-space: 2x the world hitbox, centered & floor-anchored
+                this.body.setSize(C.player.w * 2, C.player.h * 2);
+                this.body.setOffset((this.width - C.player.w * 2) / 2, this.height - C.player.h * 2);
+            } else {
+                this.body.setSize(C.player.w, C.player.h);
+                this.body.setOffset((this.width - C.player.w) / 2, this.height - C.player.h);  // center & floor-anchor
+            }
             this.body.setMaxVelocity(C.player.run, C.player.maxFall);
             this.body.setDragX(C.player.drag);
             this.setCollideWorldBounds(true);
@@ -2044,12 +2752,13 @@
             var wantProne = input.down && onGround;
             if (wantProne !== this._prone) {
                 this._prone = wantProne;
+                var k = this.assetMode ? 2 : 1;   // body is in TEXTURE px (2x in asset mode)
                 if (wantProne) {
-                    this.body.setSize(C.player.w, C.player.h * 0.6);
-                    this.body.setOffset((this.width - C.player.w) / 2, this.height - C.player.h * 0.6);
+                    this.body.setSize(C.player.w * k, C.player.h * 0.6 * k);
+                    this.body.setOffset((this.width - C.player.w * k) / 2, this.height - C.player.h * 0.6 * k);
                 } else {
-                    this.body.setSize(C.player.w, C.player.h);
-                    this.body.setOffset((this.width - C.player.w) / 2, this.height - C.player.h);
+                    this.body.setSize(C.player.w * k, C.player.h * k);
+                    this.body.setOffset((this.width - C.player.w * k) / 2, this.height - C.player.h * k);
                 }
             }
 
@@ -2072,9 +2781,11 @@
 
             // pick frame-by-frame ANIM by state (real leg movement)
             var anim;
-            if (this.invuln > 0 && this._hurtAnimT > 0) { anim = 'p_hurt'; this._hurtAnimT -= delta; }
+            var aimingDown = input.down && !this.body.blocked.down;   // shoot-down while airborne
+            if (this.dead) { anim = 'p_dead'; }
+            else if (this.invuln > 0 && this._hurtAnimT > 0) { anim = 'p_hurt'; this._hurtAnimT -= delta; }
             else if (proneNow) anim = 'p_prone';
-            else if (!onGround) anim = vy < 0 ? 'p_jump' : 'p_fall';
+            else if (!onGround) anim = (input.fire && aimingDown) ? 'p_jumpdown' : (vy < 0 ? 'p_jump' : 'p_fall');
             else if (Math.abs(vx) > 40) anim = 'p_run';
             else anim = 'p_idle';
             if (this.anims && this.anims.currentAnim && this.anims.currentAnim.key === anim) { /* keep */ }
@@ -2086,7 +2797,9 @@
             this._wasGround = onGround;
             this._squash = Math.max(0, (this._squash || 0) - delta / 140);
 
-            var sx = 1, sy = 1, ang = 0;
+            // base scale: 0.5 in asset mode (60x84 PNG -> 30x42 on screen), 1 procedural
+            var base = this.assetMode ? 0.5 : 1;
+            var sx = base, sy = base, ang = 0;
             if (!onGround) ang = Phaser_clampNum(vx * 0.015, -6, 6);
             if (this._squash > 0) { sy *= (1 - 0.28 * this._squash); sx *= (1 + 0.28 * this._squash); }
             if (this._recoil > 0) { this._recoil -= delta; sx *= 0.97; }   // tiny recoil
