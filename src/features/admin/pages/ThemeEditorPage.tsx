@@ -3,7 +3,7 @@ import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
 import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord, ThemeAssetMedia } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload, HiCheck } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload, HiCheck, HiOutlineExternalLink } from 'react-icons/hi';
 import { Button } from '@/shared/components/Button';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Lightbox } from '@/shared/components/Lightbox';
@@ -821,6 +821,25 @@ export function ThemeEditorPage() {
         }
     };
 
+    // Open the real invitation in a new tab using the theme-preview override URL
+    // (#/preview/<kode-tema>/<slug>) for the SAME tenant currently selected in the
+    // live preview and the SAME theme being edited. Falls back to the theme name
+    // sluggified if no code is set; needs both a code/slug and a selected tenant.
+    const handleOpenInvitation = () => {
+        const tenant = allTenants.find(t => t.id === selectedPreviewTenantId) || previewTenant;
+        if (!tenant || !tenant.domain_slug) {
+            toast.error('Pilih tenant pada live preview terlebih dahulu.');
+            return;
+        }
+        const themeCode = (code || '').trim();
+        if (!themeCode) {
+            toast.error('Tema belum punya kode. Isi kolom "Kode Tema" untuk membuka undangan.');
+            return;
+        }
+        const url = `${window.location.origin}${window.location.pathname}#/preview/${themeCode}/${tenant.domain_slug}`;
+        window.open(url, '_blank', 'noopener');
+    };
+
     const handlePaste = (e: React.ClipboardEvent) => {
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
@@ -1073,6 +1092,37 @@ export function ThemeEditorPage() {
         setYoutubeUrl('');
         toast.success(`Video YouTube ditambahkan sebagai ${code}`);
         persistAssetMediaListDebounced(newList);
+    };
+
+    // ---- Drag & drop reorder of asset media ----
+    // Index of the card currently being dragged (null when not dragging) and the
+    // index it is hovering over (drop target), used only for visual feedback.
+    const [draggingAssetIndex, setDraggingAssetIndex] = useState<number | null>(null);
+    const [dragOverAssetIndex, setDragOverAssetIndex] = useState<number | null>(null);
+
+    // Re-derive every media_code from the list's new ORDER so the binding variable
+    // ({{asset_image_1}}, {{asset_image_2}}, {{asset_video_1}}, ...) always matches
+    // the position the user sees. Codes are per-type sequential, 1-based.
+    const renumberAssetCodes = (list: ThemeAssetMedia[]): ThemeAssetMedia[] => {
+        const counters: Record<string, number> = {};
+        return list.map(a => {
+            const n = (counters[a.media_type] = (counters[a.media_type] || 0) + 1);
+            return { ...a, media_code: `${a.media_type}_${n}` };
+        });
+    };
+
+    // Move the asset at `from` to position `to`, renumber codes, then persist + sync.
+    const reorderAsset = (from: number, to: number) => {
+        if (from === to || from < 0 || to < 0) return;
+        if (from >= assetMediaList.length || to >= assetMediaList.length) return;
+        const next = [...assetMediaList];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        const renumbered = renumberAssetCodes(next);
+        assetMediaListRef.current = renumbered;
+        setAssetMediaList(renumbered);
+        persistAssetMediaListDebounced(renumbered);
+        toast.success('Urutan asset diperbarui — variabel binding ikut menyesuaikan.');
     };
 
     const handleDeleteAsset = (asset: ThemeAssetMedia) => {
@@ -2151,13 +2201,6 @@ export function ThemeEditorPage() {
                             >
                                 <span className="flex justify-center items-center gap-2">⚙️ Setup</span>
                             </button>
-                            <button
-                                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700`}
-                                onClick={() => setIsGuideOpen(true)}
-                                title="Panduan Pembuatan Tema"
-                            >
-                                <span className="flex justify-center items-center gap-2"><HiOutlineInformationCircle className="w-5 h-5" /> Panduan</span>
-                            </button>
                         </div>
                         {isFocusMode && (
                             <button
@@ -2263,11 +2306,12 @@ export function ThemeEditorPage() {
                                 </div>
 
                                 {/* ===== Pratinjau Tema + Asset Media (side by side) ===== */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 border-t border-gray-100 dark:border-gray-800 pt-4">
+                                {/* Pratinjau dibuat lebih sempit (4/12) dan Asset Media lebih lebar (8/12). */}
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 border-t border-gray-100 dark:border-gray-800 pt-4">
 
                                     {/* --- KIRI: Gambar Pratinjau Tema --- */}
                                     {!isNewTheme && (
-                                        <div>
+                                        <div className="lg:col-span-4">
                                             <div className="flex justify-between items-center mb-1">
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar Pratinjau Tema</label>
                                                 <div className="flex items-center gap-2">
@@ -2340,11 +2384,11 @@ export function ThemeEditorPage() {
                                                 )}
 
                                                 {previewImage ? (
-                                                    <div className="relative group min-h-[120px] flex items-center justify-center">
+                                                    <div className="relative group min-h-[360px] flex items-center justify-center">
                                                         <ProxyImage
                                                             src={previewImage}
                                                             alt="Preview"
-                                                            className={`w-full h-48 rounded-xl object-cover border border-gray-100 dark:border-gray-700 shadow-sm transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}
+                                                            className={`mx-auto h-[440px] w-auto max-w-full rounded-xl object-contain border border-gray-100 dark:border-gray-700 shadow-sm transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}
                                                         />
 
                                                         {!uploadingPreview && !deletingPreview && (
@@ -2371,12 +2415,12 @@ export function ThemeEditorPage() {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <div className={`flex flex-col items-center justify-center py-8 text-center transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}>
+                                                    <div className={`flex flex-col items-center justify-center min-h-[420px] py-8 text-center transition-opacity ${(uploadingPreview || deletingPreview) ? 'opacity-30' : 'opacity-100'}`}>
                                                         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 text-gray-400 group-hover:text-gold-500 transition-colors">
                                                             <i className="ri-image-add-line text-2xl"></i>
                                                         </div>
                                                         <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Klik area ini lalu Paste (Ctrl+V)</p>
-                                                        <p className="text-[10px] text-gray-500 mt-1">Atau Drag & Drop ke sini</p>
+                                                        <p className="text-[10px] text-gray-500 mt-1">Thumbnail tema berbentuk layar HP (potret) — Drag & Drop ke sini</p>
                                                         <button
                                                             type="button"
                                                             onClick={(e) => { e.stopPropagation(); previewFileInputRef.current?.click(); }}
@@ -2402,7 +2446,7 @@ export function ThemeEditorPage() {
                                     )}
 
                                     {/* --- KANAN: Asset Media Tema --- */}
-                                    <div className={isNewTheme ? 'lg:col-span-2' : ''}>
+                                    <div className={isNewTheme ? 'lg:col-span-12' : 'lg:col-span-8'}>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset Media Tema</label>
                                         <p className="text-xs text-gray-500 mb-3">
                                             Foto/video statis milik desain tema. Pakai di HTML dengan variabel{' '}
@@ -2483,7 +2527,7 @@ export function ThemeEditorPage() {
                                         </div>
 
                                         {/* YouTube link input */}
-                                        <div className="flex gap-2 mt-3">
+                                        <div className="flex items-center gap-2 mt-3">
                                             <input
                                                 type="text"
                                                 value={youtubeUrl}
@@ -2492,7 +2536,7 @@ export function ThemeEditorPage() {
                                                 placeholder="https://youtube.com/watch?v=... (link YouTube)"
                                                 className="input-field text-xs"
                                             />
-                                            <Button onClick={handleAddYoutubeAsset}>Tambah YouTube</Button>
+                                            <Button size="sm" onClick={handleAddYoutubeAsset} className="shrink-0 whitespace-nowrap">Tambah YouTube</Button>
                                         </div>
 
                                         {/* Bulk-delete toolbar */}
@@ -2557,12 +2601,42 @@ export function ThemeEditorPage() {
                                             {assetMediaList.length === 0 ? (
                                                 <span className="text-xs text-gray-400 italic">Belum ada asset media</span>
                                             ) : (
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                    {assetMediaList.map(asset => {
+                                                <>
+                                                {!assetSelectionMode && (
+                                                    <p className="text-[10px] text-gray-400 mb-2 flex items-center gap-1">
+                                                        <i className="ri-drag-move-2-line"></i>
+                                                        Tarik kartu untuk mengubah urutan — nama variabel binding ikut menyesuaikan.
+                                                    </p>
+                                                )}
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                                    {assetMediaList.map((asset, index) => {
                                                         const isDeleting = deletingAssetCodes.has(asset.media_code);
                                                         const isSelected = selectedAssetCodes.has(asset.media_code);
                                                         return (
-                                                        <div key={asset.media_code} className={`relative group border rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800/50 transition-all ${assetSelectionMode && isSelected ? 'border-red-500 ring-2 ring-red-400/40' : 'border-gray-200 dark:border-gray-700'}`}>
+                                                        <div
+                                                            key={asset.media_code}
+                                                            draggable={!assetSelectionMode && !isDeleting}
+                                                            onDragStart={(e) => {
+                                                                if (assetSelectionMode || isDeleting) return;
+                                                                setDraggingAssetIndex(index);
+                                                                e.dataTransfer.effectAllowed = 'move';
+                                                                // Some browsers need data set to start a drag.
+                                                                try { e.dataTransfer.setData('text/plain', String(index)); } catch { }
+                                                            }}
+                                                            onDragOver={(e) => {
+                                                                if (draggingAssetIndex === null) return;
+                                                                e.preventDefault();
+                                                                e.dataTransfer.dropEffect = 'move';
+                                                                if (dragOverAssetIndex !== index) setDragOverAssetIndex(index);
+                                                            }}
+                                                            onDrop={(e) => {
+                                                                e.preventDefault();
+                                                                if (draggingAssetIndex !== null) reorderAsset(draggingAssetIndex, index);
+                                                                setDraggingAssetIndex(null);
+                                                                setDragOverAssetIndex(null);
+                                                            }}
+                                                            onDragEnd={() => { setDraggingAssetIndex(null); setDragOverAssetIndex(null); }}
+                                                            className={`relative group border rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800/50 transition-all ${!assetSelectionMode && !isDeleting ? 'cursor-grab active:cursor-grabbing' : ''} ${draggingAssetIndex === index ? 'opacity-40' : ''} ${dragOverAssetIndex === index && draggingAssetIndex !== null && draggingAssetIndex !== index ? 'ring-2 ring-gold-400 border-gold-400' : assetSelectionMode && isSelected ? 'border-red-500 ring-2 ring-red-400/40' : 'border-gray-200 dark:border-gray-700'}`}>
                                                             <div
                                                                 className={`relative aspect-square bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden ${assetSelectionMode ? 'cursor-pointer' : asset.media_type === 'image' ? 'cursor-zoom-in' : ''}`}
                                                                 onClick={() => {
@@ -2628,6 +2702,7 @@ export function ThemeEditorPage() {
                                                         );
                                                     })}
                                                 </div>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -2650,7 +2725,7 @@ export function ThemeEditorPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <div className="px-3">
+                                <div className="px-3 flex items-center gap-2">
                                     <input
                                         type="file"
                                         ref={fileInputRef}
@@ -2659,6 +2734,13 @@ export function ThemeEditorPage() {
                                         multiple
                                         accept=".html,.css,.js"
                                     />
+                                    <button
+                                        onClick={() => setIsGuideOpen(true)}
+                                        className="text-[11px] font-medium flex items-center gap-1.5 bg-[#444] hover:bg-gold-600 text-gray-200 hover:text-white px-3 py-1.5 rounded transition-colors tooltip tooltip-left"
+                                        title="Panduan Pembuatan Tema"
+                                    >
+                                        <HiOutlineInformationCircle className="w-4 h-4" /> Panduan
+                                    </button>
                                     <button
                                         onClick={() => setIsAiModalOpen(true)}
                                         className="text-[11px] font-medium flex items-center gap-1.5 bg-[#444] hover:bg-gold-600 text-gray-200 hover:text-white px-3 py-1.5 rounded transition-colors tooltip tooltip-left"
@@ -2714,6 +2796,13 @@ export function ThemeEditorPage() {
                                     title="Refresh Preview"
                                 >
                                     <HiOutlineRefresh className={`w-4 h-4 ${(loading || loadingPreview || isPreviewUpdating) ? 'animate-spin' : ''}`} />
+                                </button>
+                                <button
+                                    onClick={handleOpenInvitation}
+                                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gold-600 transition-colors tooltip tooltip-bottom"
+                                    title="Lihat undangan (buka tema ini untuk tenant terpilih di tab baru)"
+                                >
+                                    <HiOutlineExternalLink className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => setIsSimulationModalOpen(true)}

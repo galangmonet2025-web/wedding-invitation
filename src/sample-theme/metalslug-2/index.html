@@ -1,0 +1,345 @@
+<!-- METAL SLUG 2 — WEDDING THEME · index.html
+     Kerangka host-compliant (lihat METALSLUG2_BIBLE.md APPENDIX Z).
+     - 1 sumber binding: #inv-source (semua {{vars}} sekali saja; {{#if}} membungkus <section>)
+     - Layout desktop = TEPAT 2 kolom: frame game KIRI (dipatok) + panel undangan KANAN (pure)
+     - ID host verbatim: btn-toggle-music, bg-music, wish-name/wish-message/btn-submit-ucapan,
+       rsvp-* / btn-submit-kehadiran, btn-show-qr -->
+
+<div class="gw-shell">
+
+  <!-- ============ FRAME GAME (desktop KIRI, dipatok 480px; mobile satu-satunya) ============ -->
+  <div class="gw-frame" id="gw-frame">
+    <div class="gw-stage" id="gw-stage"><!-- Phaser canvas masuk sini --></div>
+
+    <!-- HUD info (atas — dilihat, tak di-tap) -->
+    <div class="gw-hud" id="gw-hud">
+      <div class="gw-hud-left"><span id="gw-hp">♥♥♥</span></div>
+      <div class="gw-hud-mid">SCORE <span id="gw-score">000000</span></div>
+      <div class="gw-hud-right">SEKTOR <span id="gw-sector">1</span>/<span id="gw-sector-max">6</span></div>
+    </div>
+    <div class="gw-hud2">
+      <div class="gw-weap" id="gw-weapon">PISTOL</div>
+      <div class="gw-progress"><span id="gw-progress-n">0</span>/<span id="gw-progress-t">0</span> 💌</div>
+    </div>
+
+    <!-- ICON-BUTTON kolom KIRI-ATAS -->
+    <div class="gw-iconcol" id="gw-iconcol">
+      <button class="gw-iconbtn" id="gw-cheat"  title="Cheat / lewati">★</button>
+      <button class="gw-iconbtn" id="gw-stagesel-btn" title="Pilih stage">▦</button>
+      <button class="gw-iconbtn" id="gw-open-btn" title="Buka undangan" disabled>💌</button>
+      <button class="gw-iconbtn" id="btn-toggle-music" title="Musik">
+        <span id="play-icon">🔇</span><span id="pause-icon" style="display:none">🎵</span>
+      </button>
+      <button class="gw-iconbtn" id="gw-reset" title="Reset progres">⟲</button>
+    </div>
+
+    <!-- Indikator kepingan KANAN-ATAS (diisi JS, dinamis) -->
+    <div class="gw-pieces" id="gw-pieces"></div>
+
+    <!-- Kontrol sentuh (green zone bawah; disembunyikan di desktop) -->
+    <div class="gw-touch" id="gw-touch">
+      <div class="gw-joy" id="gw-joy"><div class="gw-joy-nub" id="gw-joy-nub"></div></div>
+      <div class="gw-actions">
+        <button class="gw-btn-fire" id="gw-fire">FIRE</button>
+        <button class="gw-btn-jmp"  id="gw-jump">JMP</button>
+        <button class="gw-btn-nade" id="gw-nade">✦</button>
+      </div>
+    </div>
+
+    <!-- ===== Overlay cover (PRESS START + pilih kesulitan + kontrol) ===== -->
+    <div class="gw-overlay gw-cover-ov" id="gw-cover-ov">
+      <div class="gw-ov-card">
+        <h1 class="gw-title">METAL SLUG 2</h1>
+        <p class="gw-subtitle">OPERATION: PELAMINAN</p>
+        <p class="gw-couple-names"><span data-var="groom_nickname">{{groom_nickname}}</span> &amp; <span data-var="bride_nickname">{{bride_nickname}}</span></p>
+        <div class="gw-diff" id="gw-diff-cover">
+          <span class="gw-diff-label">KESULITAN</span>
+          <button class="gw-diff-opt" data-diff="easy">EASY</button>
+          <button class="gw-diff-opt is-sel" data-diff="normal">NORMAL</button>
+          <button class="gw-diff-opt" data-diff="hard">HARD</button>
+        </div>
+        <button class="gw-press-start" id="gw-press-start">▶ PRESS START</button>
+        <p class="gw-hint">Keyboard: ← → gerak · ↑ lompat · ↓ tiarap · Z/SPACE tembak · X granat<br>
+          Mobile: joystick kiri · FIRE/JMP/✦ kanan</p>
+      </div>
+    </div>
+
+    <!-- ===== Overlay briefing antar-sektor ===== -->
+    <div class="gw-overlay" id="gw-briefing" style="display:none">
+      <div class="gw-ov-card">
+        <h2 class="gw-ov-h" id="gw-brief-title">SEKTOR 1</h2>
+        <p id="gw-brief-text">Tembus medan, temukan kepingan undangan.</p>
+        <button class="gw-ov-btn" id="gw-brief-go">▶ MULAI</button>
+      </div>
+    </div>
+
+    <!-- ===== Overlay area clear ===== -->
+    <div class="gw-overlay" id="gw-clear" style="display:none">
+      <div class="gw-ov-card">
+        <h2 class="gw-ov-h">AREA CLEAR!</h2>
+        <p id="gw-clear-text">Sektor selesai.</p>
+        <button class="gw-ov-btn" id="gw-clear-next">▶ LANJUT</button>
+      </div>
+    </div>
+
+    <!-- ===== Overlay semua kepingan terkumpul ===== -->
+    <div class="gw-overlay" id="gw-allpieces" style="display:none">
+      <div class="gw-ov-card">
+        <h2 class="gw-ov-h">💌 UNDANGAN LENGKAP!</h2>
+        <p id="gw-allpieces-text">Semua kepingan terkumpul — undangan siap dibuka.</p>
+        <button class="gw-ov-btn" id="gw-allpieces-open">💌 BUKA UNDANGAN</button>
+        <button class="gw-ov-btn gw-ghost" id="gw-allpieces-cont">Lanjut bermain</button>
+      </div>
+    </div>
+
+    <!-- ===== Overlay menang (boss kalah / happy ending) ===== -->
+    <div class="gw-overlay" id="gw-win" style="display:none">
+      <div class="gw-ov-card">
+        <h2 class="gw-ov-h">HAPPILY EVER AFTER 🎉</h2>
+        <p id="gw-win-text">Mempelai terselamatkan!</p>
+        <button class="gw-ov-btn" id="gw-win-open">💌 BUKA UNDANGAN</button>
+      </div>
+    </div>
+
+    <!-- ===== Overlay stage-select (grid + kesulitan) ===== -->
+    <div class="gw-overlay" id="gw-stagesel" style="display:none">
+      <div class="gw-ov-card">
+        <h2 class="gw-ov-h">PILIH STAGE</h2>
+        <div class="gw-diff" id="gw-diff-stagesel">
+          <span class="gw-diff-label">KESULITAN</span>
+          <button class="gw-diff-opt" data-diff="easy">EASY</button>
+          <button class="gw-diff-opt is-sel" data-diff="normal">NORMAL</button>
+          <button class="gw-diff-opt" data-diff="hard">HARD</button>
+        </div>
+        <div class="gw-stagegrid" id="gw-stagegrid"></div>
+        <div class="gw-ov-row">
+          <button class="gw-ov-btn" id="gw-stagesel-ok">▶ MAIN</button>
+          <button class="gw-ov-btn gw-ghost" id="gw-stagesel-close">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Overlay reset konfirmasi ===== -->
+    <div class="gw-overlay" id="gw-resetconfirm" style="display:none">
+      <div class="gw-ov-card">
+        <h2 class="gw-ov-h">RESET PROGRES?</h2>
+        <p>Semua kepingan & kesulitan kembali ke awal.</p>
+        <div class="gw-ov-row">
+          <button class="gw-ov-btn gw-danger" id="gw-reset-yes">YA, RESET</button>
+          <button class="gw-ov-btn gw-ghost" id="gw-reset-no">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Container reveal undangan penuh (scroll vertikal dalam frame) ===== -->
+    <div class="gw-reveal" id="gw-reveal" style="display:none">
+      <button class="gw-reveal-close" id="gw-reveal-close">✕</button>
+      <div class="gw-reveal-body" id="gw-reveal-body"><!-- diisi clone #inv-source --></div>
+    </div>
+  </div>
+
+  <!-- ============ PANEL UNDANGAN (desktop KANAN, mengisi sisa; pure — no tombol game) ======= -->
+  <aside class="gw-side" id="gw-side">
+    <canvas id="gw-couple-canvas" width="380" height="240"></canvas>
+    <div class="gw-side-names">
+      <span data-var="groom_nickname">{{groom_nickname}}</span>
+      <span class="gw-amp">&amp;</span>
+      <span data-var="bride_nickname">{{bride_nickname}}</span>
+    </div>
+    <div class="gw-side-date" data-var="wedding_date">{{wedding_date}}</div>
+    <div class="gw-side-sched">
+      <div class="gw-sched-item">
+        <div class="gw-sched-h">AKAD</div>
+        <div data-var="tanggal_akad">{{tanggal_akad}}</div>
+        <div data-var="jam_akad">{{jam_akad}}</div>
+        <div data-var="nama_lokasi_akad">{{nama_lokasi_akad}}</div>
+        {{#if akad_map}}<a class="gw-map" href="{{akad_map}}" target="_blank" rel="noopener">📍 Lihat Peta</a>{{/if}}
+      </div>
+      {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+      <div class="gw-sched-item">
+        <div class="gw-sched-h">RESEPSI</div>
+        <div data-var="tanggal_resepsi">{{tanggal_resepsi}}</div>
+        <div data-var="jam_resepsi">{{jam_resepsi}}</div>
+        <div data-var="nama_lokasi_resepsi">{{nama_lokasi_resepsi}}</div>
+        {{#if resepsi_map}}<a class="gw-map" href="{{resepsi_map}}" target="_blank" rel="noopener">📍 Lihat Peta</a>{{/if}}
+      </div>
+      {{/if}}
+    </div>
+    <button class="gw-side-open" id="gw-side-open">💌 BUKA UNDANGAN LENGKAP</button>
+  </aside>
+
+  <!-- ============ SATU-SATUNYA sumber binding: #inv-source ============ -->
+  <div class="gw-invitation" id="inv-source" aria-hidden="true">
+    <section data-info="hero" data-title="Hero">
+      <h2><span data-var="groom_nickname">{{groom_nickname}}</span> &amp; <span data-var="bride_nickname">{{bride_nickname}}</span></h2>
+      <p class="gw-inv-date">{{wedding_date}}</p>
+      {{#if quote}}<blockquote>"{{quote}}"<cite>— {{quote_by}}</cite></blockquote>{{/if}}
+    </section>
+
+    <section data-info="couple" data-title="Mempelai">
+      <h3>Mempelai</h3>
+      <div class="gw-couple-grid">
+        <div>
+          {{#if photo_groom_photo}}<img src="{{photo_groom_photo}}" alt="">{{/if}}
+          <p class="gw-nm">{{groom_name}}</p>
+          {{#if flag_tampilkan_nama_orang_tua}}<p class="gw-par">Putra dari<br>{{nama_bapak_laki_laki}} &amp; {{nama_ibu_laki_laki}}</p>{{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}{{#if ig_laki_laki}}<a href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener">@{{ig_laki_laki}}</a>{{/if}}{{/if}}
+        </div>
+        <div>
+          {{#if photo_bride_photo}}<img src="{{photo_bride_photo}}" alt="">{{/if}}
+          <p class="gw-nm">{{bride_name}}</p>
+          {{#if flag_tampilkan_nama_orang_tua}}<p class="gw-par">Putri dari<br>{{nama_bapak_perempuan}} &amp; {{nama_ibu_perempuan}}</p>{{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}{{#if ig_perempuan}}<a href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener">@{{ig_perempuan}}</a>{{/if}}{{/if}}
+        </div>
+      </div>
+    </section>
+
+    <section data-info="rsvp" data-title="RSVP">
+      <h3>Konfirmasi Kehadiran</h3>
+      <div class="gw-countdown">
+        <span><b id="tm-countdown-days">{{countdown_hari}}</b>Hari</span>
+        <span><b id="tm-countdown-hours">{{countdown_jam}}</b>Jam</span>
+        <span><b id="tm-countdown-minutes">{{countdown_menit}}</b>Menit</span>
+        <span><b id="tm-countdown-seconds">{{countdown_detik}}</b>Detik</span>
+      </div>
+      <form class="gw-form" onsubmit="return false">
+        <input id="rsvp-code" type="hidden" value="{{kode_undangan}}">
+        <select id="rsvp-status">
+          <option value="hadir">Hadir</option>
+          <option value="tidak">Tidak Hadir</option>
+          <option value="ragu">Masih Ragu</option>
+        </select>
+        <input id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu">
+        <button id="btn-submit-kehadiran" class="gw-form-btn">Kirim RSVP</button>
+        <div id="alert-submit-kehadiran" class="gw-alert"></div>
+      </form>
+    </section>
+
+    <section data-info="schedule" data-title="Jadwal">
+      <h3>Waktu &amp; Tempat</h3>
+      <div class="gw-sched-block">
+        <h4>Akad Nikah</h4>
+        <p>{{tanggal_akad}} · {{jam_akad}}</p>
+        <p>{{nama_lokasi_akad}}</p>
+        <p>{{keterangan_lokasi_akad}}</p>
+        {{#if akad_map}}<a class="gw-map" href="{{akad_map}}" target="_blank" rel="noopener">📍 Lihat Peta</a>{{/if}}
+      </div>
+      {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+      <div class="gw-sched-block">
+        <h4>Resepsi</h4>
+        <p>{{tanggal_resepsi}} · {{jam_resepsi}}</p>
+        <p>{{nama_lokasi_resepsi}}</p>
+        <p>{{keterangan_lokasi_resepsi}}</p>
+        {{#if resepsi_map}}<a class="gw-map" href="{{resepsi_map}}" target="_blank" rel="noopener">📍 Lihat Peta</a>{{/if}}
+      </div>
+      {{/if}}
+    </section>
+
+    {{#if is_fitur_live_streaming}}
+    <section data-info="streaming" data-title="Live Streaming">
+      <h3>Live Streaming</h3>
+      <a class="gw-map" href="{{link_live_streaming}}" target="_blank" rel="noopener">▶ Tonton Live</a>
+    </section>
+    {{/if}}
+
+    {{#if flag_pakai_timeline_kisah}}
+    <section data-info="story" data-title="Kisah">
+      <h3>Kisah Kami</h3>
+      {{#each timeline_kisah}}
+      <div class="gw-story-item"><b>{{this.tanggal}}</b><span>{{this.judul}}</span><p>{{this.deskripsi}}</p></div>
+      {{/each}}
+    </section>
+    {{/if}}
+
+    {{#if has_gallery}}
+    <section data-info="gallery" data-title="Galeri">
+      <h3>Galeri</h3>
+      <div class="gw-gallery">
+        {{#each galleries}}<img class="gw-gallery-item" src="{{this.url}}" alt="">{{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+    <section data-info="happiness" data-title="Bagikan Kebahagiaan">
+      <h3>Bagikan Kebahagiaan</h3>
+      <p>Tag kami di Instagram story kalian!</p>
+      <div class="gw-gallery">
+        {{#if sample_story_1}}<img class="gw-gallery-item" src="{{sample_story_1}}" alt="">{{/if}}
+        {{#if sample_story_2}}<img class="gw-gallery-item" src="{{sample_story_2}}" alt="">{{/if}}
+        {{#if sample_story_3}}<img class="gw-gallery-item" src="{{sample_story_3}}" alt="">{{/if}}
+      </div>
+      {{#if link_balasan_instagram}}<a class="gw-map" href="{{link_balasan_instagram}}" target="_blank" rel="noopener">📸 Buat Story</a>{{/if}}
+    </section>
+    {{/if}}
+
+    <section data-info="wishes" data-title="Ucapan">
+      <h3>Ucapan &amp; Doa</h3>
+      <form class="gw-form" onsubmit="return false">
+        <input id="wish-name" type="text" placeholder="Nama" value="{{guest_name}}">
+        <textarea id="wish-message" placeholder="Tulis ucapan &amp; doa..."></textarea>
+        <button id="btn-submit-ucapan" class="gw-form-btn">Kirim Ucapan</button>
+        <div id="alert-submit-ucapan" class="gw-alert"></div>
+      </form>
+      <div class="gw-wishes" id="gw-wishes-list">
+        {{#each wishes}}
+        <div class="gw-wish"><b>{{this.guest_name}}</b><span>{{this.guest_comment_time}}</span><p>{{this.guest_message}}</p></div>
+        {{/each}}
+      </div>
+    </section>
+
+    {{#if tampilkan_amplop_online}}
+    <section data-info="gift" data-title="Amplop">
+      <h3>Kirim Hadiah</h3>
+      <div class="gw-gift">
+        <p><b>{{bank_1}}</b><br>{{rek_1}}<br><span>a.n. {{nama_rek_1}}</span></p>
+        {{#if flag_pakai_qris_rekening_1}}<img class="gw-qris" src="{{gambar_qris_rekening_1}}" alt="QRIS">{{/if}}
+      </div>
+      {{#if flag_pakai_2_rekening}}
+      <div class="gw-gift">
+        <p><b>{{bank_2}}</b><br>{{rek_2}}<br><span>a.n. {{nama_rek_2}}</span></p>
+        {{#if flag_pakai_qris_rekening_2}}<img class="gw-qris" src="{{gambar_qris_rekening_2}}" alt="QRIS">{{/if}}
+      </div>
+      {{/if}}
+      {{#if flag_kirim_hadiah_offline}}
+      <div class="gw-gift"><p>Kirim ke:<br>{{nama_lokasi_kirim_hadiah_offline}}<br>{{alamat_lokasi_kirim_hadiah_offline}}</p></div>
+      {{/if}}
+    </section>
+    {{/if}}
+
+    <section data-info="closing" data-title="Penutup">
+      <h3>Terima Kasih</h3>
+      <p>{{kalimat_penutup}}</p>
+      <p class="gw-brand">{{site_name}}</p>
+    </section>
+  </div>
+
+  <!-- Modal kepingan (pop-up satu section) -->
+  <div class="gw-modal-root" id="gw-modal-root" style="display:none">
+    <div class="gw-modal-back" id="gw-modal-back"></div>
+    <div class="gw-modal-card">
+      <button class="gw-modal-close" id="gw-modal-close">✕</button>
+      <div class="gw-modal-body" id="gw-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Mirror musik host (BUKAN player asli) -->
+  <audio id="bg-music"></audio>
+
+  <!-- ============ ASET SPRITE (URL dari Theme Editor; fallback prosedural bila kosong) ============
+       Lihat assets/ASSETS.md. Urutan upload menentukan image_N. JS membaca src tiap <img> ini;
+       kalau masih "{{asset_image_N}}" (belum diupload) → game pakai sprite prosedural. -->
+  <div id="ms2-assets" style="display:none" aria-hidden="true">
+    <img data-asset="player_idle"  src="{{asset_image_1}}">
+    <img data-asset="player_run1"  src="{{asset_image_2}}">
+    <img data-asset="player_run2"  src="{{asset_image_3}}">
+    <img data-asset="player_shoot" src="{{asset_image_4}}">
+    <img data-asset="enemy_idle"   src="{{asset_image_5}}">
+    <img data-asset="enemy_run1"   src="{{asset_image_6}}">
+    <img data-asset="enemy_run2"   src="{{asset_image_7}}">
+    <img data-asset="muzzle"       src="{{asset_image_8}}">
+    <img data-asset="dirt"         src="{{asset_image_9}}">
+    <img data-asset="grass"        src="{{asset_image_10}}">
+    <img data-asset="explosion"    src="{{asset_image_11}}">
+  </div>
+</div>

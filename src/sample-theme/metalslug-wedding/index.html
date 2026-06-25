@@ -1,0 +1,484 @@
+<!-- ======================================================================
+     METAL SLUG WEDDING — "OPERATION: PELAMINAN"  (Phaser 3 run-and-gun)
+     ----------------------------------------------------------------------
+     A real 2D run-and-gun built on Phaser 3.80.1. The wedding invitation is
+     DISCOVERED by playing: RESCUE the POW couriers (bearded hostages, Metal
+     Slug style) — each rescued POW hands over one invitation piece (amplop 💌).
+     Clear 6 sectors and defeat the final boss to rescue the couple and reveal
+     the full invitation.
+
+     IMPORTANT — WEDDING INVITATION first, game second. Every guest reaches the
+     invitation without playing well:
+       • "BUKA UNDANGAN" (💌) button + Cheat (★) → invincible + auto-unlock all
+       • collecting the LAST piece OR finishing also opens everything.
+
+     Binding contract (host resolves BEFORE this JS runs — templateParser.ts):
+       {{var}} → plain text/url · {{#if flag}} wraps <section> · {{#each}}.
+     Each JS-read element carries BOTH data-var="key" AND {{key}} text → val().
+     Host-contract IDs kept VERBATIM (host queries/intercepts them):
+       btn-show-qr, btn-toggle-music, bg-music, play-icon, pause-icon,
+       btn-submit-ucapan, wish-name, wish-message,
+       btn-submit-kehadiran, rsvp-status, rsvp-guests, rsvp-code.
+     See METALSLUG_WEDDING_BIBLE.md (APPENDIX W–Z) for the full contract.
+     ====================================================================== -->
+
+<div class="msw-shell">
+
+<!-- ===== DESKTOP LEFT SIDE (narrow): cover / welcome — hidden on mobile ===== -->
+<aside class="msw-side msw-cover-side">
+    <div class="msw-side-scan"></div>
+    <div class="msw-side-panel">
+        <div class="msw-side-badge">★ UNDANGAN PERNIKAHAN ★</div>
+        <div class="msw-side-logo">METAL&nbsp;SLUG<br><span class="msw-side-logo-sub">WEDDING</span></div>
+        <div class="msw-side-op">OPERATION: PELAMINAN</div>
+
+        <!-- decorative canvas: the couple (groom in suit + bride) on a game scene -->
+        <div class="msw-couple-stage">
+            <canvas id="msw-couple-canvas" width="760" height="380"></canvas>
+        </div>
+
+        <div class="msw-side-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="msw-side-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+        <div class="msw-side-date" data-var="wedding_date">{{wedding_date}}</div>
+        <div class="msw-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+
+        <!-- pure wedding info: akad + resepsi (waktu, tanggal, tempat, map) -->
+        <div class="msw-side-info">
+            <div class="msw-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
+            <div class="msw-side-event">
+                <div class="msw-side-event-tag">AKAD NIKAH</div>
+                <div class="msw-side-event-line">{{tanggal_akad}} · {{jam_akad}}</div>
+                <div class="msw-side-event-place">{{nama_lokasi_akad}}</div>
+                <div class="msw-side-event-addr">{{keterangan_lokasi_akad}}</div>
+                {{#if akad_map}}<a class="msw-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+            </div>
+            {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+            <div class="msw-side-event">
+                <div class="msw-side-event-tag">RESEPSI</div>
+                <div class="msw-side-event-line">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
+                <div class="msw-side-event-place">{{nama_lokasi_resepsi}}</div>
+                <div class="msw-side-event-addr">{{keterangan_lokasi_resepsi}}</div>
+                {{#if resepsi_map}}<a class="msw-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+            </div>
+            {{/if}}
+            <button class="msw-side-open" id="msw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
+            <div class="msw-side-hint">Mainkan game di kiri &amp; selamatkan POW untuk membuka undangan satu per satu — atau buka langsung di atas.</div>
+        </div>
+    </div>
+</aside>
+
+<!-- ===== RIGHT SIDE (wider) = mobile frame: game + invitation — ONLY interactive area ===== -->
+<div class="msw-frame" id="msw-frame">
+
+    <div class="msw-stage" id="gw-stage">
+        <!-- Phaser injects its <canvas> here -->
+
+        <!-- ===== HUD (top — viewed, not tapped) ===== -->
+        <div class="msw-hud" id="msw-hud">
+            <div class="msw-hud-col">
+                <span class="msw-hud-label">
+                    <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+                    <span data-var="bride_nickname">{{bride_nickname}}</span>
+                </span>
+                <span class="msw-hud-val"><span class="msw-life-ico">✦</span> <span id="msw-lives">×10</span></span>
+            </div>
+            <div class="msw-hud-col msw-hud-mid">
+                <span class="msw-hud-label">SCORE</span>
+                <span class="msw-hud-val" id="msw-score">000000</span>
+            </div>
+            <div class="msw-hud-col msw-hud-right">
+                <span class="msw-hud-label">SEKTOR</span>
+                <span class="msw-hud-area-row">
+                    <span class="msw-hud-val" id="msw-area">1</span>
+                    <span class="msw-hud-diff" id="msw-diff-badge" data-lvl="normal">NORMAL</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- weapon chip + ammo -->
+        <div class="msw-weapon" id="msw-weapon">
+            <span class="msw-weapon-ico" id="msw-weapon-ico">P</span>
+            <span id="msw-weapon-name">PISTOL</span>
+            <span class="msw-weapon-ammo" id="msw-weapon-ammo"></span>
+        </div>
+
+        <!-- pieces collected -->
+        <div class="msw-progress" id="msw-progress"><span id="msw-progress-n">0</span>/<span id="msw-progress-t">0</span> 💌</div>
+
+        <!-- left floating buttons -->
+        <div class="msw-leftbtns" id="msw-leftbtns">
+            <button class="msw-iconbtn msw-star-btn" id="msw-star-btn" type="button" title="Mode kebal (cheat)" aria-label="Cheat">★</button>
+            <button class="msw-iconbtn msw-stagesel-btn" id="msw-stagesel-btn" type="button" title="Pilih sektor" aria-label="Pilih sektor" style="display:none">▦</button>
+            <button class="msw-iconbtn msw-view-btn is-locked" id="msw-view-btn" type="button" title="Buka undangan" aria-label="Buka undangan">💌</button>
+            <button class="msw-iconbtn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran">▤</button>
+            <button class="msw-iconbtn msw-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik">
+                <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
+            </button>
+            <button class="msw-iconbtn msw-reset-btn" id="msw-reset-btn" type="button" title="Reset progres" aria-label="Reset">⟲</button>
+        </div>
+
+        <!-- piece indicators (N dynamic icons) -->
+        <div class="msw-inv" id="msw-inv"></div>
+
+        <!-- toast -->
+        <div class="msw-toast" id="msw-toast"></div>
+
+        <!-- version badge -->
+        <div class="msw-version" id="msw-version">v0.0.0</div>
+
+        <!-- ===== touch controls (green zone bottom) ===== -->
+        <div class="msw-touch" id="msw-touch">
+            <div class="msw-joy" id="msw-joy">
+                <div class="msw-joy-ring"></div>
+                <div class="msw-joy-nub" id="msw-joy-nub"></div>
+            </div>
+            <div class="msw-actions">
+                <button class="msw-tbtn msw-fire" id="msw-fire" type="button" aria-label="Tembak">FIRE</button>
+                <div class="msw-actions-col">
+                    <button class="msw-tbtn msw-jump" id="msw-jump" type="button" aria-label="Lompat">JMP</button>
+                    <button class="msw-tbtn msw-nade" id="msw-nade" type="button" aria-label="Granat">✦</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== OVERLAYS ===== -->
+        <!-- cover -->
+        <div class="msw-overlay show" id="msw-cover">
+            <div class="msw-overlay-card msw-cover-card">
+                <div class="msw-cover-badge">★ OPERATION: PELAMINAN ★</div>
+                <div class="msw-cover-logo">METAL SLUG WEDDING</div>
+                <div class="msw-cover-names">
+                    <span data-var="groom_nickname">{{groom_nickname}}</span>
+                    <span class="msw-heart">♥</span>
+                    <span data-var="bride_nickname">{{bride_nickname}}</span>
+                </div>
+                <div class="msw-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+                <div class="msw-cover-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+                <div class="msw-diff" id="msw-diff">
+                    <span class="msw-diff-label">PILIH KESULITAN</span>
+                    <div class="msw-diff-opts">
+                        <button class="msw-diff-opt" data-diff="easy" type="button">EASY</button>
+                        <button class="msw-diff-opt is-sel" data-diff="normal" type="button">NORMAL</button>
+                        <button class="msw-diff-opt" data-diff="hard" type="button">HARD</button>
+                    </div>
+                </div>
+                <button class="msw-bigbtn" id="msw-start" type="button">▶ PRESS START</button>
+                <button class="msw-textbtn" id="msw-cover-view" type="button">Lewati — buka undangan langsung 💌</button>
+                <div class="msw-cover-hint">Selamatkan POW kurir 💌 untuk membuka tiap bagian undangan</div>
+                <div class="msw-cover-keys">⌨ ← → gerak · Space lompat · X tembak · C granat · E Slug</div>
+            </div>
+        </div>
+
+        <!-- sector briefing -->
+        <div class="msw-overlay" id="msw-briefing">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle" id="msw-briefing-title">SEKTOR 1</div>
+                <div class="msw-overlay-text" id="msw-briefing-text"></div>
+                <button class="msw-bigbtn" id="msw-briefing-go" type="button">▶ MAJU</button>
+            </div>
+        </div>
+
+        <!-- sector clear -->
+        <div class="msw-overlay" id="msw-clear">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle">SEKTOR AMAN!</div>
+                <div class="msw-overlay-text" id="msw-clear-text"></div>
+                <button class="msw-bigbtn" id="msw-clear-next" type="button">▶ LANJUT</button>
+            </div>
+        </div>
+
+        <!-- game over -->
+        <div class="msw-overlay" id="msw-gameover">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle" style="color:#ff6a6a">MISI GAGAL</div>
+                <div class="msw-overlay-text">Jangan menyerah, prajurit cinta!</div>
+                <button class="msw-bigbtn" id="msw-retry" type="button">↻ COBA LAGI</button>
+                <button class="msw-textbtn" id="msw-gameover-view" type="button">Buka undangan langsung 💌</button>
+            </div>
+        </div>
+
+        <!-- all pieces collected (celebration trigger #1) -->
+        <div class="msw-overlay" id="msw-allpieces">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle" style="color:#ffd447">SEMUA KEPINGAN TERKUMPUL!</div>
+                <div class="msw-overlay-text" id="msw-allpieces-text"></div>
+                <button class="msw-bigbtn" id="msw-allpieces-view" type="button">💌 BUKA UNDANGAN</button>
+                <button class="msw-textbtn" id="msw-allpieces-keep" type="button">Lanjut bermain</button>
+            </div>
+        </div>
+
+        <!-- win / rescue couple (celebration trigger #2) -->
+        <div class="msw-overlay" id="msw-win">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle" style="color:#ffd447">HAPPILY EVER AFTER!</div>
+                <div class="msw-overlay-text" id="msw-win-text"></div>
+                <button class="msw-bigbtn" id="msw-win-view" type="button">💌 BUKA UNDANGAN</button>
+            </div>
+        </div>
+
+        <!-- stage select (cheat) -->
+        <div class="msw-overlay" id="msw-stagesel">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle">PILIH SEKTOR &amp; KESULITAN</div>
+                <div class="msw-diff" id="msw-stagesel-diff">
+                    <span class="msw-diff-label">TINGKAT KESULITAN</span>
+                    <div class="msw-diff-opts">
+                        <button class="msw-diff-opt" data-diff="easy" type="button">EASY</button>
+                        <button class="msw-diff-opt is-sel" data-diff="normal" type="button">NORMAL</button>
+                        <button class="msw-diff-opt" data-diff="hard" type="button">HARD</button>
+                    </div>
+                </div>
+                <div class="msw-stagesel-label">PILIH SEKTOR</div>
+                <div class="msw-stagesel-grid" id="msw-stagesel-grid"></div>
+                <button class="msw-bigbtn" id="msw-stagesel-ok" type="button">▶ MULAI</button>
+                <button class="msw-textbtn" id="msw-stagesel-close" type="button">Batal</button>
+            </div>
+        </div>
+
+        <!-- reset confirm (own overlay, not native confirm) -->
+        <div class="msw-overlay" id="msw-resetconfirm">
+            <div class="msw-overlay-card">
+                <div class="msw-overlay-pixtitle" style="color:#ff6a6a">RESET PROGRES?</div>
+                <div class="msw-overlay-text">Semua kepingan & progres akan dihapus dari perangkat ini.</div>
+                <button class="msw-bigbtn msw-danger" id="msw-reset-yes" type="button">YA, HAPUS</button>
+                <button class="msw-textbtn" id="msw-reset-no" type="button">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== INVITATION SCROLL (shown inside frame when opened) ===== -->
+    <div class="msw-reveal" id="msw-reveal">
+        <button class="msw-reveal-close" id="msw-reveal-close" type="button" aria-label="Kembali ke game">✕ KEMBALI KE GAME</button>
+        <div class="msw-reveal-scroll" id="msw-reveal-scroll"></div>
+    </div>
+</div>
+
+<!-- ======================================================================
+     SINGLE BINDING SOURCE — #inv-source. All sections written ONCE with
+     {{vars}}. Modals/reveal CLONE from here. {{#if flag}} WRAPS the <section>
+     (host-contract): a flagged-off section is removed from the DOM, so its
+     piece never appears — piece count is dynamic from real sections.
+     Each JS-read value carries data-var + {{key}} so val() can read it.
+     ====================================================================== -->
+<div class="msw-invitation" id="inv-source" aria-hidden="true">
+
+    <!-- 1 · HERO (always) -->
+    <section class="msw-sec msw-hero" data-info="hero">
+        <div class="msw-hero-bg" data-var="photo_hero_cover" data-src="{{photo_hero_cover}}"></div>
+        <div class="msw-hero-veil"></div>
+        <div class="msw-hero-inner">
+            <div class="msw-hero-pre">THE WEDDING OF</div>
+            <h1 class="msw-hero-names">
+                <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+                <span data-var="bride_nickname">{{bride_nickname}}</span>
+            </h1>
+            <div class="msw-hero-date" data-var="wedding_date">{{wedding_date}}</div>
+            <p class="msw-hero-quote" data-var="quote">{{quote}}</p>
+            <div class="msw-hero-by" data-var="quote_by">{{quote_by}}</div>
+        </div>
+    </section>
+
+    <!-- 2 · COUPLE (always) -->
+    <section class="msw-sec" data-info="couple">
+        <h2 class="msw-sec-title">MEMPELAI</h2>
+        <div class="msw-couple">
+            <div class="msw-person">
+                <img class="msw-avatar" src="{{photo_groom_photo}}" alt="" />
+                <div class="msw-person-name" data-var="groom_name">{{groom_name}}</div>
+                {{#if flag_tampilkan_nama_orang_tua}}<div class="msw-person-parent">Putra dari<br>{{nama_bapak_laki_laki}} &amp; {{nama_ibu_laki_laki}}</div>{{/if}}
+                {{#if flag_tampilkan_sosial_media_mempelai}}<a class="msw-person-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener">@{{ig_laki_laki}}</a>{{/if}}
+            </div>
+            <div class="msw-amp">♥</div>
+            <div class="msw-person">
+                <img class="msw-avatar" src="{{photo_bride_photo}}" alt="" />
+                <div class="msw-person-name" data-var="bride_name">{{bride_name}}</div>
+                {{#if flag_tampilkan_nama_orang_tua}}<div class="msw-person-parent">Putri dari<br>{{nama_bapak_perempuan}} &amp; {{nama_ibu_perempuan}}</div>{{/if}}
+                {{#if flag_tampilkan_sosial_media_mempelai}}<a class="msw-person-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener">@{{ig_perempuan}}</a>{{/if}}
+            </div>
+        </div>
+    </section>
+
+    <!-- 3 · COUNTDOWN + RSVP (always) -->
+    <section class="msw-sec" data-info="rsvp">
+        <h2 class="msw-sec-title">HITUNG MUNDUR</h2>
+        <div class="msw-countdown">
+            <div class="msw-cd-cell"><span id="tm-countdown-days">{{countdown_hari}}</span><small>HARI</small></div>
+            <div class="msw-cd-cell"><span id="tm-countdown-hours">{{countdown_jam}}</span><small>JAM</small></div>
+            <div class="msw-cd-cell"><span id="tm-countdown-minutes">{{countdown_menit}}</span><small>MNT</small></div>
+            <div class="msw-cd-cell"><span id="tm-countdown-seconds">{{countdown_detik}}</span><small>DTK</small></div>
+        </div>
+        <h3 class="msw-sub-title">KONFIRMASI KEHADIRAN</h3>
+        <div class="msw-form" id="msw-rsvp-form">
+            <select class="msw-input" id="rsvp-status">
+                <option value="Hadir">Hadir</option>
+                <option value="Tidak Hadir">Tidak hadir</option>
+                <option value="Ragu">Masih ragu</option>
+            </select>
+            <input class="msw-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+            <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
+            <button class="msw-btn" id="btn-submit-kehadiran" type="button">KIRIM RSVP</button>
+            <div class="msw-alert" id="alert-submit-kehadiran"></div>
+        </div>
+    </section>
+
+    <!-- 4 · SCHEDULE (always) -->
+    <section class="msw-sec" data-info="schedule">
+        <h2 class="msw-sec-title">WAKTU &amp; TEMPAT</h2>
+        <div class="msw-event">
+            <div class="msw-event-tag">AKAD NIKAH</div>
+            <div class="msw-event-date">{{tanggal_akad}}</div>
+            <div class="msw-event-time">{{jam_akad}}</div>
+            <div class="msw-event-place">{{nama_lokasi_akad}}</div>
+            <div class="msw-event-addr">{{keterangan_lokasi_akad}}</div>
+            {{#if akad_map}}<a class="msw-btn msw-btn-sm" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+        </div>
+        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+        <div class="msw-event">
+            <div class="msw-event-tag">RESEPSI</div>
+            <div class="msw-event-date">{{tanggal_resepsi}}</div>
+            <div class="msw-event-time">{{jam_resepsi}}</div>
+            <div class="msw-event-place">{{nama_lokasi_resepsi}}</div>
+            <div class="msw-event-addr">{{keterangan_lokasi_resepsi}}</div>
+            {{#if resepsi_map}}<a class="msw-btn msw-btn-sm" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+        </div>
+        {{/if}}
+    </section>
+
+    <!-- 5 · STREAMING (flag) -->
+    {{#if is_fitur_live_streaming}}
+    <section class="msw-sec" data-info="streaming">
+        <h2 class="msw-sec-title">LIVE STREAMING</h2>
+        <p class="msw-sec-text">Ikuti momen bahagia kami secara langsung 📺</p>
+        {{#if link_live_streaming}}<a class="msw-btn" href="{{link_live_streaming}}" target="_blank" rel="noopener">▶ TONTON STREAMING</a>{{/if}}
+    </section>
+    {{/if}}
+
+    <!-- 6 · STORY (flag) -->
+    {{#if flag_pakai_timeline_kisah}}
+    <section class="msw-sec" data-info="story">
+        <h2 class="msw-sec-title">KISAH KAMI</h2>
+        <div class="msw-timeline">
+            {{#each timeline_kisah}}
+            <div class="msw-tl-item">
+                <div class="msw-tl-dot"></div>
+                <div class="msw-tl-body">
+                    <div class="msw-tl-date">{{this.tanggal}}</div>
+                    <div class="msw-tl-title">{{this.judul}}</div>
+                    <div class="msw-tl-desc">{{this.deskripsi}}</div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    </section>
+    {{/if}}
+
+    <!-- 7 · GALLERY (flag) -->
+    {{#if has_gallery}}
+    <section class="msw-sec" data-info="gallery">
+        <h2 class="msw-sec-title">GALERI</h2>
+        <div class="msw-gallery-grid">
+            {{#each galleries}}
+            <div class="msw-gallery-item"><img src="{{this.url}}" alt="" loading="lazy" /></div>
+            {{/each}}
+        </div>
+    </section>
+    {{/if}}
+
+    <!-- 8 · HAPPINESS / instagram (flag) -->
+    {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+    <section class="msw-sec" data-info="happiness">
+        <h2 class="msw-sec-title">BAGIKAN KEBAHAGIAAN</h2>
+        <p class="msw-sec-text">Abadikan momenmu & bagikan ke Instagram dengan twibbon spesial 📸</p>
+        <div class="msw-share-frames">
+            <div class="msw-share-frame"><img src="{{sample_story_1}}" alt="" /><img class="msw-frame-png" src="{{frame_balasan_instagram}}" alt="" /></div>
+            <div class="msw-share-frame"><img src="{{sample_story_2}}" alt="" /><img class="msw-frame-png" src="{{frame_balasan_instagram}}" alt="" /></div>
+            <div class="msw-share-frame"><img src="{{sample_story_3}}" alt="" /><img class="msw-frame-png" src="{{frame_balasan_instagram}}" alt="" /></div>
+        </div>
+        {{#if link_balasan_instagram}}<a class="msw-btn" href="{{link_balasan_instagram}}" target="_blank" rel="noopener">📸 BAGIKAN MOMEN</a>{{/if}}
+    </section>
+    {{/if}}
+
+    <!-- 9 · WISHES (always) -->
+    <section class="msw-sec" data-info="wishes">
+        <h2 class="msw-sec-title">UCAPAN &amp; DOA</h2>
+        <div class="msw-form" id="msw-wish-form">
+            <input class="msw-input" id="wish-name" type="text" placeholder="Nama kamu" />
+            <textarea class="msw-input" id="wish-message" rows="3" placeholder="Tulis ucapan & doa..."></textarea>
+            <button class="msw-btn" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
+            <div class="msw-alert" id="alert-submit-ucapan"></div>
+        </div>
+        <div class="msw-wish-list" id="msw-wish-list">
+            {{#each wishes}}
+            <div class="msw-wish-item">
+                <div class="msw-wish-head"><span class="msw-wish-author">{{this.guest_name}}</span><span class="msw-wish-time">{{this.guest_comment_time}}</span></div>
+                <div class="msw-wish-text">{{this.guest_message}}</div>
+            </div>
+            {{/each}}
+        </div>
+    </section>
+
+    <!-- 10 · GIFT (flag) -->
+    {{#if tampilkan_amplop_online}}
+    <section class="msw-sec" data-info="gift">
+        <h2 class="msw-sec-title">AMPLOP ONLINE</h2>
+        <p class="msw-sec-text">Doa restu adalah hadiah terindah. Bila berkenan memberi tanda kasih:</p>
+        <div class="msw-gift-card">
+            <div class="msw-gift-bank">{{bank_1}}</div>
+            <div class="msw-gift-num" id="msw-rek-1">{{rek_1}}</div>
+            <div class="msw-gift-name">a.n. {{nama_rek_1}}</div>
+            <button class="msw-btn msw-btn-sm" type="button" onclick="mswCopy('msw-rek-1', this)">SALIN NO. REK</button>
+            {{#if flag_pakai_qris_rekening_1}}<img class="msw-qris" src="{{gambar_qris_rekening_1}}" alt="QRIS" />{{/if}}
+        </div>
+        {{#if flag_pakai_2_rekening}}
+        <div class="msw-gift-card">
+            <div class="msw-gift-bank">{{bank_2}}</div>
+            <div class="msw-gift-num" id="msw-rek-2">{{rek_2}}</div>
+            <div class="msw-gift-name">a.n. {{nama_rek_2}}</div>
+            <button class="msw-btn msw-btn-sm" type="button" onclick="mswCopy('msw-rek-2', this)">SALIN NO. REK</button>
+            {{#if flag_pakai_qris_rekening_2}}<img class="msw-qris" src="{{gambar_qris_rekening_2}}" alt="QRIS" />{{/if}}
+        </div>
+        {{/if}}
+        {{#if flag_kirim_hadiah_offline}}
+        <div class="msw-gift-addr">
+            <div class="msw-gift-bank">KIRIM KADO</div>
+            <div class="msw-gift-name">{{nama_lokasi_kirim_hadiah_offline}}</div>
+            <div class="msw-gift-name" id="msw-gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+            <button class="msw-btn msw-btn-sm" type="button" onclick="mswCopy('msw-gift-addr', this)">SALIN ALAMAT</button>
+        </div>
+        {{/if}}
+    </section>
+    {{/if}}
+
+    <!-- 11 · CLOSING (always) -->
+    <section class="msw-sec msw-closing" data-info="closing">
+        <h2 class="msw-sec-title">TERIMA KASIH</h2>
+        <p class="msw-closing-text" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
+        <div class="msw-closing-couple">
+            <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+        <div class="msw-credit"><span data-var="site_name">{{site_name}}</span> · dibuat dengan ♥</div>
+    </section>
+</div>
+
+<!-- Piece modal -->
+<div class="msw-modal-root" id="msw-modal-root">
+    <div class="msw-modal">
+        <button class="msw-modal-close" id="msw-modal-close" type="button">✕</button>
+        <div class="msw-modal-title" id="msw-modal-title"></div>
+        <div class="msw-modal-body" id="msw-modal-body"></div>
+    </div>
+</div>
+
+<!-- Own lightbox (own class so host universal lightbox doesn't hijack) -->
+<div class="msw-lightbox" id="msw-lightbox">
+    <button class="msw-lightbox-close" id="msw-lightbox-close" type="button">✕</button>
+    <img class="msw-lightbox-img" id="msw-lightbox-img" src="" alt="" />
+</div>
+
+<!-- host music mirror target (NOT the real player; host dispatches play/pause here) -->
+<audio id="bg-music"></audio>
+</div>
