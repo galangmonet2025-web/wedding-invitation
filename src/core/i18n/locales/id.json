@@ -24,7 +24,12 @@
     "confirm": "Konfirmasi",
     "previous": "Sebelumnya",
     "next": "Selanjutnya",
-    "clear": "Bersihkan"
+    "clear": "Bersihkan",
+    "unsaved_changes": "Perubahan Belum Disimpan",
+    "confirm_leave_title": "Yakin ingin meninggalkan halaman?",
+    "confirm_leave_message": "Ada perubahan yang belum disimpan. Jika keluar sekarang, perubahan tersebut akan hilang.",
+    "cancel_stay": "Tetap di Halaman",
+    "confirm_leave_action": "Tinggalkan Halaman"
   },
   "sidebar": {
     "dashboard": "Dashboard",

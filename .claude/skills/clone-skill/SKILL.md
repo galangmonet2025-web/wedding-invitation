@@ -126,8 +126,11 @@ di SaaS undangan digital ini.
    Bible terasa **otentik & PADAT**, bukan "kira-kira". Lihat panduan kedalaman per-arketipe di
    [`reference/bible-template.md`](reference/bible-template.md).
 3. **Tulis Bible** mengikuti kerangka `bible-template.md`: §0–§12 (inti game design) + APPENDIX
-   A–F (kedalaman ala Mario) + APPENDIX T/S (teknis Phaser 3) + APPENDIX W–Z (integrasi undangan).
-   Semua aturan **ber-angka**, contoh kode **Phaser 3**, ada Golden Rule per bagian.
+   A–F (kedalaman ala Mario) + APPENDIX T/S/**P** (teknis Phaser 3 + aset PNG sprite sheet) +
+   APPENDIX W–Z (integrasi undangan). Semua aturan **ber-angka**, contoh kode **Phaser 3**, ada
+   Golden Rule per bagian. **APPENDIX P** (grafis "game sungguhan" via PNG sprite sheet — 5 sheet +
+   JSON per-kelompok + frame-map + urutan upload) WAJIB ada bila game punya karakter/objek visual;
+   sumber: [`reference/sprite-sheet-assets.md`](reference/sprite-sheet-assets.md).
 4. **Self-check** dengan checklist di §9 sebelum menyatakan selesai.
 5. **Berhenti & laporkan.** Sampaikan ringkasan isi Bible + path-nya. **Jangan lanjut** generate
    3 file tema kecuali user eksplisit minta tahap 2.
@@ -490,6 +493,7 @@ sesuai (lihat [`reference/bible-template.md`](reference/bible-template.md)). **B
 | **4 — Integrasi kepingan** pemetaan section→kepingan, scan section riil, quota+auto-scale, unlock+modal+reveal | APPENDIX W/X |
 | **5 — Cheat & host** cheat penuh, wiring RSVP/ucapan/QR/musik, countdown, reset berkonfirmasi | APPENDIX Y/Z |
 | **6 — Layout & polish** mobile + desktop 2-kolom (cover kiri/frame kanan), cleanup hook, optimasi | §9, APPENDIX S/T/Z |
+| **6.5 — Aset PNG (opsi grafis "game sungguhan")** 5 sprite sheet + JSON per-kelompok + frame-map slice + urutan upload + fallback prosedural | §10, **APPENDIX P** |
 | **7 — Validasi** validator engine + generation algorithm + checklist | APPENDIX E/F |
 
 **Checklist Bible "selesai" (self-check sebelum melapor):**
@@ -504,6 +508,11 @@ sesuai (lihat [`reference/bible-template.md`](reference/bible-template.md)). **B
 - [ ] Aturan **ber-angka** (ambil dari `game-feel-and-level-design.md`), bukan kata sifat.
 - [ ] Contoh kode **Phaser 3.80.1 yang benar** (cek API ke `phaser-technical-foundation.md` —
       mis. partikel API 3.60+, `game.destroy(true)`, `blocked.down`).
+- [ ] **APPENDIX P (aset PNG)** ada bila game punya karakter/objek visual: **TEPAT 5 sprite sheet**
+      (player/enemy/environment/game-object/box-kepingan) + **5 JSON generate** (sel ≥80×80) +
+      **frame-map rect eksplisit** (bukan grid seragam) + downscale ke key engine lama + **urutan
+      upload baku** (`{{asset_image_N}}` dari urutan upload) + **fallback prosedural**
+      (`sprite-sheet-assets.md`).
 - [ ] Nama variabel undangan **terverifikasi** ke `dynamic-variables.md` (tak ada karangan).
 - [ ] APPENDIX W–Z lengkap: kepingan reachable & dinamis, cheat bypass, celebration 2-pemicu,
       layout 2-kolom, mirror musik idempotent, `{{#if}}` membungkus `<section>`, ID host verbatim.
@@ -596,6 +605,12 @@ Bible harus mencantumkan cara verifikasi 3 file di tahap 2, karena ada jebakan d
   pemetaan ke semua arketipe. **Baca ini setiap kali bikin game agar tidak hambar.**
 - [`reference/phaser-technical-foundation.md`](reference/phaser-technical-foundation.md) — fakta
   **Phaser 3.80.1** terverifikasi (boot, physics, pooling, partikel API baru, cleanup).
+- [`reference/sprite-sheet-assets.md`](reference/sprite-sheet-assets.md) — **APPENDIX P: aset PNG
+  (sprite sheet)** untuk grafis "game sungguhan": turunkan kebutuhan sprite dari gameplay → **5
+  kelompok/sheet** (player/enemy/environment/game-object/box-kepingan) → **JSON generate per-kelompok**
+  (sel ≥80×80) → engine **men-slice 1 gambar utuh** via frame-map + downscale + anim + fallback
+  prosedural → **urutan upload baku** (slot `{{asset_image_N}}` dari urutan upload) + panduan prompt
+  image-gen. Mekanisme upload host **sudah ada** (sesuaikan). Contoh kerja: `metalslug-wedding`.
 
 **Fakta domain (masuk ke APPENDIX W–Z Bible):**
 - [`reference/dynamic-variables.md`](reference/dynamic-variables.md) — daftar lengkap variabel & flag.

@@ -1,38 +1,60 @@
-import { createHashRouter } from 'react-router-dom';
-import { DashboardLayout } from '@/core/layout/DashboardLayout';
-import { ProtectedRoute } from '@/core/guards/ProtectedRoute';
+import { createHashRouter, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { useAuthStore } from '@/features/auth/store/authStore';
+
+// --- Eager: public entry points (invitation + landing + auth) ---
+// These are what a guest hits first, so we don't want a chunk round-trip here.
+import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
-import { ImpersonatePage } from '@/features/auth/pages/ImpersonatePage';
-import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
-import { GlobalDashboardPage } from '@/features/dashboard/pages/GlobalDashboardPage';
-import { GuestPage } from '@/features/guest/pages/GuestPage';
-import { WhatsAppBlastPage } from '@/features/guest/pages/WhatsAppBlastPage';
-import { StaffPage } from '@/features/tenant/pages/StaffPage';
-import { ScannerPage } from '@/features/scanner/pages/ScannerPage';
-import { TenantPage } from '@/features/tenant/pages/TenantPage';
-import { WishesPage } from '@/features/wishes/pages/WishesPage';
-import { GiftsPage } from '@/features/gifts/pages/GiftsPage';
-import { ActivityPage } from '@/features/activity/pages/ActivityPage';
-import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
-import { InvitationContentPage } from '@/features/invitation/pages/InvitationContentPage';
-import { ManageThemesPage } from '@/features/admin/pages/ManageThemesPage';
-import { ThemeEditorPage } from '@/features/admin/pages/ThemeEditorPage';
-import { WebsiteConfigPage } from '@/features/admin/pages/WebsiteConfigPage';
-import { PlanConfigPage } from '@/features/admin/pages/PlanConfigPage';
-import { Navigate } from 'react-router-dom';
-import { LandingPage } from '@/features/landing/pages/LandingPage';
 import { NewLandingPage } from '@/features/landing/pages/NewLandingPage';
-import { AdditionalFeaturePage } from '@/features/admin/pages/AdditionalFeaturePage';
-import { TenantAdditionalFeaturePage } from '@/features/tenant/pages/TenantAdditionalFeaturePage';
-import { ReviewPage } from '@/features/admin/pages/ReviewPage';
-import { PaymentPage } from '@/features/payment/pages/PaymentPage';
-import { TransactionMonitoringPage } from '@/features/admin/pages/TransactionMonitoringPage';
-import { CouponPage } from '@/features/admin/pages/CouponPage';
-import { MasterQuotesListPage } from '@/features/admin/pages/MasterQuotesListPage';
-import { MasterQuotesFormPage } from '@/features/admin/pages/MasterQuotesFormPage';
-import { ArchiveRestorePage } from '@/features/admin/pages/ArchiveRestorePage';
-import { useAuthStore } from '@/features/auth/store/authStore';
+
+// --- Lazy: the admin/tenant dashboard. These pull in heavy deps (Monaco,
+// exceljs, jspdf, recharts, html2canvas, dnd-kit). A guest opening an
+// invitation should never download any of this — code-splitting keeps the
+// dashboard out of the public bundle entirely. ---
+const DashboardLayout = lazy(() => import('@/core/layout/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const ProtectedRoute = lazy(() => import('@/core/guards/ProtectedRoute').then(m => ({ default: m.ProtectedRoute })));
+const ImpersonatePage = lazy(() => import('@/features/auth/pages/ImpersonatePage').then(m => ({ default: m.ImpersonatePage })));
+const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const GlobalDashboardPage = lazy(() => import('@/features/dashboard/pages/GlobalDashboardPage').then(m => ({ default: m.GlobalDashboardPage })));
+const GuestPage = lazy(() => import('@/features/guest/pages/GuestPage').then(m => ({ default: m.GuestPage })));
+const WhatsAppBlastPage = lazy(() => import('@/features/guest/pages/WhatsAppBlastPage').then(m => ({ default: m.WhatsAppBlastPage })));
+const StaffPage = lazy(() => import('@/features/tenant/pages/StaffPage').then(m => ({ default: m.StaffPage })));
+const ScannerPage = lazy(() => import('@/features/scanner/pages/ScannerPage').then(m => ({ default: m.ScannerPage })));
+const TenantPage = lazy(() => import('@/features/tenant/pages/TenantPage').then(m => ({ default: m.TenantPage })));
+const WishesPage = lazy(() => import('@/features/wishes/pages/WishesPage').then(m => ({ default: m.WishesPage })));
+const GiftsPage = lazy(() => import('@/features/gifts/pages/GiftsPage').then(m => ({ default: m.GiftsPage })));
+const ActivityPage = lazy(() => import('@/features/activity/pages/ActivityPage').then(m => ({ default: m.ActivityPage })));
+const InvitationContentPage = lazy(() => import('@/features/invitation/pages/InvitationContentPage').then(m => ({ default: m.InvitationContentPage })));
+const ManageThemesPage = lazy(() => import('@/features/admin/pages/ManageThemesPage').then(m => ({ default: m.ManageThemesPage })));
+const ThemeEditorPage = lazy(() => import('@/features/admin/pages/ThemeEditorPage').then(m => ({ default: m.ThemeEditorPage })));
+const WebsiteConfigPage = lazy(() => import('@/features/admin/pages/WebsiteConfigPage').then(m => ({ default: m.WebsiteConfigPage })));
+const PlanConfigPage = lazy(() => import('@/features/admin/pages/PlanConfigPage').then(m => ({ default: m.PlanConfigPage })));
+const LandingPage = lazy(() => import('@/features/landing/pages/LandingPage').then(m => ({ default: m.LandingPage })));
+const AdditionalFeaturePage = lazy(() => import('@/features/admin/pages/AdditionalFeaturePage').then(m => ({ default: m.AdditionalFeaturePage })));
+const TenantAdditionalFeaturePage = lazy(() => import('@/features/tenant/pages/TenantAdditionalFeaturePage').then(m => ({ default: m.TenantAdditionalFeaturePage })));
+const ReviewPage = lazy(() => import('@/features/admin/pages/ReviewPage').then(m => ({ default: m.ReviewPage })));
+const PaymentPage = lazy(() => import('@/features/payment/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
+const TransactionMonitoringPage = lazy(() => import('@/features/admin/pages/TransactionMonitoringPage').then(m => ({ default: m.TransactionMonitoringPage })));
+const CouponPage = lazy(() => import('@/features/admin/pages/CouponPage').then(m => ({ default: m.CouponPage })));
+const MasterQuotesListPage = lazy(() => import('@/features/admin/pages/MasterQuotesListPage').then(m => ({ default: m.MasterQuotesListPage })));
+const MasterQuotesFormPage = lazy(() => import('@/features/admin/pages/MasterQuotesFormPage').then(m => ({ default: m.MasterQuotesFormPage })));
+const ArchiveRestorePage = lazy(() => import('@/features/admin/pages/ArchiveRestorePage').then(m => ({ default: m.ArchiveRestorePage })));
+
+// Lightweight fallback shown while a lazy admin chunk loads.
+function RouteFallback() {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-wedding-bg dark:bg-wedding-dark">
+            <div className="w-10 h-10 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin" />
+        </div>
+    );
+}
+
+// Wrap a lazy element in a Suspense boundary so it can stream in.
+function L(node: React.ReactNode) {
+    return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
+}
 
 function AdditionalFeatureRouter() {
     const user = useAuthStore(state => state.user);
@@ -83,7 +105,7 @@ export const router = createHashRouter([
             },
             {
                 path: 'home',
-                element: <LandingPage />,
+                element: L(<LandingPage />),
             },
             {
                 path: 'landing-page',
@@ -104,11 +126,11 @@ export const router = createHashRouter([
                     
                     {
                         path: 'impersonate',
-                        element: <ImpersonatePage />,
+                        element: L(<ImpersonatePage />),
                     },
                     {
                         path: '',
-                        element: (
+                        element: L(
                             <ProtectedRoute>
                                 <DashboardLayout />
                             </ProtectedRoute>

@@ -24,7 +24,12 @@
     "confirm": "Confirm",
     "previous": "Previous",
     "next": "Next",
-    "clear": "Clear"
+    "clear": "Clear",
+    "unsaved_changes": "Unsaved Changes",
+    "confirm_leave_title": "Leave this page?",
+    "confirm_leave_message": "You have unsaved changes. If you leave now, those changes will be lost.",
+    "cancel_stay": "Stay on Page",
+    "confirm_leave_action": "Leave Page"
   },
   "sidebar": {
     "dashboard": "Dashboard",

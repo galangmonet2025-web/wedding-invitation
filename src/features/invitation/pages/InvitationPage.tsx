@@ -353,61 +353,58 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         fetchConfig();
     }, []);
 
-    // When data loads, resolve all proxy images to base64 for template rendering
+    // When data loads, resolve all proxy images to base64 for template rendering.
+    //
+    // PERF: this used to await ALL images (Promise.all over the whole gallery +
+    // theme assets) before calling setResolvedImages once — and the render guard
+    // below blocked the entire invitation until then. With Apps Script's slow,
+    // un-cached base64 proxy that meant several seconds of a spinner even for
+    // repeat visitors. Now we resolve PROGRESSIVELY: seed resolvedImages to {}
+    // immediately so the page can render, then merge each image in as it arrives
+    // (cache hits from IndexedDB land almost instantly). The memoized finalHtml
+    // re-renders on every merge, so images pop in instead of gating the page.
     useEffect(() => {
         if (!data) return;
+        let cancelled = false;
 
-        const doResolve = async () => {
-            const resolved: Record<string, string> = {};
-
-            if (data.images && data.images.length > 0) {
-                await Promise.all(data.images!.map(async (img) => {
-                    if (!img?.cdn_url) return;
-                    try {
-                        const proxiedUrl = resolveProxyUrl(img.cdn_url);
-                        const b64 = await fetchProxyImageBase64(proxiedUrl);
-                        resolved[img.image_type] = b64;
-                        resolved[img.cdn_url] = b64; // Also index by URL to support multiple images of the same type (like gallery)
-                        if (proxiedUrl !== img.cdn_url) {
-                            resolved[proxiedUrl] = b64;
-                        }
-                    } catch { }
-                }));
-            }
-
-            // Also pre-convert frame_balasan_instagram if present in content
-            const rawFrame = data.content?.frame_balasan_instagram;
-            if (isValidImageUrl(rawFrame)) {
-                const proxiedUrl = resolveProxyUrl(rawFrame!);
-                try {
-                    const b64 = await fetchProxyImageBase64(proxiedUrl);
-                    resolved['frame_balasan_instagram'] = b64;
-                    resolved[rawFrame!] = b64;
-                    if (proxiedUrl !== rawFrame) {
-                        resolved[proxiedUrl] = b64;
-                    }
-                } catch { }
-            }
-
-            // Pre-convert static theme asset IMAGES to base64 so {{asset_image_N}}
-            // renders on the live page (Drive proxy URLs can't be used directly in
-            // <img>). Keyed by media_cdn_url so the dataContext lookup resolves it.
-            // Videos / YouTube are left as raw URLs (used directly in <video>/<iframe>).
-            const themeAssets = data.theme?.asset_media_list || [];
-            await Promise.all(themeAssets.map(async (a: any) => {
-                if (!a || a.media_type !== 'image' || !a.media_cdn_url) return;
-                try {
-                    const proxiedUrl = resolveProxyUrl(a.media_cdn_url);
-                    const b64 = await fetchProxyImageBase64(proxiedUrl);
-                    resolved[a.media_cdn_url] = b64;
-                    if (proxiedUrl !== a.media_cdn_url) resolved[proxiedUrl] = b64;
-                } catch { }
-            }));
-
-            setResolvedImages(resolved);
+        // Merge a freshly-resolved batch into resolvedImages without dropping
+        // entries resolved by earlier/concurrent batches.
+        const merge = (entries: Record<string, string>) => {
+            if (cancelled || Object.keys(entries).length === 0) return;
+            setResolvedImages(prev => ({ ...(prev || {}), ...entries }));
         };
 
-        doResolve();
+        // Unblock the render guard right away even before any image is resolved.
+        setResolvedImages(prev => prev || {});
+
+        const resolveOne = async (cdnUrl?: string | null, ...keys: string[]) => {
+            if (!cdnUrl) return;
+            try {
+                const proxiedUrl = resolveProxyUrl(cdnUrl);
+                const b64 = await fetchProxyImageBase64(proxiedUrl);
+                const entry: Record<string, string> = {};
+                for (const k of keys) entry[k] = b64;
+                entry[cdnUrl] = b64;
+                if (proxiedUrl !== cdnUrl) entry[proxiedUrl] = b64;
+                merge(entry);
+            } catch { }
+        };
+
+        // Tenant images (hero, gallery, etc.) — each resolves & merges independently.
+        (data.images || []).forEach(img => {
+            if (img?.cdn_url) void resolveOne(img.cdn_url, img.image_type);
+        });
+
+        // Instagram story reply frame.
+        const rawFrame = data.content?.frame_balasan_instagram;
+        if (isValidImageUrl(rawFrame)) void resolveOne(rawFrame, 'frame_balasan_instagram');
+
+        // Static theme asset IMAGES ({{asset_image_N}}). Videos/YouTube stay raw.
+        (data.theme?.asset_media_list || []).forEach((a: any) => {
+            if (a && a.media_type === 'image' && a.media_cdn_url) void resolveOne(a.media_cdn_url);
+        });
+
+        return () => { cancelled = true; };
     }, [data]);
 
     useEffect(() => {

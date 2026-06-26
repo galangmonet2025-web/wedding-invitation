@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { additionalFeatureApi } from '@/core/api/endpoints';
@@ -576,7 +576,15 @@ export function DashboardLayout() {
 
                 {/* Page Content */}
                 <main className="flex-1 p-3 lg:p-8 pt-20 lg:pt-24 overflow-y-auto">
-                    <Outlet />
+                    {/* Per-page Suspense so lazy-loaded route chunks stream in
+                        without unmounting the sidebar/topbar. */}
+                    <Suspense fallback={
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-10 h-10 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin" />
+                        </div>
+                    }>
+                        <Outlet />
+                    </Suspense>
                 </main>
 
                 {/* Footer */}

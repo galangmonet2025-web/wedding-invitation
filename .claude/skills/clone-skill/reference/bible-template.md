@@ -99,6 +99,9 @@ tapi jangan ada yang hilang. Bagian bertanda 🎮 = sesuaikan isi ke arketipe; �
   WAJIB di-shade:** tiap sprite = base + highlight (top ~22%) + shadow (bottom ~22%) + outline
   gelap (helper `box()`/`outline()`), siluet unik per entity. Sumber:
   [`layout-camera-hardwon.md`](layout-camera-hardwon.md) §6 (flat single-color = belum selesai).
+  **Opsi grafis "game sungguhan" (disukai): pakai PNG sprite sheet** menggantikan prosedural —
+  spec lengkap (5 sheet + JSON + frame-map + urutan upload) ada di **APPENDIX P**
+  ([`sprite-sheet-assets.md`](sprite-sheet-assets.md)); prosedural tetap jadi **fallback**.
 - **§11 Audio Design** 🎮🔧 — SFX game via Web Audio/`this.sound` (kategori: hit, jump, collect,
   win). **Backsound undangan = milik host, JANGAN diputar tema** (lihat APPENDIX Z).
 - **§12 Anti-Frustration Rules** 🎮 — coyote time, jump buffer, corner-correction, no
@@ -156,6 +159,17 @@ tapi jangan ada yang hilang. Bagian bertanda 🎮 = sesuaikan isi ke arketipe; �
   bisa. `ensurePhaser()` fallback. **Ground vs controller (ber-angka):**
   `GROUND_Y = BH − (isTouch ? 200 : 150)` agar karakter tak tertutup tombol sentuh — lihat
   [`layout-camera-hardwon.md`](layout-camera-hardwon.md) §2.
+- **APPENDIX P — ASET PNG (SPRITE SHEET)** — saring dari [`sprite-sheet-assets.md`](sprite-sheet-assets.md):
+  cara memakai **file PNG sebagai sprite** karakter & objek (grafis "game sungguhan") menggantikan
+  prosedural, dengan **fallback prosedural** wajib. Berisi: (1) turunkan kebutuhan sprite dari
+  gameplay; (2) kelompokkan jadi **TEPAT 5 sheet** (player / enemy / environment / game-object /
+  box-kepingan); (3) **5 JSON generate** (1 per kelompok: `kelompok, name, deskripsi, orderNumber,
+  frameWidth≥80, frameHeight≥80`); (4) engine **men-slice satu gambar utuh** via **frame-map rect
+  eksplisit** (bukan grid seragam — bug "boss dobel") + downscale ke key engine lama + anim
+  multi-frame + key-out bg; (5) **URUTAN UPLOAD baku** (player→enemy→environment→game-object→
+  box-kepingan) karena `{{asset_image_N}}` dinomori dari urutan upload — HTML `data-asset` per sheet.
+  Sertakan juga panduan prompt image-gen dari `deskripsi`. Mekanisme upload host **sudah ada**
+  (sesuaikan, jangan bangun ulang). Contoh kerja: `src/sample-theme/metalslug-wedding/`.
 
 ### APPENDIX integrasi undangan (wajib lengkap) 💌
 
@@ -257,3 +271,7 @@ Untuk arketipe lain / hybrid: cari prinsip terukur yang setara dan dokumentasika
   `hitEnemy` di-guard active (idempotent, dua jalur tak double-count). §22.
 - ❌ **Tombol sekunder = link underline** / UI tak terasa game → tiap tombol = tombol game (mono/border/shadow), dialog arcade. §20.
 - 💡 Mau grafis "kaya"? animasi **frame-by-frame procedural** (banyak frame texture + `anims.create`/`play`), guard `anims.exists`. §19.
+- 💡 Mau grafis **"game sungguhan"**? pakai **PNG sprite sheet** (APPENDIX P / [`sprite-sheet-assets.md`](sprite-sheet-assets.md)):
+  TEPAT 5 sheet (player/enemy/environment/game-object/box-kepingan) + JSON per-kelompok (sel ≥80×80) +
+  frame-map rect eksplisit + downscale ke key engine + **urutan upload baku** (slot `{{asset_image_N}}`
+  dari urutan upload) + **fallback prosedural** wajib. Mekanisme upload host sudah ada.

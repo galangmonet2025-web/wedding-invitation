@@ -286,6 +286,12 @@
     <!-- ENEMY + BOSS sprite sheet (1408x768, 6 rows). The .js slices it per assets/frame-map.json
          into t_e_rush/t_e_range/t_turret/t_drone/t_tank/t_boss. Upload assets/enemy-sprite-sheet.png as image 15. -->
     <img data-asset="enemy_sheet"            src="{{asset_image_15}}" alt=""><!-- enemy-sprite-sheet.png -->
+    <!-- OBJECT atlas (288x2520): POW/items/projectiles/terrain/structures/scenery. The .js slices it
+         per assets/object-frame-map.json into t_pow/t_amplop/t_crate/... Upload assets/object-sprite-sheet.png as image 16. -->
+    <img data-asset="object_sheet"           src="{{asset_image_16}}" alt=""><!-- object-sprite-sheet.png -->
+    <!-- STANDING shoot-up pose (player_aim_up.png, 60x84). Added as image 17 to avoid renumbering
+         the already-uploaded player slots 1-13. Optional → procedural fallback if empty. -->
+    <img data-asset="player_aim_up"          src="{{asset_image_17}}" alt=""><!-- player_aim_up.png -->
 </div>
 
 <!-- ======================================================================
@@ -455,44 +461,84 @@
     <!-- 10 · GIFT (flag) -->
     {{#if tampilkan_amplop_online}}
     <section class="msw-sec" data-info="gift">
-        <h2 class="msw-sec-title">AMPLOP ONLINE</h2>
+        <h2 class="msw-sec-title">SUPPLY DROP — AMPLOP</h2>
         <p class="msw-sec-text">Doa restu adalah hadiah terindah. Bila berkenan memberi tanda kasih:</p>
-        <div class="msw-gift-card">
-            <div class="msw-gift-bank">{{bank_1}}</div>
-            <div class="msw-gift-num" id="msw-rek-1">{{rek_1}}</div>
-            <div class="msw-gift-name">a.n. {{nama_rek_1}}</div>
-            <button class="msw-btn msw-btn-sm" type="button" onclick="mswCopy('msw-rek-1', this)">SALIN NO. REK</button>
-            {{#if flag_pakai_qris_rekening_1}}<img class="msw-qris" src="{{gambar_qris_rekening_1}}" alt="QRIS" />{{/if}}
+        <div class="msw-gift-grid">
+            <div class="msw-gift-card">
+                <div class="msw-gift-rivets"><span></span><span></span><span></span><span></span></div>
+                <div class="msw-gift-bank">{{bank_1}}</div>
+                <div class="msw-gift-num" id="msw-rek-1">{{rek_1}}</div>
+                <div class="msw-gift-name">a.n. {{nama_rek_1}}</div>
+                {{#if flag_pakai_qris_rekening_1}}<div class="msw-qris-wrap"><img class="msw-qris" src="{{gambar_qris_rekening_1}}" alt="QRIS" /><span class="msw-qris-tag">SCAN ME</span></div>{{/if}}
+                <button class="msw-btn msw-btn-gift" type="button" onclick="mswCopy('msw-rek-1', this)">📋 SALIN NO. REK</button>
+            </div>
+            {{#if flag_pakai_2_rekening}}
+            <div class="msw-gift-card">
+                <div class="msw-gift-rivets"><span></span><span></span><span></span><span></span></div>
+                <div class="msw-gift-bank">{{bank_2}}</div>
+                <div class="msw-gift-num" id="msw-rek-2">{{rek_2}}</div>
+                <div class="msw-gift-name">a.n. {{nama_rek_2}}</div>
+                {{#if flag_pakai_qris_rekening_2}}<div class="msw-qris-wrap"><img class="msw-qris" src="{{gambar_qris_rekening_2}}" alt="QRIS" /><span class="msw-qris-tag">SCAN ME</span></div>{{/if}}
+                <button class="msw-btn msw-btn-gift" type="button" onclick="mswCopy('msw-rek-2', this)">📋 SALIN NO. REK</button>
+            </div>
+            {{/if}}
+            {{#if flag_kirim_hadiah_offline}}
+            <div class="msw-gift-card msw-gift-addr">
+                <div class="msw-gift-rivets"><span></span><span></span><span></span><span></span></div>
+                <div class="msw-gift-bank">📦 KIRIM KADO</div>
+                <div class="msw-gift-name msw-gift-place">{{nama_lokasi_kirim_hadiah_offline}}</div>
+                <div class="msw-gift-name" id="msw-gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                <button class="msw-btn msw-btn-gift" type="button" onclick="mswCopy('msw-gift-addr', this)">📋 SALIN ALAMAT</button>
+            </div>
+            {{/if}}
         </div>
-        {{#if flag_pakai_2_rekening}}
-        <div class="msw-gift-card">
-            <div class="msw-gift-bank">{{bank_2}}</div>
-            <div class="msw-gift-num" id="msw-rek-2">{{rek_2}}</div>
-            <div class="msw-gift-name">a.n. {{nama_rek_2}}</div>
-            <button class="msw-btn msw-btn-sm" type="button" onclick="mswCopy('msw-rek-2', this)">SALIN NO. REK</button>
-            {{#if flag_pakai_qris_rekening_2}}<img class="msw-qris" src="{{gambar_qris_rekening_2}}" alt="QRIS" />{{/if}}
-        </div>
-        {{/if}}
-        {{#if flag_kirim_hadiah_offline}}
-        <div class="msw-gift-addr">
-            <div class="msw-gift-bank">KIRIM KADO</div>
-            <div class="msw-gift-name">{{nama_lokasi_kirim_hadiah_offline}}</div>
-            <div class="msw-gift-name" id="msw-gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
-            <button class="msw-btn msw-btn-sm" type="button" onclick="mswCopy('msw-gift-addr', this)">SALIN ALAMAT</button>
-        </div>
-        {{/if}}
     </section>
     {{/if}}
 
     <!-- 11 · CLOSING (always) -->
     <section class="msw-sec msw-closing" data-info="closing">
-        <h2 class="msw-sec-title">TERIMA KASIH</h2>
-        <p class="msw-closing-text" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
-        <div class="msw-closing-couple">
-            <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
-            <span data-var="bride_nickname">{{bride_nickname}}</span>
+        <div class="msw-closing-bg" data-src="{{photo_closing}}"></div>
+        <div class="msw-closing-veil"></div>
+        <div class="msw-closing-inner">
+            <div class="msw-closing-clear">MISSION CLEAR</div>
+            <h2 class="msw-sec-title">TERIMA KASIH</h2>
+            <p class="msw-closing-sub">Atas kehadiran &amp; doa restunya</p>
+            <p class="msw-closing-text" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
+            <div class="msw-closing-rule"><span>♥</span></div>
+            <div class="msw-closing-from">Salam hangat,</div>
+            <div class="msw-closing-couple">
+                <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+                <span data-var="bride_nickname">{{bride_nickname}}</span>
+            </div>
+
+            <div class="msw-social">
+                {{#if flag_use_instagram_webconfig}}
+                <a class="msw-social-btn" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                </a>
+                {{/if}}
+                {{#if flag_use_tiktok_webconfig}}
+                <a class="msw-social-btn" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                </a>
+                {{/if}}
+                {{#if flag_use_youtube_webconfig}}
+                <a class="msw-social-btn" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                </a>
+                {{/if}}
+                {{#if flag_use_whatsapp_webconfig}}
+                <a class="msw-social-btn" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                </a>
+                {{/if}}
+            </div>
+
+            <div class="msw-credit">
+                <a href="{{site_url}}" target="_blank" rel="noopener noreferrer" data-var="site_name">{{site_name}}</a>
+                <span> · dibuat dengan ♥ · © 2026</span>
+            </div>
         </div>
-        <div class="msw-credit"><span data-var="site_name">{{site_name}}</span> · dibuat dengan ♥</div>
     </section>
 </div>
 

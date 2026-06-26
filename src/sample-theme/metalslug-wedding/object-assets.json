@@ -1,0 +1,212 @@
+[
+  {
+    "orderNumber": 1,
+    "kategori": "karakter",
+    "engineTexture": "t_pow",
+    "name": "pow",
+    "frames": 1,
+    "frameW": 48,
+    "frameH": 80,
+    "deskripsi": "Sandera/kurir undangan - kakek berjenggot putih lebat, baju compang-camping cokelat tan. 1 frame (engine sudah kasih bob naik-turun). Hadap kanan, kaki di dasar sel. Ditembak/disentuh = diselamatkan -> buka 1 kepingan undangan."
+  },
+  {
+    "orderNumber": 2,
+    "kategori": "item (ANIMASI)",
+    "engineTexture": "t_amplop",
+    "name": "amplop",
+    "frames": 2,
+    "frameW": 56,
+    "frameH": 40,
+    "deskripsi": "Amplop undangan krem + segel hati merah. 2 FRAME loop: 0 segel normal, 1 segel berkilau (highlight putih di hati). DUA fungsi: penanda di atas POW & pickup senjata (engine MEMBERI TINT per warna senjata - buat NETRAL/krem agar tint jelas, jangan terlalu berwarna). Hadap depan."
+  },
+  {
+    "orderNumber": 3,
+    "kategori": "item",
+    "engineTexture": "t_crate",
+    "name": "crate",
+    "frames": 1,
+    "frameW": 64,
+    "frameH": 64,
+    "deskripsi": "Peti senjata kayu cokelat + silang besi + bintang kuning di tengah. 1 frame (pecah pakai partikel engine). Diam di tanah, hadap depan."
+  },
+  {
+    "orderNumber": 4,
+    "kategori": "item (ANIMASI)",
+    "engineTexture": "t_barrel",
+    "name": "barrel",
+    "frames": 2,
+    "frameW": 52,
+    "frameH": 72,
+    "deskripsi": "Tong peledak kayu + pita besi + simbol bahaya kuning. 2 FRAME loop pelan: 0 idle (lampu/segitiga bahaya redup), 1 siaga (lampu/segitiga menyala terang - kesan berbahaya). Cover destruktif HP 2, meledak (AoE) saat hancur. Diam di tanah, hadap depan."
+  },
+  {
+    "orderNumber": 5,
+    "kategori": "proyektil",
+    "engineTexture": "t_bullet",
+    "name": "bullet",
+    "frames": 1,
+    "frameW": 24,
+    "frameH": 10,
+    "deskripsi": "Peluru pemain - kapsul kuning + inti emas + ujung oranye. 1 frame (engine memutar mengikuti arah 8-arah). Horizontal menghadap kanan."
+  },
+  {
+    "orderNumber": 6,
+    "kategori": "proyektil",
+    "engineTexture": "t_ebullet",
+    "name": "ebullet",
+    "frames": 1,
+    "frameW": 18,
+    "frameH": 18,
+    "deskripsi": "Peluru musuh - bola oranye-merah + kilau putih. 1 frame. Dipakai semua musuh penembak + bom drone + kipas peluru boss. Bulat simetris."
+  },
+  {
+    "orderNumber": 7,
+    "kategori": "proyektil",
+    "engineTexture": "t_rocket",
+    "name": "rocket",
+    "frames": 1,
+    "frameW": 36,
+    "frameH": 18,
+    "deskripsi": "Roket - badan abu, hulu ledak merah depan, semburan api kuning belakang. 1 frame (engine memutar mengikuti arah). Hadap kanan."
+  },
+  {
+    "orderNumber": 8,
+    "kategori": "proyektil",
+    "engineTexture": "t_nade",
+    "name": "nade",
+    "frames": 1,
+    "frameW": 22,
+    "frameH": 24,
+    "deskripsi": "Granat - bulat hijau militer + highlight + tuas/pin gelap di atas. 1 frame. Dilempar pemain (melambung) lalu meledak (partikel engine)."
+  },
+  {
+    "orderNumber": 9,
+    "kategori": "hazard (ANIMASI)",
+    "engineTexture": "t_flame",
+    "name": "flame",
+    "frames": 3,
+    "frameW": 32,
+    "frameH": 32,
+    "deskripsi": "Api hazard. 3 FRAME loop cepat (berkobar): 0/1/2 lidah api bergoyang beda bentuk (oranye/kuning/krem konsentris). Boleh transparan di tepi. Engine juga nyala-padam periodik + dipakai kecil sebagai muzzle-flash. Origin bawah-tengah."
+  },
+  {
+    "orderNumber": 10,
+    "kategori": "partikel",
+    "engineTexture": "t_spark",
+    "name": "spark",
+    "frames": 1,
+    "frameW": 14,
+    "frameH": 14,
+    "deskripsi": "Percikan - titik putih + inti kuning. 1 frame, tekstur PARTIKEL (emitter ledakan/hit, blend ADD - engine yang scale/fade). Kecil & bulat."
+  },
+  {
+    "orderNumber": 11,
+    "kategori": "partikel",
+    "engineTexture": "t_heart",
+    "name": "heart",
+    "frames": 1,
+    "frameW": 22,
+    "frameH": 22,
+    "deskripsi": "Hati toska kecil. 1 frame, tekstur PARTIKEL (muncul saat menyelamatkan POW & saat kemenangan, melayang naik)."
+  },
+  {
+    "orderNumber": 12,
+    "kategori": "terrain (TILEABLE)",
+    "engineTexture": "t_ground",
+    "name": "ground",
+    "frames": 1,
+    "frameW": 128,
+    "frameH": 128,
+    "deskripsi": "Ubin tanah dasar - tanah hijau gelap + pucuk rumput terang baris atas + bintik. 1 frame, WAJIB SEAMLESS kiri-kanan (di-tile horizontal sepanjang level). Permukaan atas = garis pijak pemain."
+  },
+  {
+    "orderNumber": 13,
+    "kategori": "terrain (TILEABLE)",
+    "engineTexture": "t_plat",
+    "name": "plat",
+    "frames": 1,
+    "frameW": 192,
+    "frameH": 40,
+    "deskripsi": "Platform melayang hijau + tepi rumput atas + garis papan. 1 frame, sebaiknya seamless horizontal. Pijakan; peluru tembus (jangan gambar terlalu tebal). Permukaan atas = garis pijak."
+  },
+  {
+    "orderNumber": 14,
+    "kategori": "hazard (TILEABLE)",
+    "engineTexture": "t_spike",
+    "name": "spike",
+    "frames": 1,
+    "frameW": 96,
+    "frameH": 36,
+    "deskripsi": "Deretan duri logam di alas cokelat. 1 frame, tileable horizontal. Hazard tanah (dilompati); kena = pemain terpental. Ujung tajam di atas."
+  },
+  {
+    "orderNumber": 15,
+    "kategori": "struktur",
+    "engineTexture": "t_cage",
+    "name": "cage",
+    "frames": 1,
+    "frameW": 152,
+    "frameH": 192,
+    "deskripsi": "Sangkar jeruji emas/krem (garis vertikal+horizontal + bingkai tebal). 1 frame. Mengurung mempelai; hilang (tween fade+scaleY) saat boss kalah. Transparan di antara jeruji (mempelai terlihat di belakang)."
+  },
+  {
+    "orderNumber": 16,
+    "kategori": "karakter",
+    "engineTexture": "t_couple_caged",
+    "name": "couple_caged",
+    "frames": 1,
+    "frameW": 120,
+    "frameH": 160,
+    "deskripsi": "Mempelai berdua di balik sangkar: pria berjas hitam + dasi merah (kiri), wanita gaun putih + kerudung + buket merah muda (kanan). 1 frame statis. Origin kaki di bawah. Tampil di belakang t_cage."
+  },
+  {
+    "orderNumber": 17,
+    "kategori": "struktur",
+    "engineTexture": "t_arch",
+    "name": "arch",
+    "frames": 1,
+    "frameW": 240,
+    "frameH": 260,
+    "deskripsi": "Gapura/altar pelaminan: dua tiang krem + palang atas dihias bunga merah muda + tanaman rambat hijau. 1 frame. Latar tujuan di ujung kanan arena boss. Origin bawah."
+  },
+  {
+    "orderNumber": 18,
+    "kategori": "scenery (parallax)",
+    "engineTexture": "t_palm",
+    "name": "palm",
+    "frames": 1,
+    "frameW": 140,
+    "frameH": 220,
+    "deskripsi": "Pohon palem - batang cokelat + pelepah hijau + kelapa kuning. 1 frame. Dekorasi parallax (tanpa tabrakan). Origin pangkal batang (bawah)."
+  },
+  {
+    "orderNumber": 19,
+    "kategori": "scenery (parallax)",
+    "engineTexture": "t_bush",
+    "name": "bush",
+    "frames": 1,
+    "frameW": 108,
+    "frameH": 60,
+    "deskripsi": "Semak hijau gumpal. 1 frame. Dekorasi parallax dasar. Origin bawah."
+  },
+  {
+    "orderNumber": 20,
+    "kategori": "scenery (parallax)",
+    "engineTexture": "t_sandbag",
+    "name": "sandbag",
+    "frames": 1,
+    "frameW": 92,
+    "frameH": 60,
+    "deskripsi": "Tumpukan karung pasir cokelat-tan (2 baris). 1 frame. Dekorasi/cover visual. Origin bawah."
+  },
+  {
+    "orderNumber": 21,
+    "kategori": "scenery (parallax)",
+    "engineTexture": "t_flag",
+    "name": "flag",
+    "frames": 3,
+    "frameW": 80,
+    "frameH": 120,
+    "deskripsi": "Bendera tiang krem + kain segitiga merah + emblem hati/bulat kuning. 3 FRAME loop (BERKIBAR): 0/1/2 kain melambai beda bentuk (kiri-tengah-kanan). Tiang tetap, hanya kain bergerak. Origin pangkal tiang (bawah)."
+  }
+]

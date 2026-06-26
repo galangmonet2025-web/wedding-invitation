@@ -165,6 +165,12 @@
 .msw-hud-label { font-size: 9px; letter-spacing: 1px; color: var(--msw-khaki); }
 .msw-hud-val { font-size: 15px; font-weight: 800; color: var(--msw-cream); }
 .msw-life-ico { font-size: 13px; }
+/* when painted from the real grenade sprite (t_nade) instead of the 💣 emoji */
+.msw-life-ico-img {
+    display: inline-block; width: 14px; height: 16px; vertical-align: -3px;
+    background-size: contain; background-repeat: no-repeat; background-position: center;
+    image-rendering: pixelated;
+}
 .msw-life-tag { font-size: 9px; font-weight: 700; letter-spacing: .5px; color: var(--msw-khaki); }
 .msw-hud-area-row { display: flex; align-items: center; gap: 6px; }
 .msw-hud-diff {
@@ -196,13 +202,24 @@
     position: absolute; top: 72px; left: 8px; z-index: 12;
     display: flex; flex-direction: column; gap: 7px;
 }
+/* Left HUD icon buttons — "arcade panel switch": bolted metal look, hard bottom
+   edge (pressable), amber-on-hover, top sheen, blocky 4px corners. */
 .msw-iconbtn {
-    width: 38px; height: 38px; border-radius: 8px; border: 2px solid var(--msw-olive);
-    background: rgba(14,20,12,.86); color: var(--msw-cream); font-size: 17px; cursor: pointer;
-    display: grid; place-items: center; transition: transform .08s, filter .12s; backdrop-filter: blur(2px);
+    position: relative; width: 40px; height: 40px; border-radius: 6px;
+    border: 2px solid #1c2417; border-bottom-width: 4px;
+    background: linear-gradient(180deg, #2a3a22 0%, #14200f 100%);
+    color: var(--msw-cream); font-size: 17px; cursor: pointer;
+    display: grid; place-items: center; overflow: hidden;
+    box-shadow: 0 3px 0 #0a0f08, inset 0 1px 0 rgba(255,255,255,.14);
+    transition: transform .08s, filter .12s, color .12s, box-shadow .08s;
 }
-.msw-iconbtn:active { transform: scale(.92); }
-.msw-star-btn.is-on { background: var(--msw-amber); color: var(--msw-ink); border-color: var(--msw-amber); }
+.msw-iconbtn::before {
+    content: ""; position: absolute; inset: 2px 3px auto 3px; height: 36%;
+    background: linear-gradient(180deg, rgba(255,255,255,.18), transparent); border-radius: 3px; pointer-events: none;
+}
+.msw-iconbtn:hover { color: var(--msw-amber); filter: brightness(1.1); }
+.msw-iconbtn:active { transform: translateY(3px); box-shadow: 0 0 0 #0a0f08, inset 0 1px 0 rgba(255,255,255,.1); }
+.msw-star-btn.is-on { background: linear-gradient(180deg, #ffd05a, var(--msw-amber)); color: var(--msw-ink); border-color: #7a5410; }
 .msw-view-btn.is-locked { opacity: .42; filter: grayscale(.6); }
 .msw-view-btn:not(.is-locked) { border-color: var(--msw-cyan); box-shadow: 0 0 12px rgba(79,214,200,.5); animation: msw-pulse 1.6s ease-in-out infinite; }
 @keyframes msw-pulse { 50% { box-shadow: 0 0 20px rgba(79,214,200,.9); } }
@@ -258,16 +275,40 @@
 }
 .msw-actions { display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
 .msw-actions-col { display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+/* Arcade hardware buttons — glossy cap, outer dark bezel ring, hard 3D bottom edge
+   that depresses on tap. Mono uppercase label with a subtle shadow. */
 .msw-tbtn {
-    pointer-events: auto; touch-action: none; border-radius: 50%; border: 3px solid; cursor: pointer;
-    font-family: var(--msw-mono); font-weight: 800; color: var(--msw-cream);
+    position: relative; pointer-events: auto; touch-action: none; border-radius: 50%;
+    border: 3px solid; cursor: pointer; font-family: var(--msw-mono); font-weight: 800;
+    letter-spacing: 1px; color: var(--msw-cream); text-shadow: 0 2px 2px rgba(0,0,0,.5);
     display: grid; place-items: center; user-select: none; -webkit-user-select: none;
-    transition: transform .06s, filter .1s;
+    transition: transform .06s, filter .1s, box-shadow .06s;
 }
-.msw-tbtn:active { transform: scale(.9); filter: brightness(1.25); }
-.msw-fire { width: 82px; height: 82px; font-size: 16px; background: radial-gradient(circle at 35% 30%, #ff5a4d, #a31d14); border-color: #6f140d; }
-.msw-jump { width: 56px; height: 56px; font-size: 13px; background: radial-gradient(circle at 35% 30%, #5fb8e8, #1d5e88); border-color: #123e5c; }
-.msw-nade { width: 46px; height: 46px; font-size: 16px; background: radial-gradient(circle at 35% 30%, #7bc86b, #3a7d44); border-color: #245029; }
+/* glossy highlight cap on every action button */
+.msw-tbtn::before {
+    content: ""; position: absolute; left: 18%; top: 12%; width: 56%; height: 42%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,.55), transparent 70%);
+    border-radius: 50%; pointer-events: none;
+}
+.msw-tbtn:active { transform: translateY(4px) scale(.97); filter: brightness(1.25); }
+.msw-fire {
+    width: 84px; height: 84px; font-size: 17px;
+    background: radial-gradient(circle at 38% 28%, #ff7a6e 0%, #e23b2e 45%, #a31d14 100%);
+    border-color: #6f140d; box-shadow: 0 6px 0 #5a0f08, 0 8px 12px rgba(0,0,0,.45);
+}
+.msw-fire:active { box-shadow: 0 2px 0 #5a0f08, 0 3px 8px rgba(0,0,0,.45); }
+.msw-jump {
+    width: 58px; height: 58px; font-size: 13px;
+    background: radial-gradient(circle at 38% 28%, #7fd0f5 0%, #2f8fc4 45%, #1d5e88 100%);
+    border-color: #123e5c; box-shadow: 0 5px 0 #0e3046, 0 7px 10px rgba(0,0,0,.4);
+}
+.msw-jump:active { box-shadow: 0 2px 0 #0e3046, 0 3px 7px rgba(0,0,0,.4); }
+.msw-nade {
+    width: 48px; height: 48px; font-size: 18px;
+    background: radial-gradient(circle at 38% 28%, #9be08a 0%, #4fa055 45%, #3a7d44 100%);
+    border-color: #245029; box-shadow: 0 5px 0 #1a3a1f, 0 7px 10px rgba(0,0,0,.4);
+}
+.msw-nade:active { box-shadow: 0 2px 0 #1a3a1f, 0 3px 7px rgba(0,0,0,.4); }
 
 /* ============================ OVERLAYS ============================ */
 .msw-overlay {
@@ -322,18 +363,43 @@
 
 .msw-stagesel-label { font-family: var(--msw-mono); font-size: 11px; letter-spacing: 2px; color: var(--msw-cyan); width: 100%; text-align: left; border-top: 1px solid var(--msw-olive-d); padding-top: 12px; }
 #msw-stagesel-diff .msw-diff-label { color: var(--msw-cyan); }
-.msw-stagesel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+/* MISSION SELECT — 2-column briefing cards: big stage number on the left,
+   sector name + status tag on the right. Bolted-panel look, cyan when picked. */
+.msw-stagesel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; width: 100%; }
 .msw-stagesel-cell {
-    display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.15;
-    font-family: var(--msw-mono); font-weight: 700; font-size: 9px; padding: 12px 4px 10px; cursor: pointer;
-    border: 2px solid var(--msw-olive); background: linear-gradient(180deg, #1c2417, #11160d); color: var(--msw-cream);
-    border-radius: 6px; box-shadow: 0 3px 0 #0b0e08; transition: transform .08s;
+    position: relative; display: grid; grid-template-columns: 38px 1fr; align-items: center;
+    gap: 9px; text-align: left; padding: 9px 10px 9px 8px; cursor: pointer; overflow: hidden;
+    font-family: var(--msw-mono); border: 2px solid var(--msw-olive); border-bottom-width: 4px;
+    background:
+        repeating-linear-gradient(135deg, rgba(255,182,39,.05) 0 7px, transparent 7px 14px),
+        linear-gradient(180deg, #1c2417, #11160d);
+    color: var(--msw-cream); border-radius: 8px; box-shadow: 0 3px 0 #0b0e08; transition: transform .08s, box-shadow .08s, filter .12s;
 }
-.msw-stagesel-cell::first-line { font-size: 20px; color: var(--msw-amber); }
+/* big stage number "tile" */
+.msw-stagesel-no {
+    display: grid; place-items: center; width: 38px; height: 38px; border-radius: 6px;
+    font-size: 20px; font-weight: 800; color: var(--msw-amber);
+    background: #0b0f08; border: 2px solid var(--msw-olive-d); box-shadow: inset 0 0 0 1px rgba(255,182,39,.15);
+}
+.msw-stagesel-name { font-size: 11px; font-weight: 700; line-height: 1.2; letter-spacing: .3px; }
+.msw-stagesel-badge {
+    display: inline-block; margin-top: 4px; font-size: 8px; font-weight: 700; letter-spacing: 1px;
+    color: var(--msw-cyan); text-transform: uppercase;
+}
+.msw-stagesel-cell:hover { filter: brightness(1.12); }
 .msw-stagesel-cell:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b0e08; }
-.msw-stagesel-cell.is-sel { background: linear-gradient(180deg, var(--msw-cyan), #2c8a80); color: var(--msw-ink); border-color: var(--msw-cyan); box-shadow: 0 0 12px rgba(79,214,200,.7), 0 3px 0 #1c5a54; }
-.msw-stagesel-cell.is-sel::first-line { color: var(--msw-ink); }
-.msw-stagesel-cell.is-locked { opacity: .4; cursor: not-allowed; filter: grayscale(.5); }
+.msw-stagesel-cell.is-boss .msw-stagesel-no { color: var(--msw-red); border-color: #6f140d; }
+.msw-stagesel-cell.is-boss .msw-stagesel-badge { color: var(--msw-red); }
+/* selected = cyan briefing highlight */
+.msw-stagesel-cell.is-sel {
+    background: linear-gradient(180deg, var(--msw-cyan), #2c8a80); color: var(--msw-ink);
+    border-color: var(--msw-cyan); box-shadow: 0 0 14px rgba(79,214,200,.6), 0 3px 0 #1c5a54;
+}
+.msw-stagesel-cell.is-sel .msw-stagesel-no { color: var(--msw-ink); background: rgba(255,255,255,.5); border-color: rgba(0,0,0,.25); }
+.msw-stagesel-cell.is-sel .msw-stagesel-badge { color: #08332f; }
+.msw-stagesel-cell.is-locked { opacity: .5; cursor: not-allowed; filter: grayscale(.55); }
+.msw-stagesel-cell.is-locked .msw-stagesel-no { color: var(--msw-khaki); }
+.msw-stagesel-cell.is-locked .msw-stagesel-badge { color: var(--msw-khaki); }
 
 /* ============================ INVITATION REVEAL ============================ */
 .msw-reveal {
@@ -354,7 +420,14 @@
     padding: 34px 22px; text-align: center; border-bottom: 1px solid var(--msw-olive-d);
     position: relative;
 }
-.msw-sec-title { font-family: var(--msw-mono); font-size: 17px; letter-spacing: 3px; color: var(--msw-amber); margin: 0 0 16px; }
+.msw-sec-title {
+    font-family: var(--msw-mono); font-size: 17px; letter-spacing: 3px; color: var(--msw-amber);
+    margin: 0 0 16px; text-transform: uppercase; text-shadow: 2px 2px 0 rgba(0,0,0,.45);
+    display: inline-flex; align-items: center; gap: 10px;
+}
+.msw-sec-title::before, .msw-sec-title::after {
+    content: ""; width: 16px; height: 2px; background: var(--msw-red); box-shadow: 0 4px 0 var(--msw-olive);
+}
 .msw-sub-title { font-family: var(--msw-mono); font-size: 13px; letter-spacing: 2px; color: var(--msw-cyan); margin: 18px 0 10px; }
 .msw-sec-text { font-size: 13px; line-height: 1.6; color: #d8cfb6; margin: 0 0 14px; }
 
@@ -390,8 +463,25 @@
     background: #0e150c; color: var(--msw-cream); font-family: var(--msw-font); font-size: 13px;
 }
 .msw-input:focus { outline: none; border-color: var(--msw-cyan); }
-.msw-btn { padding: 12px; font-size: 13px; color: var(--msw-cream); background: linear-gradient(180deg, var(--msw-olive), var(--msw-olive-d)); box-shadow: 0 3px 0 #1c2417; }
+/* ARCADE BUTTON — chunky olive "ammo box" with hard bottom edge + amber rivets.
+   Uppercase mono, top sheen, press-down on :active, brighten on hover. */
+.msw-btn {
+    position: relative; padding: 12px 14px; font-size: 12px; text-transform: uppercase;
+    color: var(--msw-cream);
+    background: linear-gradient(180deg, #5d7349 0%, var(--msw-olive) 45%, var(--msw-olive-d) 100%);
+    border: 2px solid #1c2417; border-bottom-width: 4px;
+    box-shadow: 0 4px 0 #14180e, inset 0 1px 0 rgba(255,255,255,.18);
+    overflow: hidden;
+}
+.msw-btn::before {
+    content: ""; position: absolute; inset: 2px 4px auto 4px; height: 38%;
+    background: linear-gradient(180deg, rgba(255,255,255,.22), transparent); border-radius: 3px; pointer-events: none;
+}
+.msw-btn:hover { filter: brightness(1.12); }
+.msw-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #14180e, inset 0 1px 0 rgba(255,255,255,.12); }
 .msw-btn-sm { padding: 8px 14px; font-size: 11px; display: inline-block; width: auto; }
+/* primary RED action variant (RSVP submit etc. can opt in) */
+.msw-btn-red { background: linear-gradient(180deg, #f0584b 0%, var(--msw-red) 45%, #a31d14 100%); box-shadow: 0 4px 0 #5f0f08, inset 0 1px 0 rgba(255,255,255,.2); }
 .msw-alert { font-size: 12px; font-family: var(--msw-mono); min-height: 16px; }
 .msw-alert.ok { color: var(--msw-cyan); }
 .msw-alert.err { color: var(--msw-red); }
@@ -426,15 +516,66 @@
 .msw-wish-time { font-size: 10px; color: var(--msw-khaki); }
 .msw-wish-text { font-size: 12px; color: #d8cfb6; margin-top: 4px; line-height: 1.5; }
 
-.msw-gift-card, .msw-gift-addr { max-width: 300px; margin: 0 auto 12px; padding: 14px; border: 2px solid var(--msw-olive); border-radius: 8px; background: #0e150c; }
-.msw-gift-bank { font-family: var(--msw-mono); font-size: 12px; letter-spacing: 1px; color: var(--msw-amber); }
-.msw-gift-num { font-size: 18px; font-weight: 800; letter-spacing: 1px; margin: 6px 0; font-family: var(--msw-mono); }
-.msw-gift-name { font-size: 12px; color: #c4bba2; margin-bottom: 8px; }
-.msw-qris { width: 140px; margin-top: 8px; border-radius: 6px; }
+/* ---------- GIFT: "supply crate" cards (tidy, centered QR + full-width button) ---------- */
+.msw-gift-grid { display: flex; flex-direction: column; gap: 16px; max-width: 320px; margin: 0 auto; }
+.msw-gift-card, .msw-gift-addr {
+    position: relative; margin: 0; padding: 18px 16px 16px; text-align: center;
+    border: 2px solid var(--msw-olive); border-radius: 10px;
+    background:
+        repeating-linear-gradient(135deg, rgba(255,182,39,.04) 0 8px, transparent 8px 16px),
+        linear-gradient(180deg, #14200f, #0b110a);
+    box-shadow: inset 0 0 0 2px #0b110a, 0 4px 0 #0a0f08;
+}
+/* corner rivets — the bolted-metal crate feel */
+.msw-gift-rivets span {
+    position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffe08a, var(--msw-amber) 60%, #7a5410);
+}
+.msw-gift-rivets span:nth-child(1) { top: 6px; left: 6px; }
+.msw-gift-rivets span:nth-child(2) { top: 6px; right: 6px; }
+.msw-gift-rivets span:nth-child(3) { bottom: 6px; left: 6px; }
+.msw-gift-rivets span:nth-child(4) { bottom: 6px; right: 6px; }
+.msw-gift-bank { font-family: var(--msw-mono); font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--msw-amber); text-transform: uppercase; }
+.msw-gift-num { font-size: 20px; font-weight: 800; letter-spacing: 2px; margin: 8px 0 4px; font-family: var(--msw-mono); color: var(--msw-cream); }
+.msw-gift-name { font-size: 12px; color: #c4bba2; line-height: 1.5; }
+.msw-gift-place { color: var(--msw-cream); font-weight: 700; margin-top: 6px; }
+.msw-qris-wrap { position: relative; display: inline-block; margin: 12px auto 4px; padding: 8px; background: #fff; border-radius: 8px; border: 2px solid var(--msw-olive); }
+.msw-qris { display: block; width: 150px; height: 150px; object-fit: contain; }
+.msw-qris-tag {
+    position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
+    font-family: var(--msw-mono); font-size: 9px; font-weight: 700; letter-spacing: 2px;
+    color: var(--msw-ink); background: var(--msw-amber); padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+}
+.msw-btn-gift { width: 100%; margin-top: 14px; }
 
-.msw-closing-text { font-size: 13px; line-height: 1.7; color: #d8cfb6; max-width: 300px; margin: 0 auto 14px; }
-.msw-closing-couple { font-size: 22px; font-weight: 700; }
-.msw-credit { font-size: 10px; color: var(--msw-khaki); margin-top: 18px; font-family: var(--msw-mono); }
+/* ---------- CLOSING: full-bleed photo + "MISSION CLEAR" overlay ---------- */
+.msw-closing { padding: 0; border-bottom: none; overflow: hidden; }
+.msw-closing-bg { position: absolute; inset: 0; background-size: cover; background-position: center; background-color: #14200f; }
+.msw-closing-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,12,9,.55) 0%, rgba(8,12,9,.82) 60%, rgba(8,12,9,.95) 100%); }
+.msw-closing-inner { position: relative; z-index: 2; padding: 46px 22px 34px; text-align: center; }
+.msw-closing-clear {
+    display: inline-block; font-family: var(--msw-mono); font-size: 11px; font-weight: 800; letter-spacing: 4px;
+    color: var(--msw-ink); background: var(--msw-amber); padding: 5px 14px; border-radius: 3px; margin-bottom: 18px;
+    box-shadow: 0 3px 0 #7a5410; animation: msw-blink 1.6s steps(2) infinite;
+}
+.msw-closing-sub { font-family: var(--msw-mono); font-size: 11px; letter-spacing: 2px; color: var(--msw-cyan); margin: -6px 0 16px; }
+.msw-closing-text { font-size: 13px; line-height: 1.8; color: #e3dcc6; max-width: 320px; margin: 0 auto 18px; font-style: italic; }
+.msw-closing-rule { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px auto 14px; max-width: 220px; }
+.msw-closing-rule::before, .msw-closing-rule::after { content: ""; height: 2px; flex: 1; background: linear-gradient(90deg, transparent, var(--msw-olive)); }
+.msw-closing-rule span { color: var(--msw-red); font-size: 16px; }
+.msw-closing-from { font-family: var(--msw-mono); font-size: 11px; letter-spacing: 1px; color: var(--msw-khaki); }
+.msw-closing-couple { font-size: 26px; font-weight: 800; margin-top: 4px; text-shadow: 2px 2px 0 var(--msw-red), 3px 3px 0 rgba(0,0,0,.4); }
+.msw-social { display: flex; justify-content: center; gap: 12px; margin: 22px 0 18px; }
+.msw-social-btn {
+    display: grid; place-items: center; width: 42px; height: 42px; color: var(--msw-cream);
+    border: 2px solid var(--msw-olive); border-bottom-width: 3px; border-radius: 8px;
+    background: linear-gradient(180deg, #2a3a22, #14200f); box-shadow: 0 3px 0 #0a0f08; transition: transform .08s, filter .12s, color .12s;
+}
+.msw-social-btn:hover { filter: brightness(1.2); color: var(--msw-amber); }
+.msw-social-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a0f08; }
+.msw-credit { font-size: 10px; color: var(--msw-khaki); margin-top: 14px; font-family: var(--msw-mono); letter-spacing: .5px; }
+.msw-credit a { color: var(--msw-amber); text-decoration: none; }
+.msw-credit a:hover { text-decoration: underline; }
 
 /* ---------- piece modal ---------- */
 .msw-modal-root { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(6,10,7,.85); padding: 16px; }

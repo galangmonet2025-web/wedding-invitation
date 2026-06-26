@@ -24,9 +24,10 @@ prosedural (Phaser Graphics) dengan gambar PNG buatan sendiri.
 
 ## Tabel kebutuhan aset (SET LENGKAP — tanpa dikurangi)
 
-> Ini set **lengkap** yang dipakai engine. Jumlahnya **13 frame**: 11 frame yang
-> memang dibutuhkan engine + tambahan pose lompat-tembak terarah (atas/bawah) dan
-> pose mati sesuai permintaan. **Tidak ada frame yang dipangkas / di-mapping ulang.**
+> Ini set **lengkap** yang dipakai engine. Jumlahnya **14 frame**: 11 frame yang
+> memang dibutuhkan engine + tambahan pose lompat-tembak terarah (atas/bawah),
+> pose **berdiri-tembak-atas**, dan pose mati sesuai permintaan. **Tidak ada frame
+> yang dipangkas / di-mapping ulang.**
 > Tiap frame = 1 file PNG, dan tiap nama file langsung dipetakan ke 1 tekstur engine
 > (kolom "tekstur engine") supaya pasang-langsung tanpa kompromi.
 
@@ -41,10 +42,11 @@ prosedural (Phaser Graphics) dengan gambar PNG buatan sendiri.
 | 7 | `player_jump_shoot_up.png` | 30 | 42 | `t_player_jump` | Melompat NAIK (kaki menekuk terangkat) **sambil menembak ke ATAS** — lengan + laras lurus ke atas. Dipakai juga sebagai pose lompat default saat naik. |
 | 8 | `player_jump_shoot_side.png` | 30 | 42 | `t_player_fall` | Melompat / melayang **sambil menembak ke SAMPING (depan)** — lengan + laras horizontal. Dipakai juga sebagai pose saat sedang turun/jatuh. |
 | 9 | `player_jump_shoot_down.png` | 30 | 42 | `t_player_jumpdown` (baru) | Melompat **sambil menembak ke BAWAH** — lengan + laras serong/lurus ke bawah (nembak tanah saat melayang). |
-| 10 | `player_crouch.png` | 30 | 42 | `t_player_prone` | Jongkok / merunduk — badan pendek & lebih lebar, kepala turun, senjata ke depan. Telapak kaki tetap di baris bawah (y = 41), tinggi efektif ±60% badan berdiri. |
-| 11 | `player_hurt.png` | 30 | 42 | `t_player_hurt` | Kena tembak / terpental — pose tersentak ke belakang, ekspresi kesakitan (boleh sedikit merah). Tampil sesaat saat kena hit (kebal+kedip). |
-| 12 | `player_dead.png` | 30 | 42 | `t_player_dead` (baru) | MATI / tumbang — tergeletak/terjengkang, kepala di bawah, senjata terlepas. Pose gaya Metal Slug saat tewas. |
-| 13 | `player_static.png` | 30 | 42 | `t_player` | Pose diam tunggal (fallback). Boleh **sama persis** dengan `player_idle_1` — ini cadangan kalau animasi belum jalan. |
+| 10 | `player_aim_up.png` | 30 | 42 | `t_player_aimup` (baru) | **Berdiri di tanah sambil menembak ke ATAS** — kaki menapak di baris bawah (y = 41), lengan terangkat & laras **vertikal lurus ke atas** di samping kepala. Dipakai saat pemain DIAM + menahan tombol Atas/W. Beda dari frame 7 (frame 7 = melompat/kaki menekuk; frame ini = kaki berdiri menapak). |
+| 11 | `player_crouch.png` | 30 | 42 | `t_player_prone` | Jongkok / merunduk — badan pendek & lebih lebar, kepala turun, senjata ke depan. Telapak kaki tetap di baris bawah (y = 41), tinggi efektif ±60% badan berdiri. |
+| 12 | `player_hurt.png` | 30 | 42 | `t_player_hurt` | Kena tembak / terpental — pose tersentak ke belakang, ekspresi kesakitan (boleh sedikit merah). Tampil sesaat saat kena hit (kebal+kedip). |
+| 13 | `player_dead.png` | 30 | 42 | `t_player_dead` (baru) | MATI / tumbang — tergeletak/terjengkang, kepala di bawah, senjata terlepas. Pose gaya Metal Slug saat tewas. |
+| 14 | `player_static.png` | 30 | 42 | `t_player` | Pose diam tunggal (fallback). Boleh **sama persis** dengan `player_idle_1` — ini cadangan kalau animasi belum jalan. |
 
 ## Pemetaan ke state animasi (untuk referensi)
 
@@ -53,6 +55,7 @@ prosedural (Phaser Graphics) dengan gambar PNG buatan sendiri.
 | Diam (idle / bernafas) | `player_idle_1` ↔ `player_idle_2` (loop pelan) |
 | Lari | `player_run_1` → `_2` → `_3` → `_4` (loop cepat) |
 | Lompat naik / nembak atas | `player_jump_shoot_up` |
+| Berdiri + nembak atas (tahan Atas/W) | `player_aim_up` |
 | Melayang-turun / nembak samping | `player_jump_shoot_side` |
 | Lompat + nembak bawah | `player_jump_shoot_down` |
 | Jongkok | `player_crouch` |
@@ -140,27 +143,34 @@ File terpisah: [`player-assets.json`](./player-assets.json). Isinya sama dengan 
   },
   {
     "orderNumber": 10,
+    "name": "player_aim_up.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Berdiri di tanah sambil menembak ke ATAS - kaki menapak di baris bawah (y=41 skala 30x42 / bawah kanvas), lengan terangkat & laras VERTIKAL lurus ke atas di samping kepala. Dipakai saat pemain DIAM + menahan tombol Atas/W. Beda dari frame 7 (frame 7 = melompat kaki menekuk; frame ini = berdiri menapak)."
+  },
+  {
+    "orderNumber": 11,
     "name": "player_crouch.png",
     "width": 60,
     "height": 84,
     "deskripsi": "Jongkok / merunduk - badan pendek & lebih lebar, kepala turun, senjata ke depan. Telapak kaki tetap di baris bawah (y=41), tinggi efektif +-60% badan berdiri."
   },
   {
-    "orderNumber": 11,
+    "orderNumber": 12,
     "name": "player_hurt.png",
     "width": 60,
     "height": 84,
     "deskripsi": "Kena tembak / terpental - pose tersentak ke belakang, ekspresi kesakitan (boleh sedikit merah). Tampil sesaat saat kena hit (kebal+kedip)."
   },
   {
-    "orderNumber": 12,
+    "orderNumber": 13,
     "name": "player_dead.png",
     "width": 60,
     "height": 84,
     "deskripsi": "MATI / tumbang - tergeletak/terjengkang, kepala di bawah, senjata terlepas. Pose gaya Metal Slug saat tewas."
   },
   {
-    "orderNumber": 13,
+    "orderNumber": 14,
     "name": "player_static.png",
     "width": 60,
     "height": 84,
@@ -171,7 +181,12 @@ File terpisah: [`player-assets.json`](./player-assets.json). Isinya sama dengan 
 
 ## Cara pakai (setelah PNG jadi)
 
-1. Taruh ke-13 PNG di folder ini (`src/sample-theme/metalslug-wedding/`) atau host
+> **Slot upload di Theme Editor:** frame 1–13 = slot gambar **1–13**. Frame baru
+> `player_aim_up` (No. 10 di tabel) **diunggah ke slot gambar ke-17** (`{{asset_image_17}}`),
+> bukan slot 10 — supaya nomor slot aset lama (1–13) yang sudah terlanjur diunggah tidak
+> bergeser. Kalau slot 17 kosong, engine memakai gambar prosedural (laras vertikal) otomatis.
+
+1. Taruh ke-14 PNG di folder ini (`src/sample-theme/metalslug-wedding/`) atau host
    gambarnya & siapkan URL-nya.
 2. Beri tahu Claude "asetnya sudah siap" — engine akan diubah dari menggambar
    prosedural (`drawCommando`) menjadi **memuat PNG** ini ke tekstur
@@ -423,6 +438,28 @@ Catatan penting:
 - `t_slug` opsional (fitur kendaraan belum aktif).
 - Total tekstur game = **44**: 13 pemain ✓ + 6 musuh/boss ✓ + **25 sisa ini**.
 
-Belum ada keputusan cara pasang (per-file vs sheet) untuk batch ini — JSON ini baru
-**daftar kebutuhannya**. Saat asetnya siap, beri tahu Claude untuk menyambungkannya
-ke `buildTextures` (1-lawan-1 ke `engineTexture` di atas), seperti aset pemain.
+> ## ✅ STATUS: ATLAS OBJEK SUDAH DIGENERATE & TERPASANG
+>
+> Sprite untuk **21 objek** (semua di atas KECUALI `t_mountain`/`t_hill`/`t_cloud`
+> yang tetap prosedural — siluet besar bikin atlas berat, lawan dari kecepatan load —
+> dan `t_slug` yang tak terpakai) sudah **digenerate** sebagai SATU atlas transparan:
+> **[`assets/object-sprite-sheet.png`](./assets/object-sprite-sheet.png)** (288×2520, ~14KB).
+>
+> - **Upload:** taruh atlas itu di slot gambar **ke-16** (`{{asset_image_16}}`,
+>   `data-asset="object_sheet"`). Engine slice sendiri per `assets/object-frame-map.json`.
+> - **Slice + downscale:** tiap sel atlas 2×; engine MENGECILKAN ke ukuran prosedural
+>   asli (1×) lalu bake ke key aslinya (`t_pow`, `t_ground`, …) → semua kode
+>   create/tile/scale tetap jalan tanpa ubah ukuran. Tileable (`t_ground`/`t_plat`/
+>   `t_spike`) tetap akurat.
+> - **Beranimasi:** `t_amplop` (kilau segel), `t_barrel` (lampu siaga), `t_flame`
+>   (api berkobar), `t_flag` (berkibar) → anim `o_amplop`/`o_barrel`/`o_flame`/`o_flag`,
+>   diputar di prop backdrop / penanda POW / hazard / barrel.
+> - **Fallback:** slot 16 kosong / gagal → balik ke gambar prosedural, game tetap jalan.
+> - **Spec & makna frame:** [`object-assets.json`](./object-assets.json). Mau regenerate
+>   art-nya? jalankan generator: `node assets/gen-objects.cjs` (menggambar ulang atlas
+>   dari koordinat `object-frame-map.json`), atau gambar ulang manual pakai template
+>   `assets/object-template.png`.
+
+Tabel di atas = referensi makna; angka width/height di `remaining-assets.json` adalah
+ukuran 2× (sel atlas). Total tekstur game = **44**: 13 pemain ✓ + 6 musuh/boss ✓ +
+21 objek (atlas ✓) + 4 tetap prosedural (mountain/hill/cloud/slug).

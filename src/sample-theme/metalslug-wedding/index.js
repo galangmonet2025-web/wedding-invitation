@@ -32,7 +32,7 @@
     };
 
     var BUILD = 'metalslug-wedding';
-    var VERSION = 'v1.5.5';   // PRESS START robust on live invite: capture-phase delegation + guarded init + global fallback
+    var VERSION = 'v1.8.1';   // grass tufts (t_grass) scattered along the ground surface; ground tiles depth -2 so grass sits on soil under the player
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#e23b2e;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -70,6 +70,16 @@
             minDestructible: 2,    // barrels/crates per screen
             maxDeadPx:      0.75,  // × BW — longest allowed empty run
             rewardEveryPx:  2.5    // × BW — reward (POW/crate) cadence
+        },
+        /* REACHABILITY (level-gen). Jump apex = jump²/(2·gravity) = 560²/(2·1500) ≈ 104px.
+           Every elevated platform MUST be climbable: vertical rise from a lower foothold
+           (ground or another platform) ≤ stepUp, and within horizontal reach. Keep a safety
+           margin under the raw apex so the player always makes it. */
+        reach: {
+            jumpApex: 104,   // raw physics apex (px) — DO NOT place a ledge higher than the
+            stepUp:   86,    // max rise per hop between footholds (apex − margin)
+            stepRun:  140,   // comfortable horizontal gap to the next foothold while rising
+            tierGap:  78     // vertical spacing used when stacking a reachable staircase
         }
     };
 
@@ -126,6 +136,7 @@
         { name: 'player_jump_shoot_up',   key: 't_player_jump' },
         { name: 'player_jump_shoot_side', key: 't_player_fall' },
         { name: 'player_jump_shoot_down', key: 't_player_jumpdown' },
+        { name: 'player_aim_up',          key: 't_player_aimup' },   // STANDING shoot-up (feet on ground)
         { name: 'player_crouch',          key: 't_player_prone' },
         { name: 'player_hurt',            key: 't_player_hurt' },
         { name: 'player_dead',            key: 't_player_dead' },
@@ -186,6 +197,43 @@
     var usingEnemyAssets = false;
     // per texKey -> { scaleX, scaleY } to render the big cell at the engine display size
     var ENEMY_DISP = {};
+
+    /* =================================================================
+       OBJECT atlas (assets/object-sprite-sheet.png) — ONE whole image uploaded as
+       {{asset_image_16}} (data-asset="object_sheet"); the engine slices it into the
+       existing procedural texture keys. Each object's atlas cell is 2× the engine
+       texture size (crisp); the slice DOWNSCALES each frame to the native 1× size
+       (`ew×eh`) and bakes it into its own standalone key so every existing create/
+       tile/scale call works unchanged. Multi-frame entries (amplop/barrel/flame/flag)
+       also build a Phaser anim. Coords mirror assets/object-frame-map.json.
+       Big parallax bg (t_mountain/t_hill/t_cloud) + unused t_slug stay procedural.
+       ================================================================= */
+    var OBJECT_SHEET_KEY = 't_object_sheet';
+    var OBJECT_SHEET = [
+        // key,             ew, eh,  anim,        frames: [[x,y,w,h]...]  (atlas cells, 2×)
+        { key: 't_pow', ew: 24, eh: 40, frames: [[14, 36, 48, 80]] },
+        { key: 't_amplop', ew: 28, eh: 20, anim: 'o_amplop', rate: 3, frames: [[14, 156, 56, 40], [80, 156, 56, 40]] },
+        { key: 't_crate', ew: 32, eh: 32, frames: [[14, 236, 64, 64]] },
+        { key: 't_barrel', ew: 26, eh: 36, anim: 'o_barrel', rate: 2, frames: [[14, 340, 52, 72], [76, 340, 52, 72]] },
+        { key: 't_bullet', ew: 12, eh: 5, frames: [[14, 452, 24, 10]] },
+        { key: 't_ebullet', ew: 9, eh: 9, frames: [[14, 502, 18, 18]] },
+        { key: 't_rocket', ew: 18, eh: 9, frames: [[14, 560, 36, 18]] },
+        { key: 't_nade', ew: 11, eh: 12, frames: [[14, 618, 22, 24]] },
+        { key: 't_flame', ew: 16, eh: 16, anim: 'o_flame', rate: 10, frames: [[14, 682, 32, 32], [56, 682, 32, 32], [98, 682, 32, 32]] },
+        { key: 't_spark', ew: 7, eh: 7, frames: [[14, 754, 14, 14]] },
+        { key: 't_heart', ew: 11, eh: 11, frames: [[14, 808, 22, 22]] },
+        { key: 't_ground', ew: 64, eh: 64, frames: [[14, 870, 128, 128]] },
+        { key: 't_plat', ew: 96, eh: 20, frames: [[14, 1038, 192, 40]] },
+        { key: 't_spike', ew: 48, eh: 18, frames: [[14, 1118, 96, 36]] },
+        { key: 't_cage', ew: 76, eh: 96, frames: [[14, 1194, 152, 192]] },
+        { key: 't_couple_caged', ew: 60, eh: 80, frames: [[14, 1426, 120, 160]] },
+        { key: 't_arch', ew: 120, eh: 130, frames: [[14, 1626, 240, 260]] },
+        { key: 't_palm', ew: 70, eh: 110, frames: [[14, 1926, 140, 220]] },
+        { key: 't_bush', ew: 54, eh: 30, frames: [[14, 2186, 108, 60]] },
+        { key: 't_sandbag', ew: 46, eh: 30, frames: [[14, 2286, 92, 60]] },
+        { key: 't_flag', ew: 40, eh: 60, anim: 'o_flag', rate: 6, frames: [[14, 2386, 80, 120], [104, 2386, 80, 120], [194, 2386, 80, 120]] }
+    ];
+    var usingObjectAssets = false;
 
     var toastTimer;
     function toast(msg, ms) {
@@ -376,10 +424,13 @@
     }
     function closeReveal() { $('msw-reveal').classList.remove('show'); }
 
-    // hero bg uses data-src (so it doesn't load in the hidden source); apply on clone
+    // hero/closing bg uses data-src (so it doesn't load in the hidden source); apply on clone
     function hydrateImages(root) {
-        var bg = root.querySelector('.msw-hero-bg[data-src]');
-        if (bg) { var u = bg.getAttribute('data-src'); if (u && u.indexOf('{{') !== 0) bg.style.backgroundImage = "url('" + u + "')"; }
+        var bgs = root.querySelectorAll('.msw-hero-bg[data-src], .msw-closing-bg[data-src]');
+        bgs.forEach(function (bg) {
+            var u = bg.getAttribute('data-src');
+            if (u && u.indexOf('{{') !== 0) bg.style.backgroundImage = "url('" + u + "')";
+        });
     }
 
     /* re-wire host form buttons inside a clone so backend still fires
@@ -823,10 +874,18 @@
             (function (idx) {
                 var cell = document.createElement('button');
                 var unlockedSector = cheat.on || idx <= STORE.maxSector;
-                cell.className = 'msw-stagesel-cell' + (unlockedSector ? '' : ' is-locked');
+                var isBoss = idx === CONFIG.sectors - 1;
+                cell.className = 'msw-stagesel-cell' + (unlockedSector ? '' : ' is-locked') + (isBoss ? ' is-boss' : '');
                 cell.dataset.idx = idx;
-                cell.textContent = (idx + 1) + '\n' + SECTOR_NAMES[idx];
-                cell.style.whiteSpace = 'pre-line';
+                cell.type = 'button';
+                // structured mission card: STAGE NN badge + sector name + (lock/boss tag)
+                var num = (idx + 1 < 10 ? '0' : '') + (idx + 1);
+                cell.innerHTML =
+                    '<span class="msw-stagesel-no">' + num + '</span>' +
+                    '<span class="msw-stagesel-name">' + esc(SECTOR_NAMES[idx]) + '</span>' +
+                    '<span class="msw-stagesel-badge">' +
+                        (unlockedSector ? (isBoss ? '☠ BOSS' : '▶ GO') : '🔒 TERKUNCI') +
+                    '</span>';
                 // click only MARKS the selection (pending) — does NOT start (2-step UX)
                 if (unlockedSector) cell.addEventListener('click', function () { pendingStage = idx; paintSel(); });
                 grid.appendChild(cell);
@@ -1055,7 +1114,13 @@
                 g.fillStyle(0x10140d, 1); g.fillRect(10, 5 + bob, 2, 2); g.fillRect(15, 5 + bob, 2, 2); // eyes
                 box(g, 5, 2 + bob, 16, 6, 0x4fd6c8, 0x86eee2, 0x2c8a80);  // beret
                 g.fillStyle(0xffd447, 1); g.fillRect(7, 3 + bob, 3, 3);   // badge
-                box(g, 18, 22 + bob + (opt.armUp ? -2 : 0), 11, 4, 0x2a2a2a, 0x555, 0x111); // rifle
+                if (opt.aimUp) {
+                    // STANDING aim-up: rifle held VERTICAL beside the head, raised arm
+                    box(g, 17, 14 + bob, 4, 11, 0xf3d2a0, 0xffe6c0, 0xd0a878);   // raised arm
+                    box(g, 19, -6 + bob, 4, 22, 0x2a2a2a, 0x555, 0x111);          // vertical rifle
+                } else {
+                    box(g, 18, 22 + bob + (opt.armUp ? -2 : 0), 11, 4, 0x2a2a2a, 0x555, 0x111); // rifle (side)
+                }
                 outline(g, 5, y0, 16, 34 - bob);
             }
             tex(scene, 't_player', 30, 42, function (g) { drawCommando(g, { bob: 0 }); }); // fallback static
@@ -1066,6 +1131,7 @@
             tex(scene, 't_player_run2', 30, 42, function (g) { drawCommando(g, { bob: 0, legPhase: -3 }); });
             tex(scene, 't_player_run3', 30, 42, function (g) { drawCommando(g, { bob: -1, legPhase: 0 }); });
             tex(scene, 't_player_jump', 30, 42, function (g) { drawCommando(g, { bob: -1, legPhase: 2, armUp: true }); });
+            tex(scene, 't_player_aimup', 30, 42, function (g) { drawCommando(g, { bob: 0, aimUp: true }); }); // standing shoot-up
             tex(scene, 't_player_fall', 30, 42, function (g) { drawCommando(g, { bob: 1, legPhase: -1 }); });
             tex(scene, 't_player_prone', 30, 42, function (g) { drawCommando(g, { prone: true }); });
             tex(scene, 't_player_hurt', 30, 42, function (g) { drawCommando(g, { bob: 0, hurt: true }); });
@@ -1228,6 +1294,13 @@
                 g.fillStyle(0x2e5d3a, 1); g.fillCircle(14, 20, 14); g.fillCircle(30, 16, 16); g.fillCircle(44, 21, 12);
                 g.fillStyle(0x3a7d4a, 1); g.fillCircle(20, 14, 7); g.fillCircle(36, 12, 6);
             });
+            // small GRASS TUFT — a few blades, scattered densely along the ground surface
+            // so the floor reads as grassy (the requested "dekorasi rumput"). Origin bottom.
+            tex(scene, 't_grass', 22, 16, function (g) {
+                function blade(x, h, col) { g.fillStyle(col, 1); g.fillTriangle(x, 16, x - 2, 16 - h, x + 2, 16); }
+                blade(5, 13, 0x4a7a2e); blade(9, 16, 0x6a9a4a); blade(13, 11, 0x4a7a2e);
+                blade(17, 14, 0x6a9a4a); blade(11, 9, 0x8aba5a);
+            });
             tex(scene, 't_sandbag', 46, 30, function (g) {
                 for (var r = 0; r < 2; r++) for (var c = 0; c < 3; c++) {
                     var x = 2 + c * 15 + (r % 2 ? 7 : 0), y = 2 + r * 13;
@@ -1327,6 +1400,12 @@
                 try { if (self.textures.exists(ENEMY_SHEET_KEY)) self.textures.remove(ENEMY_SHEET_KEY); } catch (e) {}
                 self.load.image(ENEMY_SHEET_KEY, enemyUrl);
             }
+            // OBJECT atlas (one whole image; sliced in create() → sliceObjectSheet).
+            var objUrl = assetUrl('object_sheet');
+            if (objUrl) {
+                try { if (self.textures.exists(OBJECT_SHEET_KEY)) self.textures.remove(OBJECT_SHEET_KEY); } catch (e) {}
+                self.load.image(OBJECT_SHEET_KEY, objUrl);
+            }
             this.load.on('loaderror', function (file) { try { self.textures.remove(file.key); } catch (e) {} });
         };
 
@@ -1337,7 +1416,11 @@
             // any enemy key we successfully sliced (its tex() guard sees nothing to remove — we
             // never created the standalone keys, so the spawn code reads ENEMY_SHEET frames).
             this.sliceEnemySheet();
+            this.sliceObjectSheet();
             buildTextures(this);
+            // HUD: paint the real grenade sprite (t_nade) onto the top-left bomb indicator
+            // instead of the 💣 emoji (works in both asset + procedural mode).
+            this.paintHudBombIcon();
             // PNG assets win when present; flag asset-mode if the core idle frame loaded.
             usingPlayerAssets = this.textures.exists('t_player_idle0') &&
                                 this.textures.get('t_player_idle0').source[0] &&
@@ -1423,6 +1506,27 @@
             this.updateHUD();
         };
 
+        /* HUD bomb icon — export the grenade texture (t_nade) to a data-URL and set it as the
+           top-left indicator's image, replacing the 💣 emoji. Works whether t_nade came from the
+           object atlas (asset mode) or the procedural draw. Silent no-op if anything fails. */
+        GameScene.prototype.paintHudBombIcon = function () {
+            try {
+                var ico = $('msw-life-ico') || document.querySelector('.msw-life-ico');
+                if (!ico || !this.textures.exists('t_nade')) return;
+                var src = this.textures.get('t_nade').getSourceImage();
+                if (!src) return;
+                var cv = document.createElement('canvas');
+                cv.width = src.width; cv.height = src.height;
+                var cx = cv.getContext('2d'); if (!cx) return;
+                cx.imageSmoothingEnabled = false;
+                cx.drawImage(src, 0, 0);
+                var url = cv.toDataURL('image/png');
+                ico.textContent = '';
+                ico.classList.add('msw-life-ico-img');
+                ico.style.backgroundImage = "url('" + url + "')";
+            } catch (e) { /* keep the emoji fallback */ }
+        };
+
         /* frame-by-frame anims from procedural frame textures (guard re-create) */
         GameScene.prototype.buildAnims = function () {
             var mk = function (key, frames, rate, repeat) {
@@ -1432,6 +1536,7 @@
             mk('p_idle', ['t_player_idle0', 't_player_idle1'], 3);
             mk('p_run', ['t_player_run0', 't_player_run1', 't_player_run2', 't_player_run3'], 12);
             mk('p_jump', ['t_player_jump'], 1, 0);
+            mk('p_aimup', ['t_player_aimup'], 1, 0);          // standing shoot-up pose
             mk('p_fall', ['t_player_fall'], 1, 0);
             mk('p_prone', ['t_player_prone'], 1, 0);
             mk('p_hurt', ['t_player_hurt'], 1, 0);
@@ -1595,6 +1700,79 @@
             if (idleAnim && this.anims.exists(idleAnim)) e.play(idleAnim);
         };
 
+        /* Slice the OBJECT atlas into the native procedural texture keys. Each atlas cell is 2×;
+           we DOWNSCALE each frame to its engine size (ew×eh) and bake it into a standalone canvas
+           texture under the real key (`t_pow`, `t_ground`, …) so every existing create/tile/scale
+           call keeps working with NO size change. Multi-frame objects get `<key>_0/_1/…` textures
+           + a Phaser anim (o_amplop/o_barrel/o_flame/o_flag). No-op (procedural) if the atlas is
+           absent or canvas is unavailable. The generated PNG is already transparent → key-out is
+           skipped automatically. */
+        GameScene.prototype.sliceObjectSheet = function () {
+            usingObjectAssets = false;
+            if (!this.textures.exists(OBJECT_SHEET_KEY)) return;
+            var src = this.textures.get(OBJECT_SHEET_KEY).source[0];
+            if (!src || !src.width) return;
+            var img = src.image || src.source; if (!img) return;
+            // sanity vs the known atlas (288×2520); bail to procedural if wildly different.
+            if (src.width < 200 || src.height < 1500) { try { this.textures.remove(OBJECT_SHEET_KEY); } catch (e) {} return; }
+            var self = this, made = 0;
+            // shared scratch canvas for downscaling each frame
+            function bake(destKey, sx, sy, sw, sh, dw, dh) {
+                try {
+                    var cv = document.createElement('canvas'); cv.width = dw; cv.height = dh;
+                    var ctx = cv.getContext('2d');
+                    ctx.imageSmoothingEnabled = false;   // crisp pixel-art downscale
+                    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+                    if (self.textures.exists(destKey)) self.textures.remove(destKey);
+                    self.textures.addCanvas(destKey, cv);
+                    return true;
+                } catch (e) { return false; }
+            }
+            OBJECT_SHEET.forEach(function (o) {
+                var fr = o.frames;
+                if (fr.length === 1) {
+                    if (bake(o.key, fr[0][0], fr[0][1], fr[0][2], fr[0][3], o.ew, o.eh)) made++;
+                } else {
+                    // base key = frame 0 (so non-anim create() calls still get a valid texture),
+                    // plus per-frame keys for the anim.
+                    var frameKeys = [];
+                    for (var i = 0; i < fr.length; i++) {
+                        var fk = o.key + '_' + i;
+                        if (bake(fk, fr[i][0], fr[i][1], fr[i][2], fr[i][3], o.ew, o.eh)) { frameKeys.push(fk); made++; }
+                    }
+                    // base key mirrors frame 0
+                    bake(o.key, fr[0][0], fr[0][1], fr[0][2], fr[0][3], o.ew, o.eh);
+                    o._frameKeys = frameKeys;
+                }
+            });
+            usingObjectAssets = made > 0;
+            // build object anims (guard re-create)
+            if (usingObjectAssets) {
+                OBJECT_SHEET.forEach(function (o) {
+                    if (!o.anim || !o._frameKeys || o._frameKeys.length < 2) return;
+                    if (self.anims.exists(o.anim)) return;
+                    self.anims.create({
+                        key: o.anim,
+                        frames: o._frameKeys.map(function (k) { return { key: k }; }),
+                        frameRate: o.rate || 4, repeat: -1
+                    });
+                });
+            }
+        };
+
+        /* anim key for an object texture, only when object assets are active (else null) */
+        GameScene.prototype.objAnim = function (texKey) {
+            if (!usingObjectAssets) return null;
+            var o = OBJECT_SHEET.filter(function (r) { return r.key === texKey; })[0];
+            return (o && o.anim && this.anims.exists(o.anim)) ? o.anim : null;
+        };
+        /* add.image OR an anim-playing sprite (for t_flag/t_amplop in asset mode). Same defaults. */
+        GameScene.prototype.objImage = function (x, y, texKey) {
+            var anim = this.objAnim(texKey);
+            if (anim) { var sp = this.add.sprite(x, y, texKey); sp.play(anim); return sp; }
+            return this.add.image(x, y, texKey);
+        };
+
         /* sector palettes (sky top, sky bottom, sun color/alpha) */
         GameScene.prototype.skyFor = function (idx) {
             var P_ = [
@@ -1638,7 +1816,7 @@
             var propTex = idx === 3 ? ['t_palm', 't_barrel'] : idx === 4 || idx === 5 ? ['t_barrel', 't_sandbag', 't_flag'] : ['t_palm', 't_bush', 't_flag'];
             for (var p = 0; p * 300 < worldW; p++) {
                 var t = propTex[p % propTex.length];
-                reg(this.add.image(160 + p * 300 + (p % 2) * 90, GROUND_Y + 2, t).setOrigin(0.5, 1).setScrollFactor(0.7).setDepth(-20).setAlpha(0.95));
+                reg(this.objImage(160 + p * 300 + (p % 2) * 90, GROUND_Y + 2, t).setOrigin(0.5, 1).setScrollFactor(0.7).setDepth(-20).setAlpha(0.95));
             }
         };
 
@@ -1676,7 +1854,10 @@
 
             this.arenaX = null; this.bossActive = false; this.bossDead = false;
             var isBoss = (idx === C.sectors - 1);
-            var len = isBoss ? 3000 : (4200 + idx * 600);   // px (boss sector now has walk-in)
+            // LONGER stages (per request). Non-boss sectors grow with index; boss keeps a
+            // shorter walk-in corridor before the arena.
+            var len = isBoss ? 3200 : (5400 + idx * 900);   // px
+
             this.worldW = len;
             this.physics.world.setBounds(0, 0, len, BH);
             this.cameras.main.setBounds(0, 0, len, BH);
@@ -1685,9 +1866,11 @@
             this.buildBackdrop(idx);
 
             // ground (static tiled, 64px texture) — the collidable top row sits at GROUND_Y.
+            // depth -2 so grass tufts (depth -1) sit ON the soil while the player (depth 0+)
+            // still walks IN FRONT of the grass.
             for (var x = 0; x < len + 64; x += 64) {
                 var gnd = this.platforms.create(x + 32, GROUND_Y + 32, 't_ground');
-                gnd.refreshBody();
+                gnd.setDepth(-2); gnd.refreshBody();
             }
             this.groundTop = GROUND_Y;
 
@@ -1715,6 +1898,25 @@
                 if (Math.random() < 0.7) {
                     var t = fgTex[d % fgTex.length];
                     this.decor.add(this.add.image(300 + d * 520, GROUND_Y + 4, t).setOrigin(0.5, 1).setDepth(-2));
+                }
+            }
+
+            // GRASS TUFTS — dense scatter along the whole ground surface so the floor reads
+            // as grassy ("dekorasi rumput"). Lush on green sectors (0–2), sparse on the enemy
+            // base (4–5), skipped on the desert (3). Tufts sit ON the grass line (GROUND_Y),
+            // drawn just above the gameplay-prop depth, slight size jitter for a natural look.
+            if (idx !== 3) {
+                var grassStep = (idx >= 4) ? 90 : 46;     // smaller step = denser grass
+                for (var gx = 40; gx < len - 30; gx += grassStep) {
+                    if (Math.random() < 0.85) {
+                        var gjit = gx + Math.round((Math.random() - 0.5) * 24);
+                        var gscale = 0.7 + Math.random() * 0.7;
+                        this.decor.add(
+                            this.add.image(gjit, GROUND_Y + 7, 't_grass')
+                                .setOrigin(0.5, 1).setDepth(-1).setScale(gscale, 0.8 + Math.random() * 0.5)
+                                .setFlipX(Math.random() < 0.5)
+                        );
+                    }
                 }
             }
 
@@ -1750,158 +1952,140 @@
             // off-screen enemy = DATA, not entity. Born at the right edge in update().
             this.spawnList.push({ type: type, x: Math.round(x), y: y });
         };
+
+        /* Create a platform ledge and RECORD its top surface for reachability bookkeeping.
+           Returns the ledge's top-Y so callers can perch enemies/crates on it. The platform
+           texture t_plat is 96px wide (drawn at origin-center), top ≈ y - 10. We store the
+           foothold (x, topY, halfW) so the staircase builder can guarantee each higher ledge
+           is reachable from a lower foothold. */
+        GameScene.prototype.addLedge = function (x, topY, scaleX) {
+            var pl = this.platforms.create(x, topY + 10, 't_plat');
+            if (scaleX) { pl.setScale(scaleX, 1); }
+            pl.refreshBody();
+            if (!this._footholds) this._footholds = [];
+            var halfW = (96 * (scaleX || 1)) / 2;
+            this._footholds.push({ x: x, y: topY, halfW: halfW });
+            return topY;   // surface the player stands on
+        };
+
+        /* REBUILT LEVEL GENERATOR — reachable geometry + sensible object/enemy placement.
+           Design goals (per request): longer stages, platforms the player can ACTUALLY jump
+           onto (staircase rule: each ledge ≤ reach.stepUp above a lower foothold, within
+           reach.stepRun horizontally), and clearly findable POW couriers.
+
+           Layout is a sequence of ENCOUNTER ZONES. Each zone is one of a few hand-designed
+           patterns chosen by sector + index, so placement reads intentionally instead of
+           random soup. Enemies are emitted as camera-relative spawn RECORDS (born at the
+           screen edge); platforms/hazards/crates/POW are real entities placed now. */
         GameScene.prototype.populateSector = function (idx, len) {
-            var self = this, C2 = CONFIG.density, density = this.diff.density;
+            var self = this, density = this.diff.density, R = CONFIG.reach;
             var pool = this.sectorEnemyPool(idx);
-            var minE = C2.minEnemies[STORE.diff] || C2.minEnemies.normal;
-            var maxDead = Math.round(BW * C2.maxDeadPx);
-            var rewardEvery = Math.round(BW * C2.rewardEveryPx);
+            this._footholds = [{ x: 0, y: GROUND_Y, halfW: len }];   // the ground is foothold #0
 
-            var SAFE = 640;                 // onboarding safe zone (no enemies)
-            var STEP = 300;                 // base encounter spacing
-            var combatStart = SAFE, combatEnd = len - 360;
-            var slots = Math.max(1, Math.floor((combatEnd - combatStart) / STEP));
+            var SAFE = 560;                  // onboarding (no enemies) — teaches movement first
+            var combatStart = SAFE, combatEnd = len - 420;
 
-            // POW pieces for this sector (deterministic slice), only those not yet unlocked
-            var pieces = infosForSector(idx).filter(function (i) { return !unlocked[i.key]; });
-            var powEvery = pieces.length ? Math.max(2, Math.floor(slots / pieces.length)) : 999;
-            var pi = 0;
-
-            // density bookkeeping (per BW-wide screen window)
-            var screens = Math.ceil(len / BW);
-            var enemyPerScreen = new Array(screens + 1).join('0').split('').map(Number);
-            var platPerScreen  = enemyPerScreen.slice();
-            var destrPerScreen = enemyPerScreen.slice();
-            var lastEventX = SAFE;          // for dead-air tracking
-            var lastRewardX = 0;            // for reward cadence
-            function screenOf(x) { return Math.min(screens - 1, Math.floor(x / BW)); }
-            function noteEvent(x) { if (x > lastEventX) lastEventX = x; }
-
-            // helper: emit a single rolled enemy type as a spawn RECORD (not an entity)
-            function emitEnemy(type, x, y) {
-                self.recordEnemy(type, x, y);
-                enemyPerScreen[screenOf(x)]++;
-                noteEvent(x);
-            }
-            function rollGroundType(roll) {
-                if (roll < 0.55) return 'rush';
-                if (roll < 0.85) return 'range';
-                if (pool.indexOf('drone') >= 0 && roll < 0.93) return 'drone';
-                if (pool.indexOf('tank') >= 0) return 'tank';
+            // ---- helpers --------------------------------------------------------
+            function emit(type, x, y) { self.recordEnemy(type, x, y); }
+            function groundType(roll) {
+                if (roll < 0.5) return 'rush';
+                if (roll < 0.82) return 'range';
+                if (pool.indexOf('tank') >= 0 && roll < 0.92) return 'tank';
+                if (pool.indexOf('drone') >= 0) return 'drone';
                 return 'rush';
             }
+            // a reachable 2-step staircase up to a high ledge, with a reward/enemy on top.
+            // step1 sits stepUp above ground; step2 sits stepUp above step1 → both jumpable.
+            function staircase(baseX, topPayload) {
+                var s1y = GROUND_Y - R.stepUp;                 // ~86 above ground (reachable)
+                var s2y = GROUND_Y - R.stepUp - R.tierGap;     // ~164 total, reached via s1
+                self.addLedge(baseX, s1y, 0.7);
+                self.addLedge(baseX + R.stepRun, s2y, 0.9);
+                if (topPayload) topPayload(baseX + R.stepRun, s2y);
+                return { stepX: baseX, topX: baseX + R.stepRun, topY: s2y };
+            }
 
-            // ---- main spine: deterministic floor + difficulty-scaled extras ----
-            for (var s = 0; s < slots; s++) {
-                var sx = combatStart + s * STEP + Math.round(Math.sin(s * 1.3) * 30);
-
-                // POW reward slot (kept lighter — one guard, not a wave)
-                if (pi < pieces.length && s % powEvery === 1) {
-                    this.spawnPOW(sx, pieces[pi].key); pi++;
-                    lastRewardX = sx; noteEvent(sx);
-                    emitEnemy('rush', sx + 150, GROUND_Y - 30);   // 1 guard so the reward isn't free
-                    continue;
-                }
-
-                // ELEVATION: guaranteed climbing platforms (floor = ≥1 per screen).
-                // Every 2nd slot lays a ledge so no screen is flat ("pijakan kurang" fix).
-                if (s % 2 === 1) {
-                    var ph = [150, 240, 110, 200][s % 4];
-                    var py = GROUND_Y - ph;
-                    var pl = this.platforms.create(sx, py, 't_plat'); pl.refreshBody();
-                    platPerScreen[screenOf(sx)]++;
-                    // cover-fire perched on the ledge
-                    if (idx >= 1) emitEnemy('turret', sx, py - 22);
-                    else emitEnemy('range', sx, py - 28);
-                    // stepping ledge → reachable path up
-                    var pl2 = this.platforms.create(sx + 120, GROUND_Y - 90, 't_plat'); pl2.refreshBody();
-                    platPerScreen[screenOf(sx + 120)]++;
-                    noteEvent(sx);
-                }
-
-                // DESTRUCTIBLE cover (floor = ≥2 per screen): barrels are recorded as
-                // spawn records too (they have a damageable hitbox → off-screen-kill risk).
-                if (s % 3 === 0) { emitEnemy('barrel', sx + 40, GROUND_Y - 18); destrPerScreen[screenOf(sx + 40)]++; }
-                if (s % 3 === 2) { emitEnemy('barrel', sx - 30, GROUND_Y - 18); destrPerScreen[screenOf(sx - 30)]++; }
-
-                // GROUND COMBAT (≤2 types/wave). Always emit ≥1 ground enemy on combat
-                // slots so the floor is met deterministically; difficulty adds more.
-                emitEnemy(rollGroundType((s * 0.137) % 1), sx, GROUND_Y - 30);
-                if (Math.random() < 0.45 * density) emitEnemy('rush', sx + 80, GROUND_Y - 30);
-                if (idx >= 1 && Math.random() < 0.25 * density) emitEnemy('drone', sx + 40, GROUND_Y - 220);
-
-                // hazards: flame jets (sector 2+) and spikes (sector 1+)
-                if (idx >= 2 && s % 5 === 4) this.spawnFlame(sx);
-                if (idx >= 1 && s % 7 === 6) this.spawnPit(sx, 90);
-
-                // weapon crate (Relevance Rule: enemies follow). Counts as reward + destructible.
-                if (s > 0 && s < slots - 2 && s % 4 === 3) {
-                    this.spawnCrate(sx, GROUND_Y - 30, this.rollWeapon(idx));
-                    destrPerScreen[screenOf(sx)]++; lastRewardX = sx; noteEvent(sx);
+            // ---- POW couriers: place FIRST, prominently, on the main ground path ----
+            // Only spawn pieces not yet unlocked. Spread evenly across the combat zone so each
+            // is easy to spot, each flanked by a small guard squad (so it's earned, not free).
+            var pieces = infosForSector(idx).filter(function (i) { return !unlocked[i.key]; });
+            var powXs = [];
+            if (pieces.length) {
+                var span = combatEnd - combatStart - 300;
+                var gap = span / (pieces.length + 1);
+                for (var pIdx = 0; pIdx < pieces.length; pIdx++) {
+                    var powX = Math.round(combatStart + 200 + gap * (pIdx + 1));
+                    this.spawnPOW(powX, pieces[pIdx].key);
+                    powXs.push(powX);
+                    // guard squad around the POW (born as the player approaches)
+                    emit('rush', powX - 120, GROUND_Y - 30);
+                    emit(idx >= 1 ? 'range' : 'rush', powX + 130, GROUND_Y - 30);
+                    if (idx >= 2) emit('rush', powX + 240, GROUND_Y - 30);
                 }
             }
 
-            // any remaining POW pieces (rounding) → place near the end on the main path
-            for (; pi < pieces.length; pi++) this.spawnPOW(len - 700 - pi * 200, pieces[pi].key);
+            // ---- ENCOUNTER ZONES across the combat stretch ----------------------
+            // zone width scales the stage length; ~6–10 zones per sector → longer & varied.
+            var ZONE = 560;                  // a zone ≈ one screen of designed content
+            var zoneCount = Math.max(4, Math.floor((combatEnd - combatStart) / ZONE));
+            var minE = (CONFIG.density.minEnemies[STORE.diff] || CONFIG.density.minEnemies.normal);
 
-            // ---- DENSITY VALIDATOR pass (APPENDIX E.2): patch any screen below floor ----
-            for (var sc = 0; sc < screens; sc++) {
-                var sLeft = sc * BW, sRight = sLeft + BW;
-                var isSafe = sRight <= SAFE;            // first ~screen is onboarding
-                if (isSafe) continue;
-                if (sRight > combatEnd + BW) continue;  // tail near exit/boss gate — leave airy
-                // enemy floor
-                while (enemyPerScreen[sc] < minE) {
-                    var ex = sLeft + 120 + enemyPerScreen[sc] * 130;
-                    emitEnemy(rollGroundType((sc * 0.31 + enemyPerScreen[sc] * 0.17) % 1), Math.min(ex, sRight - 60), GROUND_Y - 30);
+            for (var z = 0; z < zoneCount; z++) {
+                var zx = combatStart + z * ZONE;
+                var nearPow = powXs.some(function (px) { return Math.abs(px - (zx + ZONE / 2)) < ZONE * 0.6; });
+                var pattern = z % 4;          // rotate 4 hand-designed patterns
+
+                // --- always: a baseline ground squad (meets the per-zone enemy floor) ---
+                var squad = Math.max(2, minE - 1);
+                for (var q = 0; q < squad; q++) {
+                    emit(groundType(((z * 7 + q * 3) % 10) / 10), zx + 120 + q * 150, GROUND_Y - 30);
                 }
-                // elevation floor
-                while (platPerScreen[sc] < CONFIG.density.minPlatforms) {
-                    var px = sLeft + BW * 0.5;
-                    var p = this.platforms.create(px, GROUND_Y - 170, 't_plat'); p.refreshBody();
-                    platPerScreen[sc]++;
+                if (density >= 1) emit('rush', zx + 90, GROUND_Y - 30);
+
+                if (pattern === 0) {
+                    // OPEN GROUND FIREFIGHT — cover barrels + a ranged shooter behind them.
+                    this.spawnBarrel(zx + 200, GROUND_Y - 18);
+                    this.spawnBarrel(zx + 250, GROUND_Y - 18);
+                    emit('range', zx + 360, GROUND_Y - 30);
+                    if (idx >= 2) this.spawnFlame(zx + 430);
+
+                } else if (pattern === 1) {
+                    // HIGH GROUND — reachable staircase; turret/range perched up top guarding a crate.
+                    staircase(zx + 200, function (tx, ty) {
+                        self.spawnCrate(tx, ty, self.rollWeapon(idx));
+                        emit(idx >= 1 ? 'turret' : 'range', tx + 70, ty - 6);
+                    });
+                    this.spawnBarrel(zx + 140, GROUND_Y - 18);
+
+                } else if (pattern === 2) {
+                    // PIT GAUNTLET — spikes you jump over, with a single mid-air ledge stepping
+                    // stone (reachable) + an enemy on the far side.
+                    if (idx >= 1) this.spawnPit(zx + 260, 90);
+                    this.addLedge(zx + 260, GROUND_Y - R.stepUp, 0.6);   // safe stepping stone over the pit
+                    emit('rush', zx + 380, GROUND_Y - 30);
+                    if (idx >= 2 && density >= 1) emit('drone', zx + 300, GROUND_Y - 200);
+
+                } else {
+                    // CONVOY / ARMOR — a heavy (tank if available) + supporting rush, plus cover.
+                    this.spawnBarrel(zx + 160, GROUND_Y - 18);
+                    if (pool.indexOf('tank') >= 0) emit('tank', zx + 320, GROUND_Y - 30);
+                    else emit('range', zx + 320, GROUND_Y - 30);
+                    emit('rush', zx + 220, GROUND_Y - 30);
+                    if (idx >= 3 && density >= 1) emit('drone', zx + 380, GROUND_Y - 210);
                 }
-                // destructible floor
-                while (destrPerScreen[sc] < CONFIG.density.minDestructible) {
-                    var dx = sLeft + 90 + destrPerScreen[sc] * 140;
-                    emitEnemy('barrel', Math.min(dx, sRight - 40), GROUND_Y - 18);
-                    destrPerScreen[sc]++;
+
+                // weapon crate cadence: every other zone (that didn't already place one)
+                if (pattern !== 1 && z % 2 === 1 && !nearPow) {
+                    this.spawnCrate(zx + ZONE * 0.55, GROUND_Y - 30, this.rollWeapon(idx));
                 }
             }
 
-            // ---- DEAD-AIR + reward-cadence fill: walk the spine and patch gaps ----
-            this.spawnList.sort(function (a, b) { return a.x - b.x; });
-            var prevX = SAFE, patched = [];
-            for (var k = 0; k < this.spawnList.length; k++) {
-                var gap = this.spawnList[k].x - prevX;
-                if (gap > maxDead) {
-                    // insert a rush mid-gap so no viewport is empty (≤maxDeadPx rule)
-                    var midX = prevX + Math.round(gap / 2);
-                    patched.push({ type: 'rush', x: midX, y: GROUND_Y - 30 });
-                }
-                prevX = this.spawnList[k].x;
-            }
-            if (patched.length) {
-                this.spawnList = this.spawnList.concat(patched).sort(function (a, b) { return a.x - b.x; });
-            }
+            // ---- a final scenic approach to the exit: a couple of low reachable ledges +
+            //      one last guard so the run ends on action, not dead air ----
+            this.addLedge(combatEnd + 60, GROUND_Y - R.stepUp, 0.6);
+            emit('rush', combatEnd + 140, GROUND_Y - 30);
 
-            // reward cadence: if a long stretch has no POW/crate, drop a crate (≤2.5×BW)
-            // (lightweight: scan crate group + POW group positions already placed)
-            var rewardXs = [];
-            this.crates.getChildren().forEach(function (c) { if (c.active) rewardXs.push(c.x); });
-            this.pows.getChildren().forEach(function (p) { if (p.active) rewardXs.push(p.x); });
-            rewardXs.sort(function (a, b) { return a - b; });
-            var rPrev = SAFE;
-            for (var ri = 0; ri <= rewardXs.length; ri++) {
-                var rx = ri < rewardXs.length ? rewardXs[ri] : combatEnd;
-                if (rx - rPrev > rewardEvery) {
-                    var cX = rPrev + Math.round(rewardEvery * 0.8);
-                    if (cX < combatEnd - 200) this.spawnCrate(cX, GROUND_Y - 30, this.rollWeapon(idx));
-                }
-                rPrev = rx;
-            }
-
-            // final ordering guarantee for the camera-relative pointer
+            // camera-relative pointer needs the records sorted ↑x
             this.spawnList.sort(function (a, b) { return a.x - b.x; });
         };
 
@@ -1923,10 +2107,21 @@
             pow.body.setSize(22, 38);
             // gentle bob
             this.tweens.add({ targets: pow, y: pow.y - 6, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-            // floating amplop marker above
-            var mark = this.add.image(x, GROUND_Y - 56, 't_amplop');
+
+            // ---- HARD-TO-MISS BEACON so guests always find the courier ----
+            // pulsing cyan ring on the ground under the POW
+            var ring = this.add.circle(x, GROUND_Y - 2, 16, 0x4fd6c8, 0).setStrokeStyle(2, 0x4fd6c8, 0.9).setDepth(-1);
+            this.tweens.add({ targets: ring, radius: 30, alpha: 0, duration: 1100, repeat: -1, ease: 'Sine.out',
+                onRepeat: function () { ring.radius = 16; ring.alpha = 1; } });
+            pow.setData('ring', ring);
+            // floating amplop marker above (animated sparkle in asset mode)
+            var mark = this.objImage(x, GROUND_Y - 56, 't_amplop');
             pow.setData('mark', mark);
             this.tweens.add({ targets: mark, y: mark.y - 8, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+            // bobbing "SOS ↓" label so it reads as a rescue target, not décor
+            var sos = this.add.text(x, GROUND_Y - 78, '▼ SOS', { fontFamily: 'monospace', fontSize: '11px', color: '#4fd6c8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(7);
+            this.tweens.add({ targets: sos, y: sos.y - 6, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+            pow.setData('sos', sos);
             return pow;
         };
 
@@ -1982,6 +2177,7 @@
             e.setData('type', 'barrel'); e.setData('hp', 2); e.setData('explosive', true);
             e.setData('aimT', 0); e.setData('seed', 0);
             e.body.setImmovable(true); e.body.setAllowGravity(false);
+            var ba = this.objAnim('t_barrel'); if (ba) e.play(ba);   // warning-light loop
             return e;
         };
 
@@ -1996,6 +2192,7 @@
         GameScene.prototype.spawnFlame = function (x) {
             var f = this.hazards.create(x, GROUND_Y - 14, 't_flame');
             f.setData('on', true); f.setScale(1.4); f.refreshBody();
+            var fa = this.objAnim('t_flame'); if (fa) f.play(fa);   // flickering fire loop
             // periodic flame: physics overlap only when "on"
             var self = this;
             f.setData('timer', this.time.addEvent({
@@ -2064,16 +2261,21 @@
             this.recordEnemy('barrel', this.arenaX - 520, GROUND_Y - 18);
             this.spawnList.sort(function (a, b) { return a.x - b.x; });
 
-            // arena platforms (cover at left & mid so the player can reposition while fighting)
-            var p1 = this.platforms.create(this.arenaLeft + BW * 0.30, GROUND_Y - 160, 't_plat'); p1.refreshBody();
-            var p2 = this.platforms.create(this.arenaLeft + BW * 0.70, GROUND_Y - 250, 't_plat'); p2.refreshBody();
+            // arena platforms — REACHABLE cover so the player can climb for an angle on the
+            // boss weak point. Low ledge (jumpable from ground) + a second one a hop above it.
+            var rR = CONFIG.reach;
+            var p1 = this.platforms.create(this.arenaLeft + BW * 0.30, GROUND_Y - rR.stepUp + 10, 't_plat'); p1.refreshBody();
+            var p2 = this.platforms.create(this.arenaLeft + BW * 0.62, GROUND_Y - rR.stepUp - rR.tierGap + 10, 't_plat'); p2.refreshBody();
 
             // wedding altar arch + caged couple — pinned to the FAR RIGHT edge (the goal),
             // well clear of the boss so they don't crowd the fight.
             var cageX = len - 70;
             this.add.image(cageX, GROUND_Y + 2, 't_arch').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-8).setScale(1.3);
-            this.caged = this.add.image(cageX, GROUND_Y - 36, 't_couple_caged').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-6);
-            this.cage = this.add.image(cageX, GROUND_Y - 30, 't_cage').setOrigin(0.5, 1).setScrollFactor(1).setAlpha(0.9).setDepth(-5);
+            // CAGE bottom planted on the ground (origin bottom → y = GROUND_Y). The couple sits a
+            // few px higher so their feet read as INSIDE the bars, not below them. (Bug fix: both
+            // were anchored 30–36px above GROUND_Y → cage + couple floated off the ground.)
+            this.cage = this.add.image(cageX, GROUND_Y + 2, 't_cage').setOrigin(0.5, 1).setScrollFactor(1).setAlpha(0.9).setDepth(-5);
+            this.caged = this.add.image(cageX, GROUND_Y - 4, 't_couple_caged').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-6);
 
             // boss sits in the LEFT-CENTER of the wide arena → big gap to the cage on the right,
             // and the player (spawns at the left wall) has a proper attack corridor.
@@ -2320,6 +2522,9 @@
             if (mark) {
                 this.tweens.add({ targets: mark, y: mark.y - 40, alpha: 0, scale: 1.4, duration: 500, onComplete: function () { mark.destroy(); } });
             }
+            // tear down the beacon (ring + SOS label) on rescue
+            var ring = p.getData('ring'); if (ring) { this.tweens.killTweensOf(ring); ring.destroy(); }
+            var sos = p.getData('sos'); if (sos) { this.tweens.killTweensOf(sos); sos.destroy(); }
             this.pHeart.explode(12, p.x, p.y - 20);
             this.flash(0x4fd6c8, 80); this.freeze(3 * 16);
             SFX.rescue();
@@ -2582,6 +2787,8 @@
         GameScene.prototype.enemyFire = function (e, lob) {
             var b = this.ebullets.get(e.x, e.y - 6, 't_ebullet');
             if (!b) return;
+            // ebullets pool also holds the boss rocket (t_rocket); reset texture only on a real change
+            if (b.texture && b.texture.key !== 't_ebullet') { b.setTexture('t_ebullet'); b.setRotation(0); }
             b.setActive(true).setVisible(true); b.body.enable = true; b.body.setAllowGravity(!!lob);
             var dir = this.player.x < e.x ? -1 : 1;
             var spd = 260 * this.diff.bulletSpd;
@@ -2591,6 +2798,7 @@
         GameScene.prototype.dropBomb = function (e) {
             var b = this.ebullets.get(e.x, e.y + 8, 't_ebullet');
             if (!b) return;
+            if (b.texture && b.texture.key !== 't_ebullet') { b.setTexture('t_ebullet'); b.setRotation(0); }
             b.setActive(true).setVisible(true); b.body.enable = true; b.body.setAllowGravity(true);
             b.body.setVelocity(0, 120);
         };
@@ -2630,6 +2838,7 @@
                                 if (!b.active || !self.player || !self.player.active) return;
                                 var bl = self.ebullets.get(mx, my, 't_ebullet');
                                 if (!bl) return;
+                                if (bl.texture && bl.texture.key !== 't_ebullet') { bl.setTexture('t_ebullet'); bl.setRotation(0); }
                                 bl.setActive(true).setVisible(true); bl.body.enable = true; bl.body.setAllowGravity(false);
                                 var ax = self.player.x - mx, ay = self.player.y - my;
                                 var len2 = Math.hypot(ax, ay) || 1;
@@ -2644,8 +2853,10 @@
                     if (ph === 3) { // rocket aimed straight at player
                         var r = self.ebullets.get(mx, my, 't_rocket');
                         if (r) {
+                            if (r.texture && r.texture.key !== 't_rocket') { r.setTexture('t_rocket'); }
                             r.setActive(true).setVisible(true); r.body.enable = true; r.body.setAllowGravity(false);
                             var dx = self.player.x - mx, dy = self.player.y - my, dl = Math.hypot(dx, dy) || 1;
+                            r.setRotation(Math.atan2(dy, dx));
                             r.body.setVelocity(dx / dl * 240, dy / dl * 240);
                         }
                     }
@@ -2782,10 +2993,12 @@
             // pick frame-by-frame ANIM by state (real leg movement)
             var anim;
             var aimingDown = input.down && !this.body.blocked.down;   // shoot-down while airborne
+            var aimingUp = input.up && onGround && !proneNow;          // standing shoot-up
             if (this.dead) { anim = 'p_dead'; }
             else if (this.invuln > 0 && this._hurtAnimT > 0) { anim = 'p_hurt'; this._hurtAnimT -= delta; }
             else if (proneNow) anim = 'p_prone';
             else if (!onGround) anim = (input.fire && aimingDown) ? 'p_jumpdown' : (vy < 0 ? 'p_jump' : 'p_fall');
+            else if (aimingUp && Math.abs(vx) <= 40) anim = 'p_aimup';   // hold Up while standing → aim up
             else if (Math.abs(vx) > 40) anim = 'p_run';
             else anim = 'p_idle';
             if (this.anims && this.anims.currentAnim && this.anims.currentAnim.key === anim) { /* keep */ }
@@ -2809,6 +3022,11 @@
         Player.prototype.aimDir = function () {
             // returns {x,y} unit-ish for bullet velocity (Bible §4.4 — 5 dirs)
             var fx = this.facing, up = input.up, down = input.down && !this.body.blocked.down;
+            // PRONE (crouch on ground): always shoot LOW & HORIZONTAL — never up/diagonal.
+            // (Holding Down on the ground = crouch; the gun must point forward at ground level,
+            //  not up. Without this, a stray Up read or the default mid-body spawn made crouch
+            //  shots look like they fired upward.)
+            if (this._prone) return { x: fx, y: 0 };
             if (up && (input.left || input.right)) return { x: fx * 0.7, y: -0.7 };
             if (up) return { x: 0, y: -1 };
             if (down) return { x: fx * 0.7, y: 0.7 };
@@ -2821,7 +3039,10 @@
             this.fireT = w.rate;
             this._recoil = 80;
             var d = this.aimDir();
-            var sx = this.x + d.x * 18, sy = this.y - 6 + d.y * 6;
+            // muzzle Y: standing = -6 above center; PRONE = lower (crouched gun height) so the
+            // shot leaves from the ducked body, not above it.
+            var muzzleY = this._prone ? 8 : -6;
+            var sx = this.x + d.x * 18, sy = this.y + muzzleY + d.y * 6;
             // muzzle flash following the 8-dir aim
             this.scene.pSpark.explode(3, sx + d.x * 8, sy + d.y * 8);
             var mz = this.scene.add.image(sx + d.x * 10, sy + d.y * 10, 't_flame').setScale(0.5).setDepth(5).setAlpha(0.9);
@@ -2845,6 +3066,11 @@
             this.grenades--;
             var n = this.scene.bullets.get(this.x + this.facing * 14, this.y - 10, 't_nade');
             if (!n) return;
+            // bullets is a RECYCLING pool — .get() reuses a dead object and KEEPS its old
+            // texture, so a thrown grenade was rendering as the last bullet/rocket. Re-seat the
+            // grenade texture (+ clear leftover bullet rotation) only when it's actually wrong.
+            if (n.texture && n.texture.key !== 't_nade') { n.setTexture('t_nade'); }
+            n.setRotation(0);
             n.setActive(true).setVisible(true); n.body.enable = true; n.body.setAllowGravity(true);
             n.setData('nade', true); n.body.setVelocity(this.facing * 260, -260);
             n.setData('dmg', 5);
@@ -2854,11 +3080,17 @@
         GameScene.prototype.spawnBullet = function (x, y, dx, dy, tex, spd) {
             var b = this.bullets.get(x, y, tex);
             if (!b) return;
+            // force the requested texture ONLY when the recycled pool object carries a different
+            // one (a thrown grenade shares this pool, so a recycled bullet could keep the grenade
+            // texture, and vice-versa). Guard on a real change so we don't re-seat the arcade body
+            // every shot.
+            if (b.texture && b.texture.key !== tex) { b.setTexture(tex); }
             b.setActive(true).setVisible(true); b.body.enable = true; b.body.setAllowGravity(false);
             var len = Math.hypot(dx, dy) || 1;
             b.body.setVelocity(dx / len * spd, dy / len * spd);
             b.setData('nade', false);
             if (tex === 't_rocket' || tex === 't_bullet') b.setRotation(Math.atan2(dy, dx));
+            else b.setRotation(0);
             b.setData('dmg', this.player.weaponDmg());
             return b;
         };

@@ -64,27 +64,34 @@
   },
   {
     "orderNumber": 10,
+    "name": "player_aim_up.png",
+    "width": 60,
+    "height": 84,
+    "deskripsi": "Berdiri di tanah sambil menembak ke ATAS - kaki menapak di bawah kanvas, lengan terangkat & laras VERTIKAL lurus ke atas di samping kepala. Dipakai saat pemain DIAM + menahan tombol Atas/W. Beda dari frame 7 (frame 7 = melompat kaki menekuk; frame ini = berdiri menapak)."
+  },
+  {
+    "orderNumber": 11,
     "name": "player_crouch.png",
     "width": 60,
     "height": 84,
     "deskripsi": "Jongkok / merunduk - badan pendek & lebih lebar, kepala turun, senjata ke depan. Telapak kaki tetap di baris bawah, tinggi efektif +-60% badan berdiri."
   },
   {
-    "orderNumber": 11,
+    "orderNumber": 12,
     "name": "player_hurt.png",
     "width": 60,
     "height": 84,
     "deskripsi": "Kena tembak / terpental - pose tersentak ke belakang, ekspresi kesakitan (boleh sedikit merah). Tampil sesaat saat kena hit (kebal+kedip)."
   },
   {
-    "orderNumber": 12,
+    "orderNumber": 13,
     "name": "player_dead.png",
     "width": 60,
     "height": 84,
     "deskripsi": "MATI / tumbang - tergeletak/terjengkang, kepala di bawah, senjata terlepas. Pose gaya Metal Slug saat tewas."
   },
   {
-    "orderNumber": 13,
+    "orderNumber": 14,
     "name": "player_static.png",
     "width": 60,
     "height": 84,
