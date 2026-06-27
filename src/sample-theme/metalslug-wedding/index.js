@@ -32,7 +32,7 @@
     };
 
     var BUILD = 'metalslug-wedding';
-    var VERSION = 'v1.8.1';   // grass tufts (t_grass) scattered along the ground surface; ground tiles depth -2 so grass sits on soil under the player
+    var VERSION = 'v1.9.8';   // FIX unreachable platforms (again): real measured jump apex is ~99.9px (not 104) → old stepUp 86 left only ~14px margin & tierGap 78 was loose. Now stepUp 70 / tierGap 64 (~30px margin, tierGap ≤ stepUp) + wider staircase/stepping-stone ledges so every plafon is climbable
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#e23b2e;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -71,15 +71,18 @@
             maxDeadPx:      0.75,  // × BW — longest allowed empty run
             rewardEveryPx:  2.5    // × BW — reward (POW/crate) cadence
         },
-        /* REACHABILITY (level-gen). Jump apex = jump²/(2·gravity) = 560²/(2·1500) ≈ 104px.
-           Every elevated platform MUST be climbable: vertical rise from a lower foothold
-           (ground or another platform) ≤ stepUp, and within horizontal reach. Keep a safety
-           margin under the raw apex so the player always makes it. */
+        /* REACHABILITY (level-gen). MEASURED apex (semi-implicit Euler @60fps, jump=-560,
+           gravity=1500) = ~99.9px — the analytic 104 is optimistic, so the body actually
+           rises only ~100px. Every elevated platform MUST be climbable: rise from a lower
+           foothold ≤ stepUp, with a HEALTHY margin under the real apex so a slightly-late
+           or edge jump still lands. stepUp/tierGap were 86/78 → only ~14px margin → "plafon
+           tidak bisa dinaiki". Now 70/64: ~30px margin, and tierGap ≤ stepUp so every stacked
+           step is reachable from the one below it. */
         reach: {
-            jumpApex: 104,   // raw physics apex (px) — DO NOT place a ledge higher than the
-            stepUp:   86,    // max rise per hop between footholds (apex − margin)
-            stepRun:  140,   // comfortable horizontal gap to the next foothold while rising
-            tierGap:  78     // vertical spacing used when stacking a reachable staircase
+            jumpApex: 100,   // real measured apex (px) — never place a lone ledge higher than this
+            stepUp:   70,    // max rise per hop between footholds (apex − ~30px safety)
+            stepRun:  150,   // comfortable horizontal gap to the next foothold while rising
+            tierGap:  64     // vertical spacing when stacking a staircase (MUST be ≤ stepUp)
         }
     };
 
@@ -534,7 +537,7 @@
        ================================================================= */
     function showOverlay(id) { hideOverlays(); var o = $(id); if (o) o.classList.add('show'); }
     function hideOverlays() {
-        ['msw-cover', 'msw-briefing', 'msw-clear', 'msw-gameover', 'msw-allpieces', 'msw-win', 'msw-stagesel', 'msw-resetconfirm']
+        ['msw-cover', 'msw-loading', 'msw-briefing', 'msw-clear', 'msw-gameover', 'msw-allpieces', 'msw-win', 'msw-stagesel', 'msw-resetconfirm']
             .forEach(function (id) { var o = $(id); if (o) o.classList.remove('show'); });
     }
 
@@ -645,9 +648,19 @@
         try { scanInfos(); QUOTA = buildQuota(N()); STORE.diff = STORE.diff || 'normal'; buildIndicators(); } catch (e) {}
         try { wireMusicMirror(); } catch (e) {}
         try { drawCoupleCanvas(); } catch (e) {}
+        try { paintSideBg(); } catch (e) {}
         try { var v = $('msw-version'); if (v) v.textContent = VERSION; } catch (e) {}
         // if everything already unlocked from a prior session, light the 💌
         try { updateProgress(); } catch (e) {}
+        // AUTO-RESUME after a host RE-INJECTION: if a run was live before the theme was
+        // re-injected (window.__mswStarted survives), boot straight back into the game instead
+        // of showing PRESS START again. Skip if the full-invitation reveal is currently open.
+        try {
+            if (window.__mswStarted && !(($('msw-reveal') || {}).classList || { contains: function () { return false; } }).contains('show')) {
+                var rs = window.__mswStarted;
+                setTimeout(function () { try { startRun((rs && rs.sector) || 0); } catch (e) {} }, 60);
+            }
+        } catch (e) {}
     }
 
     /* =================================================================
@@ -655,6 +668,14 @@
        groom in a suit + bride in a gown standing on a game battlefield scene,
        hearts, "JUST MARRIED" banner. Pure decoration (no game logic).
        ================================================================= */
+    /* Desktop right-panel background = the tenant's cover photo (photo_hero_cover),
+       dimmed by a military veil in CSS. Silent no-op if no photo uploaded. */
+    function paintSideBg() {
+        var bg = $('msw-side-bg'); if (!bg) return;
+        var url = srcVal('photo_hero_cover', '');
+        if (url) { bg.style.backgroundImage = "url('" + url + "')"; bg.classList.add('has-photo'); }
+    }
+
     function drawCoupleCanvas() {
         var cv = $('msw-couple-canvas'); if (!cv || !cv.getContext) return;
         var x = cv.getContext('2d'); if (!x) return;
@@ -813,7 +834,7 @@
             'msw-reset-btn': function () { showOverlay('msw-resetconfirm'); pauseGame(); },
             'msw-reset-yes': function () { resetGame(); },
             'msw-reset-no': function () { hideOverlays(); resumeGame(); },
-            'msw-briefing-go': function () { hideOverlays(); beginSector(); },
+            'msw-briefing-go': function () { beginSector(); },   /* loadSector() hides the overlay AFTER the sector is built + a frame rendered → no black flash */
             'msw-clear-next': function () { hideOverlays(); nextSector(); },
             'msw-retry': function () { hideOverlays(); startRun(0); },
             'msw-modal-close': closeModal,
@@ -1008,12 +1029,19 @@
        ================================================================= */
     var runState = { sector: 0, lives: 0, score: 0 };
     function startRun(sector) {
-        hideOverlays();
+        // Show the LOADING curtain (not a bare hideOverlays) so the blank black frame
+        // while Phaser boots + the scene builds the sector is hidden. showBriefing()
+        // (called from scene create) swaps it out via showOverlay() → no black flash.
+        showOverlay('msw-loading');
         runState.sector = sector;
         var d = CONFIG.diff[STORE.diff];
         runState.lives = d.lives;
         runState.score = STORE.best && sector > 0 ? runState.score : 0;
         if (sector === 0) runState.score = 0;
+        // REMEMBER that the run is live so a host RE-INJECTION (which tears the game down
+        // and re-shows the default cover) can auto-resume instead of dumping the player back
+        // to PRESS START. window survives re-injection; this is the fix for "START muncul lagi".
+        try { window.__mswStarted = { sector: sector }; } catch (e) {}
         wireInputOnce();
         startWhenReady();   // boots Phaser + Game scene (idempotent via cleanup)
         // briefing shown by scene create
@@ -1026,6 +1054,7 @@
     // before pressing START again.
     function resetGame() {
         resetStore();                     // clears localStorage + diff → 'normal'
+        try { window.__mswStarted = null; } catch (e) {}   // forget the live-run flag → cover shows again
         // tear down the running Phaser game so the stage truly resets
         if (typeof GAME !== 'undefined' && GAME) { try { GAME.destroy(true); } catch (e) {} GAME = null; window.__gwGame = null; }
         // reset in-memory run + cheat
@@ -1293,13 +1322,6 @@
             tex(scene, 't_bush', 54, 30, function (g) {
                 g.fillStyle(0x2e5d3a, 1); g.fillCircle(14, 20, 14); g.fillCircle(30, 16, 16); g.fillCircle(44, 21, 12);
                 g.fillStyle(0x3a7d4a, 1); g.fillCircle(20, 14, 7); g.fillCircle(36, 12, 6);
-            });
-            // small GRASS TUFT — a few blades, scattered densely along the ground surface
-            // so the floor reads as grassy (the requested "dekorasi rumput"). Origin bottom.
-            tex(scene, 't_grass', 22, 16, function (g) {
-                function blade(x, h, col) { g.fillStyle(col, 1); g.fillTriangle(x, 16, x - 2, 16 - h, x + 2, 16); }
-                blade(5, 13, 0x4a7a2e); blade(9, 16, 0x6a9a4a); blade(13, 11, 0x4a7a2e);
-                blade(17, 14, 0x6a9a4a); blade(11, 9, 0x8aba5a);
             });
             tex(scene, 't_sandbag', 46, 30, function (g) {
                 for (var r = 0; r < 2; r++) for (var c = 0; c < 3; c++) {
@@ -1837,9 +1859,18 @@
 
         GameScene.prototype.loadSector = function (idx) {
             this.sectorIdx = idx; runState.sector = idx;
+            // Build the whole sector while the briefing overlay is STILL covering the
+            // frame, then resume the scene so Phaser paints it. Only AFTER the engine
+            // has rendered a real frame do we drop the overlay → the player never sees
+            // a blank black frame between the briefing and the game.
             this.buildSector(idx);
-            hideOverlays();
             if (this.scene.isPaused()) this.scene.resume();
+            // wait for one painted frame (Phaser renders on the rAF tick) before reveal
+            try {
+                window.requestAnimationFrame(function () {
+                    window.requestAnimationFrame(function () { hideOverlays(); });
+                });
+            } catch (e) { hideOverlays(); }
         };
 
         /* ---------- build a sector: spine + patterns + entities (Bible APPENDIX F) ---------- */
@@ -1893,7 +1924,8 @@
             // foreground decor on the ground (non-collidable eye-candy)
             if (!this.decor) this.decor = this.add.group();
             this.decor.clear(true, true);
-            var fgTex = idx === 3 ? ['t_barrel', 't_palm'] : idx >= 4 ? ['t_sandbag', 't_barrel'] : ['t_bush', 't_sandbag'];
+            // bigger ground props (bush handled separately by the dense grass scatter below)
+            var fgTex = idx === 3 ? ['t_barrel', 't_palm'] : idx >= 4 ? ['t_sandbag', 't_barrel'] : ['t_palm', 't_sandbag'];
             for (var d = 1; d * 520 < len - 300; d++) {
                 if (Math.random() < 0.7) {
                     var t = fgTex[d % fgTex.length];
@@ -1901,19 +1933,19 @@
                 }
             }
 
-            // GRASS TUFTS — dense scatter along the whole ground surface so the floor reads
-            // as grassy ("dekorasi rumput"). Lush on green sectors (0–2), sparse on the enemy
-            // base (4–5), skipped on the desert (3). Tufts sit ON the grass line (GROUND_Y),
-            // drawn just above the gameplay-prop depth, slight size jitter for a natural look.
+            // GRASS BUSHES (the t_bush ASSET — "semak/rumput") scattered densely along the
+            // ground surface so the floor reads as grassy ("dekorasi rumput"). Uses objImage so
+            // the uploaded object-atlas sprite is used (procedural fallback if no atlas). Lush on
+            // green sectors (0–2), sparse on the enemy base (4–5), skipped on the desert (3).
             if (idx !== 3) {
-                var grassStep = (idx >= 4) ? 90 : 46;     // smaller step = denser grass
+                var grassStep = (idx >= 4) ? 130 : 78;     // smaller step = denser grass
                 for (var gx = 40; gx < len - 30; gx += grassStep) {
-                    if (Math.random() < 0.85) {
-                        var gjit = gx + Math.round((Math.random() - 0.5) * 24);
-                        var gscale = 0.7 + Math.random() * 0.7;
+                    if (Math.random() < 0.8) {
+                        var gjit = gx + Math.round((Math.random() - 0.5) * 40);
+                        var gscale = 0.55 + Math.random() * 0.5;   // small tufts (bush is 54px wide)
                         this.decor.add(
-                            this.add.image(gjit, GROUND_Y + 7, 't_grass')
-                                .setOrigin(0.5, 1).setDepth(-1).setScale(gscale, 0.8 + Math.random() * 0.5)
+                            this.objImage(gjit, GROUND_Y + 8, 't_bush')
+                                .setOrigin(0.5, 1).setDepth(-1).setScale(gscale)
                                 .setFlipX(Math.random() < 0.5)
                         );
                     }
@@ -1997,10 +2029,12 @@
             // a reachable 2-step staircase up to a high ledge, with a reward/enemy on top.
             // step1 sits stepUp above ground; step2 sits stepUp above step1 → both jumpable.
             function staircase(baseX, topPayload) {
-                var s1y = GROUND_Y - R.stepUp;                 // ~86 above ground (reachable)
-                var s2y = GROUND_Y - R.stepUp - R.tierGap;     // ~164 total, reached via s1
-                self.addLedge(baseX, s1y, 0.7);
-                self.addLedge(baseX + R.stepRun, s2y, 0.9);
+                var s1y = GROUND_Y - R.stepUp;                 // ~70 above ground (reachable)
+                var s2y = GROUND_Y - R.stepUp - R.tierGap;     // ~134 total, reached via s1 (+64)
+                // WIDER steps (1.0 / 1.1) so landing the jump isn't fiddly — the narrow 0.7/0.9
+                // ledges + tight margin were a big part of "tidak bisa naik ke plafon".
+                self.addLedge(baseX, s1y, 1.0);
+                self.addLedge(baseX + R.stepRun, s2y, 1.1);
                 if (topPayload) topPayload(baseX + R.stepRun, s2y);
                 return { stepX: baseX, topX: baseX + R.stepRun, topY: s2y };
             }
@@ -2061,7 +2095,7 @@
                     // PIT GAUNTLET — spikes you jump over, with a single mid-air ledge stepping
                     // stone (reachable) + an enemy on the far side.
                     if (idx >= 1) this.spawnPit(zx + 260, 90);
-                    this.addLedge(zx + 260, GROUND_Y - R.stepUp, 0.6);   // safe stepping stone over the pit
+                    this.addLedge(zx + 260, GROUND_Y - R.stepUp, 0.85);  // safe stepping stone over the pit (wider = easier landing)
                     emit('rush', zx + 380, GROUND_Y - 30);
                     if (idx >= 2 && density >= 1) emit('drone', zx + 300, GROUND_Y - 200);
 
@@ -2082,7 +2116,7 @@
 
             // ---- a final scenic approach to the exit: a couple of low reachable ledges +
             //      one last guard so the run ends on action, not dead air ----
-            this.addLedge(combatEnd + 60, GROUND_Y - R.stepUp, 0.6);
+            this.addLedge(combatEnd + 60, GROUND_Y - R.stepUp, 0.85);
             emit('rush', combatEnd + 140, GROUND_Y - 30);
 
             // camera-relative pointer needs the records sorted ↑x

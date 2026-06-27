@@ -190,7 +190,23 @@ export function ThemeWrapper({
             const el = document.getElementById(scriptId);
             if (el) el.remove();
         };
-    }, [jsBase, isOpened, htmlBase]); // Re-run js execution if isOpened or htmlBase changes
+        // Re-run ONLY when the theme JS itself changes or the invitation is
+        // opened/closed — NOT on every htmlBase change.
+        //
+        // Why: htmlBase (the parsed template) is recomputed whenever guest state
+        // changes — e.g. after a guest submits RSVP / a wish, setData() updates
+        // data.guest, which flows into dataContext -> finalHtml. Previously
+        // htmlBase was in this dep array, so every submit RE-EXECUTED the whole
+        // theme JS. For plain themes that re-ran all listener wiring (flicker +
+        // lost state); for game themes it tore down and re-booted the entire
+        // game (__gwCleanup -> new Phaser.Game), wiping the player's progress —
+        // the "page refreshes after submitting" complaint.
+        //
+        // Theme JS reads the DOM when it first runs (the initial htmlBase is
+        // already injected via dangerouslySetInnerHTML in the same render) and
+        // uses document-delegated listeners that survive HTML re-injection, so
+        // it does not need re-execution when only guest state changes.
+    }, [jsBase, isOpened]);
 
     // Sync music icon state for themes injected via dangerouslySetInnerHTML
     useEffect(() => {

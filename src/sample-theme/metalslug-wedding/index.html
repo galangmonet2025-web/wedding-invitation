@@ -24,48 +24,88 @@
 
 <div class="msw-shell">
 
-<!-- ===== DESKTOP LEFT SIDE (narrow): cover / welcome — hidden on mobile ===== -->
+<!-- ===== DESKTOP RIGHT SIDE: cover / welcome / info / controls — hidden on mobile.
+     Fills the WHOLE remaining screen with a 2-column poster layout (hero canvas +
+     names on the left, wedding info + game controls on the right). ===== -->
 <aside class="msw-side msw-cover-side">
+    <!-- cover photo background (filled by JS from photo_hero_cover) -->
+    <div class="msw-side-bg" id="msw-side-bg"></div>
+    <div class="msw-side-veil"></div>
+    <!-- Metal Slug battlefield decoration: parallax ridge + drifting clouds + scanlines -->
+    <div class="msw-side-deco" aria-hidden="true">
+        <div class="msw-deco-ridge"></div>
+        <div class="msw-deco-cloud dc1"></div>
+        <div class="msw-deco-cloud dc2"></div>
+        <div class="msw-deco-star ds1">★</div>
+        <div class="msw-deco-star ds2">✦</div>
+    </div>
     <div class="msw-side-scan"></div>
+    <div class="msw-side-glow"></div>
     <div class="msw-side-panel">
-        <div class="msw-side-badge">★ UNDANGAN PERNIKAHAN ★</div>
-        <div class="msw-side-logo">METAL&nbsp;SLUG<br><span class="msw-side-logo-sub">WEDDING</span></div>
-        <div class="msw-side-op">OPERATION: PELAMINAN</div>
 
-        <!-- decorative canvas: the couple (groom in suit + bride) on a game scene -->
-        <div class="msw-couple-stage">
-            <canvas id="msw-couple-canvas" width="760" height="380"></canvas>
-        </div>
+        <!-- top banner spanning both columns -->
+        <header class="msw-side-head">
+            <div class="msw-side-badge">★ UNDANGAN PERNIKAHAN ★</div>
+            <div class="msw-side-logo">METAL&nbsp;SLUG<br><span class="msw-side-logo-sub">WEDDING</span></div>
+            <div class="msw-side-op">OPERATION: PELAMINAN</div>
+        </header>
 
-        <div class="msw-side-names">
-            <span data-var="groom_nickname">{{groom_nickname}}</span>
-            <span class="msw-side-heart">♥</span>
-            <span data-var="bride_nickname">{{bride_nickname}}</span>
-        </div>
-        <div class="msw-side-date" data-var="wedding_date">{{wedding_date}}</div>
-        <div class="msw-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+        <div class="msw-side-grid">
+            <!-- LEFT column: hero canvas + couple identity -->
+            <div class="msw-side-hero">
+                <div class="msw-couple-stage">
+                    <canvas id="msw-couple-canvas" width="760" height="380"></canvas>
+                </div>
+                <div class="msw-side-names">
+                    <span data-var="groom_nickname">{{groom_nickname}}</span>
+                    <span class="msw-side-heart">♥</span>
+                    <span data-var="bride_nickname">{{bride_nickname}}</span>
+                </div>
+                <div class="msw-side-date" data-var="wedding_date">{{wedding_date}}</div>
+                <div class="msw-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
 
-        <!-- pure wedding info: akad + resepsi (waktu, tanggal, tempat, map) -->
-        <div class="msw-side-info">
-            <div class="msw-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
-            <div class="msw-side-event">
-                <div class="msw-side-event-tag">AKAD NIKAH</div>
-                <div class="msw-side-event-line">{{tanggal_akad}} · {{jam_akad}}</div>
-                <div class="msw-side-event-place">{{nama_lokasi_akad}}</div>
-                <div class="msw-side-event-addr">{{keterangan_lokasi_akad}}</div>
-                {{#if akad_map}}<a class="msw-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+                <!-- player-1 controls briefing (moved here from the game start screen) -->
+                <div class="msw-side-ctrl">
+                    <div class="msw-side-ctrl-title">⌨ KONTROL PLAYER 1</div>
+                    <div class="msw-side-keys">
+                        <span class="msw-key">← →</span><span class="msw-key-desc">Gerak kiri / kanan</span>
+                        <span class="msw-key">↑ / W</span><span class="msw-key-desc">Tembak ke atas (diam) · panjat tangga</span>
+                        <span class="msw-key">↓ / S</span><span class="msw-key-desc">Menunduk / merunduk</span>
+                        <span class="msw-key">SPACE</span><span class="msw-key-desc">Lompat</span>
+                        <span class="msw-key">X / J</span><span class="msw-key-desc">Tembak</span>
+                        <span class="msw-key">C / K</span><span class="msw-key-desc">Lempar granat 💣</span>
+                        <span class="msw-key">E</span><span class="msw-key-desc">Panggil Metal Slug 🛞</span>
+                    </div>
+                    <div class="msw-side-ctrl-note">Di layar HP: pakai joystick &amp; tombol FIRE / JMP / ✦ di bawah.</div>
+                </div>
             </div>
-            {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
-            <div class="msw-side-event">
-                <div class="msw-side-event-tag">RESEPSI</div>
-                <div class="msw-side-event-line">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
-                <div class="msw-side-event-place">{{nama_lokasi_resepsi}}</div>
-                <div class="msw-side-event-addr">{{keterangan_lokasi_resepsi}}</div>
-                {{#if resepsi_map}}<a class="msw-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+
+            <!-- RIGHT column: wedding info + open button -->
+            <div class="msw-side-info">
+                <div class="msw-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
+                <div class="msw-side-event">
+                    <div class="msw-side-event-tag">AKAD NIKAH</div>
+                    <div class="msw-side-event-line">{{tanggal_akad}} · {{jam_akad}}</div>
+                    <div class="msw-side-event-place">{{nama_lokasi_akad}}</div>
+                    <div class="msw-side-event-addr">{{keterangan_lokasi_akad}}</div>
+                    {{#if akad_map}}<a class="msw-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+                </div>
+                {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                <div class="msw-side-event">
+                    <div class="msw-side-event-tag">RESEPSI</div>
+                    <div class="msw-side-event-line">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
+                    <div class="msw-side-event-place">{{nama_lokasi_resepsi}}</div>
+                    <div class="msw-side-event-addr">{{keterangan_lokasi_resepsi}}</div>
+                    {{#if resepsi_map}}<a class="msw-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+                </div>
+                {{/if}}
+                <div class="msw-side-mission">
+                    <div class="msw-side-mission-title">🎯 MISI</div>
+                    <p class="msw-side-mission-text">Selamatkan POW kurir 💌 di tiap sektor untuk membuka bagian undangan satu per satu — atau buka langsung undangan lengkap di bawah.</p>
+                </div>
+                <button class="msw-side-open" id="msw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
+                <div class="msw-side-hint">Mainkan game di kiri &amp; selamatkan POW untuk membuka undangan satu per satu.</div>
             </div>
-            {{/if}}
-            <button class="msw-side-open" id="msw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
-            <div class="msw-side-hint">Mainkan game di kiri &amp; selamatkan POW untuk membuka undangan satu per satu — atau buka langsung di atas.</div>
         </div>
     </div>
 </aside>
@@ -168,7 +208,17 @@
                 <button class="msw-bigbtn" id="msw-start" type="button">▶ PRESS START</button>
                 <button class="msw-textbtn" id="msw-cover-view" type="button">Lewati — buka undangan langsung 💌</button>
                 <div class="msw-cover-hint">Selamatkan POW kurir 💌 untuk membuka tiap bagian undangan</div>
-                <div class="msw-cover-keys">⌨ ← → gerak · Space lompat · X tembak · C granat · E Slug</div>
+            </div>
+        </div>
+
+        <!-- boot/loading curtain — covers the blank black frame while Phaser boots
+             + the scene builds the sector, so the player never sees a black flash
+             between PRESS START and the briefing. Hidden once the briefing is ready. -->
+        <div class="msw-overlay" id="msw-loading">
+            <div class="msw-loading-inner">
+                <div class="msw-loading-logo">METAL SLUG WEDDING</div>
+                <div class="msw-loading-bar"><span class="msw-loading-fill"></span></div>
+                <div class="msw-loading-text">MEMUAT MISI<span class="msw-loading-dots"></span></div>
             </div>
         </div>
 
