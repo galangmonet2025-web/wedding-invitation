@@ -32,7 +32,7 @@
     };
 
     var BUILD = 'metalslug-wedding';
-    var VERSION = 'v1.9.8';   // FIX unreachable platforms (again): real measured jump apex is ~99.9px (not 104) → old stepUp 86 left only ~14px margin & tierGap 78 was loose. Now stepUp 70 / tierGap 64 (~30px margin, tierGap ≤ stepUp) + wider staircase/stepping-stone ledges so every plafon is climbable
+    var VERSION = 'v2.4.1';   // FIX Simpan: (1) now works from the PUBLISHED INVITATION too (not only the Theme Editor) — ThemeWrapper exposes window.__MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS on the live page, so the ★ tuner's 💾 Simpan can authenticate+save from a guest's invitation. (2) FIX "Invalid username or password" despite correct creds: Apps Script answers a cross-origin POST with a 302→GET redirect that DROPS the body, so login/password never reached the backend; mswApiPost now ALSO sends action/username/password/token/id in the QUERY STRING (backend reads e.parameter on the redirected GET), mirroring apiClient.ts. PREV (v2.4.0) NEW Sprite-Tuner "💾 Simpan" button: opens a superadmin username/password dialog; on valid superadmin login it BAKES the current tuner values into this theme's own TUNE_DEFAULTS line and saves the JS source to the DB via the SAME API as the Theme Editor (login → updateTheme, __chunked). Needs the host bridge globals (window.__MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS) injected by ThemeEditorPage's preview iframe; outside the editor the button just toasts that save is editor-only. PREV (v2.3.3) Baked tuner defaults updated: caged +6, tank +9, boss -31 (mech naik 31px), crate -9 (peti naik 9px). PREV (v2.3.2) FIX "peluru musuh belum naik": asset-mode enemies use origin-BOTTOM (e.y = feet), so the old flat e.y-6 spawned enemy bullets at ground level. New enemyMuzzleY() lifts the spawn to gun height (~60% of display height above the feet) in asset mode; procedural stays e.y-6. PREV (v2.3.1) Baked tuner defaults updated: ground +4 (tanah turun 4px) & bush -3 (rumput/semak naik 3px). Musuh Range stays at +6 (3px lebih ke atas dari sebelumnya, sudah dibaked). PREV (v2.3.0) Sprite Tuner now lists EVERY sprite (25 types incl. rumput/bush, palm, sandbag, flag, ground, ledge, arch, clouds/mountains/hills) in a 2-COLUMN panel, and every slider shifts its sprites LIVE via a per-sector tunable REGISTRY (this.tunables) — not just the few hard-coded groups. Open the tuner WHILE IN-GAME (a scene must exist) for live changes; on the cover screen it only saves. PREV (v2.2.1) FIX: tuner panel was hard-gated to desktop-landscape with display:none!important → inside the narrower Theme-Editor preview the ★ looked dead (panel never showed). Now the panel shows whenever toggled (.show); its ★ trigger still lives in the desktop-only side badge. PRESS START unchanged (delegated capture listener). PREV (v2.2.0) Sprite Tuner access MOVED out of the game frame: trigger is now a HIDDEN ★ inline in the left side badge ("UNDANGAN PERNIKAHAN"); the panel opens (PC only) as a fixed overlay at the TOP-LEFT of the RIGHT panel (right of the 480px frame). Baked tuner defaults updated (boss 16, spike 7) → TUNE_KEY v3. PREV (v2.1.1) FIX: Sprite Tuner sliders were not rendering (empty list) — rows now built with pure DOM API + listeners bound per-slider, and the list is ALWAYS (re)built every time the panel opens (survives host re-injection wiping it back to empty). Panel bg made fully opaque. PREV (v2.1.0) PC-only Sprite Tuner panel (bottom-right ⇅ button) — per-sprite vertical offset sliders, live-apply (no pause), persisted + "Salin nilai" so the user can dial-in feet-on-ground positions and send the values back. PREV (v2.0.3) crate/enemy anchoring: switched to ORIGIN-BOTTOM at the surface for the crate (center−4 was sinking it 12px into the plank) and for asset-mode enemies (body now bottom-aligned to the feet → no ngambang). Verified by compositing the real crate/turret/rush/range on ground+ledge (all flush). Ledge stays center-origin (its top is already correct).
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#e23b2e;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -86,7 +86,7 @@
         }
     };
 
-    var SECTOR_NAMES = ['Markas Latih', 'Kota Tua', 'Jembatan Sungai', 'Gurun Konvoi', 'Pangkalan Musuh', 'Markas Pelaminan'];
+    var SECTOR_NAMES = ['Markas Latih', 'Kota Tua', 'Jembatan Sungai', 'Gurun Konvoi', 'Pangkalan Musuh', 'Markas BOSS'];
     var SECTION_TITLE = {
         hero: 'Pembuka', couple: 'Mempelai', rsvp: 'Konfirmasi', schedule: 'Acara',
         streaming: 'Live Streaming', story: 'Kisah', gallery: 'Galeri', happiness: 'Bagikan',
@@ -291,6 +291,80 @@
         STORE = { unlocked: [], maxSector: 0, best: 0, diff: 'normal', announcedAll: false, completed: false };
         saveStore();
     }
+
+    /* =================================================================
+       SPRITE TUNER (PC dev tool) — per-sprite-type vertical offset (px).
+       Negative = naik (up), positive = turun (down). Read at every spawn
+       anchor via tuneY(); slider changes apply LIVE to existing sprites and
+       persist to localStorage so the user can read off final values + send a
+       screenshot for me to bake in. Game keeps running while the panel is open.
+       ================================================================= */
+    // v2: baked-in per-sprite offsets (dialed-in via the Sprite Tuner & sent back). The key is
+    // bumped v1→v2 so a device that saved the old all-zero v1 does NOT override these new
+    // defaults; the tuner still lets anyone re-adjust on top (and re-persists under v2).
+    var TUNE_KEY = 'msw_tune_v3';
+    // BAKED DEFAULTS (user-approved feet-on-ground positions). loadTune() starts from these,
+    // then layers any per-device localStorage tweak on top.
+    var TUNE_DEFAULTS = {
+        player: 12, pow: 6, rush: 12, range: 6, turret: 0, drone: 0, tank: 9, boss: -31,
+        barrel: 10, crate: -9, spike: 7, flame: 0, cage: 0, caged: 6,
+        amplop: 0, arch: 0, ground: 4, plat: 0, bush: -3, palm: 0, sandbag: 0, flag: 0,
+        cloud: 0, mountain: 0, hill: 0
+    };
+    // display order + label + the engine texture keys whose LIVE sprites get
+    // nudged when the slider moves (so the change is visible without a respawn).
+    // EVERY sprite type the engine draws gets its own slider. The tuner shifts every LIVE sprite
+    // tagged with `tuneId === id` by the delta (via the scene's tunable registry), so all of these
+    // move instantly. Grouped per category for the 2-column panel.
+    var TUNE_SPECS = [
+        // — Karakter —
+        { id: 'player',  label: 'Player' },
+        { id: 'pow',     label: 'POW Kurir' },
+        { id: 'caged',   label: 'Mempelai (Sangkar)' },
+        // — Musuh —
+        { id: 'rush',    label: 'Musuh Rush' },
+        { id: 'range',   label: 'Musuh Range' },
+        { id: 'turret',  label: 'Turret' },
+        { id: 'drone',   label: 'Drone' },
+        { id: 'tank',    label: 'Tank' },
+        { id: 'boss',    label: 'Boss' },
+        // — Objek / item —
+        { id: 'barrel',  label: 'Barrel' },
+        { id: 'crate',   label: 'Crate Senjata' },
+        { id: 'amplop',  label: 'Amplop (penanda)' },
+        // — Hazard —
+        { id: 'spike',   label: 'Duri (Spike)' },
+        { id: 'flame',   label: 'Api (Flame)' },
+        // — Struktur —
+        { id: 'cage',    label: 'Sangkar' },
+        { id: 'arch',    label: 'Gapura (Altar)' },
+        // — Terrain / dekorasi —
+        { id: 'ground',  label: 'Tanah (Ground)' },
+        { id: 'plat',    label: 'Pijakan (Ledge)' },
+        { id: 'bush',    label: 'Rumput / Semak' },
+        { id: 'palm',    label: 'Pohon Palem' },
+        { id: 'sandbag', label: 'Karung Pasir' },
+        { id: 'flag',    label: 'Bendera' },
+        // — Parallax bg —
+        { id: 'cloud',    label: 'Awan' },
+        { id: 'mountain', label: 'Gunung' },
+        { id: 'hill',     label: 'Bukit' }
+    ];
+    var TUNE_MIN = -60, TUNE_MAX = 60;
+    var TUNE = loadTune();
+    function loadTune() {
+        var t = {};
+        // start from the baked, user-approved defaults (not 0)
+        TUNE_SPECS.forEach(function (s) { t[s.id] = (typeof TUNE_DEFAULTS[s.id] === 'number') ? TUNE_DEFAULTS[s.id] : 0; });
+        try {
+            var raw = localStorage.getItem(TUNE_KEY);
+            if (raw) { var p = JSON.parse(raw) || {}; TUNE_SPECS.forEach(function (s) { if (typeof p[s.id] === 'number') t[s.id] = p[s.id]; }); }
+        } catch (e) {}
+        return t;
+    }
+    function saveTune() { try { localStorage.setItem(TUNE_KEY, JSON.stringify(TUNE)); } catch (e) {} }
+    // apply an offset to a spawn Y. `id` = TUNE_SPECS id.
+    function tuneY(id, y) { return y + (TUNE[id] || 0); }
 
     /* =================================================================
        WEDDING LAYER — scan #inv-source for REAL sections (Bible APPENDIX W.3)
@@ -526,7 +600,7 @@
             var t = $('msw-win-text');
             if (t) t.innerHTML = 'Selamat! Misi penyelamatan berhasil — ' +
                 '<b>' + esc(val('groom_nickname', 'Mempelai')) + '</b> &amp; <b>' + esc(val('bride_nickname', 'Mempelai')) + '</b> ' +
-                'telah dibebaskan dari Markas Pelaminan. Terima kasih sudah menuntaskan misinya. ' +
+                'telah dibebaskan dari Markas Boss. Terima kasih sudah menuntaskan misinya. ' +
                 'Buka undangannya sekarang, atau tutup dialog ini dulu.';
             showOverlay('msw-win');
         }, 5000);
@@ -649,6 +723,7 @@
         try { wireMusicMirror(); } catch (e) {}
         try { drawCoupleCanvas(); } catch (e) {}
         try { paintSideBg(); } catch (e) {}
+        try { buildTuner(); } catch (e) {}
         try { var v = $('msw-version'); if (v) v.textContent = VERSION; } catch (e) {}
         // if everything already unlocked from a prior session, light the 💌
         try { updateProgress(); } catch (e) {}
@@ -781,6 +856,206 @@
         }
     }
 
+    /* =================================================================
+       SPRITE TUNER UI — list + sliders. Toggling does NOT pause the game;
+       slider moves apply LIVE via the scene's applyLiveTune() and persist.
+       ================================================================= */
+    var _tunerBuilt = false;
+    // build each row with pure DOM API (no innerHTML) so nothing can be stripped/escaped,
+    // and wire each slider's listener directly on the input (robust against host re-inject).
+    function buildTuner() {
+        var list = $('msw-tuner-list'); if (!list) return;
+        while (list.firstChild) list.removeChild(list.firstChild);
+        TUNE_SPECS.forEach(function (spec) {
+            var v = TUNE[spec.id] || 0;
+            var row = document.createElement('div'); row.className = 'msw-tuner-row';
+            var top = document.createElement('div'); top.className = 'msw-tuner-row-top';
+            var name = document.createElement('span'); name.className = 'msw-tuner-row-name'; name.textContent = spec.label;
+            var valEl = document.createElement('span'); valEl.className = 'msw-tuner-row-val';
+            valEl.id = 'msw-tval-' + spec.id; valEl.textContent = (v > 0 ? '+' : '') + v + 'px';
+            top.appendChild(name); top.appendChild(valEl);
+            var slider = document.createElement('input');
+            slider.type = 'range'; slider.min = TUNE_MIN; slider.max = TUNE_MAX; slider.step = 1;
+            slider.value = v; slider.setAttribute('data-tune', spec.id);
+            var apply = function () {
+                var nv = parseInt(slider.value, 10) || 0;
+                valEl.textContent = (nv > 0 ? '+' : '') + nv + 'px';
+                var sc = (GAME && GAME.scene) ? GAME.scene.getScene('Game') : null;
+                if (sc && sc.applyLiveTune) sc.applyLiveTune(spec.id, nv);
+                else { TUNE[spec.id] = nv; saveTune(); }
+            };
+            slider.addEventListener('input', apply);
+            slider.addEventListener('change', apply);
+            row.appendChild(top); row.appendChild(slider);
+            list.appendChild(row);
+        });
+        _tunerBuilt = true;
+    }
+    function toggleTuner() {
+        var p = $('msw-tuner'); if (!p) return;
+        var opening = !p.classList.contains('show');
+        // ALWAYS (re)build on open — a host re-injection can wipe the list back to the empty
+        // static markup, so never trust a prior build. Cheap (≈15 rows).
+        if (opening) buildTuner();
+        p.classList.toggle('show');
+    }
+    function resetTuner() {
+        // reset back to the BAKED defaults (not 0) — those are the verified feet-on-ground
+        // positions; zeroing them would re-introduce the floating/sinking the bake fixed.
+        var sc = (GAME && GAME.scene) ? GAME.scene.getScene('Game') : null;
+        TUNE_SPECS.forEach(function (spec) {
+            var def = (typeof TUNE_DEFAULTS[spec.id] === 'number') ? TUNE_DEFAULTS[spec.id] : 0;
+            if (sc && sc.applyLiveTune) sc.applyLiveTune(spec.id, def);
+            else TUNE[spec.id] = def;
+        });
+        saveTune();
+        buildTuner();   // repaint sliders to defaults
+        toast('Posisi sprite direset ke default');
+    }
+    function copyTuner() {
+        var txt = JSON.stringify(TUNE, null, 2);
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).catch(function () {});
+        else fallbackCopy(txt, function () {});
+        toast('Nilai disalin: <b>' + esc(txt.replace(/\s+/g, ' ')) + '</b>', 4000);
+    }
+
+    /* =================================================================
+       SAVE TO THEME (superadmin) — bake the current tuner values straight
+       into this theme's js_template in the DB, using the SAME API the Theme
+       Editor uses (login → updateTheme, chunked). The host (ThemeEditorPage)
+       exposes window.__MSW_API_URL / __MSW_THEME_ID / __MSW_THEME_JS into the
+       preview iframe; we rewrite our own TUNE_DEFAULTS line in that source and
+       POST it back. Clicking "Simpan" first asks for superadmin credentials.
+       ================================================================= */
+    function mswApiUrl() { return (window.__MSW_API_URL || '').toString(); }
+    function mswThemeId() { return (window.__MSW_THEME_ID || '').toString(); }
+    function mswThemeJs() { return (window.__MSW_THEME_JS || '').toString(); }
+
+    // Build the one-line TUNE_DEFAULTS object literal from the live TUNE values,
+    // preserving the SAME key order/grouping as the source for a clean diff.
+    function buildDefaultsLiteral() {
+        var t = TUNE;
+        function n(id) { return (typeof t[id] === 'number') ? t[id] : 0; }
+        return 'var TUNE_DEFAULTS = {\n' +
+            '        player: ' + n('player') + ', pow: ' + n('pow') + ', rush: ' + n('rush') + ', range: ' + n('range') + ', turret: ' + n('turret') + ', drone: ' + n('drone') + ', tank: ' + n('tank') + ', boss: ' + n('boss') + ',\n' +
+            '        barrel: ' + n('barrel') + ', crate: ' + n('crate') + ', spike: ' + n('spike') + ', flame: ' + n('flame') + ', cage: ' + n('cage') + ', caged: ' + n('caged') + ',\n' +
+            '        amplop: ' + n('amplop') + ', arch: ' + n('arch') + ', ground: ' + n('ground') + ', plat: ' + n('plat') + ', bush: ' + n('bush') + ', palm: ' + n('palm') + ', sandbag: ' + n('sandbag') + ', flag: ' + n('flag') + ',\n' +
+            '        cloud: ' + n('cloud') + ', mountain: ' + n('mountain') + ', hill: ' + n('hill') + '\n' +
+            '    };';
+    }
+
+    // Replace the existing `var TUNE_DEFAULTS = { ... };` block in the JS source
+    // with the freshly-baked one. Returns null if the marker isn't found.
+    function patchJsSource(src) {
+        // match from "var TUNE_DEFAULTS = {" up to the first "};" (non-greedy across newlines)
+        var re = /var\s+TUNE_DEFAULTS\s*=\s*\{[\s\S]*?\};/;
+        if (!re.test(src)) return null;
+        return src.replace(re, buildDefaultsLiteral());
+    }
+
+    // API POST to the Apps Script Web App. text/plain → no CORS preflight (same as apiClient.ts).
+    // IMPORTANT (the Apps Script gotcha): /exec answers a cross-origin POST with a 302 redirect to
+    // script.googleusercontent.com; the browser's fetch FOLLOWS it as a GET and DROPS the POST body,
+    // so the backend would see no username/password → "Invalid username or password". To survive the
+    // redirect we ALSO put the same fields in the QUERY STRING (backend reads e.parameter on GET),
+    // mirroring apiClient.ts which injects into BOTH params and body. We send the small auth/meta
+    // fields as query params; large fields (the js_* columns) stay body-only (too big for a URL, and
+    // they aren't needed to authenticate — the token in the query keeps the redirected GET authorized).
+    function mswApiPost(body) {
+        var url = mswApiUrl();
+        var qsKeys = ['action', 'username', 'password', 'token', 'tenant_id', 'id', '__chunked'];
+        var qs = [];
+        qsKeys.forEach(function (k) {
+            if (body[k] !== undefined && body[k] !== null) {
+                qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(body[k])));
+            }
+        });
+        if (qs.length) url += (url.indexOf('?') >= 0 ? '&' : '?') + qs.join('&');
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(body),
+            redirect: 'follow'
+        }).then(function (r) { return r.json(); });
+    }
+
+    // Split a string into the backend's 11 columns (≤50k each): js_template + js_extra_1..10.
+    function splitJsColumns(s) {
+        s = s || '';
+        var cols = { js_template: s.substring(0, 50000) };
+        for (var i = 1; i <= 10; i++) cols['js_extra_' + i] = s.substring(i * 50000, (i + 1) * 50000);
+        return cols;
+    }
+
+    function setAuthMsg(msg, ok) {
+        var m = $('msw-tuner-auth-msg'); if (!m) return;
+        m.textContent = msg || ''; m.className = 'msw-tuner-auth-msg' + (ok ? ' ok' : '');
+    }
+    function openSaveAuth() {
+        // Available from BOTH the Theme Editor preview AND the published invitation: the host
+        // (ThemeWrapper / ThemeEditorPage) sets __MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS on
+        // window. If the API URL/id is missing (e.g. an isolated standalone test page) we can't save.
+        if (!mswApiUrl()) { toast('Simpan butuh konteks aplikasi (API tidak tersedia di sini).'); return; }
+        if (!mswThemeId()) { toast('Tema belum punya ID — simpan tema dulu sekali di Editor Tema.'); return; }
+        var a = $('msw-tuner-auth'); if (!a) return;
+        setAuthMsg('');
+        var u = $('msw-tuner-auth-user'); var p = $('msw-tuner-auth-pass');
+        if (p) p.value = '';
+        a.classList.add('show');
+        if (u) setTimeout(function () { u.focus(); }, 30);
+    }
+    function closeSaveAuth() { var a = $('msw-tuner-auth'); if (a) a.classList.remove('show'); }
+
+    var _saving = false;
+    function doSaveTune() {
+        if (_saving) return;
+        var u = ($('msw-tuner-auth-user') || {}).value || '';
+        var p = ($('msw-tuner-auth-pass') || {}).value || '';
+        if (!u || !p) { setAuthMsg('Username & password wajib diisi.'); return; }
+
+        var src = mswThemeJs();
+        var patched = patchJsSource(src);
+        if (!patched) { setAuthMsg('Gagal menemukan TUNE_DEFAULTS di source JS tema.'); return; }
+
+        _saving = true;
+        var okBtn = $('msw-tuner-auth-ok'); if (okBtn) okBtn.disabled = true;
+        var saveBtn = $('msw-tuner-save'); if (saveBtn) saveBtn.disabled = true;
+        setAuthMsg('Memvalidasi otorisasi…', true);
+
+        // 1) LOGIN → token (must be superadmin)
+        mswApiPost({ action: 'login', username: u, password: p }).then(function (res) {
+            if (!res || !res.success || !res.data || !res.data.token) {
+                throw new Error((res && res.message) || 'Login gagal.');
+            }
+            if (!res.data.user || res.data.user.role !== 'superadmin') {
+                throw new Error('Hanya superadmin yang boleh menyimpan tema.');
+            }
+            var token = res.data.token;
+            setAuthMsg('Otorisasi OK. Menyimpan ke tema…', true);
+
+            // 2) CHUNKED updateTheme — js columns sent verbatim (≤50k each), __chunked flag set.
+            var cols = splitJsColumns(patched);
+            var id = mswThemeId();
+            // send all columns in ONE updateTheme call (each ≤50k; whole body well under the limit)
+            var body = { action: 'updateTheme', id: id, __chunked: true, token: token, tenant_id: 'system' };
+            for (var k in cols) body[k] = cols[k];
+            return mswApiPost(body);
+        }).then(function (res) {
+            if (!res || !res.success) throw new Error((res && res.message) || 'Gagal menyimpan tema.');
+            // keep the in-iframe copy in sync so a second save re-patches the NEW source
+            try { window.__MSW_THEME_JS = patched; } catch (e) {}
+            setAuthMsg('Tersimpan! Posisi sprite kini jadi default tema.', true);
+            toast('💾 Tersimpan ke tema — nilai ini kini default permanen.', 3500);
+            setTimeout(closeSaveAuth, 900);
+        }).catch(function (err) {
+            setAuthMsg((err && err.message) ? err.message : 'Terjadi kesalahan saat menyimpan.');
+        }).then(function () {
+            _saving = false;
+            if (okBtn) okBtn.disabled = false;
+            if (saveBtn) saveBtn.disabled = false;
+        });
+    }
+
     init();
 
     /* =================================================================
@@ -839,7 +1114,16 @@
             'msw-retry': function () { hideOverlays(); startRun(0); },
             'msw-modal-close': closeModal,
             'msw-reveal-close': closeReveal,
-            'msw-lightbox-close': function () { var lb = $('msw-lightbox'); if (lb) lb.classList.remove('show'); }
+            'msw-lightbox-close': function () { var lb = $('msw-lightbox'); if (lb) lb.classList.remove('show'); },
+            // SPRITE TUNER (PC) — toggling does NOT pause the game (config applies live)
+            'msw-tuner-btn': toggleTuner,
+            'msw-tuner-close': function () { var p = $('msw-tuner'); if (p) p.classList.remove('show'); },
+            'msw-tuner-reset': resetTuner,
+            'msw-tuner-copy': copyTuner,
+            // SAVE flow (superadmin auth dialog → bake into theme JS via the save API)
+            'msw-tuner-save': openSaveAuth,
+            'msw-tuner-auth-cancel': closeSaveAuth,
+            'msw-tuner-auth-ok': doSaveTune
         };
         // difficulty buttons handled here too (data-diff), plus backdrop dismiss for modal/lightbox.
         var delegated = function (e) {
@@ -1738,7 +2022,12 @@
             // sanity vs the known atlas (288×2520); bail to procedural if wildly different.
             if (src.width < 200 || src.height < 1500) { try { this.textures.remove(OBJECT_SHEET_KEY); } catch (e) {} return; }
             var self = this, made = 0;
-            // shared scratch canvas for downscaling each frame
+            // ORIGINAL bake: straight 1:1 cell→texture downscale, NO trimming. Verified against the
+            // uploaded object-sprite-sheet.png (288×2520, real alpha): every object cell already has
+            // its art flush at the BOTTOM (measured bottom padding = 0–1px), so the spawn code's
+            // tuned center-origin offsets plant each object on the ground correctly. The earlier
+            // "trim bottom/top padding + origin-bottom" rewrite fixed a non-existent padding problem
+            // and DESINCED the textures from those offsets → that was the floating regression.
             function bake(destKey, sx, sy, sw, sh, dw, dh) {
                 try {
                     var cv = document.createElement('canvas'); cv.width = dw; cv.height = dh;
@@ -1823,22 +2112,23 @@
             reg(this.add.circle(BW * 0.74, BH * 0.18, 38, pal.sun, pal.sunA).setScrollFactor(0).setDepth(-59));
             // clouds (slow)
             for (var c = 0; c < 5; c++) {
-                reg(this.add.image(80 + c * 280, 70 + (c % 2) * 50, 't_cloud').setScrollFactor(0.1).setDepth(-58).setAlpha(0.85).setScale(0.7 + (c % 3) * 0.2));
+                self.regTune(reg(this.add.image(80 + c * 280, 70 + (c % 2) * 50, 't_cloud').setScrollFactor(0.1).setDepth(-58).setAlpha(0.85).setScale(0.7 + (c % 3) * 0.2)), 'cloud');
             }
             // far mountains (slow parallax) — tiled across the world
             var worldW = this.worldW || 4200;
             for (var m = 0; m * 240 < worldW + 480; m++) {
-                reg(this.add.image(m * 240, GROUND_Y + 20, 't_mountain').setOrigin(0.5, 1).setScrollFactor(0.25).setDepth(-50).setAlpha(0.7));
+                self.regTune(reg(this.add.image(m * 240, GROUND_Y + 20, 't_mountain').setOrigin(0.5, 1).setScrollFactor(0.25).setDepth(-50).setAlpha(0.7)), 'mountain');
             }
             // near hills (medium parallax)
             for (var h = 0; h * 220 < worldW + 440; h++) {
-                reg(this.add.image(h * 220 + 60, GROUND_Y + 40, 't_hill').setOrigin(0.5, 1).setScrollFactor(0.45).setDepth(-40));
+                self.regTune(reg(this.add.image(h * 220 + 60, GROUND_Y + 40, 't_hill').setOrigin(0.5, 1).setScrollFactor(0.45).setDepth(-40)), 'hill');
             }
             // mid-ground vegetation/props depending on biome (faster parallax, behind gameplay)
             var propTex = idx === 3 ? ['t_palm', 't_barrel'] : idx === 4 || idx === 5 ? ['t_barrel', 't_sandbag', 't_flag'] : ['t_palm', 't_bush', 't_flag'];
+            var TPROP = { 't_palm': 'palm', 't_barrel': 'barrel', 't_sandbag': 'sandbag', 't_flag': 'flag', 't_bush': 'bush' };
             for (var p = 0; p * 300 < worldW; p++) {
                 var t = propTex[p % propTex.length];
-                reg(this.objImage(160 + p * 300 + (p % 2) * 90, GROUND_Y + 2, t).setOrigin(0.5, 1).setScrollFactor(0.7).setDepth(-20).setAlpha(0.95));
+                self.regTune(reg(this.objImage(160 + p * 300 + (p % 2) * 90, GROUND_Y + 2, t).setOrigin(0.5, 1).setScrollFactor(0.7).setDepth(-20).setAlpha(0.95)), TPROP[t] || 'bush');
             }
         };
 
@@ -1851,7 +2141,7 @@
             var pieces = infosForSector(idx).filter(function (i) { return !unlocked[i.key]; });
             var txt = pieces.length
                 ? 'Selamatkan ' + pieces.length + ' POW kurir untuk membuka: ' + pieces.map(function (p) { return p.title; }).join(', ') + '.'
-                : 'Bersihkan sektor & maju menuju Markas Pelaminan.';
+                : 'Bersihkan sektor & maju menuju Markas Boss.';
             if (idx === C.sectors - 1) txt = 'Markas terakhir! Taklukkan Jenderal Pembatal Nikah & selamatkan mempelai.';
             $('msw-briefing-text').textContent = txt;
             showOverlay('msw-briefing');
@@ -1884,6 +2174,7 @@
             if (this.boss) { try { this.boss.destroy(); } catch (e) {} this.boss = null; }
 
             this.arenaX = null; this.bossActive = false; this.bossDead = false;
+            this.tunables = [];   // reset the sprite-tuner registry for this sector
             var isBoss = (idx === C.sectors - 1);
             // LONGER stages (per request). Non-boss sectors grow with index; boss keeps a
             // shorter walk-in corridor before the arena.
@@ -1902,6 +2193,7 @@
             for (var x = 0; x < len + 64; x += 64) {
                 var gnd = this.platforms.create(x + 32, GROUND_Y + 32, 't_ground');
                 gnd.setDepth(-2); gnd.refreshBody();
+                this.regTune(gnd, 'ground');
             }
             this.groundTop = GROUND_Y;
 
@@ -1926,10 +2218,12 @@
             this.decor.clear(true, true);
             // bigger ground props (bush handled separately by the dense grass scatter below)
             var fgTex = idx === 3 ? ['t_barrel', 't_palm'] : idx >= 4 ? ['t_sandbag', 't_barrel'] : ['t_palm', 't_sandbag'];
+            var FGID = { 't_barrel': 'barrel', 't_palm': 'palm', 't_sandbag': 'sandbag' };
             for (var d = 1; d * 520 < len - 300; d++) {
                 if (Math.random() < 0.7) {
                     var t = fgTex[d % fgTex.length];
-                    this.decor.add(this.add.image(300 + d * 520, GROUND_Y + 4, t).setOrigin(0.5, 1).setDepth(-2));
+                    var dImg = this.add.image(300 + d * 520, GROUND_Y + 4, t).setOrigin(0.5, 1).setDepth(-2);
+                    this.decor.add(dImg); this.regTune(dImg, FGID[t] || 'bush');
                 }
             }
 
@@ -1943,11 +2237,10 @@
                     if (Math.random() < 0.8) {
                         var gjit = gx + Math.round((Math.random() - 0.5) * 40);
                         var gscale = 0.55 + Math.random() * 0.5;   // small tufts (bush is 54px wide)
-                        this.decor.add(
-                            this.objImage(gjit, GROUND_Y + 8, 't_bush')
-                                .setOrigin(0.5, 1).setDepth(-1).setScale(gscale)
-                                .setFlipX(Math.random() < 0.5)
-                        );
+                        var gBush = this.objImage(gjit, tuneY('bush', GROUND_Y + 8), 't_bush')
+                            .setOrigin(0.5, 1).setDepth(-1).setScale(gscale)
+                            .setFlipX(Math.random() < 0.5);
+                        this.decor.add(gBush); this.regTune(gBush, 'bush');
                     }
                 }
             }
@@ -1991,13 +2284,18 @@
            foothold (x, topY, halfW) so the staircase builder can guarantee each higher ledge
            is reachable from a lower foothold. */
         GameScene.prototype.addLedge = function (x, topY, scaleX) {
+            // Center-origin plank (proven correct by compositing the real asset): t_plat is 20px tall
+            // and art-flush, so a CENTER at topY+10 puts its TOP standable surface exactly on topY.
+            // This is the surface every perched object (crate/enemy) references. (Static body assumes
+            // center origin, so we keep center here and anchor the OBJECTS to topY instead.)
             var pl = this.platforms.create(x, topY + 10, 't_plat');
             if (scaleX) { pl.setScale(scaleX, 1); }
             pl.refreshBody();
+            pl.setData('tuneId', 'plat'); this.regTune(pl, 'plat');
             if (!this._footholds) this._footholds = [];
-            var halfW = (96 * (scaleX || 1)) / 2;
+            var halfW = ((pl.displayWidth || 96)) / 2;
             this._footholds.push({ x: x, y: topY, halfW: halfW });
-            return topY;   // surface the player stands on
+            return topY;   // surface the player + perched objects stand on
         };
 
         /* REBUILT LEVEL GENERATOR — reachable geometry + sensible object/enemy placement.
@@ -2087,7 +2385,10 @@
                     // HIGH GROUND — reachable staircase; turret/range perched up top guarding a crate.
                     staircase(zx + 200, function (tx, ty) {
                         self.spawnCrate(tx, ty, self.rollWeapon(idx));
-                        emit(idx >= 1 ? 'turret' : 'range', tx + 70, ty - 6);
+                        // perched enemy sits ON the ledge surface (ty). turret: y=surface (feet
+                        // anchored in spawnEnemy); range has gravity and will settle, so spawn it
+                        // slightly above so it drops onto the ledge.
+                        emit(idx >= 1 ? 'turret' : 'range', tx + 70, idx >= 1 ? ty : ty - 30);
                     });
                     this.spawnBarrel(zx + 140, GROUND_Y - 18);
 
@@ -2110,7 +2411,7 @@
 
                 // weapon crate cadence: every other zone (that didn't already place one)
                 if (pattern !== 1 && z % 2 === 1 && !nearPow) {
-                    this.spawnCrate(zx + ZONE * 0.55, GROUND_Y - 30, this.rollWeapon(idx));
+                    this.spawnCrate(zx + ZONE * 0.55, GROUND_Y, this.rollWeapon(idx));
                 }
             }
 
@@ -2135,9 +2436,13 @@
 
         /* ================= SPAWNERS ================= */
         GameScene.prototype.spawnPOW = function (x, key) {
-            var pow = this.pows.create(x, GROUND_Y - 19, 't_pow');
+            // ORIGINAL working geometry: default origin (0.5,0.5) at GROUND_Y-19 (the courier art
+            // fills the cell to the bottom, so center−19 plants its feet on the floor). The
+            // measured t_pow cell has 0 bottom padding, so no trim/origin-bottom is needed.
+            var pow = this.pows.create(x, tuneY('pow', GROUND_Y - 19), 't_pow');
             pow.body.setAllowGravity(false);
             pow.setData('key', key); pow.setData('rescued', false);
+            pow.setData('tuneId', 'pow'); this.regTune(pow, 'pow');
             pow.body.setSize(22, 38);
             // gentle bob
             this.tweens.add({ targets: pow, y: pow.y - 6, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -2149,8 +2454,8 @@
                 onRepeat: function () { ring.radius = 16; ring.alpha = 1; } });
             pow.setData('ring', ring);
             // floating amplop marker above (animated sparkle in asset mode)
-            var mark = this.objImage(x, GROUND_Y - 56, 't_amplop');
-            pow.setData('mark', mark);
+            var mark = this.objImage(x, tuneY('amplop', GROUND_Y - 56), 't_amplop');
+            pow.setData('mark', mark); this.regTune(mark, 'amplop');
             this.tweens.add({ targets: mark, y: mark.y - 8, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
             // bobbing "SOS ↓" label so it reads as a rescue target, not décor
             var sos = this.add.text(x, GROUND_Y - 78, '▼ SOS', { fontFamily: 'monospace', fontSize: '11px', color: '#4fd6c8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(7);
@@ -2174,6 +2479,7 @@
                         : type === 'turret' ? 'e_turret_idle'
                             : 'e_rush_walk';
             var e = this.enemies.create(x, y, texKey);
+            e.setData('tuneId', type); this.regTune(e, type);
             if (type === 'drone') e.body.setAllowGravity(false);
             else if (type === 'turret') { e.body.setAllowGravity(false); e.body.setImmovable(true); }
             // ASSET MODE: re-texture to the sliced sheet cell at the engine display size, play
@@ -2182,7 +2488,7 @@
             this.applyEnemyAsset(e, texKey, idleAnim);
             e.setData('type', type);
             e.setData('hp', type === 'tank' ? 8 : (type === 'turret' ? 3 : (type === 'drone' ? 2 : 1)));
-            e.setData('aimT', type === 'turret' ? 400 : 0); e.setData('baseY', y); e.setData('seed', Math.random() * 6.28);
+            e.setData('aimT', type === 'turret' ? 400 : 0); e.setData('baseY', e.y); e.setData('seed', Math.random() * 6.28);
             e.setData('animState', ''); e.setData('texKey', texKey);
             e.body.setCollideWorldBounds(false);
             // body sizing.
@@ -2194,21 +2500,50 @@
             //  and FLOOR-ANCHOR it to the cell bottom, where the character's feet are (padBot≈0–1).
             var d = usingEnemyAssets ? ENEMY_DISP[texKey] : null;
             if (d) {
+                // ORIGIN-BOTTOM model (verified by compositing the real enemy sheet): the character
+                // art is bottom-flush in its cell, so origin (0.5,1) makes the sprite's visual feet =
+                // its world y. We then size the body to the world hitbox (in SOURCE px) and bottom-
+                // align it (offsetY = ch − bh) so the COLLISION bottom coincides with the feet. With
+                // this, a ground/ledge enemy's feet rest exactly on the surface — no ngambang, no sink.
+                e.setOrigin(0.5, 1);
                 var bw = d.hb.w / d.scale, bh = d.hb.h / d.scale;   // source px (uniform scale)
                 e.body.setSize(bw, bh);
-                // floor-anchor to cell bottom; horizontally centered on the frame-0 cell width.
-                // drone floats → body vertically centered on its mass instead.
-                var offY = d.grav ? (d.ch - bh) - 1 : (d.ch - bh) / 2;
+                var offY = d.grav ? (d.ch - bh) : (d.ch - bh) / 2;   // grav: feet-aligned; floaters: centered
                 e.body.setOffset((d.cw0 - bw) / 2, Math.max(0, offY));
+                // re-seat baseY on the now origin-bottom sprite (drone/turret bob around this)
+                e.setData('baseY', e.y);
             } else if (type === 'tank') {
                 e.body.setSize(56, 36);
             }
+            // record the clean (untuned) body offset / Y so the tuner can compose from a known base,
+            // then apply the persisted tune. ASSET enemies (origin-bottom) tune via body.offset.y so
+            // feet-collision stays grounded while the visual shifts; PROCEDURAL (origin-center) shifts Y.
+            e.setData('baseOffY', e.body.offset.y);
+            this.applyEnemyTune(e, type);
             return e;
+        };
+        // apply (or re-apply) a tuned vertical nudge to one enemy. + = turun (down), − = naik (up).
+        GameScene.prototype.applyEnemyTune = function (e, type) {
+            var off = TUNE[type] || 0;
+            var d = usingEnemyAssets ? ENEMY_DISP[type === 'range' ? 't_e_range' : type === 'drone' ? 't_drone' : type === 'tank' ? 't_tank' : type === 'turret' ? 't_turret' : 't_e_rush'] : null;
+            if (d && e.getData('baseOffY') != null) {
+                // body in SOURCE px; tune is DISPLAY px → ÷scale. − offY raises body within cell → render DOWN.
+                e.body.setOffset(e.body.offset.x, Math.max(0, e.getData('baseOffY') - off / d.scale));
+            } else {
+                // procedural: shift the sprite (+ baseY for bobbers) by the display-px tune.
+                var cur = e.getData('_tuneApplied') || 0, delta = off - cur;
+                e.y += delta;
+                if (e.getData('baseY') != null) e.setData('baseY', e.getData('baseY') + delta);
+                e.setData('_tuneApplied', off);
+            }
         };
         // explosive barrel: destructible, AoE on death (level juice + cover)
         GameScene.prototype.spawnBarrel = function (x, y) {
-            var e = this.enemies.create(x, y != null ? y : GROUND_Y - 18, 't_barrel');
-            e.setData('type', 'barrel'); e.setData('hp', 2); e.setData('explosive', true);
+            // ORIGINAL working geometry: default origin (0.5,0.5) at y (caller passes GROUND_Y-18).
+            // The barrel art fills the cell to the bottom (0 padding), so center placement plants it
+            // on the floor. The origin-bottom rewrite was the floating regression — reverted.
+            var e = this.enemies.create(x, tuneY('barrel', y != null ? y : GROUND_Y - 18), 't_barrel');
+            e.setData('type', 'barrel'); e.setData('tuneId', 'barrel'); this.regTune(e, 'barrel'); e.setData('hp', 2); e.setData('explosive', true);
             e.setData('aimT', 0); e.setData('seed', 0);
             e.body.setImmovable(true); e.body.setAllowGravity(false);
             var ba = this.objAnim('t_barrel'); if (ba) e.play(ba);   // warning-light loop
@@ -2218,14 +2553,16 @@
         // spikes hazard (ground-level danger you must jump over — "pit" without breaking floor)
         GameScene.prototype.spawnPit = function (x, w) {
             var self = this;
-            var spike = this.hazards.create(x, GROUND_Y - 8, 't_spike');
-            spike.setData('on', true); spike.refreshBody();
+            // ORIGINAL working geometry: default origin at GROUND_Y-8 (spikes sit on the floor).
+            var spike = this.hazards.create(x, tuneY('spike', GROUND_Y - 8), 't_spike');
+            spike.setData('on', true); spike.setData('tuneId', 'spike'); this.regTune(spike, 'spike'); spike.refreshBody();
             this.physics.add.overlap(this.player, spike, function () { self.playerHit(); });
             return spike;
         };
         GameScene.prototype.spawnFlame = function (x) {
-            var f = this.hazards.create(x, GROUND_Y - 14, 't_flame');
-            f.setData('on', true); f.setScale(1.4); f.refreshBody();
+            // ORIGINAL working geometry: default origin at GROUND_Y-14 (scaled flame on the floor).
+            var f = this.hazards.create(x, tuneY('flame', GROUND_Y - 14), 't_flame');
+            f.setData('on', true); f.setData('tuneId', 'flame'); this.regTune(f, 'flame'); f.setScale(1.4); f.refreshBody();
             var fa = this.objAnim('t_flame'); if (fa) f.play(fa);   // flickering fire loop
             // periodic flame: physics overlap only when "on"
             var self = this;
@@ -2241,8 +2578,15 @@
         };
 
         GameScene.prototype.spawnCrate = function (x, y, weapon) {
-            var c = this.crates.create(x, y - 4, 't_crate');
-            c.setData('weapon', weapon); c.body.setCollideWorldBounds(false);
+            // ORIGIN-BOTTOM at the surface y (verified by compositing the real crate): the crate art
+            // is bottom-flush in its 32px texture, so origin (0.5,1) at y plants its bottom exactly on
+            // the ground/ledge top — no sinking (center−4 sank it 12px into the plank), no floating.
+            // Body matches the full texture so collision lines up with the visible box.
+            var c = this.crates.create(x, tuneY('crate', y), 't_crate');
+            c.setOrigin(0.5, 1);
+            c.body.setSize(c.width, c.height); c.body.setOffset(0, 0);
+            c.body.setAllowGravity(false); c.body.setImmovable(true);
+            c.setData('weapon', weapon); c.setData('tuneId', 'crate'); this.regTune(c, 'crate'); c.body.setCollideWorldBounds(false);
             return c;
         };
         GameScene.prototype.breakCrate = function (c) {
@@ -2304,12 +2648,15 @@
             // wedding altar arch + caged couple — pinned to the FAR RIGHT edge (the goal),
             // well clear of the boss so they don't crowd the fight.
             var cageX = len - 70;
-            this.add.image(cageX, GROUND_Y + 2, 't_arch').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-8).setScale(1.3);
+            var archImg = this.add.image(cageX, tuneY('arch', GROUND_Y + 2), 't_arch').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-8).setScale(1.3);
+            archImg.setData('tuneId', 'arch'); this.regTune(archImg, 'arch');
             // CAGE bottom planted on the ground (origin bottom → y = GROUND_Y). The couple sits a
             // few px higher so their feet read as INSIDE the bars, not below them. (Bug fix: both
             // were anchored 30–36px above GROUND_Y → cage + couple floated off the ground.)
-            this.cage = this.add.image(cageX, GROUND_Y + 2, 't_cage').setOrigin(0.5, 1).setScrollFactor(1).setAlpha(0.9).setDepth(-5);
-            this.caged = this.add.image(cageX, GROUND_Y - 4, 't_couple_caged').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-6);
+            this.cage = this.add.image(cageX, tuneY('cage', GROUND_Y + 2), 't_cage').setOrigin(0.5, 1).setScrollFactor(1).setAlpha(0.9).setDepth(-5);
+            this.cage.setData('tuneId', 'cage'); this.regTune(this.cage, 'cage');
+            this.caged = this.add.image(cageX, tuneY('caged', GROUND_Y - 4), 't_couple_caged').setOrigin(0.5, 1).setScrollFactor(1).setDepth(-6);
+            this.caged.setData('tuneId', 'caged'); this.regTune(this.caged, 'caged');
 
             // boss sits in the LEFT-CENTER of the wide arena → big gap to the cage on the right,
             // and the player (spawns at the left wall) has a proper attack corridor.
@@ -2320,7 +2667,10 @@
             // center + dh/2. Plant them on the ground by homing at GROUND_Y - dh/2 (procedural boss
             // had bottom padding, hence its old GROUND_Y - 90). Otherwise it floats.
             var bdPre = usingEnemyAssets ? ENEMY_DISP['t_boss'] : null;
-            var bossHomeY = bdPre ? (GROUND_Y - Math.round(bdPre.dh / 2)) : (GROUND_Y - 90);
+            // ORIGINAL working anchor: center origin, homeY = GROUND_Y − dh/2 plants the mech's feet
+            // (which fill the cell bottom) on the floor. The padBot variant was part of the reverted
+            // floating-fix rewrite.
+            var bossHomeY = tuneY('boss', bdPre ? (GROUND_Y - Math.round(bdPre.dh / 2)) : (GROUND_Y - 90));
             var b = this.physics.add.sprite(bossX, bossHomeY, 't_boss');
             b.body.setAllowGravity(false); b.body.setImmovable(true);
             // re-texture to the sliced boss cell (uniform scale) + play idle. The art faces RIGHT;
@@ -2338,6 +2688,7 @@
             }
             b.setData('hp', 36); b.setData('maxhp', 36); b.setData('phase', 1);  // TTK ~9s pistol
             b.setData('atkT', 2200); b.setData('homeY', bossHomeY);
+            b.setData('tuneId', 'boss');
             b.setData('animState', usingEnemyAssets ? 'e_boss_idle' : '');
             b.setAlpha(0);                       // hidden until activation
             this.boss = b;
@@ -2350,7 +2701,7 @@
             this.bossHpBg = this.add.rectangle(b.x, b.y - 80, this.bossHpW + 4, 9, 0x000000, 0.7).setDepth(40).setVisible(false).setStrokeStyle(1, 0xb7a36a);
             this.bossHpFill = this.add.rectangle(b.x - this.bossHpW / 2, b.y - 80, this.bossHpW, 5, 0xe23b2e).setOrigin(0, 0.5).setDepth(41).setVisible(false);
 
-            toast('Tembus pertahanan menuju Markas Pelaminan →');
+            toast('Tembus pertahanan menuju Markas Boss →');
         };
         GameScene.prototype.updateBossHp = function () {
             if (!this.bossHpFill || !this.boss || !this.boss.active) return;
@@ -2818,8 +3169,19 @@
                 e.setData('aimT', tell + 1200);
             } else e.setData('aimT', aimT);
         };
+        /* Y of an enemy's gun muzzle. ASSET MODE enemies use origin-BOTTOM, so e.y is at the
+           FEET — a flat e.y-6 spawns the shot at ground level ("peluru belum naik"). Lift it to
+           gun height (≈60% of the display height above the feet). Procedural enemies are
+           origin-center, so the classic small -6 from the body center is correct. */
+        GameScene.prototype.enemyMuzzleY = function (e) {
+            if (usingEnemyAssets) {
+                var d = ENEMY_DISP[e.getData('texKey')];
+                if (d && d.dh) return e.y - Math.round(d.dh * 0.6);
+            }
+            return e.y - 6;
+        };
         GameScene.prototype.enemyFire = function (e, lob) {
-            var b = this.ebullets.get(e.x, e.y - 6, 't_ebullet');
+            var b = this.ebullets.get(e.x, this.enemyMuzzleY(e), 't_ebullet');
             if (!b) return;
             // ebullets pool also holds the boss rocket (t_rocket); reset texture only on a real change
             if (b.texture && b.texture.key !== 't_ebullet') { b.setTexture('t_ebullet'); b.setRotation(0); }
@@ -2926,6 +3288,62 @@
             }
         };
 
+        /* TUNABLE REGISTRY — every sprite the tuner can nudge registers here at creation, tagged
+           with its `tuneId`. This is the single source the live-apply walks, so EVERY sprite type
+           (player, enemies, items, hazards, terrain, decor, parallax bg, structures) shifts
+           instantly when its slider moves — including the many grass/bush + backdrop props that
+           live outside the physics groups. Reset per sector in buildSector(). */
+        GameScene.prototype.regTune = function (el, id) {
+            if (!el) return el;
+            if (!this.tunables) this.tunables = [];
+            try { el.setData && el.setData('tuneId', id); } catch (e) {}
+            this.tunables.push({ el: el, id: id });
+            return el;
+        };
+
+        /* SPRITE TUNER live-apply: shift every registered sprite tagged with this id by the DELTA.
+           Player + boss + asset-enemies keep their special feet-anchoring; everything else is a
+           plain Y shift (and baseY shift for bobbers) so the move is instantly visible. Game runs. */
+        GameScene.prototype.applyLiveTune = function (id, newVal) {
+            var oldVal = (TUNE[id] || 0), delta = newVal - oldVal;
+            TUNE[id] = newVal; saveTune();
+            var self = this;
+            // player: re-derive its body offset (re-anchors the texture vs feet)
+            if (id === 'player') { if (this.player && this.player.applyTuneOffset) this.player.applyTuneOffset(); return; }
+            // boss: shift its home Y so the bob recomputes around the new anchor
+            if (id === 'boss' && this.boss && this.boss.active) {
+                this.boss.setData('homeY', this.boss.getData('homeY') + delta);
+                this.boss.y += delta; if (this.bossHpBg) this.updateBossHp();
+                return;
+            }
+            // ENEMY types (rush/range/turret/drone/tank): re-apply via the asset body-offset /
+            // procedural Y model so feet-collision stays grounded while the visual shifts.
+            var ENEMY_IDS = ['rush', 'range', 'turret', 'drone', 'tank'];
+            if (ENEMY_IDS.indexOf(id) >= 0) {
+                if (this.enemies) this.enemies.getChildren().forEach(function (e) {
+                    if (e.active && e.getData('tuneId') === id) self.applyEnemyTune(e, id);
+                });
+                return;
+            }
+            if (!delta) return;
+            // EVERYTHING ELSE — plain Y shift via the registry (covers terrain/decor/parallax/etc).
+            // Prune dead refs as we go. baseY-bobbers get their anchor shifted too.
+            if (this.tunables) {
+                this.tunables = this.tunables.filter(function (rec) {
+                    var s = rec.el;
+                    if (!s || (s.active === false) || (s.scene == null)) return false;   // gone
+                    if (rec.id !== id) return true;
+                    s.y += delta;
+                    if (s.getData && s.getData('baseY') != null) s.setData('baseY', s.getData('baseY') + delta);
+                    if (s.body && s.refreshBody && s.body.immovable) { try { s.refreshBody(); } catch (e2) {} }
+                    return true;
+                });
+            }
+            // standalone structure images (also registered, but keep direct refs in sync)
+            if (id === 'cage' && this.cage) { /* shifted via registry */ }
+            if (id === 'caged' && this.caged) { /* shifted via registry */ }
+        };
+
         function pad6(n) { n = Math.max(0, Math.floor(n)); var s = String(n); while (s.length < 6) s = '0' + s; return s; }
         function Phaser_rand(scene, a, b) { return a + Math.random() * (b - a); }
         function Phaser_clampNum(v, a, b) { return v < a ? a : (v > b ? b : v); }
@@ -2958,7 +3376,18 @@
             this.weapon = 'P'; this.ammo = Infinity; this.fireT = 0; this.cheat = false;
             this.facing = 1; this.respawnX = this.x;
             this.grenades = C.grenades;
+            this.applyTuneOffset();
             if (this.play) this.play('p_idle');
+        };
+        // SPRITE TUNER: nudge the player TEXTURE up/down relative to its feet-collision body.
+        // + (turun) lowers the texture, − (naik) raises it. Re-derives the floor-anchored
+        // offset (so it composes with prone/asset modes) then adds the tune delta.
+        Player.prototype.applyTuneOffset = function () {
+            var k = this.assetMode ? 2 : 1;
+            var baseH = this._prone ? C.player.h * 0.6 * k : C.player.h * k;
+            var off = TUNE.player || 0;   // + down, − up
+            // increasing offset.y lifts the texture; so subtract `off` to make + = turun
+            this.body.setOffset((this.width - C.player.w * k) / 2, (this.height - baseH) - off);
         };
         Player.prototype.setCheat = function (on) { this.cheat = on; this.clearTint(); if (on) this.setTint(0xffe066); else this.clearTint(); };
         Player.prototype.setWeapon = function (w) { this.weapon = w; this.ammo = C.weapons[w].ammo; };
@@ -2998,13 +3427,8 @@
             if (wantProne !== this._prone) {
                 this._prone = wantProne;
                 var k = this.assetMode ? 2 : 1;   // body is in TEXTURE px (2x in asset mode)
-                if (wantProne) {
-                    this.body.setSize(C.player.w * k, C.player.h * 0.6 * k);
-                    this.body.setOffset((this.width - C.player.w * k) / 2, this.height - C.player.h * 0.6 * k);
-                } else {
-                    this.body.setSize(C.player.w * k, C.player.h * k);
-                    this.body.setOffset((this.width - C.player.w * k) / 2, this.height - C.player.h * k);
-                }
+                this.body.setSize(C.player.w * k, (wantProne ? C.player.h * 0.6 : C.player.h) * k);
+                this.applyTuneOffset();   // floor-anchor + tuner delta (composes with prone)
             }
 
             // fire

@@ -274,7 +274,92 @@ export const themeApi = {
         const res = await apiClient.post('', { action: 'deleteTheme', id }, config);
         return res.data;
     },
+
+    // Send ONE chunked updateTheme request carrying only the given split columns
+    // (e.g. { js_extra_1, js_extra_2 }). The __chunked flag tells the backend to
+    // copy the columns through verbatim instead of re-splitting a full template.
+    updateThemeChunk: async (
+        id: string,
+        columns: Record<string, string>,
+        extra: Record<string, any> = {},
+        config: any = {}
+    ): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post(
+            '',
+            { action: 'updateTheme', id, __chunked: true, ...columns, ...extra },
+            { timeout: 120000, ...config }
+        );
+        return res.data;
+    },
 };
+
+// Split a (possibly huge) template string into the backend's 11 split columns:
+// <prefix>_template (chars 0..50K) + <prefix>_extra_1..10 (50K each). Mirrors
+// splitStringIntoFields() in backend/Code.gs so chunked saves reassemble cleanly.
+export function splitTemplateColumns(prefix: 'html' | 'css' | 'js', value: string): Record<string, string> {
+    const s = value || '';
+    const cols: Record<string, string> = {};
+    cols[`${prefix}_template`] = s.substring(0, 50000);
+    for (let i = 1; i <= 10; i++) {
+        cols[`${prefix}_extra_${i}`] = s.substring(i * 50000, (i + 1) * 50000);
+    }
+    return cols;
+}
+
+// Save a theme's templates SAFELY for large themes: instead of one ~300KB POST
+// (which Apps Script rejects instantly with a CORS/Network error), send several
+// small updateTheme requests in sequence — request 1 carries metadata + every
+// non-empty split column up to a per-request character budget, then subsequent
+// requests carry the remaining columns. Each body stays well under the POST limit.
+export async function chunkedSaveTheme(
+    id: string,
+    meta: Record<string, any>,
+    templates: { html: string; css: string; js: string },
+    onProgress?: (done: number, total: number) => void
+): Promise<void> {
+    // Build the full column set. We send EVERY column (including empty ones) so that
+    // when a template shrinks, the now-unused *_extra_* columns get overwritten with
+    // '' — otherwise stale tails from a previous, longer save would survive in the
+    // Sheet and corrupt the reassembled template.
+    const allCols: Record<string, string> = {
+        ...splitTemplateColumns('html', templates.html),
+        ...splitTemplateColumns('css', templates.css),
+        ...splitTemplateColumns('js', templates.js),
+    };
+    const colNames = Object.keys(allCols);
+
+    // Pack columns into batches under a safe per-request budget (~120K chars of
+    // template payload per request leaves ample headroom under the POST limit).
+    const PER_REQUEST_BUDGET = 120000;
+    const batches: string[][] = [];
+    let current: string[] = [];
+    let currentSize = 0;
+    for (const name of colNames) {
+        const size = allCols[name].length;
+        if (current.length > 0 && currentSize + size > PER_REQUEST_BUDGET) {
+            batches.push(current);
+            current = [];
+            currentSize = 0;
+        }
+        current.push(name);
+        currentSize += size;
+    }
+    if (current.length > 0) batches.push(current);
+    if (batches.length === 0) batches.push([]); // ensure at least the metadata request
+
+    const total = batches.length;
+    for (let i = 0; i < batches.length; i++) {
+        const cols: Record<string, string> = {};
+        for (const name of batches[i]) cols[name] = allCols[name];
+        // metadata rides along with the FIRST request only.
+        const extra = i === 0 ? meta : {};
+        const res = await themeApi.updateThemeChunk(id, cols, extra);
+        if (!res.success) {
+            throw new Error(res.message || `Gagal menyimpan potongan ${i + 1}/${total}`);
+        }
+        if (onProgress) onProgress(i + 1, total);
+    }
+}
 
 // =============================================
 // INVITATION CONTENT API

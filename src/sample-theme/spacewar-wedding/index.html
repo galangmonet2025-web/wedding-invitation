@@ -1,0 +1,622 @@
+<!-- ======================================================================
+     SPACEWAR WEDDING — "BIDUK BINTANG"  (Phaser 3 horizontal shoot-'em-up)
+     ----------------------------------------------------------------------
+     A real 2D space shmup built on Phaser 3.80.1 (gravity y:0 — the ship
+     flies free). The wedding invitation is DISCOVERED by playing: collect
+     the gold INVITATION CAPSULES (💌) scattered through 6 galaxy sectors —
+     each unlocks one section of the invitation. Punch through the Wedding
+     Station boss to "unite the two stars" and reveal the full invitation.
+
+     IMPORTANT — WEDDING INVITATION first, game second. Every guest reaches
+     the invitation without playing well:
+       • "BUKA UNDANGAN" (💌) button + Cheat (★) → invincible + auto-unlock
+       • collecting the LAST capsule OR finishing also opens everything.
+
+     Binding contract (host resolves BEFORE this JS runs — templateParser.ts):
+       {{var}} → plain text/url · {{#if flag}} wraps <section> · {{#each}}.
+     Each JS-read element carries BOTH data-var="key" AND {{key}} text → val().
+     Host-contract IDs kept VERBATIM (host queries/intercepts them):
+       btn-show-qr, btn-toggle-music, bg-music, play-icon, pause-icon,
+       btn-submit-ucapan, wish-name, wish-message,
+       btn-submit-kehadiran, rsvp-status, rsvp-guests, rsvp-code.
+     See SPACEWAR_WEDDING_BIBLE.md (APPENDIX W–Z) for the full contract.
+     ====================================================================== -->
+
+<div class="sw-shell">
+
+  <!-- ===== DESKTOP RIGHT SIDE: PURE invitation panel (canvas couple + info) —
+     hidden on mobile. NO game buttons here (PRESS START / difficulty / controls
+     live in the cover overlay INSIDE the game frame). Bible §Z.4. ===== -->
+  <aside class="sw-side sw-cover-side">
+    <div class="sw-side-bg" id="sw-side-bg"></div>
+    <div class="sw-side-veil"></div>
+    <div class="sw-side-deco" aria-hidden="true">
+      <div class="sw-deco-planet"></div>
+      <div class="sw-deco-star ds1">✦</div>
+      <div class="sw-deco-star ds2">✧</div>
+      <div class="sw-deco-star ds3">⋆</div>
+      <div class="sw-deco-comet"></div>
+    </div>
+    <div class="sw-side-scan"></div>
+    <div class="sw-side-glow"></div>
+    <div class="sw-side-panel">
+
+      <header class="sw-side-head">
+        <div class="sw-side-badge">✦ UNDANGAN PERNIKAHAN ✦</div>
+        <div class="sw-side-logo">SPACE&nbsp;WAR<br><span class="sw-side-logo-sub">WEDDING</span></div>
+        <div class="sw-side-op">MISI: SATUKAN DUA BINTANG</div>
+      </header>
+
+      <div class="sw-side-grid">
+        <!-- LEFT column: hero canvas + couple identity -->
+        <div class="sw-side-hero">
+          <div class="sw-couple-stage">
+            <canvas id="sw-couple-canvas" width="760" height="380"></canvas>
+          </div>
+
+          <div class="sw-side-mission">
+            <div class="sw-side-mission-title">🚀 MISI</div>
+            <p class="sw-side-mission-text">Terbangkan kapal, kumpulkan kapsul undangan 💌 di tiap sektor galaksi untuk
+              membuka bagian undangan satu per satu — atau buka langsung undangan lengkap di bawah.</p>
+          </div>
+
+          <div class="sw-side-hint">Mainkan game di kiri &amp; kumpulkan kapsul 💌 untuk membuka undangan satu per satu.
+          </div>
+
+          <div class="sw-side-ctrl">
+            <div class="sw-side-ctrl-title">⌨ KONTROL PILOT</div>
+            <div class="sw-side-keys">
+              <span class="sw-key">← → ↑ ↓</span><span class="sw-key-desc">Terbangkan kapal (8 arah)</span>
+              <span class="sw-key">X / SPACE</span><span class="sw-key-desc">Tembak (tahan = auto-fire)</span>
+              <span class="sw-key">SHIFT</span><span class="sw-key-desc">Tahan → lepas = CHARGE BEAM</span>
+              <span class="sw-key">C / B</span><span class="sw-key-desc">Bom layar 💥</span>
+              <span class="sw-key">Z</span><span class="sw-key-desc">Pilih senjata (Power Meter)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT column: wedding info + open button (PURE invitation, no game buttons) -->
+        <div class="sw-side-info">
+          <div class="sw-side-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="sw-side-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </div>
+          <div class="sw-side-date" data-var="wedding_date">{{wedding_date}}</div>
+          <div class="sw-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+
+          <div class="sw-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
+          <div class="sw-side-event">
+            <div class="sw-side-event-tag">AKAD NIKAH</div>
+            <div class="sw-side-event-line">{{tanggal_akad}} · {{jam_akad}}</div>
+            <div class="sw-side-event-place">{{nama_lokasi_akad}}</div>
+            <div class="sw-side-event-addr">{{keterangan_lokasi_akad}}</div>
+            {{#if akad_map}}<a class="sw-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT
+              PETA</a>{{/if}}
+          </div>
+          {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+          <div class="sw-side-event">
+            <div class="sw-side-event-tag">RESEPSI</div>
+            <div class="sw-side-event-line">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
+            <div class="sw-side-event-place">{{nama_lokasi_resepsi}}</div>
+            <div class="sw-side-event-addr">{{keterangan_lokasi_resepsi}}</div>
+            {{#if resepsi_map}}<a class="sw-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT
+              PETA</a>{{/if}}
+          </div>
+          {{/if}}
+
+          <button class="sw-side-open" id="sw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== GAME FRAME (desktop: LEFT pinned; mobile: only this is shown) ===== -->
+  <div class="sw-frame" id="sw-frame">
+
+    <div class="sw-stage" id="gw-stage">
+      <!-- Phaser injects its <canvas> here -->
+
+      <!-- ===== HUD (top — viewed, not tapped) ===== -->
+      <div class="sw-hud" id="sw-hud">
+        <div class="sw-hud-col">
+          <span class="sw-hud-label">
+            <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </span>
+          <span class="sw-hud-val" title="Bom layar — pakai tombol hijau / tombol C"><span class="sw-life-ico">💥</span>
+            <span class="sw-life-tag">BOM</span> <span id="sw-lives">×3</span></span>
+        </div>
+        <div class="sw-hud-col sw-hud-mid">
+          <span class="sw-hud-label">SCORE</span>
+          <span class="sw-hud-val" id="sw-score">000000</span>
+        </div>
+        <div class="sw-hud-col sw-hud-right">
+          <span class="sw-hud-label">SEKTOR</span>
+          <span class="sw-hud-area-row">
+            <span class="sw-hud-val" id="sw-area">1</span>
+            <span class="sw-hud-diff" id="sw-diff-badge" data-lvl="normal">NORMAL</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- weapon chip + ammo -->
+      <div class="sw-weapon" id="sw-weapon">
+        <span class="sw-weapon-ico" id="sw-weapon-ico">»</span>
+        <span id="sw-weapon-name">BLASTER</span>
+        <span class="sw-weapon-ammo" id="sw-weapon-ammo"></span>
+      </div>
+
+      <!-- capsules collected -->
+      <div class="sw-progress" id="sw-progress"><span id="sw-progress-n">0</span>/<span id="sw-progress-t">0</span>
+        💌</div>
+
+      <!-- left floating buttons -->
+      <div class="sw-leftbtns" id="sw-leftbtns">
+        <button class="sw-iconbtn sw-star-btn" id="sw-star-btn" type="button" title="Mode kebal (cheat)" aria-label="Cheat">★</button>
+        <button class="sw-iconbtn sw-stagesel-btn" id="sw-stagesel-btn" type="button" title="Pilih sektor" aria-label="Pilih sektor" style="display:none">▦</button>
+        <button class="sw-iconbtn sw-view-btn is-locked" id="sw-view-btn" type="button" title="Buka undangan" aria-label="Buka undangan">💌</button>
+        <button class="sw-iconbtn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran">▤</button>
+        <button class="sw-iconbtn sw-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik">
+          <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
+        </button>
+        <button class="sw-iconbtn sw-reset-btn" id="sw-reset-btn" type="button" title="Reset progres" aria-label="Reset">⟲</button>
+      </div>
+
+      <!-- capsule indicators (N dynamic icons) -->
+      <div class="sw-inv" id="sw-inv"></div>
+
+      <!-- Power Meter (Gradius-style: highlight shifts as blue capsules collected) -->
+      <div class="sw-power" id="sw-power" aria-hidden="true"></div>
+
+      <!-- toast -->
+      <div class="sw-toast" id="sw-toast"></div>
+
+      <!-- version badge -->
+      <div class="sw-version" id="sw-version">v0.0.0</div>
+
+      <!-- ===== touch controls (green zone bottom) ===== -->
+      <div class="sw-touch" id="sw-touch">
+        <div class="sw-joy" id="sw-joy">
+          <div class="sw-joy-ring"></div>
+          <div class="sw-joy-nub" id="sw-joy-nub"></div>
+        </div>
+        <div class="sw-actions">
+          <button class="sw-tbtn sw-fire" id="sw-fire" type="button" aria-label="Tembak">FIRE</button>
+          <div class="sw-actions-col">
+            <button class="sw-tbtn sw-charge" id="sw-charge" type="button" aria-label="Charge">CHG</button>
+            <button class="sw-tbtn sw-nade" id="sw-nade" type="button" aria-label="Bom">✦</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== OVERLAYS ===== -->
+      <!-- cover -->
+      <div class="sw-overlay show" id="sw-cover">
+        <div class="sw-overlay-card sw-cover-card">
+          <div class="sw-cover-badge">✦ MISI: SATUKAN DUA BINTANG ✦</div>
+          <div class="sw-cover-logo">SPACE WAR WEDDING</div>
+          <div class="sw-cover-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="sw-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </div>
+          <div class="sw-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+          <div class="sw-cover-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+          <div class="sw-diff" id="sw-diff">
+            <span class="sw-diff-label">PILIH KESULITAN</span>
+            <div class="sw-diff-opts">
+              <button class="sw-diff-opt" data-diff="easy" type="button">EASY</button>
+              <button class="sw-diff-opt is-sel" data-diff="normal" type="button">NORMAL</button>
+              <button class="sw-diff-opt" data-diff="hard" type="button">HARD</button>
+            </div>
+          </div>
+          <button class="sw-bigbtn" id="sw-start" type="button">▶ PRESS START</button>
+          <button class="sw-textbtn" id="sw-cover-view" type="button">Lewati — buka undangan langsung 💌</button>
+          <div class="sw-cover-hint">Kumpulkan kapsul 💌 untuk membuka tiap bagian undangan</div>
+        </div>
+      </div>
+
+      <!-- boot/loading curtain -->
+      <div class="sw-overlay" id="sw-loading">
+        <div class="sw-loading-inner">
+          <div class="sw-loading-logo">SPACE WAR WEDDING</div>
+          <div class="sw-loading-bar"><span class="sw-loading-fill"></span></div>
+          <div class="sw-loading-text">MEMUAT MISI<span class="sw-loading-dots"></span></div>
+        </div>
+      </div>
+
+      <!-- sector briefing -->
+      <div class="sw-overlay" id="sw-briefing">
+        <div class="sw-overlay-card">
+          <div class="sw-overlay-pixtitle" id="sw-briefing-title">SEKTOR 1</div>
+          <div class="sw-overlay-text" id="sw-briefing-text"></div>
+          <button class="sw-bigbtn" id="sw-briefing-go" type="button">▶ MAJU</button>
+        </div>
+      </div>
+
+      <!-- sector clear -->
+      <div class="sw-overlay" id="sw-clear">
+        <div class="sw-overlay-card">
+          <div class="sw-overlay-pixtitle">SEKTOR AMAN!</div>
+          <div class="sw-overlay-text" id="sw-clear-text"></div>
+          <button class="sw-bigbtn" id="sw-clear-next" type="button">▶ LANJUT</button>
+        </div>
+      </div>
+
+      <!-- all capsules collected (celebration trigger #1) -->
+      <div class="sw-overlay" id="sw-allpieces">
+        <div class="sw-overlay-card">
+          <div class="sw-overlay-pixtitle" style="color:#ffd447">SEMUA KEPINGAN TERKUMPUL!</div>
+          <div class="sw-overlay-text" id="sw-allpieces-text"></div>
+          <button class="sw-bigbtn" id="sw-allpieces-view" type="button">💌 BUKA UNDANGAN</button>
+          <button class="sw-textbtn" id="sw-allpieces-keep" type="button">Lanjut bermain</button>
+        </div>
+      </div>
+
+      <!-- win / unite the stars (celebration trigger #2) -->
+      <div class="sw-overlay" id="sw-win">
+        <div class="sw-overlay-card">
+          <div class="sw-overlay-pixtitle" style="color:#ffd447">MISI BERHASIL!</div>
+          <div class="sw-overlay-text" id="sw-win-text"></div>
+          <button class="sw-bigbtn" id="sw-win-view" type="button">💌 BUKA UNDANGAN</button>
+          <button class="sw-textbtn" id="sw-win-close" type="button">Tutup</button>
+        </div>
+      </div>
+
+      <!-- stage select (cheat) -->
+      <div class="sw-overlay" id="sw-stagesel">
+        <div class="sw-overlay-card">
+          <div class="sw-overlay-pixtitle">PILIH SEKTOR &amp; KESULITAN</div>
+          <div class="sw-diff" id="sw-stagesel-diff">
+            <span class="sw-diff-label">TINGKAT KESULITAN</span>
+            <div class="sw-diff-opts">
+              <button class="sw-diff-opt" data-diff="easy" type="button">EASY</button>
+              <button class="sw-diff-opt is-sel" data-diff="normal" type="button">NORMAL</button>
+              <button class="sw-diff-opt" data-diff="hard" type="button">HARD</button>
+            </div>
+          </div>
+          <div class="sw-stagesel-label">PILIH SEKTOR</div>
+          <div class="sw-stagesel-grid" id="sw-stagesel-grid"></div>
+          <button class="sw-bigbtn" id="sw-stagesel-ok" type="button">▶ MULAI</button>
+          <button class="sw-textbtn" id="sw-stagesel-close" type="button">Batal</button>
+        </div>
+      </div>
+
+      <!-- reset confirm (own overlay, not native confirm) -->
+      <div class="sw-overlay" id="sw-resetconfirm">
+        <div class="sw-overlay-card">
+          <div class="sw-overlay-pixtitle" style="color:#ff6a6a">RESET PROGRES?</div>
+          <div class="sw-overlay-text">Semua kepingan &amp; progres akan dihapus dari perangkat ini.</div>
+          <button class="sw-bigbtn sw-danger" id="sw-reset-yes" type="button">YA, HAPUS</button>
+          <button class="sw-textbtn" id="sw-reset-no" type="button">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== INVITATION SCROLL (shown inside frame when opened) ===== -->
+    <div class="sw-reveal" id="sw-reveal">
+      <button class="sw-reveal-close" id="sw-reveal-close" type="button" aria-label="Kembali ke game">✕ KEMBALI KE GAME</button>
+      <div class="sw-reveal-scroll" id="sw-reveal-scroll"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+     SPRITE SHEET ASSETS (PNG) — hidden. Optional: the theme runs fully on
+     PROCEDURAL graphics by default; uploading these 5 sheets REPLACES them.
+     Upload IN THIS ORDER (Bible APPENDIX P.5): 1 player, 2 enemy, 3 environment,
+     4 game-object, 5 box-kepingan. Host resolves {{asset_image_N}}; if not
+     uploaded it stays "{{...}}" and the game uses procedural sprites.
+     ====================================================================== -->
+  <div id="sw-assets" aria-hidden="true" style="display:none">
+    <img data-asset="player_sheet"      src="{{asset_image_1}}" alt=""><!-- player ship frames -->
+    <img data-asset="enemy_sheet"       src="{{asset_image_2}}" alt=""><!-- drone/turret/korvet/flyer/carrier/mech + boss -->
+    <img data-asset="environment_sheet" src="{{asset_image_3}}" alt=""><!-- nebula/planet/landmark/structures -->
+    <img data-asset="object_sheet"      src="{{asset_image_4}}" alt=""><!-- bullets/laser/explosions/blue capsule/barrel -->
+    <img data-asset="piece_sheet"       src="{{asset_image_5}}" alt=""><!-- gold 💌 capsule + united couple -->
+  </div>
+
+  <!-- ======================================================================
+     SINGLE BINDING SOURCE — #inv-source. All sections written ONCE with
+     {{vars}}. Modals/reveal CLONE from here. {{#if flag}} WRAPS the <section>
+     (host-contract): a flagged-off section is removed from the DOM, so its
+     capsule never appears — count is dynamic from real sections.
+     Each JS-read value carries data-var + {{key}} so val() can read it.
+     ====================================================================== -->
+  <div class="sw-invitation" id="inv-source" aria-hidden="true">
+
+    <!-- 1 · HERO (always) -->
+    <section class="sw-sec sw-hero" data-info="hero">
+      <div class="sw-hero-bg" data-var="photo_hero_cover" data-src="{{photo_hero_cover}}"></div>
+      <div class="sw-hero-veil"></div>
+      <div class="sw-hero-inner">
+        <div class="sw-hero-pre">THE WEDDING OF</div>
+        <h1 class="sw-hero-names">
+          <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </h1>
+        <div class="sw-hero-date" data-var="wedding_date">{{wedding_date}}</div>
+        <p class="sw-hero-quote" data-var="quote">{{quote}}</p>
+        <div class="sw-hero-by" data-var="quote_by">{{quote_by}}</div>
+      </div>
+    </section>
+
+    <!-- 2 · COUPLE (always) -->
+    <section class="sw-sec" data-info="couple">
+      <h2 class="sw-sec-title">MEMPELAI</h2>
+      <div class="sw-couple">
+        <div class="sw-person">
+          <img class="sw-avatar" src="{{photo_groom_photo}}" alt="" />
+          <div class="sw-person-name" data-var="groom_name">{{groom_name}}</div>
+          {{#if flag_tampilkan_nama_orang_tua}}<div class="sw-person-parent">Putra dari<br>{{nama_bapak_laki_laki}} &amp; {{nama_ibu_laki_laki}}
+          </div>{{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}<a class="sw-person-ig"
+            href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener">@{{ig_laki_laki}}</a>{{/if}}
+        </div>
+        <div class="sw-amp">♥</div>
+        <div class="sw-person">
+          <img class="sw-avatar" src="{{photo_bride_photo}}" alt="" />
+          <div class="sw-person-name" data-var="bride_name">{{bride_name}}</div>
+          {{#if flag_tampilkan_nama_orang_tua}}<div class="sw-person-parent">Putri dari<br>{{nama_bapak_perempuan}} &amp; {{nama_ibu_perempuan}}
+          </div>{{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}<a class="sw-person-ig"
+            href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener">@{{ig_perempuan}}</a>{{/if}}
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · COUNTDOWN + RSVP (always) -->
+    <section class="sw-sec" data-info="rsvp">
+      <h2 class="sw-sec-title">HITUNG MUNDUR</h2>
+      <div class="sw-countdown">
+        <div class="sw-cd-cell"><span id="tm-countdown-days">{{countdown_hari}}</span><small>HARI</small></div>
+        <div class="sw-cd-cell"><span id="tm-countdown-hours">{{countdown_jam}}</span><small>JAM</small></div>
+        <div class="sw-cd-cell"><span id="tm-countdown-minutes">{{countdown_menit}}</span><small>MNT</small></div>
+        <div class="sw-cd-cell"><span id="tm-countdown-seconds">{{countdown_detik}}</span><small>DTK</small></div>
+      </div>
+      <h3 class="sw-sub-title">KONFIRMASI KEHADIRAN</h3>
+      <div class="sw-form" id="sw-rsvp-form">
+        <select class="sw-input" id="rsvp-status">
+          <option value="Hadir">Hadir</option>
+          <option value="Tidak Hadir">Tidak hadir</option>
+          <option value="Ragu">Masih ragu</option>
+        </select>
+        <input class="sw-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+        <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
+        <button class="sw-btn" id="btn-submit-kehadiran" type="button">KIRIM RSVP</button>
+        <div class="sw-alert" id="alert-submit-kehadiran"></div>
+      </div>
+    </section>
+
+    <!-- 4 · SCHEDULE (always) -->
+    <section class="sw-sec" data-info="schedule">
+      <h2 class="sw-sec-title">WAKTU &amp; TEMPAT</h2>
+      <div class="sw-event">
+        <div class="sw-event-tag">AKAD NIKAH</div>
+        <div class="sw-event-date">{{tanggal_akad}}</div>
+        <div class="sw-event-time">{{jam_akad}}</div>
+        <div class="sw-event-place">{{nama_lokasi_akad}}</div>
+        <div class="sw-event-addr">{{keterangan_lokasi_akad}}</div>
+        {{#if akad_map}}<a class="sw-btn sw-btn-sm" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT
+          PETA</a>{{/if}}
+      </div>
+      {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+      <div class="sw-event">
+        <div class="sw-event-tag">RESEPSI</div>
+        <div class="sw-event-date">{{tanggal_resepsi}}</div>
+        <div class="sw-event-time">{{jam_resepsi}}</div>
+        <div class="sw-event-place">{{nama_lokasi_resepsi}}</div>
+        <div class="sw-event-addr">{{keterangan_lokasi_resepsi}}</div>
+        {{#if resepsi_map}}<a class="sw-btn sw-btn-sm" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT
+          PETA</a>{{/if}}
+      </div>
+      {{/if}}
+    </section>
+
+    <!-- 5 · STREAMING (flag) -->
+    {{#if is_fitur_live_streaming}}
+    <section class="sw-sec" data-info="streaming">
+      <h2 class="sw-sec-title">LIVE STREAMING</h2>
+      <p class="sw-sec-text">Ikuti momen bahagia kami secara langsung 📺</p>
+      {{#if link_live_streaming}}<a class="sw-btn" href="{{link_live_streaming}}" target="_blank" rel="noopener">▶
+        TONTON STREAMING</a>{{/if}}
+    </section>
+    {{/if}}
+
+    <!-- 6 · STORY (flag) -->
+    {{#if flag_pakai_timeline_kisah}}
+    <section class="sw-sec" data-info="story">
+      <h2 class="sw-sec-title">KISAH KAMI</h2>
+      <div class="sw-timeline">
+        {{#each timeline_kisah}}
+        <div class="sw-tl-item">
+          <div class="sw-tl-dot"></div>
+          <div class="sw-tl-body">
+            <div class="sw-tl-date">{{this.tanggal}}</div>
+            <div class="sw-tl-title">{{this.judul}}</div>
+            <div class="sw-tl-desc">{{this.deskripsi}}</div>
+          </div>
+        </div>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 7 · GALLERY (flag) -->
+    {{#if has_gallery}}
+    <section class="sw-sec" data-info="gallery">
+      <h2 class="sw-sec-title">GALERI</h2>
+      <div class="sw-gallery-grid">
+        {{#each galleries}}
+        <div class="sw-gallery-item"><img src="{{this.url}}" alt="" loading="lazy" /></div>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 8 · HAPPINESS / instagram (flag) -->
+    {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+    <section class="sw-sec" data-info="happiness">
+      <h2 class="sw-sec-title">BAGIKAN KEBAHAGIAAN</h2>
+      <p class="sw-sec-text">Abadikan momenmu &amp; bagikan ke Instagram dengan twibbon spesial 📸</p>
+      <div class="sw-share-frames">
+        <div class="sw-share-frame"><img src="{{sample_story_1}}" alt="" /><img class="sw-frame-png" src="{{frame_balasan_instagram}}" alt="" />
+        </div>
+        <div class="sw-share-frame"><img src="{{sample_story_2}}" alt="" /><img class="sw-frame-png" src="{{frame_balasan_instagram}}" alt="" />
+        </div>
+        <div class="sw-share-frame"><img src="{{sample_story_3}}" alt="" /><img class="sw-frame-png" src="{{frame_balasan_instagram}}" alt="" />
+        </div>
+      </div>
+      {{#if link_balasan_instagram}}<a class="sw-btn" href="{{link_balasan_instagram}}" target="_blank"
+        rel="noopener">📸 BAGIKAN MOMEN</a>{{/if}}
+    </section>
+    {{/if}}
+
+    <!-- 9 · WISHES (always) -->
+    <section class="sw-sec" data-info="wishes">
+      <h2 class="sw-sec-title">UCAPAN &amp; DOA</h2>
+      <div class="sw-form" id="sw-wish-form">
+        <input class="sw-input" id="wish-name" type="text" placeholder="Nama kamu" />
+        <textarea class="sw-input" id="wish-message" rows="3" placeholder="Tulis ucapan & doa..."></textarea>
+        <button class="sw-btn" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
+        <div class="sw-alert" id="alert-submit-ucapan"></div>
+      </div>
+      <div class="sw-wish-list" id="sw-wish-list">
+        {{#each wishes}}
+        <div class="sw-wish-item">
+          <div class="sw-wish-head">
+            <span class="sw-wish-author">{{this.guest_name}}</span><span class="sw-wish-time">{{this.guest_comment_time}}</span>
+          </div>
+          <div class="sw-wish-text">{{this.guest_message}}</div>
+        </div>
+        {{/each}}
+      </div>
+    </section>
+
+    <!-- 10 · GIFT (flag) -->
+    {{#if tampilkan_amplop_online}}
+    <section class="sw-sec" data-info="gift">
+      <h2 class="sw-sec-title">SUPPLY DROP — AMPLOP</h2>
+      <p class="sw-sec-text">Doa restu adalah hadiah terindah. Bila berkenan memberi tanda kasih:</p>
+      <div class="sw-gift-grid">
+        <div class="sw-gift-card">
+          <div class="sw-gift-rivets"><span></span><span></span><span></span><span></span></div>
+          <div class="sw-gift-bank">{{bank_1}}</div>
+          <div class="sw-gift-num" id="sw-rek-1">{{rek_1}}</div>
+          <div class="sw-gift-name">a.n. {{nama_rek_1}}</div>
+          {{#if flag_pakai_qris_rekening_1}}<div class="sw-qris-wrap">
+            <img class="sw-qris" src="{{gambar_qris_rekening_1}}" alt="QRIS" /><span class="sw-qris-tag">SCAN ME</span>
+          </div>{{/if}}
+          <button class="sw-btn sw-btn-gift" type="button" onclick="swCopy('sw-rek-1', this)">📋 SALIN NO. REK</button>
+        </div>
+        {{#if flag_pakai_2_rekening}}
+        <div class="sw-gift-card">
+          <div class="sw-gift-rivets"><span></span><span></span><span></span><span></span></div>
+          <div class="sw-gift-bank">{{bank_2}}</div>
+          <div class="sw-gift-num" id="sw-rek-2">{{rek_2}}</div>
+          <div class="sw-gift-name">a.n. {{nama_rek_2}}</div>
+          {{#if flag_pakai_qris_rekening_2}}<div class="sw-qris-wrap">
+            <img class="sw-qris" src="{{gambar_qris_rekening_2}}" alt="QRIS" /><span class="sw-qris-tag">SCAN ME</span>
+          </div>{{/if}}
+          <button class="sw-btn sw-btn-gift" type="button" onclick="swCopy('sw-rek-2', this)">📋 SALIN NO. REK</button>
+        </div>
+        {{/if}}
+        {{#if flag_kirim_hadiah_offline}}
+        <div class="sw-gift-card sw-gift-addr">
+          <div class="sw-gift-rivets"><span></span><span></span><span></span><span></span></div>
+          <div class="sw-gift-bank">📦 KIRIM KADO</div>
+          <div class="sw-gift-name sw-gift-place">{{nama_lokasi_kirim_hadiah_offline}}</div>
+          <div class="sw-gift-name" id="sw-gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+          <button class="sw-btn sw-btn-gift" type="button" onclick="swCopy('sw-gift-addr', this)">📋 SALIN ALAMAT</button>
+        </div>
+        {{/if}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 11 · CLOSING (always) -->
+    <section class="sw-sec sw-closing" data-info="closing">
+      <div class="sw-closing-bg" data-src="{{photo_closing}}"></div>
+      <div class="sw-closing-veil"></div>
+      <div class="sw-closing-inner">
+        <div class="sw-closing-clear">MISSION CLEAR</div>
+        <h2 class="sw-sec-title">TERIMA KASIH</h2>
+        <p class="sw-closing-sub">Atas kehadiran &amp; doa restunya</p>
+        <p class="sw-closing-text" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
+        <div class="sw-closing-rule"><span>♥</span></div>
+        <div class="sw-closing-from">Salam hangat,</div>
+        <div class="sw-closing-couple">
+          <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+
+        <div class="sw-social">
+          {{#if flag_use_instagram_webconfig}}
+          <a class="sw-social-btn" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer"
+            aria-label="Instagram">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="20" x="2" y="2" rx="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+            </svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_tiktok_webconfig}}
+          <a class="sw-social-btn" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer"
+            aria-label="TikTok">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
+            </svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_youtube_webconfig}}
+          <a class="sw-social-btn" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer"
+            aria-label="YouTube">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+              <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+            </svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_whatsapp_webconfig}}
+          <a class="sw-social-btn" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer"
+            aria-label="WhatsApp">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          </a>
+          {{/if}}
+        </div>
+
+        <div class="sw-credit">
+          <a href="{{site_url}}" target="_blank" rel="noopener noreferrer" data-var="site_name">{{site_name}}</a>
+          <span> · dibuat dengan ♥ · © 2026</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Piece modal -->
+  <div class="sw-modal-root" id="sw-modal-root">
+    <div class="sw-modal">
+      <button class="sw-modal-close" id="sw-modal-close" type="button">✕</button>
+      <div class="sw-modal-title" id="sw-modal-title"></div>
+      <div class="sw-modal-body" id="sw-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Own lightbox (own class so host universal lightbox doesn't hijack) -->
+  <div class="sw-lightbox" id="sw-lightbox">
+    <button class="sw-lightbox-close" id="sw-lightbox-close" type="button">✕</button>
+    <img class="sw-lightbox-img" id="sw-lightbox-img" src="" alt="" />
+  </div>
+
+  <!-- host music mirror target (NOT the real player; host dispatches play/pause here) -->
+  <audio id="bg-music"></audio>
+</div>

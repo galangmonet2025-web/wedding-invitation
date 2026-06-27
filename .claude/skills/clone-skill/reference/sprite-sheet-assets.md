@@ -134,6 +134,32 @@ Field WAJIB tiap entri:
 Susun JSON terurut `orderNumber`. Sertakan ke-5 JSON di Bible (atau sebagai file `*-assets.json`
 terpisah di folder tema saat tahap 2).
 
+### P.3.1 — WAJIB: spec sebuah file `ASSET.md` (brief untuk pembuat aset)
+
+Selain ke-5 JSON, **Bible WAJIB men-spec satu file `ASSET.md`** (disimpan di
+`src/sample-theme/<nama>/ASSET.md` saat tahap 2) — yaitu **dokumen brief manusiawi** yang
+membungkus ke-5 JSON P.3 + aturannya, sehingga pembuat aset (artist / image-gen) bisa langsung
+mengerjakannya tanpa membaca seluruh Bible. Pola acuan: `src/sample-theme/metalslug-wedding/ASSET.md`.
+
+`ASSET.md` **WAJIB memuat**, per kelompok (5 bagian):
+
+1. **Aturan umum** (sekali di atas): format PNG transparan, pixel-art tanpa anti-alias, hadap
+   KANAN, pivot kaki di baris bawah sel, sel **≥80×80** (~2× tekstur engine), semua frame satu
+   entity ukuran sel sama, penamaan file persis.
+2. **Tabel kebutuhan** tiap entity: `No | Nama file | frameWidth | frameHeight | Tekstur engine |
+   Jumlah frame | Deskripsi tiap frame`. (Kolom **Tekstur engine** = `key` yang digantikan saat
+   slice — P.4 — jadi pembuat aset tahu pemetaannya.)
+3. **Blok JSON** kelompok itu (persis isi JSON P.3) — ditaruh inline di `ASSET.md` **dan** sebagai
+   file `*-assets.json` terpisah (mis. `player-assets.json`, `enemy-assets.json`, …) agar bisa
+   langsung dipakai tool.
+4. **Tata-letak sheet** (urutan baris, mulai-x/y) + catatan frame **boleh beda lebar** → rect
+   eksplisit di frame-map (P.4).
+5. **Cara pasang**: slot upload `{{asset_image_N}}` (urutan P.5) + catatan **fallback prosedural**.
+
+> **Golden Rule P.3.1:** *Satu file `ASSET.md` = satu sumber kebenaran brief aset.* Isinya =
+> aturan umum + 5 tabel kebutuhan + 5 blok JSON (P.3) + tata-letak + urutan upload (P.5). JSON
+> P.3 **hidup di dalam `ASSET.md`** (dan di-mirror sebagai `*-assets.json`), bukan tercecer.
+
 ---
 
 ## P.4 — LANGKAH 4: Engine men-slice sheet (1 gambar utuh → banyak tekstur)
@@ -249,6 +275,8 @@ prompt agar hasilnya kompatibel engine:
       kosong ditandai eksplisit.
 - [ ] **5 JSON generate** (1 per kelompok), tiap entri: `kelompok, name, deskripsi, orderNumber,
       frameWidth(≥80), frameHeight(≥80)`.
+- [ ] **File `ASSET.md` di-spec** (P.3.1): aturan umum + 5 tabel kebutuhan (kolom Tekstur engine) +
+      5 blok JSON P.3 (mirror sebagai `*-assets.json`) + tata-letak sheet + urutan upload.
 - [ ] **Frame-map eksplisit per frame** (rect, bukan grid seragam) + `key` ke tekstur engine lama +
       `ew/eh/dh` downscale + `hb` hitbox + `anim/rate` untuk multi-frame.
 - [ ] **Urutan upload baku ditetapkan** (player→enemy→environment→game-object→box-kepingan) & nomor

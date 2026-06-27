@@ -360,6 +360,99 @@
     font-family: var(--msw-mono); font-size: 9px; color: rgba(183,163,106,.5);
 }
 
+/* ---------- SPRITE TUNER (PC dev tool) ----------
+   Access = a HIDDEN ★ inline at the start of the side badge "UNDANGAN PERNIKAHAN".
+   It blends into the badge (same ink color, no button chrome) so guests don't notice
+   it, but it's clickable. The panel opens as a fixed overlay at the TOP-LEFT of the
+   RIGHT panel (just to the right of the 480px game frame), PC only. */
+.msw-tuner-btn {
+    /* inline, blended into the badge — looks like the badge's leading ★ */
+    display: inline; padding: 0; margin: 0; border: none; background: none;
+    font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer;
+    -webkit-appearance: none; appearance: none; line-height: inherit;
+}
+.msw-tuner-btn:hover { color: var(--msw-red); }
+.msw-tuner {
+    /* fixed overlay pinned to the top-left of the RIGHT panel (right of the 480px frame).
+       Hidden by default everywhere; only shown when .show is toggled (and only PC — the
+       trigger ★ lives in the side panel, itself only visible on desktop). */
+    position: fixed; top: 0; left: 480px; z-index: 80; width: 440px; max-width: calc(100vw - 480px); max-height: 100vh;
+    background: #0b110b; border: 2px solid #b7a36a; border-top: none; border-radius: 0 0 8px 0;
+    display: none; flex-direction: column; font-family: var(--msw-mono);
+    box-shadow: 6px 8px 24px rgba(0,0,0,.6);
+}
+.msw-tuner.show { display: flex; }
+.msw-tuner-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid rgba(183,163,106,.4);
+}
+.msw-tuner-title { color: #ffd447; font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+.msw-tuner-x {
+    background: none; border: none; color: #ff6a6a; font-size: 16px; cursor: pointer; line-height: 1;
+}
+.msw-tuner-hint { padding: 8px 12px; font-size: 10px; color: rgba(183,163,106,.8); line-height: 1.5; }
+/* 2-column grid so all ~25 sprite sliders fit without a long scroll */
+.msw-tuner-list {
+    flex: 1; overflow-y: auto; padding: 6px 12px 12px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; align-content: start;
+}
+.msw-tuner-row { margin: 0; }
+.msw-tuner-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.msw-tuner-row-name { color: #e8e0c8; font-size: 11px; }
+.msw-tuner-row-val { color: #4fd6c8; font-size: 11px; font-weight: bold; min-width: 42px; text-align: right; }
+.msw-tuner-row input[type="range"] { width: 100%; accent-color: #e23b2e; cursor: pointer; }
+.msw-tuner-foot {
+    display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid rgba(183,163,106,.4);
+}
+.msw-tuner-foot button {
+    flex: 1; padding: 7px 4px; border: 1px solid #b7a36a; border-radius: 6px;
+    background: rgba(20,28,18,.8); color: #e8e0c8; font-family: var(--msw-mono);
+    font-size: 10px; cursor: pointer;
+}
+.msw-tuner-foot button:hover { filter: brightness(1.2); color: #ffd447; }
+/* SAVE button — accent it so it reads as the primary commit action. */
+.msw-tuner-save {
+    background: var(--msw-red) !important; color: #fff !important;
+    border-color: #ff8a6a !important; font-weight: bold;
+}
+.msw-tuner-save:hover { color: #fff !important; }
+.msw-tuner-save:disabled { opacity: .55; cursor: progress; }
+
+/* ---------- superadmin auth dialog (Simpan) ---------- */
+.msw-tuner-auth {
+    position: absolute; inset: 0; z-index: 5; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(8, 12, 8, .82); border-radius: inherit;
+}
+.msw-tuner-auth.show { display: flex; }
+.msw-tuner-auth-card {
+    width: 86%; max-width: 320px; padding: 16px;
+    background: #141c12; border: 2px solid #b7a36a; border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-family: var(--msw-mono);
+}
+.msw-tuner-auth-title { color: #ffd447; font-size: 12px; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px; }
+.msw-tuner-auth-sub { color: #b9b08c; font-size: 10px; line-height: 1.5; margin-bottom: 12px; }
+.msw-tuner-auth-input {
+    width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 9px 10px;
+    background: rgba(20, 28, 18, .9); border: 1px solid #6a6248; border-radius: 6px;
+    color: #e8e0c8; font-family: var(--msw-mono); font-size: 12px;
+}
+.msw-tuner-auth-input:focus { outline: none; border-color: #ffd447; }
+.msw-tuner-auth-msg { min-height: 14px; font-size: 10px; margin-bottom: 8px; color: #ff8a6a; }
+.msw-tuner-auth-msg.ok { color: #6ad08a; }
+.msw-tuner-auth-foot { display: flex; gap: 8px; }
+.msw-tuner-auth-foot button {
+    flex: 1; padding: 9px 4px; border-radius: 6px; cursor: pointer;
+    font-family: var(--msw-mono); font-size: 11px; border: 1px solid #b7a36a;
+}
+.msw-tuner-auth-cancel { background: rgba(20, 28, 18, .8); color: #e8e0c8; }
+.msw-tuner-auth-ok { background: var(--msw-red); color: #fff; border-color: #ff8a6a; font-weight: bold; }
+.msw-tuner-auth-foot button:disabled { opacity: .55; cursor: progress; }
+/* The panel shows whenever toggled (.show). Its ★ trigger lives inside the desktop-only
+   side panel, so in practice it only opens on a real PC anyway — but we DON'T hard-gate the
+   panel itself with !important (that hid it inside the narrower Theme-Editor preview iframe,
+   making the button look dead). Hidden by default via the base `.msw-tuner { display:none }`. */
+
 /* ---------- touch controls ---------- */
 .msw-touch {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 12; height: 120px;
@@ -602,14 +695,15 @@
     border: 2px solid #1c2417; border-bottom-width: 4px;
     box-shadow: 0 4px 0 #14180e, inset 0 1px 0 rgba(255,255,255,.18);
     overflow: hidden;
+    text-decoration: none;
 }
 .msw-btn::before {
     content: ""; position: absolute; inset: 2px 4px auto 4px; height: 38%;
     background: linear-gradient(180deg, rgba(255,255,255,.22), transparent); border-radius: 3px; pointer-events: none;
 }
-.msw-btn:hover { filter: brightness(1.12); }
+.msw-btn:hover { filter: brightness(1.12); text-decoration: none; color: var(--msw-amber);}
 .msw-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #14180e, inset 0 1px 0 rgba(255,255,255,.12); }
-.msw-btn-sm { padding: 8px 14px; font-size: 11px; display: inline-block; width: auto; }
+.msw-btn-sm { padding: 8px 14px; font-size: 11px; display: inline-block; width: auto; text-decoration: none;}
 /* primary RED action variant (RSVP submit etc. can opt in) */
 .msw-btn-red { background: linear-gradient(180deg, #f0584b 0%, var(--msw-red) 45%, #a31d14 100%); box-shadow: 0 4px 0 #5f0f08, inset 0 1px 0 rgba(255,255,255,.2); }
 .msw-alert { font-size: 12px; font-family: var(--msw-mono); min-height: 16px; }
@@ -684,9 +778,20 @@
 .msw-closing-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,12,9,.55) 0%, rgba(8,12,9,.82) 60%, rgba(8,12,9,.95) 100%); }
 .msw-closing-inner { position: relative; z-index: 2; padding: 46px 22px 34px; text-align: center; }
 .msw-closing-clear {
-    display: inline-block; font-family: var(--msw-mono); font-size: 11px; font-weight: 800; letter-spacing: 4px;
-    color: var(--msw-ink); background: var(--msw-amber); padding: 5px 14px; border-radius: 3px; margin-bottom: 18px;
-    box-shadow: 0 3px 0 #7a5410; animation: msw-blink 1.6s steps(2) infinite;
+    display: block; 
+    font-family: var(--msw-mono); 
+    font-size: 11px; 
+    font-weight: 800; 
+    letter-spacing: 4px;
+    color: var(--msw-ink); 
+    background: var(--msw-amber); 
+    padding: 5px 14px; 
+    border-radius: 3px;
+    margin: 0 auto;
+    margin-bottom: 18px;
+    width: 200px;
+    box-shadow: 0 3px 0 #7a5410; 
+    animation: msw-blink 1.6s steps(2) infinite;
 }
 .msw-closing-sub { font-family: var(--msw-mono); font-size: 11px; letter-spacing: 2px; color: var(--msw-cyan); margin: -6px 0 16px; }
 .msw-closing-text { font-size: 13px; line-height: 1.8; color: #e3dcc6; max-width: 320px; margin: 0 auto 18px; font-style: italic; }
@@ -750,7 +855,7 @@
    Stacked content is taller, so allow internal scroll ONLY at these widths to
    avoid clipping (wide PCs keep the no-scroll 2-column poster). */
 @media (min-width: 1024px) and (max-width: 1180px) and (orientation: landscape) and (min-aspect-ratio: 1/1) {
-    .msw-side-grid { grid-template-columns: 1fr; gap: 22px; align-items: start; }
+    .msw-side-grid { grid-template-columns: 1fr; gap: 22px; align-items: flex-start; }
     .msw-cover-side { padding: 28px clamp(28px, 4vw, 56px); overflow-y: auto; align-items: flex-start; }
     .msw-side-panel { max-height: none; }
     .msw-side-logo { font-size: 34px; }

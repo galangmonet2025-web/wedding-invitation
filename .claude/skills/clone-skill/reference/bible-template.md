@@ -164,7 +164,9 @@ tapi jangan ada yang hilang. Bagian bertanda 🎮 = sesuaikan isi ke arketipe; �
   prosedural, dengan **fallback prosedural** wajib. Berisi: (1) turunkan kebutuhan sprite dari
   gameplay; (2) kelompokkan jadi **TEPAT 5 sheet** (player / enemy / environment / game-object /
   box-kepingan); (3) **5 JSON generate** (1 per kelompok: `kelompok, name, deskripsi, orderNumber,
-  frameWidth≥80, frameHeight≥80`); (4) engine **men-slice satu gambar utuh** via **frame-map rect
+  frameWidth≥80, frameHeight≥80`) **+ spec file `ASSET.md`** (brief pembuat aset = aturan umum + 5
+  tabel kebutuhan + 5 blok JSON, mirror `*-assets.json` — pola `metalslug-wedding/ASSET.md`);
+  (4) engine **men-slice satu gambar utuh** via **frame-map rect
   eksplisit** (bukan grid seragam — bug "boss dobel") + downscale ke key engine lama + anim
   multi-frame + key-out bg; (5) **URUTAN UPLOAD baku** (player→enemy→environment→game-object→
   box-kepingan) karena `{{asset_image_N}}` dinomori dari urutan upload — HTML `data-asset` per sheet.

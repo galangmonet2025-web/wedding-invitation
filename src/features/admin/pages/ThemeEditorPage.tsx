@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { themeApi, tenantApi, publicApi } from '@/core/api/endpoints';
+import { themeApi, tenantApi, publicApi, chunkedSaveTheme } from '@/core/api/endpoints';
 import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord, ThemeAssetMedia } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -133,6 +133,9 @@ export function ThemeEditorPage() {
     });
     const [isCapturing, setIsCapturing] = useState(false);
     const [isPreviewUpdating, setIsPreviewUpdating] = useState(false);
+    // Live mirror of isPreviewUpdating so updatePreview's guard never reads a stale
+    // closure value (isPreviewUpdating is intentionally NOT in updatePreview's deps).
+    const isPreviewUpdatingRef = useRef(false);
     const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [isPreviewDragging, setIsPreviewDragging] = useState(false);
     const [pendingPreviewFile, setPendingPreviewFile] = useState<File | null>(null);
@@ -1465,61 +1468,74 @@ export function ThemeEditorPage() {
                 }
             }
 
-            const payload = {
+            // Metadata (small) is sent with the FIRST chunk; the templates
+            // (potentially ~300KB total) are split across several small requests
+            // by chunkedSaveTheme so no single POST body exceeds the Apps Script
+            // size limit (which rejects big bodies instantly as a CORS error).
+            const metaPayload = {
                 name,
                 code,
                 plan_type: planType,
                 style_category: styleCategory,
                 preview_image: finalPreviewUrl,
-                html_template: htmlCode,
-                css_template: cssCode,
-                js_template: jsCode,
                 flag_draft: isDraft,
                 flag_use_system_action_button: flagUseSystemActionButton,
                 image_types: imageTypes,
                 asset_media_list: assetMediaList
             };
+            const templates = { html: htmlCode, css: cssCode, js: jsCode };
+            const onChunkProgress = (done: number, totalChunks: number) =>
+                toast.loading(`Menyimpan tema... (${done}/${totalChunks})`, { id: loadingToast });
 
             if (isNew) {
-                const res = await themeApi.createTheme(payload);
-                if (res.success) {
-                    toast.success('Theme created successfully', { id: loadingToast });
-                    addTheme(res.data); // Update local cache
-                    setFlagDraft(isDraft);
-                    setInitialPreviewImage(finalPreviewUrl);
-                    // Redirect back to theme management list on new theme creation
-                    navigate('/private/themes');
-                } else {
-                    toast.error(res.message, { id: loadingToast });
+                // Create a lightweight theme row first (metadata + empty templates),
+                // then chunk-save the real templates onto it. createTheme's own body
+                // stays tiny because the big templates are sent separately.
+                const createRes = await themeApi.createTheme({
+                    ...metaPayload,
+                    html_template: '',
+                    css_template: '',
+                    js_template: ''
+                });
+                if (!createRes.success) {
+                    toast.error(createRes.message, { id: loadingToast });
+                    return;
                 }
+                const newId = createRes.data.id;
+                await chunkedSaveTheme(newId, {}, templates, onChunkProgress);
+                toast.success('Theme created successfully', { id: loadingToast });
+                addTheme({ ...createRes.data, ...metaPayload, ...templates }); // Update local cache
+                setFlagDraft(isDraft);
+                setInitialPreviewImage(finalPreviewUrl);
+                // Redirect back to theme management list on new theme creation
+                navigate('/private/themes');
             } else {
-                const res = await themeApi.updateTheme({ id: id!, ...payload });
-                if (res.success) {
-                    // Check if we need to delete old image
-                    if (initialPreviewImage && initialPreviewImage !== finalPreviewUrl) {
-                        const oldId = extractDriveId(initialPreviewImage);
-                        if (oldId) {
-                            try {
-                                await imageApi.deleteImage(oldId);
-                            } catch (e) {
-                                console.error('Failed to delete old preview image:', e);
-                            }
+                // chunkedSaveTheme throws on any failed chunk → handled by catch below.
+                await chunkedSaveTheme(id!, metaPayload, templates, onChunkProgress);
+
+                // Check if we need to delete old image
+                if (initialPreviewImage && initialPreviewImage !== finalPreviewUrl) {
+                    const oldId = extractDriveId(initialPreviewImage);
+                    if (oldId) {
+                        try {
+                            await imageApi.deleteImage(oldId);
+                        } catch (e) {
+                            console.error('Failed to delete old preview image:', e);
                         }
                     }
-
-                    toast.success('Theme saved successfully', { id: loadingToast });
-                    updateTheme(id!, payload); // Update local cache
-                    setFlagDraft(isDraft);
-
-                    // Update initial state to new URL
-                    setInitialPreviewImage(finalPreviewUrl);
-
-                    // Clear pending states after successful save
-                    setPendingPreviewFile(null);
-                    setPendingPreviewBase64(null);
-                    setPreviewImage(finalPreviewUrl);
                 }
-                else toast.error(res.message, { id: loadingToast });
+
+                toast.success('Theme saved successfully', { id: loadingToast });
+                updateTheme(id!, { ...metaPayload, ...templates }); // Update local cache
+                setFlagDraft(isDraft);
+
+                // Update initial state to new URL
+                setInitialPreviewImage(finalPreviewUrl);
+
+                // Clear pending states after successful save
+                setPendingPreviewFile(null);
+                setPendingPreviewBase64(null);
+                setPreviewImage(finalPreviewUrl);
             }
         } catch (error: any) {
             console.error('Error saving theme:', error);
@@ -1541,10 +1557,18 @@ export function ThemeEditorPage() {
             if (isTimeout) {
                 const totalChars = htmlCode.length + cssCode.length + jsCode.length;
                 errMsg = `Waktu tunggu habis (Timeout) saat menyimpan. Kode Anda besar (${totalChars.toLocaleString('id-ID')} karakter) sehingga penyimpanan ke server memakan waktu lama. Coba simpan ulang. Detail: ${errMsg}`;
-            } else if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('fetch') || !error.response) {
-                const totalChars = htmlCode.length + cssCode.length + jsCode.length;
-                // Per-template limit is 550.000 karakter (backend memecah ke 11 kolom @50.000).
-                errMsg = `Kesalahan Jaringan (Network Error). Pastikan tiap bagian (HTML/CSS/JS) tidak melebihi 550.000 karakter. Total kode saat ini: ${totalChars.toLocaleString('id-ID')} karakter. Detail: ${errMsg}`;
+            } else if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('cors') || errMsg.toLowerCase().includes('fetch') || !error.response) {
+                const html = htmlCode.length, css = cssCode.length, js = jsCode.length;
+                const overLimit = html > MAX_CELL_CHARS || css > MAX_CELL_CHARS || js > MAX_CELL_CHARS;
+                // A bare "Network/CORS Error" from Axios means the browser got NO valid
+                // response — almost always the server failing/timing out on a large write
+                // (Apps Script then returns an error HTML page with no CORS headers), NOT a
+                // size-limit rejection. Only blame the 550K cap when a part actually exceeds it.
+                if (overLimit) {
+                    errMsg = `Gagal menyimpan: ada bagian (HTML/CSS/JS) yang melebihi batas 550.000 karakter. HTML ${html.toLocaleString('id-ID')} / CSS ${css.toLocaleString('id-ID')} / JS ${js.toLocaleString('id-ID')}. Harap perkecil.`;
+                } else {
+                    errMsg = `Kesalahan Jaringan saat menyimpan (kemungkinan server timeout pada penyimpanan kode besar). Ukuran masih dalam batas (HTML ${html.toLocaleString('id-ID')} / CSS ${css.toLocaleString('id-ID')} / JS ${js.toLocaleString('id-ID')}). Coba simpan ulang. Detail: ${errMsg}`;
+                }
             }
             
             toast.error(errMsg, { id: loadingToast, duration: 10000 });
@@ -1554,21 +1578,26 @@ export function ThemeEditorPage() {
     };
 
     const updatePreview = useCallback((force = false) => {
-        if (!iframeRef.current || isPreviewUpdating) return;
+        // Read the LIVE updating flag from a ref (not the captured state) so a stale
+        // closure can never leave the guard permanently true → refresh button works.
+        if (!iframeRef.current || isPreviewUpdatingRef.current) return;
 
         // Clear any pending update
         if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
 
+        isPreviewUpdatingRef.current = true;
         setIsPreviewUpdating(true); // Mark as updating immediately to disable buttons
 
         // Set timer for debounced update
         updateTimerRef.current = setTimeout(() => {
             if (!iframeRef.current) {
+                isPreviewUpdatingRef.current = false;
                 setIsPreviewUpdating(false);
                 return;
             }
             const doc = iframeRef.current.contentWindow?.document;
             if (!doc) {
+                isPreviewUpdatingRef.current = false;
                 setIsPreviewUpdating(false);
                 return;
             }
@@ -1834,6 +1863,17 @@ export function ThemeEditorPage() {
                 <!-- Bootstrap 5 (Locked) -->
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
                 
+                <!-- SPRITE-TUNER SAVE BRIDGE: lets a self-contained game theme (e.g. metalslug-wedding)
+                     persist its baked sprite-tuner defaults straight into the theme's js_template
+                     in the DB, using the SAME save API as this editor. The theme reads these globals,
+                     logs the superadmin in itself, rewrites its own TUNE_DEFAULTS line in the JS source
+                     below, and POSTs updateTheme. id is null for a brand-new (unsaved) theme → the
+                     theme will show "save the theme first". -->
+                <script>
+                    window.__MSW_API_URL = ${JSON.stringify(import.meta.env.VITE_API_URL || '')};
+                    window.__MSW_THEME_ID = ${JSON.stringify(id || '')};
+                    window.__MSW_THEME_JS = ${JSON.stringify(jsCodeRef.current || '')};
+                </script>
                 <style>
                     /* Reset body margin for iframe */
                     body { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1974,6 +2014,7 @@ export function ThemeEditorPage() {
             } catch (err) {
                 console.error('Preview update error:', err);
             } finally {
+                isPreviewUpdatingRef.current = false;
                 setIsPreviewUpdating(false);
             }
         }, 300); // 300ms debounce

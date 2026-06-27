@@ -510,9 +510,10 @@ sesuai (lihat [`reference/bible-template.md`](reference/bible-template.md)). **B
       mis. partikel API 3.60+, `game.destroy(true)`, `blocked.down`).
 - [ ] **APPENDIX P (aset PNG)** ada bila game punya karakter/objek visual: **TEPAT 5 sprite sheet**
       (player/enemy/environment/game-object/box-kepingan) + **5 JSON generate** (sel ≥80×80) +
-      **frame-map rect eksplisit** (bukan grid seragam) + downscale ke key engine lama + **urutan
-      upload baku** (`{{asset_image_N}}` dari urutan upload) + **fallback prosedural**
-      (`sprite-sheet-assets.md`).
+      **spec file `ASSET.md`** (brief pembuat aset: aturan umum + 5 tabel kebutuhan + 5 blok JSON,
+      mirror `*-assets.json`) + **frame-map rect eksplisit** (bukan grid seragam) + downscale ke key
+      engine lama + **urutan upload baku** (`{{asset_image_N}}` dari urutan upload) + **fallback
+      prosedural** (`sprite-sheet-assets.md`).
 - [ ] Nama variabel undangan **terverifikasi** ke `dynamic-variables.md` (tak ada karangan).
 - [ ] APPENDIX W–Z lengkap: kepingan reachable & dinamis, cheat bypass, celebration 2-pemicu,
       layout 2-kolom, mirror musik idempotent, `{{#if}}` membungkus `<section>`, ID host verbatim.

@@ -544,11 +544,24 @@
 
       for (var i = 1; i < data.length; i++) {
         if (String(data[i][idCol]) === String(id)) {
+          // BATCH WRITE: apply every change onto the in-memory row, then write the
+          // whole row back in ONE setValues() call. Theme saves touch ~40 columns
+          // (html/css/js split into 11 cells each @50K chars); the old per-column
+          // setValue() did ~40 separate Sheets API calls, which was slow enough to
+          // hit the Apps Script execution timeout on big themes — Google then returned
+          // an error HTML page with no CORS headers, surfacing on the client as a
+          // "CORS / Network Error". One setValues() keeps the write well under the limit.
+          var row = data[i];
+          var changed = false;
           for (var key in updates) {
             var col = headers.indexOf(key);
             if (col !== -1) {
-              sheet.getRange(i + 1, col + 1).setValue(updates[key]);
+              row[col] = updates[key];
+              changed = true;
             }
+          }
+          if (changed) {
+            sheet.getRange(i + 1, 1, 1, headers.length).setValues([row]);
           }
           return true;
         }
@@ -2415,7 +2428,11 @@
     },
 
     createTheme: function(auth, payload) {
-      Validator.required(payload, ['name', 'html_template', 'plan_type']);
+      // NOTE: html_template is intentionally NOT required here. The client creates a
+      // lightweight row first with empty templates, then streams the real HTML/CSS/JS
+      // via chunkedSaveTheme (separate small requests to stay under the Apps Script
+      // POST size limit). Requiring html_template would reject that empty first request.
+      Validator.required(payload, ['name', 'plan_type']);
       var sanitized = Validator.sanitizeObject(payload);
 
       if (sanitized.code && this.isThemeCodeTaken(sanitized.code, null)) {
@@ -2578,7 +2595,7 @@
         updates.css_extra_9 = cssSplits.extra_9;
         updates.css_extra_10 = cssSplits.extra_10;
       }
-      if (payload.js_template !== undefined) {
+      if (payload.js_template !== undefined && !payload.__chunked) {
         var jsSplits = splitStringIntoFields(payload.js_template);
         updates.js_template = jsSplits.main;
         updates.js_extra_1 = jsSplits.extra_1;
@@ -2592,7 +2609,30 @@
         updates.js_extra_9 = jsSplits.extra_9;
         updates.js_extra_10 = jsSplits.extra_10;
       }
-      
+
+      // CHUNKED SAVE: the client may send individual split columns directly
+      // (html_template, html_extra_1..10, css_*, js_*) across SEVERAL small
+      // requests instead of one big body, to stay under the Apps Script POST
+      // size limit. Each column is already ≤50K, so copy them through verbatim.
+      // Triggered by payload.__chunked so it never collides with the normal
+      // single-request path above (which splits the full *_template itself).
+      if (payload.__chunked) {
+        var SPLIT_COLS = [
+          'html_template','html_extra_1','html_extra_2','html_extra_3','html_extra_4','html_extra_5','html_extra_6','html_extra_7','html_extra_8','html_extra_9','html_extra_10',
+          'css_template','css_extra_1','css_extra_2','css_extra_3','css_extra_4','css_extra_5','css_extra_6','css_extra_7','css_extra_8','css_extra_9','css_extra_10',
+          'js_template','js_extra_1','js_extra_2','js_extra_3','js_extra_4','js_extra_5','js_extra_6','js_extra_7','js_extra_8','js_extra_9','js_extra_10'
+        ];
+        for (var ci = 0; ci < SPLIT_COLS.length; ci++) {
+          var colName = SPLIT_COLS[ci];
+          if (payload[colName] !== undefined) {
+            if (String(payload[colName]).length > 50000) {
+              return ResponseHelper.error('Potongan "' + colName + '" melebihi 50.000 karakter.', 400);
+            }
+            updates[colName] = payload[colName];
+          }
+        }
+      }
+
       if (payload.code !== undefined) updates.code = Validator.sanitizeObject({c: payload.code}).c;
       if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
       if (payload.style_category !== undefined) updates.style_category = Validator.sanitizeObject({s: payload.style_category}).s;
