@@ -42,7 +42,7 @@
     <div class="sw-side-panel">
 
       <header class="sw-side-head">
-        <div class="sw-side-badge">✦ UNDANGAN PERNIKAHAN ✦</div>
+        <div class="sw-side-badge"><button class="sw-tuner-btn" id="sw-tuner-btn" type="button" title="Atur posisi sprite" aria-label="Atur posisi sprite">✦</button> UNDANGAN PERNIKAHAN ✦</div>
         <div class="sw-side-logo">SPACE&nbsp;WAR<br><span class="sw-side-logo-sub">WEDDING</span></div>
         <div class="sw-side-op">MISI: SATUKAN DUA BINTANG</div>
       </header>
@@ -111,6 +111,24 @@
     </div>
   </aside>
 
+  <!-- ===== SPRITE TUNER (PC only) — opened by the hidden ✦ next to the side badge.
+       Overlay sits at the TOP-LEFT corner of the right panel (beside the game frame). ===== -->
+  <div class="sw-tuner" id="sw-tuner" aria-hidden="true">
+    <div class="sw-tuner-head">
+      <span class="sw-tuner-title">ATUR POSISI SPRITE</span>
+      <button class="sw-tuner-x" id="sw-tuner-close" type="button" aria-label="Tutup">✕</button>
+    </div>
+    <div class="sw-tuner-hint">Geser slider untuk naik/turunkan sprite (− naik, + turun). Langsung ter-apply.</div>
+    <div class="sw-tuner-list" id="sw-tuner-list"></div>
+    <div class="sw-tuner-export-row">
+      <button class="sw-tuner-export" id="sw-tuner-export" type="button" title="Unduh sprite sheet PNG (kotak ber-border ungu) untuk diganti art-nya lalu di-upload ke asset tema (slot 6)">⬇ Export Sprite Sheet (PNG)</button>
+    </div>
+    <div class="sw-tuner-foot">
+      <button class="sw-tuner-reset" id="sw-tuner-reset" type="button">Reset semua</button>
+      <button class="sw-tuner-copy" id="sw-tuner-copy" type="button">Salin nilai</button>
+    </div>
+  </div>
+
   <!-- ===== GAME FRAME (desktop: LEFT pinned; mobile: only this is shown) ===== -->
   <div class="sw-frame" id="sw-frame">
 
@@ -157,7 +175,15 @@
         <button class="sw-iconbtn sw-stagesel-btn" id="sw-stagesel-btn" type="button" title="Pilih sektor" aria-label="Pilih sektor" style="display:none">▦</button>
         <button class="sw-iconbtn sw-view-btn is-locked" id="sw-view-btn" type="button" title="Buka undangan" aria-label="Buka undangan">💌</button>
         <button class="sw-iconbtn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran">▤</button>
-        <button class="sw-iconbtn sw-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik">
+        <!-- SFX TOGGLE (game sound effects only — Web Audio internal blips, NOT the tenant
+             backsound). Its own state; does not touch the host music. -->
+        <button class="sw-iconbtn sw-sfx-btn" id="sw-sfx-btn" type="button" title="Suara efek game" aria-label="Nyalakan / matikan suara efek game">
+          <span id="sw-sfx-on" class="sw-music-ico is-on">🔊<span class="sw-music-tag">SFX</span></span>
+          <span id="sw-sfx-off" class="sw-music-ico is-off" style="display:none">🔇<span class="sw-music-tag">OFF</span></span>
+        </button>
+        <!-- HIDDEN host music button (kept verbatim so setMusic() can auto-play the backsound
+             when the invitation opens — no longer a guest-facing control). -->
+        <button class="sw-iconbtn sw-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik" style="display:none">
           <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
         </button>
         <button class="sw-iconbtn sw-reset-btn" id="sw-reset-btn" type="button" title="Reset progres" aria-label="Reset">⟲</button>
@@ -296,7 +322,7 @@
 
     <!-- ===== INVITATION SCROLL (shown inside frame when opened) ===== -->
     <div class="sw-reveal" id="sw-reveal">
-      <button class="sw-reveal-close" id="sw-reveal-close" type="button" aria-label="Kembali ke game">✕ KEMBALI KE GAME</button>
+      <button class="sw-reveal-close" id="sw-reveal-close" type="button" aria-label="Kembali ke game" title="Kembali ke game"><span class="sw-reveal-close-ico">🎮</span><span class="sw-reveal-close-txt">KEMBALI</span></button>
       <div class="sw-reveal-scroll" id="sw-reveal-scroll"></div>
     </div>
   </div>
@@ -314,6 +340,10 @@
     <img data-asset="environment_sheet" src="{{asset_image_3}}" alt=""><!-- nebula/planet/landmark/structures -->
     <img data-asset="object_sheet"      src="{{asset_image_4}}" alt=""><!-- bullets/laser/explosions/blue capsule/barrel -->
     <img data-asset="piece_sheet"       src="{{asset_image_5}}" alt=""><!-- gold 💌 capsule + united couple -->
+    <!-- ASSET ADJUSTER: ONE unified sprite sheet exported by the Sprite Tuner's "Export Sprite Sheet"
+         button (all gameplay textures, each in a PURPLE-bordered cell). Replace the art inside each
+         border and upload here (slot 6) → engine slices at identical coords + keys-out the purple. -->
+    <img data-asset="sprite_sheet"      src="{{asset_image_6}}" alt=""><!-- unified adjuster sheet (purple-border cells) -->
   </div>
 
   <!-- ======================================================================

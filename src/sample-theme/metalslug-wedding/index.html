@@ -131,27 +131,6 @@
     <div class="msw-tuner-foot">
       <button class="msw-tuner-reset" id="msw-tuner-reset" type="button">Reset semua</button>
       <button class="msw-tuner-copy" id="msw-tuner-copy" type="button">Salin nilai</button>
-      <button class="msw-tuner-save" id="msw-tuner-save" type="button">💾 Simpan</button>
-    </div>
-
-    <!-- SUPERADMIN AUTH DIALOG — shown by "Simpan". On valid superadmin login the theme
-         bakes the current tuner values into its own TUNE_DEFAULTS and saves the JS source
-         to the DB via the same API as the theme editor. -->
-    <div class="msw-tuner-auth" id="msw-tuner-auth" aria-hidden="true">
-      <div class="msw-tuner-auth-card">
-        <div class="msw-tuner-auth-title">SIMPAN KE TEMA (SUPERADMIN)</div>
-        <div class="msw-tuner-auth-sub">Masukkan otorisasi superadmin untuk menyimpan posisi sprite ini secara
-          permanen ke source JS tema.</div>
-        <input class="msw-tuner-auth-input" id="msw-tuner-auth-user" type="text" placeholder="Username"
-          autocomplete="username" />
-        <input class="msw-tuner-auth-input" id="msw-tuner-auth-pass" type="password" placeholder="Password"
-          autocomplete="current-password" />
-        <div class="msw-tuner-auth-msg" id="msw-tuner-auth-msg"></div>
-        <div class="msw-tuner-auth-foot">
-          <button class="msw-tuner-auth-cancel" id="msw-tuner-auth-cancel" type="button">Batal</button>
-          <button class="msw-tuner-auth-ok" id="msw-tuner-auth-ok" type="button">Login &amp; Simpan</button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -200,11 +179,20 @@
         <button class="msw-iconbtn msw-star-btn" id="msw-star-btn" type="button" title="Mode kebal (cheat)" aria-label="Cheat">★</button>
         <button class="msw-iconbtn msw-stagesel-btn" id="msw-stagesel-btn" type="button" title="Pilih sektor" aria-label="Pilih sektor" style="display:none">▦</button>
         <button class="msw-iconbtn msw-view-btn is-locked" id="msw-view-btn" type="button" title="Buka undangan" aria-label="Buka undangan">💌</button>
-        <button class="msw-iconbtn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran">▤</button>
-        <button class="msw-iconbtn msw-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik">
-                <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
-            </button>
+        <button class="msw-iconbtn msw-qr-btn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran"><span class="msw-qr-ico" aria-hidden="true"></span></button>
+        <!-- SFX TOGGLE (game sound effects only — Web Audio internal blips, NOT the tenant
+             backsound). Its own state; does not touch the host music. -->
+        <button class="msw-iconbtn msw-sfx-btn" id="msw-sfx-btn" type="button" title="Suara efek game" aria-label="Nyalakan / matikan suara efek game">
+            <span id="msw-sfx-on" class="msw-music-ico is-on">🔊<span class="msw-music-tag">SFX</span></span>
+            <span id="msw-sfx-off" class="msw-music-ico is-off" style="display:none">🔇<span class="msw-music-tag">OFF</span></span>
+        </button>
         <button class="msw-iconbtn msw-reset-btn" id="msw-reset-btn" type="button" title="Reset progres" aria-label="Reset">⟲</button>
+        <!-- Host music button — kept in the DOM (verbatim host IDs) so the theme's setMusic()
+             can auto-play the backsound when the invitation opens, but HIDDEN from the sidebar
+             (the audible toggle the guest sees is the SFX button above). -->
+        <button class="msw-iconbtn msw-music-btn" id="btn-toggle-music" type="button" aria-label="Musik" style="display:none">
+            <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
+        </button>
       </div>
 
       <!-- piece indicators (N dynamic icons) -->
@@ -349,8 +337,9 @@
 
     <!-- ===== INVITATION SCROLL (shown inside frame when opened) ===== -->
     <div class="msw-reveal" id="msw-reveal">
-      <button class="msw-reveal-close" id="msw-reveal-close" type="button" aria-label="Kembali ke game">✕ KEMBALI KE GAME</button>
       <div class="msw-reveal-scroll" id="msw-reveal-scroll"></div>
+      <!-- floating "back to game" button — bottom-right corner, over the scroll -->
+      <button class="msw-reveal-close" id="msw-reveal-close" type="button" aria-label="Kembali ke game" title="Kembali ke game"><span class="msw-reveal-close-ico">🎮</span><span class="msw-reveal-close-txt">KEMBALI</span></button>
     </div>
   </div>
 

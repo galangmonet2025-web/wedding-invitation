@@ -160,6 +160,12 @@ export function ThemeEditorPage() {
     const [htmlCode, setHtmlCode] = useState('<!-- Tambahkan tombol dengan id="btn-open-invitation" di cover -->\n<div class="wedding-theme">\n  <h1>{{bride_name}} & {{groom_name}}</h1>\n  <button id="btn-open-invitation">Buka Undangan</button>\n</div>');
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
     const [jsCode, setJsCode] = useState('console.log("Theme Loaded!");');
+    // Snapshot of the templates AS LOADED from the server — used on save to detect which
+    // of HTML/CSS/JS actually changed, so unchanged ones are never re-uploaded. Refreshed
+    // after a successful save so a second save with no edits is correctly a no-op.
+    const [initialHtmlCode, setInitialHtmlCode] = useState('');
+    const [initialCssCode, setInitialCssCode] = useState('');
+    const [initialJsCode, setInitialJsCode] = useState('');
     const [flagDraft, setFlagDraft] = useState(true);
     const [flagUseSystemActionButton, setFlagUseSystemActionButton] = useState(true);
     const [imageTypes, setImageTypes] = useState<string[]>([]);
@@ -411,6 +417,9 @@ export function ThemeEditorPage() {
                     setHtmlCode(theme.html_template || '');
                     setCssCode(theme.css_template || '');
                     setJsCode(theme.js_template || '');
+                    setInitialHtmlCode(theme.html_template || '');
+                    setInitialCssCode(theme.css_template || '');
+                    setInitialJsCode(theme.js_template || '');
                     setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
                     setFlagUseSystemActionButton(theme.flag_use_system_action_button !== false && theme.flag_use_system_action_button !== 'false');
 
@@ -435,6 +444,9 @@ export function ThemeEditorPage() {
                         setHtmlCode(refetchedTheme.html_template || '');
                         setCssCode(refetchedTheme.css_template || '');
                         setJsCode(refetchedTheme.js_template || '');
+                        setInitialHtmlCode(refetchedTheme.html_template || '');
+                        setInitialCssCode(refetchedTheme.css_template || '');
+                        setInitialJsCode(refetchedTheme.js_template || '');
                         setFlagDraft(refetchedTheme.flag_draft !== false && refetchedTheme.flag_draft !== 'false');
                         setFlagUseSystemActionButton(refetchedTheme.flag_use_system_action_button !== false && refetchedTheme.flag_use_system_action_button !== 'false');
 
@@ -1510,8 +1522,65 @@ export function ThemeEditorPage() {
                 // Redirect back to theme management list on new theme creation
                 navigate('/private/themes');
             } else {
+                // CHANGE DETECTION: only upload the templates (HTML/CSS/JS) that actually
+                // changed vs. what was loaded. An unchanged template is omitted from the
+                // payload → its Sheet columns are left untouched (no needless re-write).
+                const htmlChanged = htmlCode !== initialHtmlCode;
+                const cssChanged = cssCode !== initialCssCode;
+                const jsChanged = jsCode !== initialJsCode;
+
+                // Did any non-template field change? (metadata + preview image + draft state).
+                // Compare against the originally-loaded theme record so editing only the name,
+                // plan, category, flags, asset list, or preview still triggers a save.
+                const orig = themes.find(t => t.id === id);
+                const origImageTypes = (() => {
+                    let it: any = orig?.image_types ?? [];
+                    if (typeof it === 'string') { try { it = JSON.parse(it); } catch { it = []; } }
+                    return JSON.stringify(Array.isArray(it) ? it : []);
+                })();
+                const origAssetList = JSON.stringify(parseAssetMediaList(orig?.asset_media_list));
+                const origDraft = orig ? (orig.flag_draft !== false && orig.flag_draft !== 'false') : true;
+                const origSysBtn = orig ? (orig.flag_use_system_action_button !== false && orig.flag_use_system_action_button !== 'false') : true;
+                const metaChanged =
+                    name !== (orig?.name ?? '') ||
+                    code !== (orig?.code ?? '') ||
+                    planType !== (orig?.plan_type ?? planType) ||
+                    styleCategory !== (orig?.style_category ?? 'Lainnya') ||
+                    finalPreviewUrl !== initialPreviewImage ||
+                    pendingPreviewFile != null ||
+                    pendingPreviewBase64 != null ||
+                    isDraft !== origDraft ||
+                    flagUseSystemActionButton !== origSysBtn ||
+                    JSON.stringify(imageTypes) !== origImageTypes ||
+                    JSON.stringify(assetMediaList) !== origAssetList;
+
+                // Nothing changed at all → skip the save entirely and tell the user why.
+                if (!htmlChanged && !cssChanged && !jsChanged && !metaChanged) {
+                    toast.success('Tidak ada perubahan — tidak ada yang disimpan. (Kode HTML/CSS/JS & info tema sama persis dengan yang tersimpan.)', { id: loadingToast, duration: 5000 });
+                    return;
+                }
+
+                // Build a templates payload containing ONLY the changed templates.
+                const changedTemplates: { html?: string; css?: string; js?: string } = {};
+                if (htmlChanged) changedTemplates.html = htmlCode;
+                if (cssChanged) changedTemplates.css = cssCode;
+                if (jsChanged) changedTemplates.js = jsCode;
+
+                // Tell the user exactly what is (and isn't) being saved.
+                const changedList = [
+                    htmlChanged ? 'HTML' : null,
+                    cssChanged ? 'CSS' : null,
+                    jsChanged ? 'JS' : null,
+                ].filter(Boolean) as string[];
+                const skippedList = [
+                    !htmlChanged ? 'HTML' : null,
+                    !cssChanged ? 'CSS' : null,
+                    !jsChanged ? 'JS' : null,
+                ].filter(Boolean) as string[];
+
                 // chunkedSaveTheme throws on any failed chunk → handled by catch below.
-                await chunkedSaveTheme(id!, metaPayload, templates, onChunkProgress);
+                // (metaPayload always rides along on the first request; it's small.)
+                await chunkedSaveTheme(id!, metaPayload, changedTemplates, onChunkProgress);
 
                 // Check if we need to delete old image
                 if (initialPreviewImage && initialPreviewImage !== finalPreviewUrl) {
@@ -1525,9 +1594,25 @@ export function ThemeEditorPage() {
                     }
                 }
 
-                toast.success('Theme saved successfully', { id: loadingToast });
-                updateTheme(id!, { ...metaPayload, ...templates }); // Update local cache
+                // Compose a clear success message: lead with what WAS saved (✓), then note any
+                // unchanged files in a parenthetical so it never reads like the save was skipped.
+                let successMsg = 'Tema berhasil disimpan';
+                if (changedList.length > 0 && skippedList.length > 0) {
+                    successMsg = `✓ ${changedList.join(' & ')} berhasil disimpan. (${skippedList.join(' & ')} tidak diubah, jadi tidak perlu disimpan ulang.)`;
+                } else if (changedList.length > 0) {
+                    successMsg = `✓ ${changedList.join(' & ')} berhasil disimpan.`;
+                } else if (skippedList.length === 3) {
+                    // only metadata changed
+                    successMsg = '✓ Info tema berhasil disimpan. (Kode HTML, CSS & JS tidak diubah, jadi tidak perlu disimpan ulang.)';
+                }
+                toast.success(successMsg, { id: loadingToast, duration: 5000 });
+                updateTheme(id!, { ...metaPayload, html_template: htmlCode, css_template: cssCode, js_template: jsCode }); // Update local cache
                 setFlagDraft(isDraft);
+
+                // Refresh the change-detection baseline so an immediate re-save is a no-op.
+                setInitialHtmlCode(htmlCode);
+                setInitialCssCode(cssCode);
+                setInitialJsCode(jsCode);
 
                 // Update initial state to new URL
                 setInitialPreviewImage(finalPreviewUrl);
@@ -1863,17 +1948,6 @@ export function ThemeEditorPage() {
                 <!-- Bootstrap 5 (Locked) -->
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
                 
-                <!-- SPRITE-TUNER SAVE BRIDGE: lets a self-contained game theme (e.g. metalslug-wedding)
-                     persist its baked sprite-tuner defaults straight into the theme's js_template
-                     in the DB, using the SAME save API as this editor. The theme reads these globals,
-                     logs the superadmin in itself, rewrites its own TUNE_DEFAULTS line in the JS source
-                     below, and POSTs updateTheme. id is null for a brand-new (unsaved) theme → the
-                     theme will show "save the theme first". -->
-                <script>
-                    window.__MSW_API_URL = ${JSON.stringify(import.meta.env.VITE_API_URL || '')};
-                    window.__MSW_THEME_ID = ${JSON.stringify(id || '')};
-                    window.__MSW_THEME_JS = ${JSON.stringify(jsCodeRef.current || '')};
-                </script>
                 <style>
                     /* Reset body margin for iframe */
                     body { margin: 0; padding: 0; box-sizing: border-box; }

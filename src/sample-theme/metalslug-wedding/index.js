@@ -32,7 +32,7 @@
     };
 
     var BUILD = 'metalslug-wedding';
-    var VERSION = 'v2.4.1';   // FIX Simpan: (1) now works from the PUBLISHED INVITATION too (not only the Theme Editor) — ThemeWrapper exposes window.__MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS on the live page, so the ★ tuner's 💾 Simpan can authenticate+save from a guest's invitation. (2) FIX "Invalid username or password" despite correct creds: Apps Script answers a cross-origin POST with a 302→GET redirect that DROPS the body, so login/password never reached the backend; mswApiPost now ALSO sends action/username/password/token/id in the QUERY STRING (backend reads e.parameter on the redirected GET), mirroring apiClient.ts. PREV (v2.4.0) NEW Sprite-Tuner "💾 Simpan" button: opens a superadmin username/password dialog; on valid superadmin login it BAKES the current tuner values into this theme's own TUNE_DEFAULTS line and saves the JS source to the DB via the SAME API as the Theme Editor (login → updateTheme, __chunked). Needs the host bridge globals (window.__MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS) injected by ThemeEditorPage's preview iframe; outside the editor the button just toasts that save is editor-only. PREV (v2.3.3) Baked tuner defaults updated: caged +6, tank +9, boss -31 (mech naik 31px), crate -9 (peti naik 9px). PREV (v2.3.2) FIX "peluru musuh belum naik": asset-mode enemies use origin-BOTTOM (e.y = feet), so the old flat e.y-6 spawned enemy bullets at ground level. New enemyMuzzleY() lifts the spawn to gun height (~60% of display height above the feet) in asset mode; procedural stays e.y-6. PREV (v2.3.1) Baked tuner defaults updated: ground +4 (tanah turun 4px) & bush -3 (rumput/semak naik 3px). Musuh Range stays at +6 (3px lebih ke atas dari sebelumnya, sudah dibaked). PREV (v2.3.0) Sprite Tuner now lists EVERY sprite (25 types incl. rumput/bush, palm, sandbag, flag, ground, ledge, arch, clouds/mountains/hills) in a 2-COLUMN panel, and every slider shifts its sprites LIVE via a per-sector tunable REGISTRY (this.tunables) — not just the few hard-coded groups. Open the tuner WHILE IN-GAME (a scene must exist) for live changes; on the cover screen it only saves. PREV (v2.2.1) FIX: tuner panel was hard-gated to desktop-landscape with display:none!important → inside the narrower Theme-Editor preview the ★ looked dead (panel never showed). Now the panel shows whenever toggled (.show); its ★ trigger still lives in the desktop-only side badge. PRESS START unchanged (delegated capture listener). PREV (v2.2.0) Sprite Tuner access MOVED out of the game frame: trigger is now a HIDDEN ★ inline in the left side badge ("UNDANGAN PERNIKAHAN"); the panel opens (PC only) as a fixed overlay at the TOP-LEFT of the RIGHT panel (right of the 480px frame). Baked tuner defaults updated (boss 16, spike 7) → TUNE_KEY v3. PREV (v2.1.1) FIX: Sprite Tuner sliders were not rendering (empty list) — rows now built with pure DOM API + listeners bound per-slider, and the list is ALWAYS (re)built every time the panel opens (survives host re-injection wiping it back to empty). Panel bg made fully opaque. PREV (v2.1.0) PC-only Sprite Tuner panel (bottom-right ⇅ button) — per-sprite vertical offset sliders, live-apply (no pause), persisted + "Salin nilai" so the user can dial-in feet-on-ground positions and send the values back. PREV (v2.0.3) crate/enemy anchoring: switched to ORIGIN-BOTTOM at the surface for the crate (center−4 was sinking it 12px into the plank) and for asset-mode enemies (body now bottom-aligned to the feet → no ngambang). Verified by compositing the real crate/turret/rush/range on ground+ledge (all flush). Ledge stays center-origin (its top is already correct).
+    var VERSION = 'v2.4.2';   // FIX "BUTTON START GAME gabisa dibuka lagi": after the first run, window.__mswStarted survives a host RE-INJECTION; init()'s auto-resume then fired UNCONDITIONALLY on every re-inject — even when the fresh HTML re-shows #msw-cover (the PRESS START screen). It yanked the player off the cover into startRun() (loading curtain), and if Phaser was mid-teardown nothing came back → cover gone, START "dead". Auto-resume now ONLY fires when the cover is NOT currently showing (a genuine in-progress run), so a re-injection that re-shows the cover leaves it up with a working START; a real mid-game re-inject (RSVP/wish submit, cover already hidden) still auto-resumes with no lost progress. PREV (v2.4.1) FIX "box senjata di ground: amplop jatuh ke bawah (bukan ke ground) & gabisa diambil": the crate is ORIGIN-BOTTOM so c.y is its bottom = the surface. breakCrate() spawned the weapon pickup AT c.y with a CENTER origin → the pickup's body center started ON the surface, i.e. already half-below the ground's top collision face, so the pickups↔platforms collider couldn't catch it and gravity dragged it straight THROUGH the floor (worst on flat-ground crates). Pickup now spawns ABOVE the surface (c.y−26) with a small upward pop (−120) so it arcs cleanly DOWN and the collider lands it ON the ground/ledge; its letter label now follows the moving pickup each frame (was pinned to the old static spawn point). PREV (v2.4.0) FIX "blank canvas saat pindah stage by dialog (apalagi di hack mode)": switching stage via the dialog called startRun() which ran defineAndBoot() → GAME.destroy(true) then SYNCHRONOUSLY `new P.Game(...)` on the SAME #gw-stage. Phaser's destroy(true) is DEFERRED (runs on the game's next step), so the OLD game's teardown fired AFTER the NEW canvas mounted and ripped it out → blank #gw-stage. startRun() now HOT-LOADS the new sector into the already-live scene (resume → sync score/lives/cheat → showBriefing → loadSector), the same churn-free path nextSector() uses; it only does a fresh boot when there is genuinely no live game. No destroy/recreate of P.Game on a stage switch → no race → no blank. PREV (v2.3.9) FIX #1 "turret melayang tanpa pijakan": the HIGH-GROUND pattern emitted the turret at tx+70 — ~17px PAST the upper ledge's right edge — AND processSpawnPointer pushed immovable turrets to `edge-8` when their record triggered a frame late, planting them off the plank. Turret now placed at tx+32 (inside the ±53px halfW, crate moved to tx-30), and processSpawnPointer births perched/immovable types (turret) at their EXACT recorded x (mobile mooks still slide in from the edge). FIX #2 "1 helai tipis di bawah ground bocor": the dirt-fill below the ground now starts 10px HIGHER (fillTop = GROUND_Y+64-10) so it tucks UNDER the tile row (depth -3 < ground -2) and covers the 1px sliver — ground tiles stay put. PREV (v2.3.8) CLARIFIED: the sidebar audio button is a GAME-SFX mute (Web Audio blips: shoot/explode/rescue/…), NOT the tenant backsound. New #msw-sfx-btn toggles a persisted `sfxMuted` flag that gates blip() → all game SFX go silent when muted; tenant music is untouched. The host music button (#btn-toggle-music + #play-icon/#pause-icon) is kept in the DOM verbatim but HIDDEN (display:none) so setMusic() can still auto-play the backsound when the invitation opens — it's no longer a guest-facing control, so the old optimistic-click/retry conflict is gone. PREV (v2.3.7) FIX #1 "mute tidak mematikan suara": a pending setMusic() retry loop (started when the invitation opens) kept re-clicking #btn-toggle-music until host state matched musicWanted — so a user MUTE was immediately un-muted by the loop ("suara masih kedengeran"). User clicks now bump musicGen to abort that loop; setMusic's OWN clicks are flagged (_mswProgrammaticClick) so they don't self-cancel the retry. FIX #2: "kembali ke game" button on the reveal is now a FLOATING arcade pill at the bottom-right corner (was a sticky full-width top bar), with safe-area inset + scroll bottom-padding so content clears it. PREV (v2.3.6) FIX "kadang blank saat kembali dari undangan": opening the reveal calls setMusic(true) → clicks #btn-toggle-music → host flips isPlaying → host RE-INJECTS the theme → __gwCleanup() destroys GAME, but init()'s auto-resume is skipped while #msw-reveal is open, so the canvas stayed dead after closing. closeReveal() now revives the game on return — re-boots via startRun() if GAME was torn down, else resumes a paused scene. PREV (v2.3.5) Baked tuner default: crate -9 → +3 (peti turun 12px). TUNE_KEY v3→v4 so old saved crate value won't override. Music toggle: 2 clear icons 🔇 OFF / 🎵 ON each with an ON/OFF state badge + green glow when playing; click now flips the icon OPTIMISTICALLY (works in Theme-Editor preview where there's no host audio to flip it — fixed "mute tidak berfungsi"); host re-syncs on its real play/pause event. PREV (v2.3.4) UI: sidebar music button shows 🎵/🔇 (was ▶/❚❚); QR-kehadiran button icon is a CSS-drawn mini QR code. Host IDs (btn-toggle-music, play-icon, pause-icon, btn-show-qr) kept verbatim. PREV (v2.3.3) Baked tuner defaults updated: caged +6, tank +9, boss -31 (mech naik 31px), crate -9 (peti naik 9px). PREV (v2.3.2) FIX "peluru musuh belum naik": asset-mode enemies use origin-BOTTOM (e.y = feet), so the old flat e.y-6 spawned enemy bullets at ground level. New enemyMuzzleY() lifts the spawn to gun height (~60% of display height above the feet) in asset mode; procedural stays e.y-6. PREV (v2.3.1) Baked tuner defaults updated: ground +4 (tanah turun 4px) & bush -3 (rumput/semak naik 3px). Musuh Range stays at +6 (3px lebih ke atas dari sebelumnya, sudah dibaked). PREV (v2.3.0) Sprite Tuner now lists EVERY sprite (25 types incl. rumput/bush, palm, sandbag, flag, ground, ledge, arch, clouds/mountains/hills) in a 2-COLUMN panel, and every slider shifts its sprites LIVE via a per-sector tunable REGISTRY (this.tunables) — not just the few hard-coded groups. Open the tuner WHILE IN-GAME (a scene must exist) for live changes; on the cover screen it only saves. PREV (v2.2.1) FIX: tuner panel was hard-gated to desktop-landscape with display:none!important → inside the narrower Theme-Editor preview the ★ looked dead (panel never showed). Now the panel shows whenever toggled (.show); its ★ trigger still lives in the desktop-only side badge. PRESS START unchanged (delegated capture listener). PREV (v2.2.0) Sprite Tuner access MOVED out of the game frame: trigger is now a HIDDEN ★ inline in the left side badge ("UNDANGAN PERNIKAHAN"); the panel opens (PC only) as a fixed overlay at the TOP-LEFT of the RIGHT panel (right of the 480px frame). Baked tuner defaults updated (boss 16, spike 7) → TUNE_KEY v3. PREV (v2.1.1) FIX: Sprite Tuner sliders were not rendering (empty list) — rows now built with pure DOM API + listeners bound per-slider, and the list is ALWAYS (re)built every time the panel opens (survives host re-injection wiping it back to empty). Panel bg made fully opaque. PREV (v2.1.0) PC-only Sprite Tuner panel (bottom-right ⇅ button) — per-sprite vertical offset sliders, live-apply (no pause), persisted + "Salin nilai" so the user can dial-in feet-on-ground positions and send the values back. PREV (v2.0.3) crate/enemy anchoring: switched to ORIGIN-BOTTOM at the surface for the crate (center−4 was sinking it 12px into the plank) and for asset-mode enemies (body now bottom-aligned to the feet → no ngambang). Verified by compositing the real crate/turret/rush/range on ground+ledge (all flush). Ledge stays center-origin (its top is already correct).
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#e23b2e;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -302,12 +302,12 @@
     // v2: baked-in per-sprite offsets (dialed-in via the Sprite Tuner & sent back). The key is
     // bumped v1→v2 so a device that saved the old all-zero v1 does NOT override these new
     // defaults; the tuner still lets anyone re-adjust on top (and re-persists under v2).
-    var TUNE_KEY = 'msw_tune_v3';
+    var TUNE_KEY = 'msw_tune_v4';
     // BAKED DEFAULTS (user-approved feet-on-ground positions). loadTune() starts from these,
     // then layers any per-device localStorage tweak on top.
     var TUNE_DEFAULTS = {
         player: 12, pow: 6, rush: 12, range: 6, turret: 0, drone: 0, tank: 9, boss: -31,
-        barrel: 10, crate: -9, spike: 7, flame: 0, cage: 0, caged: 6,
+        barrel: 10, crate: 3, spike: 7, flame: 0, cage: 0, caged: 6,
         amplop: 0, arch: 0, ground: 4, plat: 0, bush: -3, palm: 0, sandbag: 0, flag: 0,
         cloud: 0, mountain: 0, hill: 0
     };
@@ -499,7 +499,27 @@
         // mirror music intent ON when invitation opens (host plays only when isOpened)
         setMusic(true);
     }
-    function closeReveal() { $('msw-reveal').classList.remove('show'); }
+    function closeReveal() {
+        $('msw-reveal').classList.remove('show');
+        // REVIVE THE GAME on return (fix for "kadang blank saat kembali dari undangan").
+        // Opening the invitation calls setMusic(true) → clicks #btn-toggle-music → the host
+        // flips its React isPlaying state, which RE-INJECTS this whole theme (DOM+JS). That
+        // re-injection runs __gwCleanup() → GAME.destroy(), but the auto-resume in init() is
+        // SKIPPED while #msw-reveal is open. So after the reveal closes the canvas is dead/blank.
+        // Here we explicitly bring the game back: re-boot if it was destroyed, else just resume.
+        try {
+            if (window.__mswStarted) {
+                var sc = scene();
+                if (!GAME || !sc) {
+                    // canvas was torn down by a re-injection → boot straight back into the run
+                    var rs = window.__mswStarted;
+                    startRun((rs && rs.sector) || 0);
+                } else if (sc.scene.isPaused()) {
+                    sc.scene.resume();
+                }
+            }
+        } catch (e) {}
+    }
 
     // hero/closing bg uses data-src (so it doesn't load in the hidden source); apply on clone
     function hydrateImages(root) {
@@ -625,6 +645,9 @@
         var pause = $('pause-icon');
         return !!(pause && pause.style.display !== 'none');
     }
+    // Auto-play the tenant backsound by clicking the HIDDEN host music button (the host owns the
+    // real audio + intercepts this click). The guest never sees/clicks this button, so no user
+    // toggle can fight the retry loop now — it just nudges the host until it matches the intent.
     function setMusic(want) {
         musicWanted = want;
         var myGen = ++musicGen;
@@ -644,7 +667,24 @@
 
     /* =================================================================
        SFX — Web Audio internal (Bible §11). Game SFX only; never tenant music.
+       The sidebar SFX button toggles `sfxMuted` (persisted). When muted, blip()
+       is a no-op so every game sound (shoot/explode/rescue/…) is silenced — the
+       tenant backsound is untouched (host owns that, separate button).
        ================================================================= */
+    var SFX_MUTE_KEY = 'msw_sfx_muted';
+    var sfxMuted = (function () { try { return localStorage.getItem(SFX_MUTE_KEY) === '1'; } catch (e) { return false; } })();
+    function reflectSfxIcon() {
+        var on = $('msw-sfx-on'), off = $('msw-sfx-off');
+        if (on) on.style.display = sfxMuted ? 'none' : '';
+        if (off) off.style.display = sfxMuted ? '' : 'none';
+        var btn = $('msw-sfx-btn'); if (btn) btn.classList.toggle('is-muted', sfxMuted);
+    }
+    function toggleSfx() {
+        sfxMuted = !sfxMuted;
+        try { localStorage.setItem(SFX_MUTE_KEY, sfxMuted ? '1' : '0'); } catch (e) {}
+        reflectSfxIcon();
+        toast(sfxMuted ? '🔇 Suara efek game dimatikan' : '🔊 Suara efek game dinyalakan');
+    }
     var AC = null;
     function audioCtx() {
         if (AC) return AC;
@@ -652,6 +692,7 @@
         return AC;
     }
     function blip(freq, dur, type, vol, slideTo) {
+        if (sfxMuted) return;                 // SFX muted → silence every game sound
         var ac = audioCtx(); if (!ac) return;
         try {
             var o = ac.createOscillator(), g = ac.createGain();
@@ -730,8 +771,18 @@
         // AUTO-RESUME after a host RE-INJECTION: if a run was live before the theme was
         // re-injected (window.__mswStarted survives), boot straight back into the game instead
         // of showing PRESS START again. Skip if the full-invitation reveal is currently open.
+        //
+        // IMPORTANT (fix "START gabisa dibuka lagi"): only auto-resume when the COVER is NOT
+        // currently showing. A fresh HTML (re)injection re-shows #msw-cover (.show) — that means
+        // the host wants the player on the PRESS START screen, so we must NOT yank them into the
+        // game and hide the cover (which made START look dead: the loading curtain replaced the
+        // cover and, if Phaser was mid-teardown, nothing came back). When the cover IS up, leave
+        // it up and let the player press START themselves; only auto-resume a genuinely
+        // in-progress run (cover already gone from a prior pass that survived the re-injection).
         try {
-            if (window.__mswStarted && !(($('msw-reveal') || {}).classList || { contains: function () { return false; } }).contains('show')) {
+            var coverUp = (($('msw-cover') || {}).classList || { contains: function () { return false; } }).contains('show');
+            var revealUp = (($('msw-reveal') || {}).classList || { contains: function () { return false; } }).contains('show');
+            if (window.__mswStarted && !coverUp && !revealUp) {
                 var rs = window.__mswStarted;
                 setTimeout(function () { try { startRun((rs && rs.sector) || 0); } catch (e) {} }, 60);
             }
@@ -919,143 +970,6 @@
         toast('Nilai disalin: <b>' + esc(txt.replace(/\s+/g, ' ')) + '</b>', 4000);
     }
 
-    /* =================================================================
-       SAVE TO THEME (superadmin) — bake the current tuner values straight
-       into this theme's js_template in the DB, using the SAME API the Theme
-       Editor uses (login → updateTheme, chunked). The host (ThemeEditorPage)
-       exposes window.__MSW_API_URL / __MSW_THEME_ID / __MSW_THEME_JS into the
-       preview iframe; we rewrite our own TUNE_DEFAULTS line in that source and
-       POST it back. Clicking "Simpan" first asks for superadmin credentials.
-       ================================================================= */
-    function mswApiUrl() { return (window.__MSW_API_URL || '').toString(); }
-    function mswThemeId() { return (window.__MSW_THEME_ID || '').toString(); }
-    function mswThemeJs() { return (window.__MSW_THEME_JS || '').toString(); }
-
-    // Build the one-line TUNE_DEFAULTS object literal from the live TUNE values,
-    // preserving the SAME key order/grouping as the source for a clean diff.
-    function buildDefaultsLiteral() {
-        var t = TUNE;
-        function n(id) { return (typeof t[id] === 'number') ? t[id] : 0; }
-        return 'var TUNE_DEFAULTS = {\n' +
-            '        player: ' + n('player') + ', pow: ' + n('pow') + ', rush: ' + n('rush') + ', range: ' + n('range') + ', turret: ' + n('turret') + ', drone: ' + n('drone') + ', tank: ' + n('tank') + ', boss: ' + n('boss') + ',\n' +
-            '        barrel: ' + n('barrel') + ', crate: ' + n('crate') + ', spike: ' + n('spike') + ', flame: ' + n('flame') + ', cage: ' + n('cage') + ', caged: ' + n('caged') + ',\n' +
-            '        amplop: ' + n('amplop') + ', arch: ' + n('arch') + ', ground: ' + n('ground') + ', plat: ' + n('plat') + ', bush: ' + n('bush') + ', palm: ' + n('palm') + ', sandbag: ' + n('sandbag') + ', flag: ' + n('flag') + ',\n' +
-            '        cloud: ' + n('cloud') + ', mountain: ' + n('mountain') + ', hill: ' + n('hill') + '\n' +
-            '    };';
-    }
-
-    // Replace the existing `var TUNE_DEFAULTS = { ... };` block in the JS source
-    // with the freshly-baked one. Returns null if the marker isn't found.
-    function patchJsSource(src) {
-        // match from "var TUNE_DEFAULTS = {" up to the first "};" (non-greedy across newlines)
-        var re = /var\s+TUNE_DEFAULTS\s*=\s*\{[\s\S]*?\};/;
-        if (!re.test(src)) return null;
-        return src.replace(re, buildDefaultsLiteral());
-    }
-
-    // API POST to the Apps Script Web App. text/plain → no CORS preflight (same as apiClient.ts).
-    // IMPORTANT (the Apps Script gotcha): /exec answers a cross-origin POST with a 302 redirect to
-    // script.googleusercontent.com; the browser's fetch FOLLOWS it as a GET and DROPS the POST body,
-    // so the backend would see no username/password → "Invalid username or password". To survive the
-    // redirect we ALSO put the same fields in the QUERY STRING (backend reads e.parameter on GET),
-    // mirroring apiClient.ts which injects into BOTH params and body. We send the small auth/meta
-    // fields as query params; large fields (the js_* columns) stay body-only (too big for a URL, and
-    // they aren't needed to authenticate — the token in the query keeps the redirected GET authorized).
-    function mswApiPost(body) {
-        var url = mswApiUrl();
-        var qsKeys = ['action', 'username', 'password', 'token', 'tenant_id', 'id', '__chunked'];
-        var qs = [];
-        qsKeys.forEach(function (k) {
-            if (body[k] !== undefined && body[k] !== null) {
-                qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(body[k])));
-            }
-        });
-        if (qs.length) url += (url.indexOf('?') >= 0 ? '&' : '?') + qs.join('&');
-        return fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(body),
-            redirect: 'follow'
-        }).then(function (r) { return r.json(); });
-    }
-
-    // Split a string into the backend's 11 columns (≤50k each): js_template + js_extra_1..10.
-    function splitJsColumns(s) {
-        s = s || '';
-        var cols = { js_template: s.substring(0, 50000) };
-        for (var i = 1; i <= 10; i++) cols['js_extra_' + i] = s.substring(i * 50000, (i + 1) * 50000);
-        return cols;
-    }
-
-    function setAuthMsg(msg, ok) {
-        var m = $('msw-tuner-auth-msg'); if (!m) return;
-        m.textContent = msg || ''; m.className = 'msw-tuner-auth-msg' + (ok ? ' ok' : '');
-    }
-    function openSaveAuth() {
-        // Available from BOTH the Theme Editor preview AND the published invitation: the host
-        // (ThemeWrapper / ThemeEditorPage) sets __MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS on
-        // window. If the API URL/id is missing (e.g. an isolated standalone test page) we can't save.
-        if (!mswApiUrl()) { toast('Simpan butuh konteks aplikasi (API tidak tersedia di sini).'); return; }
-        if (!mswThemeId()) { toast('Tema belum punya ID — simpan tema dulu sekali di Editor Tema.'); return; }
-        var a = $('msw-tuner-auth'); if (!a) return;
-        setAuthMsg('');
-        var u = $('msw-tuner-auth-user'); var p = $('msw-tuner-auth-pass');
-        if (p) p.value = '';
-        a.classList.add('show');
-        if (u) setTimeout(function () { u.focus(); }, 30);
-    }
-    function closeSaveAuth() { var a = $('msw-tuner-auth'); if (a) a.classList.remove('show'); }
-
-    var _saving = false;
-    function doSaveTune() {
-        if (_saving) return;
-        var u = ($('msw-tuner-auth-user') || {}).value || '';
-        var p = ($('msw-tuner-auth-pass') || {}).value || '';
-        if (!u || !p) { setAuthMsg('Username & password wajib diisi.'); return; }
-
-        var src = mswThemeJs();
-        var patched = patchJsSource(src);
-        if (!patched) { setAuthMsg('Gagal menemukan TUNE_DEFAULTS di source JS tema.'); return; }
-
-        _saving = true;
-        var okBtn = $('msw-tuner-auth-ok'); if (okBtn) okBtn.disabled = true;
-        var saveBtn = $('msw-tuner-save'); if (saveBtn) saveBtn.disabled = true;
-        setAuthMsg('Memvalidasi otorisasi…', true);
-
-        // 1) LOGIN → token (must be superadmin)
-        mswApiPost({ action: 'login', username: u, password: p }).then(function (res) {
-            if (!res || !res.success || !res.data || !res.data.token) {
-                throw new Error((res && res.message) || 'Login gagal.');
-            }
-            if (!res.data.user || res.data.user.role !== 'superadmin') {
-                throw new Error('Hanya superadmin yang boleh menyimpan tema.');
-            }
-            var token = res.data.token;
-            setAuthMsg('Otorisasi OK. Menyimpan ke tema…', true);
-
-            // 2) CHUNKED updateTheme — js columns sent verbatim (≤50k each), __chunked flag set.
-            var cols = splitJsColumns(patched);
-            var id = mswThemeId();
-            // send all columns in ONE updateTheme call (each ≤50k; whole body well under the limit)
-            var body = { action: 'updateTheme', id: id, __chunked: true, token: token, tenant_id: 'system' };
-            for (var k in cols) body[k] = cols[k];
-            return mswApiPost(body);
-        }).then(function (res) {
-            if (!res || !res.success) throw new Error((res && res.message) || 'Gagal menyimpan tema.');
-            // keep the in-iframe copy in sync so a second save re-patches the NEW source
-            try { window.__MSW_THEME_JS = patched; } catch (e) {}
-            setAuthMsg('Tersimpan! Posisi sprite kini jadi default tema.', true);
-            toast('💾 Tersimpan ke tema — nilai ini kini default permanen.', 3500);
-            setTimeout(closeSaveAuth, 900);
-        }).catch(function (err) {
-            setAuthMsg((err && err.message) ? err.message : 'Terjadi kesalahan saat menyimpan.');
-        }).then(function () {
-            _saving = false;
-            if (okBtn) okBtn.disabled = false;
-            if (saveBtn) saveBtn.disabled = false;
-        });
-    }
-
     init();
 
     /* =================================================================
@@ -1103,6 +1017,7 @@
                 else { toast('Selamatkan semua POW dulu — atau tekan ★ untuk buka langsung'); }
             },
             'msw-star-btn': toggleCheat,
+            'msw-sfx-btn': toggleSfx,
             'msw-stagesel-btn': openStageSelect,
             'msw-stagesel-ok': function () { hideOverlays(); startRun(pendingStage); },
             'msw-stagesel-close': function () { hideOverlays(); resumeGame(); },
@@ -1119,11 +1034,7 @@
             'msw-tuner-btn': toggleTuner,
             'msw-tuner-close': function () { var p = $('msw-tuner'); if (p) p.classList.remove('show'); },
             'msw-tuner-reset': resetTuner,
-            'msw-tuner-copy': copyTuner,
-            // SAVE flow (superadmin auth dialog → bake into theme JS via the save API)
-            'msw-tuner-save': openSaveAuth,
-            'msw-tuner-auth-cancel': closeSaveAuth,
-            'msw-tuner-auth-ok': doSaveTune
+            'msw-tuner-copy': copyTuner
         };
         // difficulty buttons handled here too (data-diff), plus backdrop dismiss for modal/lightbox.
         var delegated = function (e) {
@@ -1292,6 +1203,9 @@
     }
 
     function wireMusicMirror() {
+        // Keep the hidden host music button's icon mirrored to the real audio (purely internal —
+        // the guest never sees this button now; it only exists so setMusic() can auto-play the
+        // backsound when the invitation opens). The AUDIBLE guest control is the SFX button.
         var bg = $('bg-music');
         if (bg) {
             var onPlay = function () { reflectMusicIcon(true); };
@@ -1299,13 +1213,9 @@
             bg.addEventListener('play', onPlay); bg.addEventListener('pause', onPause);
             onCleanup(function () { bg.removeEventListener('play', onPlay); bg.removeEventListener('pause', onPause); });
         }
-        // user toggling the music button directly should still feel responsive
-        var btn = $('btn-toggle-music');
-        if (btn) {
-            var h = function () { musicWanted = !hostMusicPlaying(); /* let host flip; reflect on event */ };
-            btn.addEventListener('click', h);
-            onCleanup(function () { btn.removeEventListener('click', h); });
-        }
+        reflectMusicIcon(hostMusicPlaying());
+        // paint the SFX-mute button to its persisted state on every (re)wire
+        reflectSfxIcon();
     }
 
     /* =================================================================
@@ -1327,6 +1237,26 @@
         // to PRESS START. window survives re-injection; this is the fix for "START muncul lagi".
         try { window.__mswStarted = { sector: sector }; } catch (e) {}
         wireInputOnce();
+        // BLANK-CANVAS FIX ("hack mode → pindah stage by dialog → blank"): if a Phaser game is
+        // ALREADY live, DON'T destroy+recreate the whole P.Game. Phaser's GAME.destroy(true) is
+        // DEFERRED (it runs on the game's next step), so calling it then synchronously building a
+        // new P.Game on the SAME #gw-stage parent races: the old game's deferred teardown fires
+        // AFTER the new canvas mounts and rips it out → blank #gw-stage. Instead, reuse the running
+        // scene and just hot-load the new sector (same path nextSector() uses), exactly like the
+        // in-game stage progression — no canvas churn, no race. Only do a fresh boot when there is
+        // genuinely no live game (first start, or after a real teardown).
+        var sc = scene();
+        if (GAME && sc && sc.loadSector) {
+            if (sector > STORE.maxSector) { STORE.maxSector = sector; saveStore(); }
+            if (sc.scene.isPaused()) sc.scene.resume();   // dialog left it paused
+            // sync the live scene's run mirrors before it rebuilds
+            sc.score = runState.score; sc.lives = runState.lives;
+            sc.sectorIdx = sector;
+            sc.cheatOn = cheat.on;
+            if (sc.player && sc.player.setCheat) sc.player.setCheat(cheat.on);
+            sc.showBriefing(sector);   // briefing → "MULAI" → loadSector() builds + reveals
+            return;
+        }
         startWhenReady();   // boots Phaser + Game scene (idempotent via cleanup)
         // briefing shown by scene create
     }
@@ -2202,7 +2132,11 @@
             // body so the green/brown earth runs all the way to the bottom of the play area.
             if (!this.groundFill) this.groundFill = this.add.group();
             this.groundFill.clear(true, true);
-            var fillTop = GROUND_Y + 64;            // just under the tile row
+            // Start the dirt-fill ~10px HIGHER than the tile bottom so it tucks UNDER the ground
+            // tiles (depth -3 < ground -2) and covers the 1px sliver that leaked between the tile
+            // row and the fill ("1 helai tipis di bawah ground"). The ground tiles themselves stay
+            // exactly where they are — only this fill is raised to overlap the gap.
+            var fillTop = GROUND_Y + 64 - 10;       // overlap up under the tile row
             if (fillTop < BH + 64) {
                 var fill = this.add.graphics().setDepth(-3);
                 fill.fillStyle(0x3a4a2a, 1);        // same earth tone as t_ground base
@@ -2383,12 +2317,17 @@
 
                 } else if (pattern === 1) {
                     // HIGH GROUND — reachable staircase; turret/range perched up top guarding a crate.
+                    // The upper ledge is t_plat (96px) at scale 1.1 → ~106px wide → halfW ≈ 53px.
+                    // Keep BOTH the crate and the perched enemy WITHIN that halfW or they float
+                    // (the old turret at tx+70 sat ~17px past the right edge → "turret melayang").
                     staircase(zx + 200, function (tx, ty) {
-                        self.spawnCrate(tx, ty, self.rollWeapon(idx));
+                        // crate to the LEFT of the ledge center; perched enemy to the RIGHT — both
+                        // comfortably inside the plank (±36px from center).
+                        self.spawnCrate(tx - 30, ty, self.rollWeapon(idx));
                         // perched enemy sits ON the ledge surface (ty). turret: y=surface (feet
                         // anchored in spawnEnemy); range has gravity and will settle, so spawn it
                         // slightly above so it drops onto the ledge.
-                        emit(idx >= 1 ? 'turret' : 'range', tx + 70, idx >= 1 ? ty : ty - 30);
+                        emit(idx >= 1 ? 'turret' : 'range', tx + 32, idx >= 1 ? ty : ty - 30);
                     });
                     this.spawnBarrel(zx + 140, GROUND_Y - 18);
 
@@ -2591,13 +2530,22 @@
         };
         GameScene.prototype.breakCrate = function (c) {
             var w = c.getData('weapon');
-            var x = c.x, y = c.y; c.destroy();
-            this.burst(x, y, 0xffd447, 8);
-            var p = this.pickups.create(x, y, 't_amplop'); // reuse small sprite; tint by weapon
-            p.setData('weapon', w); p.body.setAllowGravity(true);
+            // The crate is ORIGIN-BOTTOM, so c.y is its BOTTOM = the surface it sits on (ground or
+            // ledge). The old code spawned the pickup AT c.y with a center origin → its body center
+            // started ON the surface, i.e. already HALF-BELOW the ground's top collision face, so the
+            // arcade collider couldn't catch it and gravity dragged it straight through the floor →
+            // "amplop jatuh ke bawah, gabisa diambil" (worst on flat ground crates). Spawn the pickup
+            // a bit ABOVE the surface and pop it up slightly so it falls cleanly and the pickups↔
+            // platforms collider lands it ON the ground/ledge where the player can grab it.
+            var x = c.x, surfaceY = c.y; c.destroy();
+            this.burst(x, surfaceY - 16, 0xffd447, 8);
+            var p = this.pickups.create(x, surfaceY - 26, 't_amplop'); // reuse small sprite; tint by weapon
+            p.setData('weapon', w);
+            p.body.setAllowGravity(true);
+            p.body.setVelocity(0, -120);          // small pop so it arcs down onto the surface
             p.setTint(w === 'H' ? 0xffd447 : w === 'S' ? 0xff8a3d : w === 'F' ? 0xff5a4d : 0x9bd6ff);
-            // letter label
-            var lbl = this.add.text(x, y, w, { fontFamily: 'monospace', fontSize: '14px', color: '#11160f', fontStyle: 'bold' }).setOrigin(0.5);
+            // letter label — follows the pickup (kept in sync each frame via the pickup updater)
+            var lbl = this.add.text(x, p.y, w, { fontFamily: 'monospace', fontSize: '14px', color: '#11160f', fontStyle: 'bold' }).setOrigin(0.5).setDepth(6);
             p.setData('lbl', lbl);
         };
         GameScene.prototype.takePickup = function (k) {
@@ -3049,6 +2997,13 @@
             // bullets cull
             this.cullGroup(this.bullets); this.cullGroup(this.ebullets);
 
+            // keep each weapon-pickup's letter label glued to the falling/resting pickup
+            this.pickups.getChildren().forEach(function (k) {
+                if (!k.active) return;
+                var lbl = k.getData('lbl');
+                if (lbl) { lbl.x = k.x; lbl.y = k.y; }
+            });
+
             // camera shake from trauma (Bible §10)
             this.trauma = Math.max(0, this.trauma - delta / 600);
             if (this.trauma > 0.01) { this.cameras.main.shake(40, (this.trauma * this.trauma) * 0.04, true); }
@@ -3081,8 +3036,13 @@
             var cam = this.cameras.main, edge = cam.scrollX + BW;
             while (this._spawnNext < this.spawnList.length && edge >= this.spawnList[this._spawnNext].x) {
                 var r = this.spawnList[this._spawnNext++];
-                // born at/just inside the right edge so wide sprites slide in cleanly
-                var bx = Math.max(r.x, edge - 8);
+                // Mobile mooks (rush/range/tank/drone) are born at/just inside the right edge so
+                // wide sprites slide in cleanly — they then walk to position. But a TURRET is
+                // IMMOVABLE: pushing it to `edge - 8` (when the record triggers a frame late) plants
+                // it OFF its ledge → "turret melayang tanpa pijakan". Perched/stationary types must
+                // be born at their EXACT recorded x so they land on the platform they were placed on.
+                var perched = (r.type === 'turret');
+                var bx = perched ? r.x : Math.max(r.x, edge - 8);
                 this.spawnEnemy(r.type, bx, r.y);
             }
             // despawn enemies that have scrolled well off the left (return to pool)

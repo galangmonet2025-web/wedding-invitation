@@ -308,6 +308,48 @@
 }
 .msw-iconbtn:hover { color: var(--msw-amber); filter: brightness(1.1); }
 .msw-iconbtn:active { transform: translateY(3px); box-shadow: 0 0 0 #0a0f08, inset 0 1px 0 rgba(255,255,255,.1); }
+/* QR-kehadiran icon — a real mini QR drawn with CSS (3 hollow finder squares with
+   solid centers + scattered data dots) so it reads clearly as a scan code instead
+   of the old ambiguous ▤ glyph. currentColor → recolors on hover with the button. */
+.msw-qr-btn .msw-qr-ico {
+    width: 22px; height: 22px; display: block; color: inherit;
+    background:
+        /* hollow finder-square borders (corners) */
+        repeating-linear-gradient(currentColor 0 0) 0 0/8px 2px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 0 6px/8px 2px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 0 0/2px 8px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 6px 0/2px 8px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 100% 0/8px 2px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 100% 6px/8px 2px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) calc(100% - 6px) 0/2px 8px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 100% 0/2px 8px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 0 100%/8px 2px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 0 calc(100% - 6px)/8px 2px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 0 100%/2px 8px no-repeat,
+        repeating-linear-gradient(currentColor 0 0) 6px 100%/2px 8px no-repeat,
+        /* solid centers of the three finder squares */
+        radial-gradient(currentColor 50%, transparent 0) 3px 3px/2px 2px no-repeat,
+        radial-gradient(currentColor 50%, transparent 0) calc(100% - 3px) 3px/2px 2px no-repeat,
+        radial-gradient(currentColor 50%, transparent 0) 3px calc(100% - 3px)/2px 2px no-repeat,
+        /* scattered data dots (bottom-right quadrant) */
+        linear-gradient(currentColor 0 0) 100% 100%/4px 4px no-repeat,
+        linear-gradient(currentColor 0 0) 72% 100%/3px 3px no-repeat,
+        linear-gradient(currentColor 0 0) 100% 72%/3px 3px no-repeat,
+        linear-gradient(currentColor 0 0) 50% 60%/3px 3px no-repeat;
+}
+/* SFX toggle — 2 distinct icons (🔊 SFX on / 🔇 OFF) each with a tiny state badge so it
+   reads clearly whether GAME sound effects are on or off. JS toggles which span shows. */
+.msw-music-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.msw-music-tag {
+    position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%);
+    font-family: monospace; font-size: 7px; font-weight: 700; letter-spacing: .04em;
+    padding: 0 2px; border-radius: 2px; line-height: 1.4; pointer-events: none;
+}
+.msw-music-ico.is-off .msw-music-tag { background: #5a2424; color: #ffb3a8; }
+.msw-music-ico.is-on  .msw-music-tag { background: #1f5a3a; color: #8af0b0; }
+/* SFX button: subtle green glow when ON; desaturated when muted */
+.msw-sfx-btn:not(.is-muted) { border-color: var(--msw-cyan); box-shadow: 0 3px 0 #0a0f08, 0 0 10px rgba(79,214,200,.4), inset 0 1px 0 rgba(255,255,255,.14); }
+.msw-sfx-btn.is-muted { filter: grayscale(.5); opacity: .8; }
 .msw-star-btn.is-on { background: linear-gradient(180deg, #ffd05a, var(--msw-amber)); color: var(--msw-ink); border-color: #7a5410; }
 .msw-view-btn.is-locked { opacity: .42; filter: grayscale(.6); }
 .msw-view-btn:not(.is-locked) { border-color: var(--msw-cyan); box-shadow: 0 0 12px rgba(79,214,200,.5); animation: msw-pulse 1.6s ease-in-out infinite; }
@@ -410,44 +452,6 @@
     font-size: 10px; cursor: pointer;
 }
 .msw-tuner-foot button:hover { filter: brightness(1.2); color: #ffd447; }
-/* SAVE button — accent it so it reads as the primary commit action. */
-.msw-tuner-save {
-    background: var(--msw-red) !important; color: #fff !important;
-    border-color: #ff8a6a !important; font-weight: bold;
-}
-.msw-tuner-save:hover { color: #fff !important; }
-.msw-tuner-save:disabled { opacity: .55; cursor: progress; }
-
-/* ---------- superadmin auth dialog (Simpan) ---------- */
-.msw-tuner-auth {
-    position: absolute; inset: 0; z-index: 5; display: none;
-    align-items: center; justify-content: center;
-    background: rgba(8, 12, 8, .82); border-radius: inherit;
-}
-.msw-tuner-auth.show { display: flex; }
-.msw-tuner-auth-card {
-    width: 86%; max-width: 320px; padding: 16px;
-    background: #141c12; border: 2px solid #b7a36a; border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-family: var(--msw-mono);
-}
-.msw-tuner-auth-title { color: #ffd447; font-size: 12px; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px; }
-.msw-tuner-auth-sub { color: #b9b08c; font-size: 10px; line-height: 1.5; margin-bottom: 12px; }
-.msw-tuner-auth-input {
-    width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 9px 10px;
-    background: rgba(20, 28, 18, .9); border: 1px solid #6a6248; border-radius: 6px;
-    color: #e8e0c8; font-family: var(--msw-mono); font-size: 12px;
-}
-.msw-tuner-auth-input:focus { outline: none; border-color: #ffd447; }
-.msw-tuner-auth-msg { min-height: 14px; font-size: 10px; margin-bottom: 8px; color: #ff8a6a; }
-.msw-tuner-auth-msg.ok { color: #6ad08a; }
-.msw-tuner-auth-foot { display: flex; gap: 8px; }
-.msw-tuner-auth-foot button {
-    flex: 1; padding: 9px 4px; border-radius: 6px; cursor: pointer;
-    font-family: var(--msw-mono); font-size: 11px; border: 1px solid #b7a36a;
-}
-.msw-tuner-auth-cancel { background: rgba(20, 28, 18, .8); color: #e8e0c8; }
-.msw-tuner-auth-ok { background: var(--msw-red); color: #fff; border-color: #ff8a6a; font-weight: bold; }
-.msw-tuner-auth-foot button:disabled { opacity: .55; cursor: progress; }
 /* The panel shows whenever toggled (.show). Its ★ trigger lives inside the desktop-only
    side panel, so in practice it only opens on a real PC anyway — but we DON'T hard-gate the
    panel itself with !important (that hid it inside the narrower Theme-Editor preview iframe,
@@ -630,12 +634,27 @@
     background: var(--msw-bg);
 }
 .msw-reveal.show { display: flex; animation: msw-fadein .25s ease; }
+/* extra bottom padding so the last content clears the floating "back to game" pill */
+.msw-reveal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+/* FLOATING "back to game" button — pinned to the bottom-right corner, over the scroll.
+   Arcade pill: olive metal, amber border, hard bottom edge, press-down on tap. Respects
+   the mobile safe-area inset so it isn't hidden behind the home indicator. */
 .msw-reveal-close {
-    position: sticky; top: 0; z-index: 2; width: 100%; padding: 11px; border: none; cursor: pointer;
-    font-family: var(--msw-mono); font-weight: 700; font-size: 12px; letter-spacing: 1px;
-    background: var(--msw-olive-d); color: var(--msw-cream);
+    position: absolute; z-index: 3; right: 14px; bottom: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    padding: 11px 16px; border-radius: 999px;
+    font-family: var(--msw-mono); font-weight: 800; font-size: 12px; letter-spacing: 1px;
+    color: var(--msw-cream);
+    background: linear-gradient(180deg, #5d7349 0%, var(--msw-olive) 45%, var(--msw-olive-d) 100%);
+    border: 2px solid var(--msw-amber); border-bottom-width: 4px;
+    box-shadow: 0 4px 0 #14180e, 0 6px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.18);
+    transition: transform .08s, filter .12s, box-shadow .08s;
 }
-.msw-reveal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.msw-reveal-close:hover { filter: brightness(1.1); color: var(--msw-amber); }
+.msw-reveal-close:active { transform: translateY(3px); box-shadow: 0 1px 0 #14180e, 0 3px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12); }
+.msw-reveal-close-ico { font-size: 15px; line-height: 1; }
+.msw-reveal-close-txt { line-height: 1; }
 
 /* ---------- invitation sections (shared by reveal + modal clones) ---------- */
 .msw-invitation { display: none; } /* #inv-source is the hidden binding source */

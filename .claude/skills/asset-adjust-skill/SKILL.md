@@ -8,16 +8,13 @@ description: >
   output yang LANGSUNG dimodif ke 3 file tema: (1) EXPORTER — tombol yang meng-generate satu PNG
   sprite sheet dari tekstur prosedural game saat ini, tiap frame diberi BORDER UNGU sebagai penanda
   batas yang dibaca index.js, sehingga user bisa me-replace isi tiap kotak lalu upload balik ke
-  asset tema → langsung ter-apply (engine meng-key-out border ungu). (2) SPRITE TUNER — tombol di
-  pojok KANAN-BAWAH (hanya PC), klik → pop-up di sisi KANAN layar berisi LIST sprite + SLIDER
+  asset tema → langsung ter-apply (engine meng-key-out border ungu). (2) SPRITE TUNER ("ATUR POSISI
+  SPRITE") — POSISI & TOMBOL AKSESNYA DISAMAKAN PERSIS dengan tema `metalslug-wedding`: pemicu = ★
+  TERSEMBUNYI inline di side-badge panel-kanan (PC only), panel = overlay fixed di kiri-atas panel
+  kanan (left:480px, list 2-kolom). Klik → pop-up berisi LIST sprite + SLIDER
   naik/turun + ANGKA indikator; pop-up TIDAK mem-pause game & config LANGSUNG ter-apply (live). User
-  yang menentukan nilainya; nilai final di-"Salin" lalu diserahkan untuk kamu BAKE ke kode — ATAU
-  (3) SIMPAN KE TEMA — tombol "💾 Simpan" di panel tuner yang, dengan OTORISASI SUPERADMIN
-  (dialog username/password), mem-BAKE nilai tuner saat ini ke baris default offset di source JS
-  tema lalu MENYIMPANNYA ke DB lewat API yang SAMA dengan tombol Save di halaman Edit Tema
-  (login → updateTheme chunked), sehingga nilai jadi default permanen untuk semua tamu tanpa
-  intervensi developer. Patuh kontrak host (ThemeWrapper) — cleanup hook, ID host verbatim,
-  jangan putar backsound tenant.
+  yang menentukan nilainya; nilai final di-"Salin" lalu diserahkan untuk kamu BAKE ke kode.
+  Patuh kontrak host (ThemeWrapper) — cleanup hook, ID host verbatim, jangan putar backsound tenant.
 ---
 
 # Skill: Pemasang "Asset Adjuster" untuk Tema Game Undangan yang Sudah Jadi
@@ -39,19 +36,16 @@ gameplay**.
 >    **mengganti isi tiap kotak** dengan art buatannya (mempertahankan posisi/ukuran kotak), lalu
 >    **upload ke asset tema** → engine memuat & **meng-slice di koordinat yang sama** → langsung
 >    ter-apply. Border ungu **di-key-out** engine saat load (lihat §4).
-> 2. **SPRITE TUNER** — tombol kecil di **pojok kanan-bawah** (muncul **hanya di PC**), klik →
->    **pop-up di sisi kanan layar** berisi **list tiap sprite + slider naik/turun (−/+) + angka px**.
->    Pop-up **tidak mem-pause** game; menggeser slider **langsung menggeser** sprite hidup di layar
->    (live-apply) **dan** disimpan ke `localStorage`. Tombol **"Salin nilai"** menyalin hasil
->    (JSON `{id: offsetPx}`) agar user kirim balik → kamu **bake** ke kode sebagai offset permanen.
-> 3. **SIMPAN KE TEMA (superadmin)** — tombol **"💾 Simpan"** di foot panel tuner. Klik → **dialog
->    otorisasi username/password**. Bila login valid **dan** role `superadmin`, tema **menulis ulang
->    baris default-offset di source JS-nya sendiri** dengan nilai tuner saat ini, lalu **menyimpan
->    source itu ke DB** lewat **API yang sama** dengan tombol Save di halaman Edit Tema (`login` →
->    `updateTheme` chunked). Hasil: nilai jadi **default permanen** untuk **semua tamu**, tanpa
->    developer perlu mem-bake manual. Ini melengkapi §5: user bisa **menyimpan sendiri** tanpa
->    mengirim JSON. (§2.5 — perlu *bridge global* dari host; di luar Editor Tema tombol hanya memberi
->    toast bahwa Simpan khusus editor.)
+> 2. **SPRITE TUNER ("ATUR POSISI SPRITE")** — **POSISI & TOMBOL AKSESNYA WAJIB DISAMAKAN PERSIS**
+>    dengan `metalslug-wedding` (lihat §2.0): tombol pemicu = **★ tersembunyi inline di dalam
+>    side-badge panel-kanan** (mis. `class="<prefix>-tuner-btn"` di `.<prefix>-side-badge`), bukan
+>    tombol melayang di pojok; **muncul hanya di PC** karena panel-kanan-nya sendiri PC-only. Panel =
+>    **overlay `position:fixed; top:0; left:480px`** (kiri-atas panel kanan, tepat di kanan frame
+>    game 480px), `width:~440px`, **list 2-kolom**. Klik → pop-up berisi **list tiap sprite + slider
+>    naik/turun (−/+) + angka px**. Pop-up **tidak mem-pause** game; menggeser slider **langsung
+>    menggeser** sprite hidup di layar (live-apply) **dan** disimpan ke `localStorage`. Tombol
+>    **"Salin nilai"** menyalin hasil (JSON `{id: offsetPx}`) agar user kirim balik → kamu **bake**
+>    ke kode sebagai offset permanen.
 
 > **GOLDEN REFERENCE (WAJIB dipelajari, JANGAN disalin buta):**
 > `src/sample-theme/metalslug-wedding/` **sudah** memiliki Sprite Tuner lengkap yang persis sesuai
@@ -59,16 +53,18 @@ gameplay**.
 > - `index.js`: `TUNE_KEY`, `TUNE_SPECS`, `TUNE_MIN/MAX`, `loadTune/saveTune/tuneY`, `buildTuner`,
 >   `toggleTuner`, `resetTuner`, `copyTuner`, dan `GameScene.prototype.applyLiveTune` (live-apply
 >   tanpa pause), serta pemanggilan `tuneY('<id>', y)` di tiap spawner.
-> - `index.html`: blok `#msw-tuner-btn` (pojok kanan-bawah) + panel `#msw-tuner` (list + foot
->   Reset/Salin).
-> - `index.css`: `.msw-tuner-btn` (`position:absolute;right:12px;bottom:16px`), `.msw-tuner`
->   (`right:0;width:300px`), dan **media query PC** `@media (hover:hover) and (pointer:fine)` yang
->   membuat tombol **hanya tampil di PC**.
-> - **FITUR SIMPAN (§2.5) SUDAH ADA di metalslug** — pelajari & tiru: tombol `#msw-tuner-save`,
->   dialog `#msw-tuner-auth` (user/pass), dan di `index.js`: `openSaveAuth`/`closeSaveAuth`/
->   `doSaveTune`, `buildDefaultsLiteral`, `patchJsSource`, `mswApiPost`, `splitJsColumns`, plus
->   pembacaan bridge `window.__MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS`. Di host:
->   `ThemeEditorPage.tsx` meng-inject 3 global itu ke `<head>` iframe preview.
+> - `index.html`: tombol pemicu `#msw-tuner-btn` = **★ inline DI DALAM** `.msw-side-badge`
+>   (`<div class="msw-side-badge"><button class="msw-tuner-btn" id="msw-tuner-btn" …>★</button>
+>   UNDANGAN PERNIKAHAN ★</div>`) — **bukan** tombol melayang di pojok; + panel `#msw-tuner`
+>   (head judul+✕, hint, `#msw-tuner-list`, foot Reset/Salin).
+> - `index.css`: `.msw-tuner-btn` (`display:inline; background:none; border:none; font:inherit;
+>   color:inherit` — menyatu jadi ★ di badge), `.msw-tuner`
+>   (`position:fixed; top:0; left:480px; width:440px; z-index:80; display:none`; `.msw-tuner.show{
+>   display:flex }`), `.msw-tuner-list` (`display:grid; grid-template-columns:1fr 1fr` — 2-kolom).
+>   **PC-only**-nya datang dari panel-kanan (`.msw-cover-side`) yang hanya muncul di
+>   `@media (min-width:1024px) and (orientation:landscape) and (min-aspect-ratio:1/1)` — di situlah
+>   side-badge + ★ ikut tampil. **JANGAN** hard-gate `.msw-tuner` dengan `display:none !important`
+>   (itu menyembunyikannya di preview Theme-Editor yang lebih sempit → tombol terlihat "mati").
 > Tuner di metalslug = **bukti pola bekerja**. Untuk tema lain kamu menyesuaikan daftar sprite-nya.
 > EXPORTER PNG **belum** ada di metalslug — itu bagian BARU yang kamu tambahkan (§3–§4).
 
@@ -104,29 +100,60 @@ gameplay**.
    **`SHEET_MAP`** (frame-map untuk exporter: key → kotak [x,y,w,h] di sheet).
 2. **Pasang SPRITE TUNER** (§2): HTML tombol+panel, CSS (PC-only, kanan), JS (slider live-apply
    tanpa pause + persist + Salin). Tiru pola `metalslug-wedding`.
-3. **Pasang SIMPAN KE TEMA** (§2.5): tombol "💾 Simpan" + dialog auth superadmin di panel tuner;
-   JS yang login → mem-patch baris default-offset di source JS tema → `updateTheme` chunked. Pasang
-   **bridge global** di `ThemeEditorPage.tsx`. Tiru pola `metalslug-wedding`.
-4. **Pasang EXPORTER PNG** (§3): tombol "Export Sprite Sheet (PNG)" di panel tuner → fungsi yang
+3. **Pasang EXPORTER PNG** (§3): tombol "Export Sprite Sheet (PNG)" di panel tuner → fungsi yang
    meng-compose tekstur game → 1 canvas + **border ungu** per kotak → `download`.
-5. **Pasang LOADER + KEY-OUT** (§4): saat tema memuat asset gambar dari slot `{{asset_image_N}}`,
+4. **Pasang LOADER + KEY-OUT** (§4): saat tema memuat asset gambar dari slot `{{asset_image_N}}`,
    slice di `SHEET_MAP` yang sama, **buang piksel border ungu**, bake ke key tekstur game →
    langsung ter-apply. Sediakan **fallback prosedural** (tanpa upload tetap jalan).
-6. **Verifikasi** (§6) lewat Theme Editor / minta user (screenshot headless tak bisa di mesin ini).
-7. **Bake adjustment** (§5): saat user mengirim hasil "Salin nilai", terapkan sebagai offset
-   permanen di kode (atau biarkan dibaca dari `localStorage` — sesuai pilihan §5). Bila user
-   memakai tombol **💾 Simpan** (§2.5), bake terjadi **otomatis** ke DB — langkah manual ini opsional.
+5. **Verifikasi** (§6) lewat Theme Editor / minta user (screenshot headless tak bisa di mesin ini).
+6. **Bake adjustment** (§5): saat user mengirim hasil "Salin nilai", terapkan sebagai offset
+   permanen di kode (atau biarkan dibaca dari `localStorage` — sesuai pilihan §5).
 
 ---
 
-## 2. SPRITE TUNER (tiru `metalslug-wedding`)
+## 2. SPRITE TUNER ("ATUR POSISI SPRITE") — tiru `metalslug-wedding`
 
-**Perilaku WAJIB (sesuai brief user):**
-- **Satu tombol** kecil di **pojok kanan-bawah** (`position:absolute; right:12px; bottom:16px`),
-  **hanya tampil di PC**: bungkus tampilannya di `@media (hover:hover) and (pointer:fine)` (default
-  `display:none`). Di mobile/touch tombol & panel tidak muncul.
-- Klik tombol → **toggle pop-up di sisi KANAN layar** (`position:absolute; top:0; right:0; bottom:0;
-  width:~300px`). **JANGAN `scene.pause()`** — game terus jalan.
+### 2.0 POSISI & TOMBOL AKSES — WAJIB SAMA PERSIS dengan `metalslug-wedding`
+
+Brief user eksplisit: **"POSISI & BUTTON AKSESNYA DISAMAIN"** dengan fitur Sprite Tuner yang sudah
+ada di metalslug. Jadi salin **layout & titik akses** ini apa adanya (hanya prefix `msw-` → prefix
+tema target yang berbeda):
+
+- **TOMBOL AKSES = ★ tersembunyi INLINE di dalam side-badge panel kanan** (judul poster, mis.
+  "UNDANGAN PERNIKAHAN ★"). **BUKAN** tombol melayang di pojok kanan-bawah. Markup persis:
+  ```html
+  <div class="<prefix>-side-badge">
+    <button class="<prefix>-tuner-btn" id="<prefix>-tuner-btn" type="button"
+            title="Atur posisi sprite" aria-label="Atur posisi sprite">★</button> UNDANGAN PERNIKAHAN ★
+  </div>
+  ```
+  CSS tombol: `display:inline; padding:0; margin:0; border:none; background:none; font:inherit;
+  color:inherit; cursor:pointer;` → menyatu jadi ★ pertama pada badge (terlihat seperti dekorasi,
+  tapi bisa diklik).
+- **PANEL = overlay `position:fixed; top:0; left:480px`** (kiri-atas panel kanan, tepat di sebelah
+  kanan frame game 480px), `z-index:80; width:440px; max-width:calc(100vw - 480px); max-height:100vh;
+  display:none; flex-direction:column;`. Saat dibuka tambahkan kelas `.show` → `display:flex`.
+  Daftar slider memakai **grid 2-kolom**: `.<prefix>-tuner-list{ display:grid;
+  grid-template-columns:1fr 1fr; gap:6px 12px; overflow-y:auto; }`.
+- **PC-only datang dari panel kanan**, bukan dari tombolnya. Side-badge + ★ hanya ada di dalam
+  `.<prefix>-cover-side` yang di-show oleh `@media (min-width:1024px) and (orientation:landscape)
+  and (min-aspect-ratio:1/1)`. **JANGAN** menambah `display:none !important` pada `.<prefix>-tuner`
+  (menyembunyikannya di preview Theme-Editor yang lebih sempit → ★ terlihat "mati"); cukup base
+  `display:none` + `.show`.
+- **Isi panel sama persis**: head `ATUR POSISI SPRITE` + ✕ (`#<prefix>-tuner-close`), hint
+  *"Geser slider untuk naik/turunkan sprite (− naik, + turun). Langsung ter-apply."*, list
+  `#<prefix>-tuner-list`, foot **"Reset semua"** (`#<prefix>-tuner-reset`) + **"Salin nilai"**
+  (`#<prefix>-tuner-copy`).
+
+> Jika tema target **tidak punya** panel-kanan/side-badge ala metalslug (mis. layout 1-kolom),
+> **konfirmasikan ke user**: replikasi titik-akses yang setara (★ inline pada badge/header tema yang
+> hanya tampil di PC) dan panel overlay kanan yang sama — tujuannya posisi & cara akses identik
+> secara fungsional, bukan memaksa elemen yang tak ada.
+
+### 2.1 Perilaku WAJIB (sesuai brief user)
+- Tombol akses & panel sesuai **§2.0** (titik akses ★ di side-badge, panel fixed kiri-atas panel
+  kanan). **Hanya tampil di PC** (gate dari panel kanan). Di mobile/touch tidak muncul.
+- Klik tombol → **toggle pop-up** (`.show`). **JANGAN `scene.pause()`** — game terus jalan.
 - Pop-up berisi **list tiap sprite** (satu baris per id di `TUNE_SPECS`): **nama** + **angka
   indikator** (mis. `+12px` / `−8px`) + **slider** `range` (`min=-60 max=60 step=1`).
 - Menggeser slider → panggil `applyLiveTune(id, nilai)` yang **langsung menggeser** sprite hidup
@@ -153,111 +180,15 @@ gameplay**.
   update `baseY` bila ada). Tanpa pause; berlaku seketika.
 - **Wiring tombol** lewat delegated-click yang sudah dipakai tema (daftarkan id tombol tuner di
   peta ACTIONS) **dan** daftarkan listener apa pun ke **cleanup hook**.
-- **HTML**: tombol `#<prefix>-tuner-btn` + panel `#<prefix>-tuner` (head judul+✕, hint, list
-  `#<prefix>-tuner-list`, foot Reset+Salin). **CSS**: tiru `.msw-tuner-btn`/`.msw-tuner` + media
-  query PC-only.
+- **HTML & CSS**: ikuti **§2.0** persis — tombol `#<prefix>-tuner-btn` = ★ inline di side-badge,
+  panel `#<prefix>-tuner` (head judul+✕, hint, list `#<prefix>-tuner-list` grid 2-kolom, foot
+  Reset+Salin), overlay `position:fixed; top:0; left:480px; width:440px`. PC-only diwariskan dari
+  panel kanan (`.<prefix>-cover-side`), **bukan** dari `@media (hover/pointer)` pada tombolnya.
 
 > **Golden Rule §2:** *Tuner murni KOSMETIK posisi — tidak menyentuh hitbox/gameplay.* Live-apply,
-> tanpa pause, persist, PC-only, kanan layar. Nilai final = milik user; kamu hanya menyediakan alat
-> + kelak mem-bake angkanya.
-
----
-
-## 2.5 SIMPAN KE TEMA (otorisasi superadmin → bake otomatis ke DB)
-
-**Tujuan.** Tombol **"💾 Simpan"** di panel tuner agar **superadmin** bisa menjadikan nilai tuner
-saat ini sebagai **default permanen tema** — **tanpa** mengirim JSON ke developer untuk di-bake
-manual (§5). Saat diklik: muncul **dialog username/password**; bila login **valid & role
-`superadmin`**, tema **menulis ulang baris default-offset di source JS-nya sendiri**, lalu
-**menyimpan source itu ke DB** memakai **API yang SAMA** dengan tombol Save di halaman Edit Tema.
-
-### 2.5.1 KEBUTUHAN (mengapa perlu "bridge" host)
-
-Tema berjalan di dalam **iframe** preview Theme Editor (`doc.write(iframeContent)` di
-`ThemeEditorPage.tsx`). Di dalam iframe itu tema **tidak punya**:
-- **URL API** (`import.meta.env.VITE_API_URL` hanya ada saat build React, bukan di string tema).
-- **`id` tema** yang sedang diedit (untuk target `updateTheme`).
-- **source JS tema saat ini** (yang barisnya akan di-patch — tema tak bisa membaca file-nya sendiri).
-
-Maka host **WAJIB meng-inject 3 global** ke `<head>` iframe sebelum JS tema berjalan:
-
-```js
-// di ThemeEditorPage.tsx, di dalam template `iframeContent`, SEBELUM <style>/JS tema:
-<script>
-  window.__MSW_API_URL = ${JSON.stringify(import.meta.env.VITE_API_URL || '')};
-  window.__MSW_THEME_ID = ${JSON.stringify(id || '')};          // null utk tema baru blm tersimpan
-  window.__MSW_THEME_JS = ${JSON.stringify(jsCodeRef.current || '')}; // source JS editor saat ini
-</script>
-```
-
-> **Pakai prefix tema target**, mis. `__GW_API_URL` untuk tema lain. Di `metalslug-wedding` namanya
-> `__MSW_*`. Yang penting: **API URL + theme id + JS source** tersedia di `window` iframe.
-> **Di LUAR Theme Editor** (undangan publik) bridge ini **tidak ada** → tombol Simpan harus hanya
-> menampilkan toast "Simpan hanya tersedia di Editor Tema" dan **tidak** mencoba menyimpan.
-
-### 2.5.2 KONTRAK API (identik dengan halaman Edit Tema)
-
-- **Transport:** `POST` ke `__MSW_API_URL`, header `Content-Type: text/plain` (WAJIB — agar tidak
-  memicu CORS preflight ke Apps Script; sama seperti `apiClient.ts`). Body = JSON string.
-- **Login:** `{ action:'login', username, password }` → sukses balas
-  `{ success:true, data:{ token, user:{ role, … } } }`. **Tolak** bila `user.role !== 'superadmin'`.
-- **Simpan JS (chunked):** `{ action:'updateTheme', id, __chunked:true, token, tenant_id:'system',
-  js_template, js_extra_1..js_extra_10 }`. Backend (`Code.gs > ThemeService.updateTheme`) saat
-  `__chunked` menyalin tiap kolom **apa adanya** (tiap kolom **≤50.000 char**). Karena JS tema satu
-  file biasanya < 550k, **satu** request `updateTheme` cukup (11 kolom sekaligus, total masih jauh
-  di bawah limit body Apps Script).
-- `tenant_id:'system'` untuk superadmin (lihat injeksi `apiClient.ts`).
-
-### 2.5.3 IMPLEMENTASI di `index.js` (tiru `metalslug-wedding`)
-
-1. **Baca bridge:** helper `apiUrl()/themeId()/themeJs()` baca `window.__<PFX>_API_URL/_THEME_ID/
-   _THEME_JS` (string, default `''`).
-2. **`buildDefaultsLiteral()`** — bangun ulang baris konstanta default-offset (di metalslug:
-   `var TUNE_DEFAULTS = { … };`) dari nilai `TUNE` saat ini, **mempertahankan urutan/grup key yang
-   sama** dengan source supaya diff bersih. *Sesuaikan ke nama konstanta default tema target.*
-3. **`patchJsSource(src)`** — ganti blok default lama dengan yang baru:
-   ```js
-   var re = /var\s+TUNE_DEFAULTS\s*=\s*\{[\s\S]*?\};/;   // non-greedy → blok pertama saja
-   if (!re.test(src)) return null;                        // marker hilang → batal aman
-   return src.replace(re, buildDefaultsLiteral());        // .replace non-global → HANYA match pertama
-   ```
-   **PENTING:** deklarasi default ASLI harus **kemunculan pertama** di file. Karena fungsi
-   `buildDefaultsLiteral` sendiri **mengandung** string `'var TUNE_DEFAULTS = {…'`, dan ia berada
-   **setelah** deklarasi asli, `.replace` non-global aman menimpa **hanya** deklarasi asli. Verifikasi
-   dengan mensimulasikan patch (lihat §6) — pastikan builder tetap utuh & hasilnya `node --check` lolos.
-4. **`apiPost(body)`** — `fetch(apiUrl(), { method:'POST', headers:{'Content-Type':'text/plain'},
-   body: JSON.stringify(body) }).then(r=>r.json())`.
-5. **`splitJsColumns(s)`** — pecah jadi `js_template` (0–50k) + `js_extra_1..10` (kelipatan 50k).
-6. **`openSaveAuth()`** — guard: bila `!apiUrl()` → toast "khusus Editor Tema"; bila `!themeId()` →
-   toast "Simpan tema dulu sekali (belum punya ID)"; selain itu tampilkan dialog (`.show`), fokus
-   input user, kosongkan password & pesan.
-7. **`doSaveTune()`** — alur:
-   - validasi user/pass terisi; `patched = patchJsSource(themeJs())`; bila `null` → pesan "marker
-     TUNE_DEFAULTS tak ditemukan".
-   - disable tombol (guard `_saving`), tampilkan "Memvalidasi otorisasi…".
-   - `apiPost({action:'login',username,password})` → cek `success && data.token` **dan**
-     `data.user.role==='superadmin'` (kalau bukan → throw "Hanya superadmin").
-   - `apiPost({action:'updateTheme', id, __chunked:true, token, tenant_id:'system', ...splitJsColumns(patched)})`.
-   - sukses → `window.__<PFX>_THEME_JS = patched` (agar simpan kedua mem-patch source BARU), toast
-     sukses, tutup dialog. Selalu re-enable tombol di `.then` final (mirip `finally`).
-8. **Wiring:** daftarkan id tombol/aksi ke peta **delegated-click** yang sudah dipakai tema:
-   `'<pfx>-tuner-save': openSaveAuth`, `'<pfx>-tuner-auth-cancel': closeSaveAuth`,
-   `'<pfx>-tuner-auth-ok': doSaveTune`. (Delegated-click sudah ter-cleanup → tak perlu listener baru.)
-
-### 2.5.4 HTML & CSS
-
-- **HTML:** tambah tombol `#<pfx>-tuner-save` ("💾 Simpan") di **foot** panel tuner, dan **dialog
-  auth** `#<pfx>-tuner-auth` (overlay di dalam panel, `position:absolute; inset:0`) berisi judul,
-  sub-teks, input `#…-auth-user` (text) + `#…-auth-pass` (password), baris pesan `#…-auth-msg`, dan
-  foot tombol `#…-auth-cancel` + `#…-auth-ok` ("Login & Simpan").
-- **CSS:** tombol Simpan diberi aksen (mis. merah) agar terbaca aksi commit; `.<pfx>-tuner-auth`
-  default `display:none`, `.show{display:flex}`, kartu di tengah panel; input full-width; pesan
-  error merah, sukses (`.ok`) hijau; tombol disabled saat menyimpan.
-
-> **Golden Rule §2.5:** *Simpan = bake otomatis, tapi HANYA superadmin & HANYA di Editor Tema.*
-> Tema tidak boleh menyimpan ke DB tanpa token superadmin valid, dan tidak boleh mencoba menyimpan
-> di luar editor (bridge global absen). Patch hanya menyentuh **baris konstanta default-offset** —
-> **jangan** menulis ulang seluruh file dari nol (rawan merusak); cari-ganti baris itu saja.
+> tanpa pause, persist, **PC-only**, **akses & posisi SAMA PERSIS metalslug** (★ inline di
+> side-badge → panel fixed kiri-atas panel kanan, §2.0). Nilai final = milik user; kamu hanya
+> menyediakan alat + kelak mem-bake angkanya.
 
 ---
 
@@ -334,9 +265,6 @@ Alur: user main → buka tuner → atur slider sampai pas → klik **"Salin nila
   di-`display:none` via flag dev) atau biarkan untuk penyesuaian lanjutan.
 - **Alternatif**: biarkan nilai hanya di `localStorage` per-device (kurang disukai untuk produksi —
   device lain tak dapat). Pilih ini hanya bila user eksplisit minta.
-- **Self-save (§2.5):** bila tema sudah punya tombol **💾 Simpan**, **superadmin bisa mem-bake
-  sendiri** ke DB dari Editor Tema tanpa mengirim JSON ke developer. Bake-manual ini lalu jadi
-  **opsional** — pakai hanya bila kamu yang diminta menyetel angkanya, atau untuk tema tanpa tombol Simpan.
 
 Konfirmasikan ke user pilihan bake sebelum menghapus tombol tuner dari UI publik.
 
@@ -347,17 +275,12 @@ Konfirmasikan ke user pilihan bake sebelum menghapus tombol tuner dari UI publik
 - **Screenshot headless Chrome TIDAK bekerja** di mesin ini (selalu blank) — jangan dipercaya.
 - **Cara benar:** paste 3 file ke **Theme Editor** host
   ([`ThemeEditorPage.tsx`](src/features/admin/pages/ThemeEditorPage.tsx)) → buka preview, **atau**
-  minta user mencoba. Cek: (a) tombol tuner muncul **hanya di PC**, pop-up kanan, game **tak
-  pause**, slider **menggeser sprite live** + angka update; (b) tombol Export menghasilkan PNG
+  minta user mencoba. Cek: (a) **akses & posisi SAMA seperti metalslug** — ★ pemicu di side-badge
+  panel kanan (muncul **hanya di PC**), panel overlay fixed di kiri-atas panel kanan (`left:480px`,
+  list 2-kolom), game **tak pause**, slider **menggeser sprite live** + angka update; (b) tombol
+  Export menghasilkan PNG
   dengan **kotak ber-border ungu** per frame; (c) upload PNG (isi diganti) → art ter-apply & border
   ungu **tidak terlihat** (ter-key-out); (d) **tanpa** upload, game tetap jalan (prosedural).
-- **Simpan (§2.5):** (e) tombol **💾 Simpan** → dialog auth muncul; login **non-superadmin/ salah**
-  → pesan error, **tidak** menyimpan; login **superadmin valid** → toast sukses & nilai tersimpan
-  (refresh tema / buka ulang → default sudah berubah). (f) Di **luar** Editor Tema → tombol hanya
-  toast "khusus editor", tak ada request. (g) **Simulasi patch** sebelum kirim ke user: tulis script
-  Node yang menjalankan `patchJsSource` pada `index.js` tema → pastikan **hanya** deklarasi
-  default ASLI yang tertimpa (fungsi builder utuh), lalu `node --check` hasilnya **lolos**. Juga
-  jalankan `tsc -b` setelah mengubah `ThemeEditorPage.tsx` (build type-check bagian dari build).
 - Logika game boleh diuji via **harness Node** (RAF di-stub) bila perlu, tapi tuner/exporter bersifat
   UI/DOM → paling andal lewat Theme Editor.
 
@@ -365,22 +288,18 @@ Konfirmasikan ke user pilihan bake sebelum menghapus tombol tuner dari UI publik
 
 ## 7. ANTI-PATTERN (jangan lakukan)
 
-- ❌ Tombol tuner muncul di **mobile** → harus PC-only (`@media (hover:hover) and (pointer:fine)`).
+- ❌ Tombol tuner muncul di **mobile** → harus PC-only (gate dari panel kanan `.<prefix>-cover-side`,
+  bukan dari `@media (hover/pointer)` pada tombol; lihat §2.0).
 - ❌ Pop-up **mem-pause** game / butuh tombol "Apply" → harus live-apply tanpa pause, persist otomatis.
-- ❌ Pop-up muncul di tengah/kiri → harus **kanan layar**, tombol pemicu **pojok kanan-bawah**.
+- ❌ **Posisi/akses BEDA dari metalslug** → WAJIB sama persis: pemicu = ★ inline di **side-badge**
+  (bukan tombol melayang di pojok), panel = **overlay fixed kiri-atas panel kanan** (`top:0;left:480px`),
+  bukan di tengah/kiri. (§2.0)
+- ❌ Hard-gate `.<prefix>-tuner` dengan `display:none !important` → tersembunyi di preview Theme-Editor
+  yang sempit, ★ terlihat "mati". Cukup base `display:none` + `.show`.
 - ❌ Koordinat **exporter ≠ loader** → art ter-slice meleset. Keduanya baca `SHEET_MAP` yang sama.
 - ❌ **Lupa key-out border ungu** → garis ungu ikut ter-render di game.
 - ❌ Tidak ada **fallback prosedural** → slot kosong = blank canvas (harus tetap jalan tanpa upload).
 - ❌ Tuner/exporter **mengubah hitbox/gameplay** → murni kosmetik posisi + tooling.
-- ❌ **Simpan tanpa cek role superadmin** → siapa pun bisa menimpa source tema. WAJIB tolak bila
-  `user.role !== 'superadmin'`.
-- ❌ **Simpan mencoba jalan di luar Editor Tema** (bridge global absen) → harus guard & toast saja.
-- ❌ **Menulis ulang seluruh file** saat Simpan → hanya cari-ganti **baris konstanta default-offset**
-  (regex non-greedy, `.replace` non-global). Menimpa seluruh file rawan korup.
-- ❌ **Lupa bridge** di `ThemeEditorPage.tsx` (`__<PFX>_API_URL/_THEME_ID/_THEME_JS`) → tombol Simpan
-  mati di editor. Inject di `<head>` iframe **sebelum** JS tema.
-- ❌ Memakai `Content-Type: application/json` untuk POST API → memicu CORS preflight yang ditolak
-  Apps Script. Pakai **`text/plain`** (sama dengan `apiClient.ts`).
 - ❌ Listener baru **tidak** didaftarkan ke cleanup hook → menumpuk tiap re-inject host.
 - ❌ Melanggar kontrak host (ID verbatim, `audio.play()` backsound tenant).
 - ❌ Mengarang prefix/elemen baru yang bentrok — **pakai prefix tema target** (mis. `msw-`).
@@ -389,15 +308,8 @@ Konfirmasikan ke user pilihan bake sebelum menghapus tombol tuner dari UI publik
 
 ## Rujukan
 
-- **Golden reference Tuner + Simpan:** `src/sample-theme/metalslug-wedding/{index.js,index.html,index.css}`
-  (`TUNE_SPECS`, `buildTuner`, `applyLiveTune`, `#msw-tuner*`, media-query PC-only) **dan** fitur
-  Simpan (`#msw-tuner-save`/`#msw-tuner-auth`, `openSaveAuth`/`doSaveTune`/`patchJsSource`/
-  `buildDefaultsLiteral`/`mswApiPost`/`splitJsColumns`). Tiru polanya.
-- **Bridge host (Simpan):** [`ThemeEditorPage.tsx`](src/features/admin/pages/ThemeEditorPage.tsx) —
-  injeksi `window.__MSW_API_URL/__MSW_THEME_ID/__MSW_THEME_JS` di `<head>` `iframeContent`.
-- **Kontrak API save:** `apiClient.ts` (POST `text/plain`, inject token/tenant_id) + `Code.gs >
-  ThemeService.updateTheme` (cabang `__chunked`, kolom `js_template`+`js_extra_1..10` ≤50k) +
-  `AuthService.login` (balas `data.user.role`).
+- **Golden reference Tuner:** `src/sample-theme/metalslug-wedding/{index.js,index.html,index.css}`
+  (`TUNE_SPECS`, `buildTuner`, `applyLiveTune`, `#msw-tuner*`, media-query PC-only). Tiru polanya.
 - **Mekanisme asset & urutan upload + key-out + frame-map + fallback:**
   [`clone-skill/reference/sprite-sheet-assets.md`](../clone-skill/reference/sprite-sheet-assets.md)
   (APPENDIX P): P.0 slot `{{asset_image_N}}` dari urutan upload, P.4 slice+key-out+downscale+fallback.

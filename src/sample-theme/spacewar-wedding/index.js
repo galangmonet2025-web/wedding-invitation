@@ -39,7 +39,23 @@
     };
 
     var BUILD = 'spacewar-wedding';
-    var VERSION = 'v1.0.0';
+    var VERSION = 'v1.2.0';   // ASSET ADJUSTER: the Sprite Tuner panel now has an "Export Sprite
+    // Sheet (PNG)" button → composes the game's CURRENT textures into ONE PNG (layout = SHEET_MAP
+    // via sheetLayout()), each cell wrapped in a PURPLE guide-border + key label. Replace the art
+    // inside each border, upload to the theme asset slot 6 ({{asset_image_6}}, data-asset=
+    // "sprite_sheet") → the scene preload+sliceSpriteSheet() slices at the IDENTICAL rects, KEYS
+    // OUT the purple border, downscales to native size, and bakes each cell into its texture key
+    // (create/scale/anim use the new art unchanged). Fully playable with NO upload (procedural
+    // fallback via usingSheetAsset flag). PREV (v1.1.0) Ported 4 metalslug fixes: (1) sidebar SFX-mute button (🔊/🔇,
+    // persisted, gates blip(); host music button kept but HIDDEN so setMusic() can still auto-play
+    // the backsound). (2) "KEMBALI" reveal button is now a FLOATING arcade pill at the bottom-right
+    // (was a sticky top bar) + closeReveal() revives the game on return (re-boot if torn down by the
+    // music re-injection, else resume). (3) STAGE-SWITCH CRASH/BLANK fix: startRun() HOT-LOADS the
+    // new sector into the already-live scene (resume → sync score/cheat → showBriefing → loadSector)
+    // instead of GAME.destroy(true)+new P.Game on the same #gw-stage (Phaser's deferred destroy
+    // raced the new canvas → blank). (4) SPRITE TUNER ("ATUR POSISI SPRITE"): hidden ✦ in the side
+    // badge opens a PC-only live offset panel (per-sprite Y slider, persisted, "Salin nilai") via a
+    // per-sector tunable registry (regTune/applyLiveTune) — game keeps running.
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#4fd6ff;color:#0a0c1a;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -128,6 +144,62 @@
         return v;
     }
 
+    /* =================================================================
+       ASSET ADJUSTER — SHEET_MAP (single source of truth for BOTH the PNG
+       exporter and the upload loader). One ordered list of the game's
+       procedural texture keys; a deterministic packer computes each frame's
+       [x,y,w,h] rect on the sheet. The EXPORTER draws the game's textures into
+       these rects + a PURPLE border per cell (a guide the user replaces art
+       inside). The LOADER slices the uploaded PNG at the SAME rects, KEYS OUT
+       the purple border, and bakes each cell back into its texture key — so
+       every existing create/scale/anim call uses the new art unchanged.
+       COORDS MUST be identical on both sides → both call sheetLayout().
+       ================================================================= */
+    var SHEET_BORDER = 2;            // purple guide-border thickness (px)
+    var SHEET_PAD = 10;             // outer margin + gap around each cell (px)
+    var SHEET_LABEL = 14;           // label strip height above each row (px)
+    var SHEET_MARK = { r: 160, g: 0, b: 255 };   // purple marker #a000ff (key-out target)
+    // ORDER = engine texture keys to expose for replacement. ew/eh = native texture size
+    // (1:1 → slice lands exactly on the procedural size). Grouped per category, one cell each.
+    var SHEET_MAP = [
+        // ship poses (multi-frame anim group)
+        { key: 't_ship0', ew: 36, eh: 50 }, { key: 't_ship1', ew: 36, eh: 50 }, { key: 't_ship2', ew: 36, eh: 50 },
+        { key: 't_ship', ew: 36, eh: 50 }, { key: 't_ship_hurt', ew: 36, eh: 50 },
+        // enemies
+        { key: 't_e_drone', ew: 24, eh: 30 }, { key: 't_e_turret', ew: 28, eh: 34 }, { key: 't_e_korvet', ew: 30, eh: 44 },
+        { key: 't_e_flyer', ew: 22, eh: 30 }, { key: 't_e_carrier', ew: 44, eh: 64 }, { key: 't_e_mech', ew: 40, eh: 56 },
+        { key: 't_e_mine', ew: 22, eh: 22 },
+        // boss + reward couple
+        { key: 't_boss', ew: 220, eh: 170 }, { key: 't_couple', ew: 60, eh: 80 },
+        // hazards + items
+        { key: 't_asteroid', ew: 40, eh: 38 }, { key: 't_asteroid_s', ew: 22, eh: 20 }, { key: 't_barel', ew: 26, eh: 30 },
+        { key: 't_lasergate', ew: 200, eh: 16 }, { key: 't_capsule_blue', ew: 22, eh: 16 }, { key: 't_amplop', ew: 30, eh: 24 },
+        // projectiles + fx
+        { key: 't_pbullet', ew: 6, eh: 14 }, { key: 't_laser', ew: 5, eh: 26 }, { key: 't_pmissile', ew: 8, eh: 14 },
+        { key: 't_ebullet', ew: 9, eh: 9 }, { key: 't_erocket', ew: 9, eh: 18 }, { key: 't_spark', ew: 7, eh: 7 }, { key: 't_heart', ew: 11, eh: 11 },
+        // parallax structures
+        { key: 't_planet', ew: 200, eh: 200 }, { key: 't_wreck', ew: 160, eh: 90 }, { key: 't_station', ew: 180, eh: 200 }
+    ];
+    var SHEET_W = 900;   // sheet width; packer wraps rows within this
+    // Deterministic shelf-packer → fills `rect` ([x,y,w,h] of the ART area, inside the border)
+    // on each SHEET_MAP entry, and returns total sheet {w,h}. Same call both sides.
+    function sheetLayout() {
+        var x = SHEET_PAD, y = SHEET_PAD + SHEET_LABEL, rowH = 0, maxX = 0;
+        for (var i = 0; i < SHEET_MAP.length; i++) {
+            var e = SHEET_MAP[i];
+            var cellW = e.ew + SHEET_BORDER * 2, cellH = e.eh + SHEET_BORDER * 2;
+            if (x + cellW + SHEET_PAD > SHEET_W && x > SHEET_PAD) {   // wrap row
+                x = SHEET_PAD; y += rowH + SHEET_PAD + SHEET_LABEL; rowH = 0;
+            }
+            // ART rect = inside the purple border
+            e.rect = [x + SHEET_BORDER, y + SHEET_BORDER, e.ew, e.eh];
+            x += cellW + SHEET_PAD;
+            if (cellH > rowH) rowH = cellH;
+            if (x > maxX) maxX = x;
+        }
+        return { w: SHEET_W, h: y + rowH + SHEET_PAD };
+    }
+
     var toastTimer;
     function toast(msg, ms) {
         var t = $('sw-toast'); if (!t) return;
@@ -180,6 +252,63 @@
         STORE = { unlocked: [], maxSector: 0, best: 0, diff: 'normal', announcedAll: false, completed: false };
         saveStore();
     }
+
+    /* =================================================================
+       SPRITE TUNER (PC dev tool) — per-sprite-type vertical offset (px).
+       Negative = naik (up), positive = turun (down). Read at every spawn
+       anchor via tuneY(); slider changes apply LIVE to existing sprites and
+       persist to localStorage so the user can read off final values + send
+       them back to bake in. Game keeps running while the panel is open.
+       Same access pattern as metalslug-wedding: hidden ✦ in the side badge.
+       ================================================================= */
+    var TUNE_KEY = 'sww_tune_v1';
+    // BAKED DEFAULTS (start from these, then layer any per-device localStorage tweak on top).
+    var TUNE_DEFAULTS = {
+        ship: 0, capsule: 0, power: 0,
+        drone: 0, turret: 0, korvet: 0, flyer: 0, carrier: 0, mech: 0, mine: 0, boss: 0,
+        asteroid: 0, barel: 0, laser: 0,
+        couple: 0, planet: 0, landmark: 0, star: 0, debris: 0
+    };
+    // display order + label + the engine tuneId whose LIVE sprites get nudged when the slider moves.
+    var TUNE_SPECS = [
+        // — Karakter / item —
+        { id: 'ship',     label: 'Kapal (Player)' },
+        { id: 'capsule',  label: 'Kapsul 💌 (Kepingan)' },
+        { id: 'power',    label: 'Kapsul Power (Biru)' },
+        // — Musuh —
+        { id: 'drone',    label: 'Drone' },
+        { id: 'turret',   label: 'Turret' },
+        { id: 'korvet',   label: 'Korvet' },
+        { id: 'flyer',    label: 'Flyer' },
+        { id: 'carrier',  label: 'Carrier' },
+        { id: 'mech',     label: 'Mech' },
+        { id: 'mine',     label: 'Ranjau (Mine)' },
+        { id: 'boss',     label: 'Boss (Stasiun)' },
+        // — Hazard —
+        { id: 'asteroid', label: 'Asteroid' },
+        { id: 'barel',    label: 'Barel Peledak' },
+        { id: 'laser',    label: 'Gerbang Laser' },
+        // — Struktur / parallax —
+        { id: 'couple',   label: 'Mempelai (Reward)' },
+        { id: 'planet',   label: 'Planet' },
+        { id: 'landmark', label: 'Landmark / Stasiun' },
+        { id: 'star',     label: 'Bintang (bg)' },
+        { id: 'debris',   label: 'Debris / Asteroid kecil' }
+    ];
+    var TUNE_MIN = -60, TUNE_MAX = 60;
+    var TUNE = loadTune();
+    function loadTune() {
+        var t = {};
+        TUNE_SPECS.forEach(function (s) { t[s.id] = (typeof TUNE_DEFAULTS[s.id] === 'number') ? TUNE_DEFAULTS[s.id] : 0; });
+        try {
+            var raw = localStorage.getItem(TUNE_KEY);
+            if (raw) { var p = JSON.parse(raw) || {}; TUNE_SPECS.forEach(function (s) { if (typeof p[s.id] === 'number') t[s.id] = p[s.id]; }); }
+        } catch (e) {}
+        return t;
+    }
+    function saveTune() { try { localStorage.setItem(TUNE_KEY, JSON.stringify(TUNE)); } catch (e) {} }
+    // apply an offset to a spawn Y. `id` = TUNE_SPECS id.
+    function tuneY(id, y) { return y + (TUNE[id] || 0); }
 
     /* =================================================================
        WEDDING LAYER — scan #inv-source for REAL sections (Bible APPENDIX W.3)
@@ -308,7 +437,25 @@
         $('sw-reveal').classList.add('show');
         setMusic(true);   // mirror music intent ON when invitation opens
     }
-    function closeReveal() { $('sw-reveal').classList.remove('show'); }
+    function closeReveal() {
+        $('sw-reveal').classList.remove('show');
+        // REVIVE THE GAME on return. Opening the invitation calls setMusic(true) → clicks the
+        // hidden #btn-toggle-music → the host flips isPlaying → host RE-INJECTS this whole theme
+        // (DOM+JS), which runs __gwCleanup() → GAME.destroy(); but init()'s auto-resume is SKIPPED
+        // while #sw-reveal is open. So after the reveal closes the canvas can be dead/blank. Here
+        // we explicitly bring the game back: re-boot if it was torn down, else just resume.
+        try {
+            if (window.__swStarted) {
+                var sc = scene();
+                if (!GAME || !sc) {
+                    var rs = window.__swStarted;
+                    startRun((rs && rs.sector) || 0);
+                } else if (sc.scene.isPaused()) {
+                    sc.scene.resume();
+                }
+            }
+        } catch (e) {}
+    }
 
     function hydrateImages(root) {
         var bgs = root.querySelectorAll('.sw-hero-bg[data-src], .sw-closing-bg[data-src]');
@@ -436,7 +583,24 @@
 
     /* =================================================================
        SFX — Web Audio internal (Bible §11). Game SFX only; never tenant music.
+       The sidebar SFX button toggles `sfxMuted` (persisted). When muted, blip()
+       is a no-op so every game sound (shoot/explode/collect/…) is silenced — the
+       tenant backsound is untouched (host owns that, separate hidden button).
        ================================================================= */
+    var SFX_MUTE_KEY = 'sww_sfx_muted';
+    var sfxMuted = (function () { try { return localStorage.getItem(SFX_MUTE_KEY) === '1'; } catch (e) { return false; } })();
+    function reflectSfxIcon() {
+        var on = $('sw-sfx-on'), off = $('sw-sfx-off');
+        if (on) on.style.display = sfxMuted ? 'none' : '';
+        if (off) off.style.display = sfxMuted ? '' : 'none';
+        var btn = $('sw-sfx-btn'); if (btn) btn.classList.toggle('is-muted', sfxMuted);
+    }
+    function toggleSfx() {
+        sfxMuted = !sfxMuted;
+        try { localStorage.setItem(SFX_MUTE_KEY, sfxMuted ? '1' : '0'); } catch (e) {}
+        reflectSfxIcon();
+        toast(sfxMuted ? '🔇 Suara efek game dimatikan' : '🔊 Suara efek game dinyalakan');
+    }
     var AC = null;
     function audioCtx() {
         if (AC) return AC;
@@ -444,6 +608,7 @@
         return AC;
     }
     function blip(freq, dur, type, vol, slideTo) {
+        if (sfxMuted) return;                 // SFX muted → silence every game sound
         var ac = audioCtx(); if (!ac) return;
         try {
             var o = ac.createOscillator(), g = ac.createGain();
@@ -490,6 +655,7 @@
 
     var GAME = null;
     var defineAndBoot;   // forward decl (real definition appended below)
+    var usingSheetAsset = false;   // true once the uploaded adjuster sheet sliced successfully
     function startWhenReady() {
         ensurePhaser(function () {
             if (!window.Phaser) { showError('Phaser tidak termuat (timeout).'); return; }
@@ -504,6 +670,7 @@
         try { wireMusicMirror(); } catch (e) {}
         try { drawCoupleCanvas(); } catch (e) {}
         try { paintSideBg(); } catch (e) {}
+        try { buildTuner(); } catch (e) {}
         try { var v = $('sw-version'); if (v) v.textContent = VERSION; } catch (e) {}
         try { updateProgress(); } catch (e) {}
         // AUTO-RESUME after a host RE-INJECTION
@@ -597,6 +764,108 @@
         }
     }
 
+    /* =================================================================
+       SPRITE TUNER UI — list + sliders. Toggling does NOT pause the game;
+       slider moves apply LIVE via the scene's applyLiveTune() and persist.
+       Built with pure DOM API (no innerHTML) so nothing can be stripped, and
+       ALWAYS (re)built every time the panel opens (survives host re-injection).
+       ================================================================= */
+    function buildTuner() {
+        var list = $('sw-tuner-list'); if (!list) return;
+        while (list.firstChild) list.removeChild(list.firstChild);
+        TUNE_SPECS.forEach(function (spec) {
+            var v = TUNE[spec.id] || 0;
+            var row = document.createElement('div'); row.className = 'sw-tuner-row';
+            var top = document.createElement('div'); top.className = 'sw-tuner-row-top';
+            var name = document.createElement('span'); name.className = 'sw-tuner-row-name'; name.textContent = spec.label;
+            var valEl = document.createElement('span'); valEl.className = 'sw-tuner-row-val';
+            valEl.id = 'sw-tval-' + spec.id; valEl.textContent = (v > 0 ? '+' : '') + v + 'px';
+            top.appendChild(name); top.appendChild(valEl);
+            var slider = document.createElement('input');
+            slider.type = 'range'; slider.min = TUNE_MIN; slider.max = TUNE_MAX; slider.step = 1;
+            slider.value = v; slider.setAttribute('data-tune', spec.id);
+            var apply = function () {
+                var nv = parseInt(slider.value, 10) || 0;
+                valEl.textContent = (nv > 0 ? '+' : '') + nv + 'px';
+                var sc = scene();
+                if (sc && sc.applyLiveTune) sc.applyLiveTune(spec.id, nv);
+                else { TUNE[spec.id] = nv; saveTune(); }
+            };
+            slider.addEventListener('input', apply);
+            slider.addEventListener('change', apply);
+            row.appendChild(top); row.appendChild(slider);
+            list.appendChild(row);
+        });
+    }
+    function toggleTuner() {
+        var p = $('sw-tuner'); if (!p) return;
+        var opening = !p.classList.contains('show');
+        if (opening) buildTuner();   // ALWAYS rebuild on open (host re-injection can wipe the list)
+        p.classList.toggle('show');
+    }
+    function resetTuner() {
+        var sc = scene();
+        TUNE_SPECS.forEach(function (spec) {
+            var def = (typeof TUNE_DEFAULTS[spec.id] === 'number') ? TUNE_DEFAULTS[spec.id] : 0;
+            if (sc && sc.applyLiveTune) sc.applyLiveTune(spec.id, def);
+            else TUNE[spec.id] = def;
+        });
+        saveTune();
+        buildTuner();
+        toast('Posisi sprite direset ke default');
+    }
+    function copyTuner() {
+        var txt = JSON.stringify(TUNE, null, 2);
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).catch(function () {});
+        else fallbackCopy(txt, function () {});
+        toast('Nilai disalin: <b>' + esc(txt.replace(/\s+/g, ' ')) + '</b>', 4000);
+    }
+
+    /* =================================================================
+       EXPORTER — compose the game's CURRENT textures into ONE PNG sprite
+       sheet (layout = SHEET_MAP via sheetLayout()), each cell wrapped in a
+       PURPLE guide-border + a tiny key label. User replaces the art INSIDE
+       each border, re-uploads to the theme asset slot → the loader slices at
+       the identical rects + keys out the purple → art applies. Needs a LIVE
+       scene (textures exist only after boot). No-op + toast otherwise.
+       ================================================================= */
+    function exportSpriteSheet() {
+        var sc = scene();
+        if (!sc || !sc.textures) { toast('Mulai game dulu (tekan START) agar sprite tersedia untuk diekspor.'); return; }
+        var dim = sheetLayout();   // fills SHEET_MAP[i].rect
+        try {
+            var cv = document.createElement('canvas'); cv.width = dim.w; cv.height = dim.h;
+            var ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+            // dark backdrop so transparent art + purple borders are visible
+            ctx.fillStyle = '#101428'; ctx.fillRect(0, 0, dim.w, dim.h);
+            var mark = 'rgb(' + SHEET_MARK.r + ',' + SHEET_MARK.g + ',' + SHEET_MARK.b + ')';
+            SHEET_MAP.forEach(function (e) {
+                var r = e.rect, ax = r[0], ay = r[1], aw = r[2], ah = r[3];
+                // draw the game texture's source image into the ART rect
+                try {
+                    if (sc.textures.exists(e.key)) {
+                        var src = sc.textures.get(e.key).getSourceImage();
+                        if (src) ctx.drawImage(src, 0, 0, src.width, src.height, ax, ay, aw, ah);
+                    }
+                } catch (e2) {}
+                // PURPLE guide-border around the cell (just outside the art rect)
+                ctx.strokeStyle = mark; ctx.lineWidth = SHEET_BORDER;
+                ctx.strokeRect(ax - SHEET_BORDER / 2, ay - SHEET_BORDER / 2, aw + SHEET_BORDER, ah + SHEET_BORDER);
+                // key label above the cell (purple, OUTSIDE the art so it isn't sliced)
+                ctx.fillStyle = mark; ctx.font = '9px monospace'; ctx.textAlign = 'left';
+                ctx.fillText(e.key, ax - SHEET_BORDER, ay - SHEET_BORDER - 2);
+            });
+            var url = cv.toDataURL('image/png');
+            var a = document.createElement('a');
+            a.href = url; a.download = 'spacewar-wedding-sprite-sheet.png';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            toast('Sprite sheet diunduh. Ganti isi tiap kotak ungu, lalu upload ke asset tema (slot ke-6).', 4200);
+        } catch (e) {
+            toast('Gagal mengekspor sprite sheet (canvas ter-taint?).', 3500);
+            try { console.error('[sww] exportSpriteSheet', e); } catch (e2) {}
+        }
+    }
+
     init();
 
     /* =================================================================
@@ -626,6 +895,7 @@
                 else toast('Kumpulkan semua kapsul 💌 dulu — atau tekan ★ untuk buka langsung');
             },
             'sw-star-btn': toggleCheat,
+            'sw-sfx-btn': toggleSfx,
             'sw-stagesel-btn': openStageSelect,
             'sw-stagesel-ok': function () { hideOverlays(); startRun(pendingStage); },
             'sw-stagesel-close': function () { hideOverlays(); resumeGame(); },
@@ -636,7 +906,13 @@
             'sw-clear-next': function () { hideOverlays(); nextSector(); },
             'sw-modal-close': closeModal,
             'sw-reveal-close': closeReveal,
-            'sw-lightbox-close': function () { var lb = $('sw-lightbox'); if (lb) lb.classList.remove('show'); }
+            'sw-lightbox-close': function () { var lb = $('sw-lightbox'); if (lb) lb.classList.remove('show'); },
+            // SPRITE TUNER (PC) — toggling does NOT pause the game (config applies live)
+            'sw-tuner-btn': toggleTuner,
+            'sw-tuner-close': function () { var p = $('sw-tuner'); if (p) p.classList.remove('show'); },
+            'sw-tuner-reset': resetTuner,
+            'sw-tuner-copy': copyTuner,
+            'sw-tuner-export': exportSpriteSheet
         };
         var delegated = function (e) {
             var t = e.target;
@@ -770,6 +1046,9 @@
     }
 
     function wireMusicMirror() {
+        // Keep the HIDDEN host music button's icon mirrored to the real audio (purely internal —
+        // the guest never sees this button now; it only exists so setMusic() can auto-play the
+        // backsound when the invitation opens). The AUDIBLE guest control is the SFX button.
         var bg = $('bg-music');
         if (bg) {
             var onPlay = function () { reflectMusicIcon(true); };
@@ -777,12 +1056,9 @@
             bg.addEventListener('play', onPlay); bg.addEventListener('pause', onPause);
             onCleanup(function () { bg.removeEventListener('play', onPlay); bg.removeEventListener('pause', onPause); });
         }
-        var btn = $('btn-toggle-music');
-        if (btn) {
-            var h = function () { musicWanted = !hostMusicPlaying(); };
-            btn.addEventListener('click', h);
-            onCleanup(function () { btn.removeEventListener('click', h); });
-        }
+        reflectMusicIcon(hostMusicPlaying());
+        // paint the SFX-mute button to its persisted state on every (re)wire
+        reflectSfxIcon();
     }
 
     /* =================================================================
@@ -795,6 +1071,25 @@
         if (sector === 0) runState.score = 0;
         try { window.__swStarted = { sector: sector }; } catch (e) {}
         wireInputOnce();
+        // BLANK-CANVAS / CRASH FIX ("pindah stage dari dialog → blank/crash"): if a Phaser game is
+        // ALREADY live, DON'T destroy+recreate the whole P.Game. Phaser's GAME.destroy(true) is
+        // DEFERRED (it runs on the game's next step), so calling it then synchronously building a
+        // new P.Game on the SAME #gw-stage parent races: the old game's deferred teardown fires
+        // AFTER the new canvas mounts and rips it out → blank #gw-stage. Instead, reuse the running
+        // scene and just hot-load the new sector (same path nextSector() uses) — no canvas churn,
+        // no race. Only do a fresh boot when there is genuinely no live game.
+        var sc = scene();
+        if (GAME && sc && sc.loadSector) {
+            if (sector > STORE.maxSector) { STORE.maxSector = sector; saveStore(); }
+            if (sc.scene.isPaused()) sc.scene.resume();   // dialog left it paused
+            // sync the live scene's run mirrors before it rebuilds
+            sc.score = runState.score;
+            sc.sectorIdx = sector;
+            sc.cheatOn = cheat.on;
+            if (sc.ship) sc.ship.cheat = cheat.on;
+            sc.showBriefing(sector);   // briefing → "MAJU" → loadSector() builds + reveals
+            return;
+        }
         startWhenReady();
     }
     function resetGame() {
@@ -1067,8 +1362,69 @@
         GameScene.prototype = Object.create(P.Scene.prototype);
         GameScene.prototype.constructor = GameScene;
 
+        var SHEET_KEY = 't_sprite_sheet';
+
+        /* PRELOAD the uploaded adjuster sheet (if any) so create() can slice it before
+           buildTextures(). Empty/unresolved slot → skipped → procedural fallback. */
+        GameScene.prototype.preload = function () {
+            var self = this;
+            var url = assetUrl('sprite_sheet');
+            if (url) {
+                try { if (self.textures.exists(SHEET_KEY)) self.textures.remove(SHEET_KEY); } catch (e) {}
+                this.load.image(SHEET_KEY, url);
+            }
+            this.load.on('loaderror', function (file) { try { self.textures.remove(file.key); } catch (e) {} });
+        };
+
+        /* Slice the uploaded sheet into the procedural texture keys at the SAME rects the
+           exporter drew (sheetLayout()), KEY OUT the purple guide-border, and bake each cell
+           back into its key via addCanvas → every existing create/scale/anim uses the new art
+           unchanged. usingSheetAsset=false (procedural) if the slot is empty / load failed. */
+        GameScene.prototype.sliceSpriteSheet = function () {
+            usingSheetAsset = false;
+            if (!this.textures.exists(SHEET_KEY)) return;
+            var src = this.textures.get(SHEET_KEY).source[0];
+            if (!src || !src.width) return;
+            var img = src.image || src.source; if (!img) return;
+            var dim = sheetLayout();   // fills SHEET_MAP[i].rect — identical coords to the exporter
+            // sanity vs the expected sheet size; bail to procedural if wildly different.
+            if (src.width < dim.w * 0.5 || src.height < dim.h * 0.5) { try { this.textures.remove(SHEET_KEY); } catch (e) {} return; }
+            // scale factor if the user uploaded a larger/smaller sheet (keep proportional)
+            var sxf = src.width / dim.w, syf = src.height / dim.h;
+            var self = this, made = 0;
+            SHEET_MAP.forEach(function (e) {
+                var r = e.rect;
+                var rx = Math.round(r[0] * sxf), ry = Math.round(r[1] * syf);
+                var rw = Math.round(r[2] * sxf), rh = Math.round(r[3] * syf);
+                try {
+                    // 1) cut the cell at the uploaded scale
+                    var cut = document.createElement('canvas'); cut.width = rw; cut.height = rh;
+                    var cctx = cut.getContext('2d'); cctx.imageSmoothingEnabled = false;
+                    cctx.drawImage(img, rx, ry, rw, rh, 0, 0, rw, rh);
+                    // 2) KEY OUT purple guide-border pixels (R>120 && B>180 && G<80) → transparent
+                    var id = cctx.getImageData(0, 0, rw, rh), d = id.data;
+                    for (var p = 0; p < d.length; p += 4) {
+                        if (d[p] > 120 && d[p + 2] > 180 && d[p + 1] < 80) { d[p + 3] = 0; }
+                    }
+                    cctx.putImageData(id, 0, 0);
+                    // 3) downscale back to the native texture size (ew×eh) so all world numbers stay
+                    var dest = document.createElement('canvas'); dest.width = e.ew; dest.height = e.eh;
+                    var dctx = dest.getContext('2d'); dctx.imageSmoothingEnabled = false;
+                    dctx.drawImage(cut, 0, 0, rw, rh, 0, 0, e.ew, e.eh);
+                    // 4) bake into the engine texture key (replaces the procedural draw)
+                    if (self.textures.exists(e.key)) self.textures.remove(e.key);
+                    self.textures.addCanvas(e.key, dest);
+                    made++;
+                } catch (e2) { /* CORS-taint / no canvas → leave this key for procedural */ }
+            });
+            usingSheetAsset = made > 0;
+        };
+
         GameScene.prototype.create = function () {
             var self = this;
+            // Slice the uploaded adjuster sheet FIRST so buildTextures() auto-skips the procedural
+            // draw for any key we replaced (tex() guards on textures.exists).
+            this.sliceSpriteSheet();
             buildTextures(this);
             this.buildAnims();
 
@@ -1157,18 +1513,19 @@
             // far stars (scrollFactor 0.15) — spread along the TALL world (Y axis)
             for (var s = 0; s < Math.ceil(worldH / 60); s++) {
                 var sx = (s * 73) % BW, sy = s * 60 + (s * 37) % 60;
-                reg(this.add.image(sx, sy, 't_star').setScrollFactor(0.15).setDepth(-55).setAlpha(0.4 + (s % 5) * 0.12).setScale(1 + (s % 3)));
+                self.regTune(reg(this.add.image(sx, tuneY('star', sy), 't_star').setScrollFactor(0.15).setDepth(-55).setAlpha(0.4 + (s % 5) * 0.12).setScale(1 + (s % 3))), 'star');
             }
             // mid: planet / wreck / station landmark per sector (scrollFactor 0.4), along Y
             var landmarkTex = idx === 5 ? 't_station' : idx === 4 ? 't_wreck' : 't_planet';
+            var landmarkId = (landmarkTex === 't_planet') ? 'planet' : 'landmark';
             for (var m = 0; m * 1100 < worldH; m++) {
                 var lx = 80 + (m % 2) * (BW - 240);
-                reg(this.add.image(lx, 300 + m * 1100, landmarkTex).setScrollFactor(0.4).setDepth(-45).setAlpha(0.55).setScale(0.7 + (m % 2) * 0.3));
+                self.regTune(reg(this.add.image(lx, tuneY(landmarkId, 300 + m * 1100), landmarkTex).setScrollFactor(0.4).setDepth(-45).setAlpha(0.55).setScale(0.7 + (m % 2) * 0.3)), landmarkId);
             }
             // near: drifting asteroid/debris silhouettes (scrollFactor 0.7) — ambient, along Y
             for (var p = 0; p * 520 < worldH; p++) {
                 var px = this.PLAY_LEFT + 40 + (p * 90) % (this.PLAY_RIGHT - this.PLAY_LEFT - 80), py = 200 + p * 520;
-                reg(this.add.image(px, py, 't_asteroid_s').setScrollFactor(0.7).setDepth(-30).setAlpha(0.5).setScale(0.8 + (p % 3) * 0.4).setAngle((p * 47) % 360));
+                self.regTune(reg(this.add.image(px, tuneY('debris', py), 't_asteroid_s').setScrollFactor(0.7).setDepth(-30).setAlpha(0.5).setScale(0.8 + (p % 3) * 0.4).setAngle((p * 47) % 360)), 'debris');
             }
         };
 
@@ -1202,6 +1559,7 @@
             if (this.bossHpBg) { try { this.bossHpBg.destroy(); this.bossHpFill.destroy(); this.bossHpSmall.destroy(); } catch (e) {} this.bossHpBg = null; }
 
             this.arenaY = null; this.bossActive = false; this.bossDead = false; this.bossPhase = 1;
+            this.tunables = [];   // reset the sprite-tuner registry for this sector
             var isBoss = (idx === C.sectors - 1);
             // VERTICAL: world is TALL. Camera starts at the BOTTOM and rises toward Y=0 (the goal/boss).
             var len = isBoss ? 4800 : 7200;
@@ -1228,6 +1586,45 @@
             this.populateSector(idx, len);
             this.exitY = 260;   // camera reaching near the top (scrollY <= exitY) = sector clear
             this.updateHUD();
+        };
+
+        /* TUNABLE REGISTRY — every sprite the tuner can nudge registers here at creation, tagged
+           with its `tuneId`. This is the single source the live-apply walks, so EVERY sprite type
+           (ship, enemies, capsules, hazards, boss, couple, parallax bg) shifts instantly when its
+           slider moves. Reset per sector in buildSector(). */
+        GameScene.prototype.regTune = function (el, id) {
+            if (!el) return el;
+            if (!this.tunables) this.tunables = [];
+            try { el.setData && el.setData('tuneId', id); } catch (e) {}
+            this.tunables.push({ el: el, id: id });
+            return el;
+        };
+
+        /* SPRITE TUNER live-apply: shift every registered sprite tagged with this id by the DELTA.
+           The ship is a free-flight entity clamped each frame, so its tune is handled at spawn +
+           a transient nudge here; everything else is a plain Y shift (instantly visible). The game
+           keeps running while the panel is open. */
+        GameScene.prototype.applyLiveTune = function (id, newVal) {
+            var oldVal = (TUNE[id] || 0), delta = newVal - oldVal;
+            TUNE[id] = newVal; saveTune();
+            if (!delta) return;
+            // ship: nudge it directly (clamp re-derives its band next frame, so this is transient
+            // but enough to preview; the persisted value re-anchors its spawn each sector).
+            if (id === 'ship') { if (this.ship && this.ship.active) this.ship.y += delta; return; }
+            // EVERYTHING ELSE — plain Y shift via the registry. Prune dead refs as we go.
+            if (this.tunables) {
+                this.tunables = this.tunables.filter(function (rec) {
+                    var s = rec.el;
+                    if (!s || (s.active === false) || (s.scene == null)) return false;   // gone
+                    if (rec.id !== id) return true;
+                    s.y += delta;
+                    if (s.getData && s.getData('baseY') != null) s.setData('baseY', s.getData('baseY') + delta);
+                    if (s.getData && s.getData('worldY') != null) s.setData('worldY', s.getData('worldY') + delta);
+                    if (s.body && s.refreshBody && s.body.immovable) { try { s.refreshBody(); } catch (e2) {} }
+                    return true;
+                });
+            }
+            // boss small-HP bar follows boss.y in updateBossHp(); nothing else to sync.
         };
 
         /* record an inert enemy (born at the camera's TOP edge in update) — Bible §5.4.
@@ -1351,49 +1748,55 @@
            VERTICAL: items live at world-Y. They are placed up the tall world and drift DOWNWARD a
            touch faster than the scroll so they sweep past the player. Clamp uses the X column. */
         GameScene.prototype.placeAsteroid = function (x, y, large) {
-            var a = this.hazards.create(x, y, large ? 't_asteroid' : 't_asteroid_s');
+            var a = this.hazards.create(x, tuneY('asteroid', y), large ? 't_asteroid' : 't_asteroid_s');
             a.setData('type', 'asteroid'); a.setData('hp', large ? 4 : 2); a.setData('large', large);
             a.body.setAllowGravity(false); a.body.setVelocity((Math.random() - 0.5) * 30, this.diff.scroll * 0.4);
             a.body.setImmovable(false);
             a.setData('spin', (Math.random() - 0.5) * 0.6);
             a.body.setCircle((large ? 18 : 9));
+            this.regTune(a, 'asteroid');
             return a;
         };
         GameScene.prototype.placeBarel = function (x, y) {
-            var b = this.hazards.create(x, y, 't_barel');
+            var b = this.hazards.create(x, tuneY('barel', y), 't_barel');
             b.setData('type', 'barel'); b.setData('hp', 1); b.setData('explosive', true);
             b.body.setAllowGravity(false); b.body.setVelocity(0, this.diff.scroll * 0.5);
+            this.regTune(b, 'barel');
             return b;
         };
         GameScene.prototype.placeMine = function (x, y) {
-            var m = this.hazards.create(x, y, 't_e_mine');
+            var m = this.hazards.create(x, tuneY('mine', y), 't_e_mine');
             m.setData('type', 'mine'); m.setData('hp', 1);
             m.body.setAllowGravity(false); m.body.setVelocity(0, this.diff.scroll * 0.5);
+            this.regTune(m, 'mine');
             return m;
         };
         GameScene.prototype.placeLaserGate = function (y) {
-            var self = this, g = this.hazards.create(BW / 2, y, 't_lasergate');
+            var self = this, gy = tuneY('laser', y), g = this.hazards.create(BW / 2, gy, 't_lasergate');
             g.setData('type', 'laser'); g.setData('on', true); g.setData('static', true);
             g.body.setAllowGravity(false); g.body.setImmovable(true);
             g.body.setVelocity(0, 0);   // world-fixed at this Y (spans the width)
-            g.setData('worldY', y);
+            g.setData('worldY', gy);
             g.setData('timer', this.time.addEvent({
                 delay: 1200, loop: true, callback: function () {
                     var on = !g.getData('on'); g.setData('on', on);
                     g.setAlpha(on ? 1 : 0.12);
                 }
             }));
+            this.regTune(g, 'laser');
             return g;
         };
         GameScene.prototype.placeBlueCapsule = function (x, y) {
-            var c = this.capsules.create(clamp(x, this.PLAY_LEFT + 16, this.PLAY_RIGHT - 16), y, 't_capsule_blue');
+            var c = this.capsules.create(clamp(x, this.PLAY_LEFT + 16, this.PLAY_RIGHT - 16), tuneY('power', y), 't_capsule_blue');
             c.setData('kind', 'power');
             c.body.setAllowGravity(false); c.body.setVelocity(0, this.diff.scroll * 0.6);
             this.tweens.add({ targets: c, scaleX: 1.15, scaleY: 1.15, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+            this.regTune(c, 'power');
             return c;
         };
         GameScene.prototype.placePieceCapsule = function (x, y, key) {
             x = clamp(x, this.PLAY_LEFT + 26, this.PLAY_RIGHT - 26);
+            y = tuneY('capsule', y);
             var c = this.capsules.create(x, y, 't_amplop');
             c.setData('kind', 'piece'); c.setData('key', key); c.setData('hp', 1);
             c.body.setAllowGravity(false); c.body.setVelocity(0, this.diff.scroll * 0.5);
@@ -1405,6 +1808,7 @@
             var sos = this.add.text(x, y + 26, '💌', { fontFamily: 'monospace', fontSize: '14px', color: '#ffd447', fontStyle: 'bold' }).setOrigin(0.5).setDepth(7);
             this.tweens.add({ targets: sos, alpha: 0.4, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
             c.setData('sos', sos);
+            this.regTune(c, 'capsule');
             return c;
         };
 
@@ -1412,7 +1816,7 @@
         GameScene.prototype.spawnEnemy = function (type, x, y, fmt) {
             if (type === 'mine') return this.placeMine(x, y);   // mine is a hazard entity
             var texKey = 't_e_' + type;
-            var e = this.enemies.create(x, y, texKey);
+            var e = this.enemies.create(x, tuneY(type, y), texKey);
             e.setData('type', type); e.setData('fmt', fmt);
             e.body.setAllowGravity(false);
             e.setData('baseX', x); e.setData('seed', Math.random() * 6.28); e.setData('aimT', type === 'turret' ? 500 : 900);
@@ -1422,6 +1826,7 @@
             var vy = this.diff.scroll + (type === 'flyer' ? 80 : type === 'mech' || type === 'carrier' ? -30 : 40);
             e.body.setVelocity(0, vy);
             e.setData('vy0', vy);
+            this.regTune(e, type);
             return e;
         };
 
@@ -1441,16 +1846,18 @@
             this.spawnList.sort(function (a, b) { return b.y - a.y; });   // descending y
 
             // the united-couple reward, pinned at the very TOP (revealed on win)
-            this.couple = this.add.image(midX, 90, 't_couple').setScrollFactor(1).setDepth(-4).setAlpha(0.35);
+            this.couple = this.add.image(midX, tuneY('couple', 90), 't_couple').setScrollFactor(1).setDepth(-4).setAlpha(0.35);
+            this.regTune(this.couple, 'couple');
 
             // boss: INACTIVE via alpha (NOT setActive(false) — Bible §16/D.4). Sits near top.
-            var bx = midX, by = 200;
+            var bx = midX, by = tuneY('boss', 200);
             var b = this.physics.add.sprite(bx, by, 't_boss');
             b.body.setAllowGravity(false); b.body.setImmovable(true);
             b.body.setSize(150, 110); b.body.setOffset(35, 10);
             var maxhp = Math.round(this.dps() * this.diff.bossTTK);
             b.setData('hp', maxhp); b.setData('maxhp', maxhp);
             b.setData('homeX', bx); b.setData('atkT', 2200); b.setData('coreDX', 0); b.setData('coreDY', 40);   // core at bottom-center
+            b.setData('tuneId', 'boss');
             b.setAlpha(0);
             this.boss = b;
             this.physics.add.overlap(this.ship, b, function () { if (self.bossActive && !self.ship.cheat) self.shipHit(); });

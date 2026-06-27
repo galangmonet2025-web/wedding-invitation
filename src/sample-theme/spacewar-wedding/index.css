@@ -292,6 +292,18 @@
 }
 .sw-iconbtn:hover { color: var(--sw-cyan); filter: brightness(1.1); }
 .sw-iconbtn:active { transform: translateY(3px); box-shadow: 0 0 0 #05071a, inset 0 1px 0 rgba(255,255,255,.1); }
+/* SFX toggle — 2 distinct icons (🔊 SFX on / 🔇 OFF) each with a tiny state badge so it
+   reads clearly whether GAME sound effects are on or off. JS toggles which span shows. */
+.sw-music-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.sw-music-tag {
+    position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%);
+    font-family: var(--sw-mono); font-size: 7px; font-weight: 700; letter-spacing: .04em;
+    padding: 0 2px; border-radius: 2px; line-height: 1.4; pointer-events: none;
+}
+.sw-music-ico.is-off .sw-music-tag { background: #5a2424; color: #ffb3a8; }
+.sw-music-ico.is-on  .sw-music-tag { background: #1f5a3a; color: #8af0b0; }
+.sw-sfx-btn:not(.is-muted) { border-color: var(--sw-cyan); box-shadow: 0 3px 0 #05071a, 0 0 10px rgba(79,214,255,.4), inset 0 1px 0 rgba(255,255,255,.14); }
+.sw-sfx-btn.is-muted { filter: grayscale(.5); opacity: .8; }
 .sw-star-btn.is-on { background: linear-gradient(180deg, #ffe07a, var(--sw-gold)); color: var(--sw-ink); border-color: #7a5410; }
 .sw-view-btn.is-locked { opacity: .42; filter: grayscale(.6); }
 .sw-view-btn:not(.is-locked) { border-color: var(--sw-cyan); box-shadow: 0 0 12px rgba(79,214,255,.5); animation: sw-pulse 1.6s ease-in-out infinite; }
@@ -339,6 +351,57 @@
     position: absolute; right: 6px; bottom: 4px; z-index: 9; pointer-events: none;
     font-family: var(--sw-mono); font-size: 9px; color: rgba(79,214,255,.5);
 }
+
+/* ---------- SPRITE TUNER (PC dev tool) ----------
+   Access = a HIDDEN ✦ inline at the start of the side badge "UNDANGAN PERNIKAHAN".
+   It blends into the badge (same ink color, no button chrome) so guests don't notice it,
+   but it's clickable. The panel opens as a fixed overlay at the TOP-LEFT of the RIGHT
+   panel (just to the right of the 480px game frame), PC only. */
+.sw-tuner-btn {
+    display: inline; padding: 0; margin: 0; border: none; background: none;
+    font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer;
+    -webkit-appearance: none; appearance: none; line-height: inherit;
+}
+.sw-tuner-btn:hover { color: var(--sw-amber); }
+.sw-tuner {
+    position: fixed; top: 0; left: 480px; z-index: 80; width: 440px; max-width: calc(100vw - 480px); max-height: 100vh;
+    background: #0b1024; border: 2px solid var(--sw-cyan); border-top: none; border-radius: 0 0 8px 0;
+    display: none; flex-direction: column; font-family: var(--sw-mono);
+    box-shadow: 6px 8px 24px rgba(0,0,0,.6);
+}
+.sw-tuner.show { display: flex; }
+.sw-tuner-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid rgba(79,214,255,.4);
+}
+.sw-tuner-title { color: var(--sw-gold); font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+.sw-tuner-x { background: none; border: none; color: #ff6a6a; font-size: 16px; cursor: pointer; line-height: 1; }
+.sw-tuner-hint { padding: 8px 12px; font-size: 10px; color: rgba(154,180,230,.8); line-height: 1.5; }
+.sw-tuner-list {
+    flex: 1; overflow-y: auto; padding: 6px 12px 12px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; align-content: start;
+}
+.sw-tuner-row { margin: 0; }
+.sw-tuner-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.sw-tuner-row-name { color: #d6e2ff; font-size: 11px; }
+.sw-tuner-row-val { color: var(--sw-cyan); font-size: 11px; font-weight: bold; min-width: 42px; text-align: right; }
+.sw-tuner-row input[type="range"] { width: 100%; accent-color: var(--sw-cyan); cursor: pointer; }
+.sw-tuner-foot {
+    display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid rgba(79,214,255,.4);
+}
+.sw-tuner-foot button {
+    flex: 1; padding: 7px 4px; border: 1px solid var(--sw-cyan); border-radius: 6px;
+    background: rgba(20,28,52,.8); color: #d6e2ff; font-family: var(--sw-mono);
+    font-size: 10px; cursor: pointer;
+}
+.sw-tuner-foot button:hover { filter: brightness(1.2); color: var(--sw-gold); }
+.sw-tuner-export-row { padding: 8px 12px 0; }
+.sw-tuner-export {
+    width: 100%; padding: 8px 6px; border: 1px solid var(--sw-gold); border-radius: 6px;
+    background: linear-gradient(180deg, rgba(60,48,18,.9), rgba(34,28,10,.9));
+    color: var(--sw-gold); font-family: var(--sw-mono); font-size: 11px; font-weight: 700; letter-spacing: .04em; cursor: pointer;
+}
+.sw-tuner-export:hover { filter: brightness(1.18); }
 
 /* ---------- touch controls ---------- */
 .sw-touch {
@@ -509,12 +572,26 @@
     background: var(--sw-bg);
 }
 .sw-reveal.show { display: flex; animation: sw-fadein .25s ease; }
+.sw-reveal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+/* FLOATING "back to game" button — pinned to the bottom-right corner, over the scroll.
+   Arcade pill: steel-blue metal, cyan border, hard bottom edge, press-down on tap. Respects
+   the mobile safe-area inset so it isn't hidden behind the home indicator. */
 .sw-reveal-close {
-    position: sticky; top: 0; z-index: 2; width: 100%; padding: 11px; border: none; cursor: pointer;
-    font-family: var(--sw-mono); font-weight: 700; font-size: 12px; letter-spacing: 1px;
-    background: var(--sw-steel-d); color: var(--sw-cream);
+    position: absolute; z-index: 3; right: 14px; bottom: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    padding: 11px 16px; border-radius: 999px;
+    font-family: var(--sw-mono); font-weight: 800; font-size: 12px; letter-spacing: 1px;
+    color: var(--sw-cream);
+    background: linear-gradient(180deg, #2e3a6a 0%, var(--sw-steel) 45%, var(--sw-steel-d) 100%);
+    border: 2px solid var(--sw-cyan); border-bottom-width: 4px;
+    box-shadow: 0 4px 0 #05071a, 0 6px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.18);
+    transition: transform .08s, filter .12s, box-shadow .08s;
 }
-.sw-reveal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.sw-reveal-close:hover { filter: brightness(1.1); color: var(--sw-cyan); }
+.sw-reveal-close:active { transform: translateY(3px); box-shadow: 0 1px 0 #05071a, 0 3px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12); }
+.sw-reveal-close-ico { font-size: 15px; line-height: 1; }
+.sw-reveal-close-txt { line-height: 1; }
 
 /* ---------- invitation sections (shared by reveal + modal clones) ---------- */
 .sw-invitation { display: none; }

@@ -16,9 +16,6 @@ interface ThemeWrapperProps {
     onOpenLightbox: (index: number, images: string[]) => void;
     weddingDate?: string;
     flagUseSystemActionButton?: boolean;
-    /** Theme id of the active theme — exposed to the theme JS (window.__MSW_THEME_ID) so a
-     *  self-contained game theme's "Simpan" tool can persist baked values back to this theme. */
-    themeId?: string;
     children?: React.ReactNode;
 }
 
@@ -38,7 +35,6 @@ export function ThemeWrapper({
     onOpenLightbox,
     weddingDate,
     flagUseSystemActionButton = true,
-    themeId,
     children
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -173,21 +169,6 @@ export function ThemeWrapper({
     // Execute Custom JS Theme Template
     useEffect(() => {
         if (!jsBase) return;
-
-        // SPRITE-TUNER SAVE BRIDGE (published invitation). A self-contained game theme (e.g.
-        // metalslug-wedding) can let a superadmin persist its baked sprite-tuner defaults straight
-        // into this theme's js_template via the same save API as the Theme Editor. The theme reads
-        // these globals, logs the superadmin in itself, rewrites its own defaults line in the source
-        // below, and POSTs updateTheme. On the LIVE invitation the theme runs in the SAME window as
-        // the app (not an iframe), so we expose them on window here. (The Theme Editor preview sets
-        // the same globals inside its iframe.) themeId is undefined when not known → Save shows a
-        // "save the theme first" toast. jsBase IS the theme's current js_template source.
-        try {
-            (window as any).__MSW_API_URL = import.meta.env.VITE_API_URL || '';
-            (window as any).__MSW_THEME_ID = themeId || '';
-            (window as any).__MSW_THEME_JS = jsBase || '';
-        } catch { /* ignore */ }
-
         const scriptId = 'theme-custom-js';
         const existing = document.getElementById(scriptId);
         if (existing) existing.remove();
@@ -225,7 +206,7 @@ export function ThemeWrapper({
         // already injected via dangerouslySetInnerHTML in the same render) and
         // uses document-delegated listeners that survive HTML re-injection, so
         // it does not need re-execution when only guest state changes.
-    }, [jsBase, isOpened, themeId]);
+    }, [jsBase, isOpened]);
 
     // Sync music icon state for themes injected via dangerouslySetInnerHTML
     useEffect(() => {

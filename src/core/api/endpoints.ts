@@ -314,18 +314,20 @@ export function splitTemplateColumns(prefix: 'html' | 'css' | 'js', value: strin
 export async function chunkedSaveTheme(
     id: string,
     meta: Record<string, any>,
-    templates: { html: string; css: string; js: string },
+    // Each template is OPTIONAL: pass only the ones that actually changed. A template
+    // left undefined is NOT sent — its Sheet columns stay exactly as they were, so an
+    // unchanged HTML/CSS/JS never re-uploads (saves bandwidth + avoids needless writes).
+    templates: { html?: string; css?: string; js?: string },
     onProgress?: (done: number, total: number) => void
 ): Promise<void> {
-    // Build the full column set. We send EVERY column (including empty ones) so that
-    // when a template shrinks, the now-unused *_extra_* columns get overwritten with
-    // '' — otherwise stale tails from a previous, longer save would survive in the
-    // Sheet and corrupt the reassembled template.
-    const allCols: Record<string, string> = {
-        ...splitTemplateColumns('html', templates.html),
-        ...splitTemplateColumns('css', templates.css),
-        ...splitTemplateColumns('js', templates.js),
-    };
+    // Build the column set for ONLY the provided templates. We send EVERY column of a
+    // changed template (including empty ones) so that when it shrinks, the now-unused
+    // *_extra_* columns get overwritten with '' — otherwise stale tails from a previous,
+    // longer save would survive in the Sheet and corrupt the reassembled template.
+    const allCols: Record<string, string> = {};
+    if (templates.html !== undefined) Object.assign(allCols, splitTemplateColumns('html', templates.html));
+    if (templates.css !== undefined) Object.assign(allCols, splitTemplateColumns('css', templates.css));
+    if (templates.js !== undefined) Object.assign(allCols, splitTemplateColumns('js', templates.js));
     const colNames = Object.keys(allCols);
 
     // Pack columns into batches under a safe per-request budget (~120K chars of
