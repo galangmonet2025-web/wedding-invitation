@@ -328,22 +328,18 @@
   </div>
 
   <!-- ======================================================================
-     SPRITE SHEET ASSETS (PNG) — hidden. Optional: the theme runs fully on
-     PROCEDURAL graphics by default; uploading these 5 sheets REPLACES them.
-     Upload IN THIS ORDER (Bible APPENDIX P.5): 1 player, 2 enemy, 3 environment,
-     4 game-object, 5 box-kepingan. Host resolves {{asset_image_N}}; if not
-     uploaded it stays "{{...}}" and the game uses procedural sprites.
+     SPRITE SHEET ASSET (PNG) — hidden. Optional: the theme runs fully on
+     PROCEDURAL graphics by default. ONE unified adjuster sheet covers EVERY
+     gameplay sprite, so only a SINGLE upload slot is needed.
+
+     ASSET ADJUSTER: export the sheet via the Sprite Tuner's "Export Sprite Sheet"
+     button (all gameplay textures, each in a PURPLE-bordered cell). Replace the
+     art inside each border and upload to ASSET SLOT 1 ({{asset_image_1}}) → the
+     engine slices it at identical coords + keys-out the purple. Host resolves
+     {{asset_image_1}}; if not uploaded it stays "{{...}}" → procedural sprites.
      ====================================================================== -->
   <div id="sw-assets" aria-hidden="true" style="display:none">
-    <img data-asset="player_sheet"      src="{{asset_image_1}}" alt=""><!-- player ship frames -->
-    <img data-asset="enemy_sheet"       src="{{asset_image_2}}" alt=""><!-- drone/turret/korvet/flyer/carrier/mech + boss -->
-    <img data-asset="environment_sheet" src="{{asset_image_3}}" alt=""><!-- nebula/planet/landmark/structures -->
-    <img data-asset="object_sheet"      src="{{asset_image_4}}" alt=""><!-- bullets/laser/explosions/blue capsule/barrel -->
-    <img data-asset="piece_sheet"       src="{{asset_image_5}}" alt=""><!-- gold 💌 capsule + united couple -->
-    <!-- ASSET ADJUSTER: ONE unified sprite sheet exported by the Sprite Tuner's "Export Sprite Sheet"
-         button (all gameplay textures, each in a PURPLE-bordered cell). Replace the art inside each
-         border and upload here (slot 6) → engine slices at identical coords + keys-out the purple. -->
-    <img data-asset="sprite_sheet"      src="{{asset_image_6}}" alt=""><!-- unified adjuster sheet (purple-border cells) -->
+    <img data-asset="sprite_sheet"      src="{{asset_image_1}}" alt=""><!-- unified adjuster sheet (purple-border cells) -->
   </div>
 
   <!-- ======================================================================

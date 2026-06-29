@@ -39,10 +39,10 @@
     };
 
     var BUILD = 'spacewar-wedding';
-    var VERSION = 'v1.2.0';   // ASSET ADJUSTER: the Sprite Tuner panel now has an "Export Sprite
+    var VERSION = 'v1.2.3';   // CINEMATIC STAGE CLEAR (gameplay setelah stage selesai lebih dekat ke game asli): on sector clear the scene NO LONGER pauses + shows a "▶ LANJUT" button. Instead a camera-fixed "STAGE CLEAR" banner pops, the world stops (scroll/spawn off, incoming danger cleared, ship made invulnerable), then the ship AUTO-FLIES straight up and off the top of the screen; only after it leaves does the next sector load — where the new ship slides IN from below the bottom edge (arcade re-entry). Driven by clearSeq (banner→fly→done) in update() + ship.autoFly gate + a fly-in tween in buildSector. PREV (v1.2.2) CHANGE "asset sprite cukup 1 slot": the unified adjuster sheet (data-asset="sprite_sheet") now reads from ASSET SLOT 1 ({{asset_image_1}}) instead of slot 6. The unused placeholder slots 2–6 (player/enemy/environment/object/piece) were removed from the HTML — one exported sheet covers every sprite, so the guest/admin only uploads ONE image (slot 1). Engine logic unchanged (still assetUrl('sprite_sheet') → sliceSpriteSheet()); only the slot binding + user-facing copy moved to slot 1. PREV (v1.2.1) FIX "BUTTON START GAME gabisa dibuka lagi": window.__swStarted survives a host RE-INJECTION and init()'s auto-resume fired UNCONDITIONALLY — even when the fresh HTML re-shows #sw-cover (PRESS START). It yanked the player off the cover into startRun() (loading curtain) and, if the engine was mid-teardown, nothing came back → cover gone, START dead. Auto-resume now only fires when the cover is NOT showing (genuine in-progress run); a re-injection that re-shows the cover keeps it up with a working START, while a real mid-game re-inject (RSVP/wish submit) still auto-resumes with no lost progress. PREV (v1.2.0) ASSET ADJUSTER: the Sprite Tuner panel now has an "Export Sprite
     // Sheet (PNG)" button → composes the game's CURRENT textures into ONE PNG (layout = SHEET_MAP
     // via sheetLayout()), each cell wrapped in a PURPLE guide-border + key label. Replace the art
-    // inside each border, upload to the theme asset slot 6 ({{asset_image_6}}, data-asset=
+    // inside each border, upload to the theme asset slot 1 ({{asset_image_1}}, data-asset=
     // "sprite_sheet") → the scene preload+sliceSpriteSheet() slices at the IDENTICAL rects, KEYS
     // OUT the purple border, downscales to native size, and bakes each cell into its texture key
     // (create/scale/anim use the new art unchanged). Fully playable with NO upload (procedural
@@ -673,9 +673,18 @@
         try { buildTuner(); } catch (e) {}
         try { var v = $('sw-version'); if (v) v.textContent = VERSION; } catch (e) {}
         try { updateProgress(); } catch (e) {}
-        // AUTO-RESUME after a host RE-INJECTION
+        // AUTO-RESUME after a host RE-INJECTION.
+        // FIX "START gabisa dibuka lagi": window.__swStarted survives a re-injection, and this
+        // auto-resume used to fire UNCONDITIONALLY — even when the fresh HTML re-shows #sw-cover
+        // (the PRESS START screen). It yanked the player off the cover into startRun() (loading
+        // curtain), and if the engine was mid-teardown nothing came back → cover gone, START dead.
+        // Only auto-resume when the cover is NOT showing (a genuine in-progress run): a re-injection
+        // that re-shows the cover keeps it up with a working START; a real mid-game re-inject (RSVP/
+        // wish submit, cover already hidden) still auto-resumes with no lost progress.
         try {
-            if (window.__swStarted && !(($('sw-reveal') || {}).classList || { contains: function () { return false; } }).contains('show')) {
+            var coverUp = (($('sw-cover') || {}).classList || { contains: function () { return false; } }).contains('show');
+            var revealUp = (($('sw-reveal') || {}).classList || { contains: function () { return false; } }).contains('show');
+            if (window.__swStarted && !coverUp && !revealUp) {
                 var rs = window.__swStarted;
                 setTimeout(function () { try { startRun((rs && rs.sector) || 0); } catch (e) {} }, 60);
             }
@@ -859,7 +868,7 @@
             var a = document.createElement('a');
             a.href = url; a.download = 'spacewar-wedding-sprite-sheet.png';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            toast('Sprite sheet diunduh. Ganti isi tiap kotak ungu, lalu upload ke asset tema (slot ke-6).', 4200);
+            toast('Sprite sheet diunduh. Ganti isi tiap kotak ungu, lalu upload ke asset tema (slot ke-1).', 4200);
         } catch (e) {
             toast('Gagal mengekspor sprite sheet (canvas ter-taint?).', 3500);
             try { console.error('[sww] exportSpriteSheet', e); } catch (e2) {}
@@ -1571,9 +1580,20 @@
 
             this.buildBackdrop(idx);
 
-            // ship reset — bottom-center
-            this.ship.setPosition(BW / 2, this.cameras.main.scrollY + this.PLAY_BOTTOM - 40);
+            // ship reset — bottom-center. ENTRY ANIMATION: start just BELOW the bottom edge and
+            // slide UP into the play area (arcade re-entry), so after the previous stage's fly-off
+            // the new ship flies in from below. Player control is locked until it settles.
+            var restY = this.cameras.main.scrollY + this.PLAY_BOTTOM - 40;
+            this.ship.setPosition(BW / 2, this.cameras.main.scrollY + BH + 60);
             this.ship.body.setVelocity(0, 0);
+            this.ship.autoFly = true;            // lock input during the fly-in
+            this.ship.invuln = Math.max(this.ship.invuln || 0, 1200);
+            var shp = this.ship;
+            this.tweens.killTweensOf(shp);       // no stacked entry tweens across rapid reloads
+            this.tweens.add({
+                targets: shp, y: restY, duration: 620, ease: 'Cubic.out',
+                onComplete: function () { shp.autoFly = false; if (shp.body) shp.body.setVelocity(0, 0); }
+            });
 
             // camera-relative spawn list (records sorted by triggerY DESCENDING — born as the
             // rising camera's TOP edge reaches them, i.e. when cam.scrollY <= triggerY). §5.4
@@ -2110,6 +2130,17 @@
             pollEdges();
             var dt = delta / 1000, cam = this.cameras.main;
 
+            // STAGE-CLEAR OUTRO: while the cinematic clear sequence is active, drive ONLY the ship
+            // fly-off (banner beat → blast up off-screen → load next). Skip scroll/spawn/enemy/boss
+            // logic so nothing else moves or can hurt the player during the outro.
+            if (this.clearSeq) {
+                if (this.ship && this.ship.active) this.ship.step(time, delta);
+                this.updateClearSeq(time, delta);
+                this.cullBullets();
+                this.trauma = Math.max(0, this.trauma - delta / 600);
+                return;
+            }
+
             // AUTO-SCROLL UP (Bible §9). Camera rises: scrollY decreases toward 0 (the goal/boss
             // at the top). Boss arena locks scroll (scrollSpeed=0).
             if (!this.bossActive && this.scrollSpeed > 0) {
@@ -2333,12 +2364,86 @@
             });
         };
 
+        /* CINEMATIC STAGE CLEAR (real-shmup feel): show a "STAGE CLEAR" banner, then the ship
+           AUTO-FLIES straight up and off the top of the screen; only after it leaves does the next
+           sector load (the new ship re-enters from the bottom in loadSector). The scene KEEPS
+           RUNNING (no scene.pause()) so the fly-off animates — the sequence is driven each frame by
+           updateClearSeq(). On the final sector we still just return (boss path handles the win). */
         GameScene.prototype.onSectorClear = function () {
-            this.scene.pause();
-            if (this.sectorIdx + 1 >= C.sectors) return;
+            if (this.sectorIdx + 1 >= C.sectors) { this.scene.pause(); return; }
             runState.score = this.score;
-            $('sw-clear-text').innerHTML = 'Sektor ' + (this.sectorIdx + 1) + ' aman! Skor: <b>' + pad6(this.score) + '</b>';
-            showOverlay('sw-clear');
+            // stop the world: freeze scroll + spawns, clear incoming danger, lock the player.
+            this.scrollSpeed = 0;
+            this.spawnList = []; this._spawnNext = 0;
+            this.clearIncomingDanger();
+            if (this.ship) { this.ship.body.setVelocity(0, 0); this.ship.invuln = 999999; }  // invulnerable during the outro
+            // camera-fixed "STAGE CLEAR" banner (in-canvas, like the arcade) — no button, no pause.
+            this.showStageClearBanner();
+            // sequence state machine driven in update(): banner beat → fly-off → load next.
+            this.clearSeq = { phase: 'banner', t: 0, flySpeed: 0 };
+            SFX.win();
+        };
+
+        /* remove anything that could still hit the ship during the victory outro */
+        GameScene.prototype.clearIncomingDanger = function () {
+            var self = this;
+            this.ebullets.getChildren().forEach(function (b) { if (b.active) { self.ebullets.killAndHide(b); if (b.body) b.body.enable = false; } });
+            this.enemies.getChildren().forEach(function (e) { if (e.active) { var m = e.getData && e.getData('mark'); if (m) m.destroy(); e.destroy(); } });
+            this.hazards.getChildren().forEach(function (h) { if (h.active) self.clearHazard(h); });
+        };
+
+        /* in-canvas STAGE CLEAR text, pinned to the camera (scrollFactor 0), centred + a small
+           score line. Animated in with a pop; torn down when the next sector loads. */
+        GameScene.prototype.showStageClearBanner = function () {
+            if (this.clearBanner) { try { this.clearBanner.destroy(true); } catch (e) {} }
+            var g = this.add.container(BW / 2, BH * 0.40).setScrollFactor(0).setDepth(60);
+            var title = this.add.text(0, 0, 'STAGE CLEAR', {
+                fontFamily: 'monospace', fontSize: '40px', color: '#ffd447', fontStyle: 'bold',
+                stroke: '#0a0e1a', strokeThickness: 6
+            }).setOrigin(0.5);
+            var sub = this.add.text(0, 44, 'SEKTOR ' + (this.sectorIdx + 1) + ' AMAN', {
+                fontFamily: 'monospace', fontSize: '15px', color: '#4fd6ff', fontStyle: 'bold'
+            }).setOrigin(0.5);
+            var sc = this.add.text(0, 70, 'SKOR  ' + pad6(this.score), {
+                fontFamily: 'monospace', fontSize: '13px', color: '#eaffff'
+            }).setOrigin(0.5);
+            g.add([title, sub, sc]);
+            g.setScale(0.6); g.setAlpha(0);
+            this.tweens.add({ targets: g, scale: 1, alpha: 1, duration: 320, ease: 'Back.out' });
+            this.clearBanner = g;
+        };
+
+        /* STAGE-CLEAR sequence — runs every frame from update() while clearSeq is active.
+           banner: hold a beat so the player reads it.
+           fly:    ship accelerates straight UP until it leaves the top of the screen.
+           done:   advance to the next sector (loadSector re-enters the ship from the bottom). */
+        GameScene.prototype.updateClearSeq = function (time, delta) {
+            var seq = this.clearSeq; if (!seq) return;
+            seq.t += delta;
+            var cam = this.cameras.main, sh = this.ship;
+            if (seq.phase === 'banner') {
+                if (seq.t >= 950) { seq.phase = 'fly'; seq.t = 0; if (sh) sh.autoFly = true; }
+            } else if (seq.phase === 'fly') {
+                // ease the ship into a fast ascent (arcade "blast off"): ramp speed up over ~0.5s.
+                seq.flySpeed = Math.min(900, seq.flySpeed + delta * 2.2);
+                if (sh && sh.body) {
+                    sh.body.setVelocity(0, -seq.flySpeed);
+                    // little exhaust sparks behind the ship as it climbs
+                    if ((seq.t | 0) % 60 < delta) this.burst(sh.x, sh.y + 26, 0x4fd6ff, 3);
+                    // gone once fully above the top edge of the current view
+                    if (sh.y < cam.scrollY - 70) { seq.phase = 'done'; }
+                }
+                // safety timeout so we never get stuck mid-outro
+                if (seq.t > 2500) seq.phase = 'done';
+            } else if (seq.phase === 'done') {
+                this.clearSeq = null;
+                if (sh) { sh.autoFly = false; sh.invuln = 0; }
+                if (this.clearBanner) { try { this.clearBanner.destroy(true); } catch (e) {} this.clearBanner = null; }
+                // advance to the next sector via the normal hot-load path (shows briefing → builds
+                // the sector → re-enters the ship from the bottom). nextSector() bumps the index,
+                // saves maxSector, and calls loadSector().
+                nextSector();
+            }
         };
 
         /* ================= HUD ================= */
@@ -2383,6 +2488,15 @@
             var sc = this.scene, cam = sc.cameras.main;
             if (this.invuln > 0) this.invuln -= delta;
             if (this.hurtT > 0) this.hurtT -= delta;
+
+            // STAGE-CLEAR FLY-OFF: the engine drives the ship straight up off the top (the scene's
+            // clearSeq handles velocity + thrust frame). Player input is ignored, no firing, no
+            // clamp — just keep the anim/exhaust ticking so it reads as a powered ascent.
+            if (this.autoFly) {
+                this.setAngle(0);
+                if (this.play) this.play('ship_thrust', true);
+                return;
+            }
 
             // movement (velocity-driven, no gravity). Diagonal normalized.
             var spd = (C.ship.speed[STORE.diff] || 330) * (this.speedBoost || 1);

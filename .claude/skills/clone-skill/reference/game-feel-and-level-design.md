@@ -31,6 +31,42 @@ hitbox.** Makin sering sebuah aksi, makin sederhana juice-nya; juice besar untuk
 
 Sumber: Art of Screenshake (Vlambeer), Juice It or Lose It, Eiserloh "Juicing Your Cameras", SmashWiki Hitlag.
 
+### 1.1 Transisi antar-sektor SINEMATIK (jangan "pause + tombol Lanjut")
+
+Saat sebuah sektor/stage selesai, **JANGAN** langsung `scene.pause()` lalu munculkan overlay
+ber-tombol "▶ LANJUT". Itu kaku & memutus immersion. Tiru **outro arcade**: banner singkat →
+karakter pemain **pergi sendiri keluar layar** → stage berikut dimuat otomatis → karakter baru
+**masuk dari sisi seberang**. (Keluhan asli: *"gameplay setelah stage selesai jelek banget; harusnya
+pesawat otomatis maju ke atas sampai hilang, baru stage selanjutnya".*)
+
+**Pola (terbukti di `spacewar-wedding` `onSectorClear`/`updateClearSeq`/`buildSector`):**
+
+- **JANGAN pause** — scene tetap jalan supaya outro ber-animasi. Pakai **state-machine** kecil
+  `clearSeq = { phase, t }` yang dijalankan tiap frame dari `update()` (ber-fase
+  `banner → fly → done`), dan di awal `update()` **early-return** ke cabang outro itu (skip
+  scroll/spawn/AI musuh/boss) supaya **tak ada yang bergerak/melukai** pemain selama outro.
+- **Hentikan dunia & amankan pemain:** `scrollSpeed=0`, kosongkan `spawnList`, hapus semua
+  peluru-musuh + musuh + hazard di layar (`clearIncomingDanger`), set `player.invuln` besar.
+- **Banner in-canvas** (bukan overlay HTML ber-tombol): teks `STAGE CLEAR` + sub-sektor + skor,
+  `setScrollFactor(0)` (menempel kamera), pop-in `Back.out ~320ms`. Tahan ~0.9–1s (fase `banner`).
+- **Fly-off:** kunci input via flag `player.autoFly` (di `step()` paling atas: kalau `autoFly`,
+  mainkan anim thrust + `return` — engine yang menyetir, bukan input). Akselerasikan kecepatan ke
+  arah keluar (shmup: lurus ke atas; platformer: lari ke kanan keluar) dengan ramp (mis.
+  `flySpeed = min(900, +delta*2.2)`) + percikan exhaust, sampai sprite **melewati tepi layar**.
+  Beri **safety-timeout** (mis. `t>2500ms → done`) agar tak macet.
+- **done → muat stage berikut** lewat jalur normal (`nextSector()` → `loadSector()`), lepas
+  `autoFly`, hancurkan banner.
+- **Re-entry stage baru:** di reset posisi pemain (`buildSector`), spawn **di luar tepi masuk**
+  (mis. sedikit di bawah layar) lalu **tween masuk** (`Cubic.out ~620ms`) ke posisi main; selama
+  tween, `autoFly=true` + `invuln` → input terkunci sampai settle. `killTweensOf` dulu agar tak
+  bertumpuk saat reload cepat. (Sentuhan ini juga membuat stage-1 awal terasa "masuk", konsisten.)
+- **Boss/akhir:** sektor terakhir bukan via outro ini — biarkan jalur kemenangan boss yang urus
+  (di sektor terakhir cukup `scene.pause()`/return, lalu `bossFinale`).
+
+> **Golden Rule §1.1:** *Stage selesai = mini-cutscene, bukan dialog.* Banner → pemain pergi sendiri
+> keluar layar → stage baru auto-load → pemain masuk dari seberang. Selama outro: scene tetap jalan
+> tapi dunia beku & pemain kebal; input dikunci oleh flag `autoFly`, bukan oleh pause.
+
 ---
 
 ## 2. Platformer level design

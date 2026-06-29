@@ -559,6 +559,9 @@ Bible harus mencantumkan cara verifikasi 3 file di tahap 2, karena ada jebakan d
 - ❌ `audio.play()` backsound tenant dari tema. Itu milik host.
 - ❌ Hardcode jumlah section/kepingan (mis. selalu 10). Harus dinamis dari section riil.
 - ❌ Lupa cleanup hook → RAF/listener/Phaser menumpuk tiap re-inject.
+- ❌ Auto-resume (`window.__xxStarted`) sesudah re-inject jalan **tanpa cek cover** → menarik pemain
+  keluar dari PRESS START → "tombol START gabisa dibuka lagi". Auto-resume HANYA saat cover/reveal
+  TIDAK tampil. ([`reference/host-contract.md`](reference/host-contract.md) §cleanup/auto-resume.)
 - ❌ Baca `this.scale.width/height` di `create()` dengan `Scale.RESIZE` (bisa 0 → objek
   off-screen → blank).
 - ❌ Memangkas fitur game demi cepat. Game dulu, baru undangan.

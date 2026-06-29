@@ -31,6 +31,42 @@ dari run sebelumnya lalu mendaftarkan yang baru:
 
 Tanpa ini, RAF loop / listener / `Phaser.Game` lama menumpuk → bocor & lag.
 
+### Auto-resume sesudah re-inject — WAJIB cek cover dulu ("START gabisa dibuka lagi")
+
+Banyak game theme menyimpan flag "run sedang jalan" di `window` (mis. `window.__xxStarted = {sector}`)
+supaya saat host **menyuntik ulang** tema di tengah main (submit RSVP/ucapan, resolve gambar,
+toggle musik), `init()` bisa **auto-resume** balik ke game alih-alih kembali ke PRESS START. `window`
+bertahan lintas re-injeksi, jadi flag itu ikut bertahan.
+
+**Jebakan (bug nyata di metalslug & spacewar):** auto-resume yang menyala **TANPA SYARAT** begitu
+flag ada → saat re-injeksi menampilkan **HTML cover yang fresh** (`#…-cover` ber-`.show` lagi = host
+ingin pemain di layar START), auto-resume malah **menarik pemain keluar dari cover** ke `startRun()`
+(tirai loading). Kalau engine sedang mid-teardown, tak ada yang balik → cover hilang, **tombol START
+seperti mati / "gabisa dibuka lagi".**
+
+**Aturan:** auto-resume **HANYA** boleh jalan kalau cover **TIDAK** sedang tampil (dan reveal undangan
+juga tidak). Re-injeksi yang me-`show` cover → biarkan cover + START berfungsi; re-injeksi di
+tengah main (cover memang sudah hilang) → baru auto-resume, progres aman.
+
+```js
+function init() {
+  // … wireUI(), scan, dst.
+  try {
+    var coverUp  = (($('xx-cover')  || {}).classList || { contains: function(){return false;} }).contains('show');
+    var revealUp = (($('xx-reveal') || {}).classList || { contains: function(){return false;} }).contains('show');
+    if (window.__xxStarted && !coverUp && !revealUp) {       // ← cek cover/reveal, jangan unconditional
+      var rs = window.__xxStarted;
+      setTimeout(function(){ try { startRun((rs && rs.sector) || 0); } catch(e){} }, 60);
+    }
+  } catch (e) {}
+}
+```
+
+Catatan terkait: `startRun()` yang dipanggil saat game **sudah live** harus HOT-LOAD sektor ke scene
+yang ada (resume → sync → briefing → loadSector), **bukan** `GAME.destroy(true)` lalu `new P.Game`
+sinkron di `#gw-stage` yang sama — `destroy(true)` Phaser itu DEFERRED, balapan dgn canvas baru →
+blank. (Lihat changelog `spacewar-wedding`/`metalslug-wedding`.)
+
 ## ID hardcoded host (verbatim, tanpa prefix)
 
 | ID | Fungsi host |

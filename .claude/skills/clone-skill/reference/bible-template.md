@@ -95,7 +95,12 @@ tapi jangan ada yang hilang. Bagian bertanda 🎮 = sesuaikan isi ke arketipe; �
   [`layout-camera-hardwon.md`](layout-camera-hardwon.md) §1 (bug yang sudah dibayar).
 - **§10 Game Feel / Juice + GRAFIS** 🎮🔧 — daftar efek + angka: freeze-frame 2–8 frame,
   `camera.shake` (intensity float ~0.01–0.05), `camera.flash`, partikel (API 3.60+),
-  squash&stretch, SFX pitch-vary. Stack semua efek di frame impact yang sama. **Grafis prosedural
+  squash&stretch, SFX pitch-vary. Stack semua efek di frame impact yang sama.
+  **Transisi antar-sektor WAJIB sinematik (bukan pause+tombol "Lanjut"):** banner in-canvas
+  `STAGE CLEAR` → pemain pergi sendiri keluar layar (flag `autoFly`, input terkunci) → stage baru
+  auto-load → pemain masuk dari sisi seberang (tween). Scene tetap jalan (state-machine `clearSeq`
+  di `update()`), dunia dibekukan & pemain dibuat kebal selama outro. Spec:
+  [`game-feel-and-level-design.md`](game-feel-and-level-design.md) §1.1. **Grafis prosedural
   WAJIB di-shade:** tiap sprite = base + highlight (top ~22%) + shadow (bottom ~22%) + outline
   gelap (helper `box()`/`outline()`), siluet unik per entity. Sumber:
   [`layout-camera-hardwon.md`](layout-camera-hardwon.md) §6 (flat single-color = belum selesai).
