@@ -14,7 +14,7 @@
     TOKEN_SECRET: 'wedding-saas-secret-key-2026',
     TOKEN_EXPIRY_HOURS: 24,
     RATE_LIMIT_WINDOW: 60000, // 1 minute
-    RATE_LIMIT_MAX: 30, // max requests per minute
+    RATE_LIMIT_MAX: 120, // max requests per minute (per identifier)
     MIDTRANS_SERVER_KEY: PropertiesService.getScriptProperties().getProperty('MIDTRANS_SERVER_KEY'),
     MIDTRANS_IS_PRODUCTION: false,
     PLAN_TYPE_SHEET: 'PlanType',
@@ -68,8 +68,18 @@
         }
       }
 
-      // Rate limiting - hash token to keep cache key short
-      var rateLimitId = (payload.token || 'anonymous').substring(0, 32);
+      // Rate limiting - keep cache key short.
+      // Authenticated requests are limited per-token. Public (no-token) requests
+      // must NOT all share one 'anonymous' bucket, otherwise one busy guest (or a
+      // few simultaneous visitors) blocks everyone with 429. Derive a per-guest
+      // identifier from slug + guestid/invitation_code instead.
+      var rateLimitId;
+      if (payload.token) {
+        rateLimitId = payload.token.substring(0, 32);
+      } else {
+        var pubId = (payload.slug || '') + ':' + (payload.guestid || payload.invitation_code || '');
+        rateLimitId = pubId !== ':' ? ('pub_' + pubId).substring(0, 32) : 'anonymous';
+      }
       if (!RateLimiter.check(rateLimitId)) {
         return ResponseHelper.error('Rate limit exceeded. Please try again later.', 429);
       }

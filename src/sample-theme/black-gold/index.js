@@ -325,12 +325,12 @@ function initBlackGoldTheme() {
 
         if (bgMusic.paused) {
             if (btnMusic) btnMusic.classList.remove('music-playing');
-            playIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-        } else {
-            if (btnMusic) btnMusic.classList.add('music-playing');
             playIcon.style.display = 'none';
             pauseIcon.style.display = 'block';
+        } else {
+            if (btnMusic) btnMusic.classList.add('music-playing');
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
         }
     }
 
@@ -338,6 +338,8 @@ function initBlackGoldTheme() {
         bgMusic.addEventListener('play', updateMusicUI);
         bgMusic.addEventListener('pause', updateMusicUI);
         bgMusic.addEventListener('playing', updateMusicUI);
+        // Sinkronkan ikon dengan state lagu yang sebenarnya sejak awal.
+        updateMusicUI();
     }
 
     if (btnMusic && bgMusic) {
@@ -369,6 +371,7 @@ function initBlackGoldTheme() {
             if (floatingUI) floatingUI.style.display = 'block';
             if (bgMusic) {
                 bgMusic.play().catch(() => console.log("Auto-play blocked"));
+                updateMusicUI();
             }
         };
     }

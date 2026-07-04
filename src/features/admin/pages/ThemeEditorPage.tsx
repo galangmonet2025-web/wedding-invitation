@@ -12,6 +12,7 @@ import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { AiThemeModal } from '../components/AiThemeModal';
 import { SimulationModal } from '../components/SimulationModal';
 import { parseTemplate } from '@/utils/templateParser';
+import { normalizeInstagramUsername } from '@/utils/instagramUtils';
 import Editor from '@monaco-editor/react';
 import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage, fetchProxyImageBase64, setCachedImage, getCachedImage } from '@/shared/components/ProxyImage';
@@ -1768,8 +1769,10 @@ export function ThemeEditorPage() {
                         nama_ibu_laki_laki: c.nama_ibu_laki_laki || 'Ibu Siti',
                         nama_bapak_perempuan: c.nama_bapak_perempuan || 'Bpk. Budi',
                         nama_ibu_perempuan: c.nama_ibu_perempuan || 'Ibu Ani',
-                        ig_laki_laki: c.account_media_sosial_laki_laki || 'galang',
-                        ig_perempuan: c.account_media_sosial_perempuan || 'fiona',
+                        // Normalize any @handle / handle / full-URL input down to a bare
+                        // username so themes render @username and link correctly.
+                        ig_laki_laki: normalizeInstagramUsername(c.account_media_sosial_laki_laki) || 'galang',
+                        ig_perempuan: normalizeInstagramUsername(c.account_media_sosial_perempuan) || 'fiona',
                         guest_name: mockGuestData.nama_tamu,
                         nama_tamu: mockGuestData.nama_tamu,
                         kode_undangan: mockGuestData.kode_tamu,
@@ -2381,18 +2384,23 @@ export function ThemeEditorPage() {
                                     </div>
                                     <div className="flex flex-col">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Gaya (Style)</label>
-                                        <select
+                                        {/* Kombinasi dropdown + input bebas: pilih yang sudah ada ATAU ketik kategori baru */}
+                                        <input
+                                            type="text"
+                                            list="style-category-options"
                                             value={styleCategory}
                                             onChange={e => setStyleCategory(e.target.value)}
+                                            placeholder="Pilih atau ketik kategori baru…"
                                             className="input-field"
-                                        >
-                                            <option value="Minimalist">Minimalist</option>
-                                            <option value="Elegant">Elegant</option>
-                                            <option value="Nature">Nature</option>
-                                            <option value="Romantic">Romantic</option>
-                                            <option value="Cultural">Cultural</option>
-                                            <option value="Lainnya">Lainnya</option>
-                                        </select>
+                                        />
+                                        <datalist id="style-category-options">
+                                            <option value="Minimalist" />
+                                            <option value="Elegant" />
+                                            <option value="Nature" />
+                                            <option value="Romantic" />
+                                            <option value="Cultural" />
+                                            <option value="Lainnya" />
+                                        </datalist>
                                     </div>
 
                                     <div className="flex flex-col">

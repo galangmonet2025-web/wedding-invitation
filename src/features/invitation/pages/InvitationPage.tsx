@@ -19,6 +19,7 @@ import sampleStory2 from '@/assets/img/sample_story_2.jpg';
 import sampleStory3 from '@/assets/img/sample_story_3.jpg';
 import defaultFrame from '@/assets/img/frame.png';
 import { formatPhoneForWhatsApp } from '@/utils/whatsappUtils';
+import { normalizeInstagramUsername } from '@/utils/instagramUtils';
 
 // Build a wa.me link from a raw WhatsApp number (returns '' when no number is set)
 const buildWaMeUrl = (phone: any): string => {
@@ -930,8 +931,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             nama_ibu_laki_laki: activeContent.nama_ibu_laki_laki || '',
             nama_bapak_perempuan: activeContent.nama_bapak_perempuan || '',
             nama_ibu_perempuan: activeContent.nama_ibu_perempuan || '',
-            ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
-            ig_perempuan: activeContent.account_media_sosial_perempuan || '',
+            // Normalize to a bare username so themes can safely use it in BOTH
+            // `@{{ig_laki_laki}}` (display) and `https://instagram.com/{{ig_laki_laki}}`
+            // (link) regardless of whether the tenant typed @handle / handle / full URL.
+            ig_laki_laki: normalizeInstagramUsername(activeContent.account_media_sosial_laki_laki),
+            ig_perempuan: normalizeInstagramUsername(activeContent.account_media_sosial_perempuan),
             guest_name: data?.guest?.name || 'Tamu Undangan',
             nama_tamu: data?.guest?.name || 'Tamu Undangan',
             kode_undangan: data?.guest?.invitation_code || '',

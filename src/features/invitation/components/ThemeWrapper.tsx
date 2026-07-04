@@ -90,9 +90,19 @@ export function ThemeWrapper({
         const container = containerRef.current;
         if (!container) return;
 
-        // 1. Instantly reveal the mock app screen content if open
+        // 1. Instantly reveal the mock app screen content if open.
+        // EXCEPTION: while a cinematic intro overlay is still playing (Netflix
+        // "TUDUM", Spotify Wrapped), the theme's own handler controls when the
+        // content is revealed — forcing it here would skip the intro. Once the
+        // overlay finishes (class 'is-ending' or removed), this becomes a safe
+        // fallback reveal so the content can never get stuck hidden.
+        const introOverlay = container.querySelector('#nflx-intro, #spwr-intro, .theme-intro-overlay');
+        const introPlaying = !!introOverlay
+            && introOverlay.classList.contains('is-playing')
+            && !introOverlay.classList.contains('is-ending');
+
         const appScreen = container.querySelector('.mock-app-screen');
-        if (appScreen && !appScreen.classList.contains('reveal-content')) {
+        if (appScreen && !appScreen.classList.contains('reveal-content') && !introPlaying) {
             appScreen.classList.add('reveal-content');
         }
 
@@ -559,8 +569,18 @@ export function ThemeWrapper({
             setIsOpened(true);
             setIsPlaying(true);
 
-            const appScreen = document.querySelector('.mock-app-screen');
-            if (appScreen) appScreen.classList.add('reveal-content');
+            // Some themes play a cinematic intro overlay (e.g. Netflix "TUDUM",
+            // Spotify Wrapped) that must run BEFORE the invitation is revealed.
+            // If such an overlay exists, let the theme's own open handler control
+            // the reveal timing — do NOT force reveal-content here, or the intro
+            // gets skipped (the content shows instantly behind/over it).
+            const container = containerRef.current;
+            const hasIntroOverlay = !!container?.querySelector('#nflx-intro, #spwr-intro, .theme-intro-overlay');
+
+            if (!hasIntroOverlay) {
+                const appScreen = document.querySelector('.mock-app-screen');
+                if (appScreen) appScreen.classList.add('reveal-content');
+            }
 
             setTimeout(() => {
                 document.body.style.overflow = 'auto';
@@ -670,6 +690,23 @@ export function ThemeWrapper({
                 @keyframes spin {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
+                }
+
+                /* Hide the vertical scrollbar (white track) across every theme
+                   while keeping the content fully scrollable. Applies to the
+                   host scrollers: window (html/body) and the theme phone-container. */
+                html, body, .theme-wrapper, .phone-container, .mock-app-screen {
+                    scrollbar-width: none;      /* Firefox */
+                    -ms-overflow-style: none;   /* IE/Edge legacy */
+                }
+                html::-webkit-scrollbar,
+                body::-webkit-scrollbar,
+                .theme-wrapper::-webkit-scrollbar,
+                .phone-container::-webkit-scrollbar,
+                .mock-app-screen::-webkit-scrollbar {
+                    display: none;              /* Chrome/Safari/Edge */
+                    width: 0;
+                    height: 0;
                 }
 
                 @media (max-width: 640px) {

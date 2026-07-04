@@ -247,12 +247,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (bgMusic.paused) {
             btnMusic.classList.remove('music-playing');
-            playIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-        } else {
-            btnMusic.classList.add('music-playing');
             playIcon.style.display = 'none';
             pauseIcon.style.display = 'block';
+        } else {
+            btnMusic.classList.add('music-playing');
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
         }
     }
 
@@ -260,6 +260,8 @@ document.addEventListener('DOMContentLoaded', function () {
         bgMusic.addEventListener('play', updateMusicUI);
         bgMusic.addEventListener('pause', updateMusicUI);
         bgMusic.addEventListener('playing', updateMusicUI);
+        // Sinkronkan ikon dengan state lagu yang sebenarnya sejak awal.
+        updateMusicUI();
     }
 
     if (btnOpen) {
@@ -276,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (floatingUI) floatingUI.style.display = 'block';
             if (bgMusic) {
                 bgMusic.play().catch(err => console.log("Auto-play blocked"));
+                updateMusicUI();
             }
         };
     }

@@ -443,12 +443,12 @@ function initNetflixTheme() {
 
         if (bgMusic.paused) {
             if (btnMusic) btnMusic.classList.remove('music-playing');
-            playIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-        } else {
-            if (btnMusic) btnMusic.classList.add('music-playing');
             playIcon.style.display = 'none';
             pauseIcon.style.display = 'block';
+        } else {
+            if (btnMusic) btnMusic.classList.add('music-playing');
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
         }
     }
 
@@ -456,6 +456,8 @@ function initNetflixTheme() {
         bgMusic.addEventListener('play', updateMusicUI);
         bgMusic.addEventListener('pause', updateMusicUI);
         bgMusic.addEventListener('playing', updateMusicUI);
+        // Sinkronkan ikon dengan state lagu yang sebenarnya sejak awal.
+        updateMusicUI();
     }
 
     if (btnMusic && bgMusic) {
@@ -528,6 +530,8 @@ function initNetflixTheme() {
         if (floatingUI) floatingUI.style.display = 'block';
         if (bgMusic) {
             bgMusic.play().catch(() => console.log("Auto-play blocked"));
+            // Ikon langsung mengikuti state lagu (play ▶ saat muter).
+            updateMusicUI();
         }
     }
 
@@ -538,36 +542,58 @@ function initNetflixTheme() {
     const INTRO_HOLD_MS = 3600;  // mulai membuka undangan (di balik layar hitam)
     const INTRO_FADE_MS = 3900;  // overlay mulai fade out
     const INTRO_DONE_MS = 4700;  // overlay dibersihkan total
-    let introDone = false;
 
     function finishIntro() {
-        if (introDone || !intro) return;
-        introDone = true;
+        if (!intro) return;
         intro.classList.remove('is-playing', 'is-ending');
         intro.style.display = 'none';
+    }
+
+    // PENTING: host me-RE-EXECUTE seluruh script ini saat ia mengubah `isOpened`
+    // (terjadi tepat pada klik yang memulai intro). Timer di bawah TIDAK boleh
+    // ikut di-clear saat re-eksekusi, jadi kita simpan flag di window supaya
+    // eksekusi ulang di tengah intro cukup "melanjutkan", bukan mengulang.
+    function runIntro() {
+        if (window.__nfIntroStarted) {
+            // Re-eksekusi mendarat di tengah intro: adopsi overlay yang sedang
+            // berjalan. Bila timer entah bagaimana hilang, tuntaskan segera agar
+            // undangan tak pernah terjebak di balik overlay yang beku.
+            if (intro && intro.classList.contains('is-playing') && !window.__nfIntroTimersLive) {
+                revealInvitation();
+                intro.classList.add('is-ending');
+                setTimeout(finishIntro, 800);
+            }
+            return;
+        }
+        window.__nfIntroStarted = true;
+        window.__nfIntroTimersLive = true;
+
+        if (!intro) { revealInvitation(); return; }
+
+        // 1) Tampilkan layar hitam + jalankan animasi N
+        intro.classList.add('is-playing');
+        // 2) Bunyikan "tudum" tepat saat logo menghantam
+        setTimeout(playTudum, INTRO_HIT_MS);
+        // 3) Buka undangan di balik layar hitam
+        setTimeout(revealInvitation, INTRO_HOLD_MS);
+        // 4) Fade overlay
+        setTimeout(function () { if (intro) intro.classList.add('is-ending'); }, INTRO_FADE_MS);
+        // 5) Bersihkan overlay
+        setTimeout(function () { finishIntro(); window.__nfIntroTimersLive = false; }, INTRO_DONE_MS);
     }
 
     if (btnOpen) {
         btnOpen.onclick = function () {
             btnOpen.disabled = true; // cegah double-trigger saat intro berjalan
-
-            if (!intro) { revealInvitation(); return; }
-
-            // 1) Tampilkan layar hitam + jalankan animasi N
-            intro.classList.add('is-playing');
-
-            // 2) Bunyikan "tudum" tepat saat logo menghantam
-            setTimeout(playTudum, INTRO_HIT_MS);
-
-            // 3) Buka undangan di balik layar hitam (cover sudah hilang saat tirai naik)
-            setTimeout(revealInvitation, INTRO_HOLD_MS);
-
-            // 4) Fade overlay
-            setTimeout(() => intro.classList.add('is-ending'), INTRO_FADE_MS);
-
-            // 5) Bersihkan overlay
-            setTimeout(finishIntro, INTRO_DONE_MS);
+            runIntro();
         };
+    }
+
+    // Bila host sudah menandai "opened" (mis. ini eksekusi ulang yang terpicu dari
+    // klik buka), jalankan intro walau handler klik tidak berjalan di eksekusi ini.
+    const rootOpened = document.querySelector('.theme-wrapper.is-opened, .is-opened');
+    if (rootOpened && !window.__nfIntroStarted) {
+        runIntro();
     }
 }
 

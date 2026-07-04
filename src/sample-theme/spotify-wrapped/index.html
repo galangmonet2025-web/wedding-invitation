@@ -1,0 +1,631 @@
+<div class="spwr-root">
+
+    <!-- ============ DESKTOP CINEMATIC SIDEBAR (Wrapped stats billboard) ============ -->
+    <div class="spwr-sidebar uk-visible@m" id="desktop-bg-container">
+        <div id="layer-bg" class="spwr-side-bg" style="background-image: url('{{photo_hero_cover}}');"></div>
+        <div class="spwr-side-veil"></div>
+        <div id="layer-blobs" class="spwr-side-blobs">
+            <span class="blob blob-a"></span>
+            <span class="blob blob-b"></span>
+            <span class="blob blob-c"></span>
+        </div>
+
+        <div id="layer-text" class="spwr-side-text">
+            <div class="spwr-side-badge">
+                <span class="spwr-logo-dot"></span>
+                <span class="spwr-badge-txt">2026&nbsp;WRAPPED</span>
+            </div>
+            <div class="spwr-side-kicker">Your top duo this year</div>
+            <h1 class="spwr-side-couple">
+                <span>{{groom_nickname}}</span>
+                <span class="spwr-amp">&amp;</span>
+                <span>{{bride_nickname}}</span>
+            </h1>
+            <div class="spwr-side-meta">
+                <span class="spwr-pill spwr-pill-green">#1 Duet</span>
+                <span class="spwr-pill">{{wedding_date}}</span>
+                <span class="spwr-pill">On Repeat</span>
+            </div>
+            <div class="spwr-side-sub">
+                Diputar tanpa henti sepanjang tahun. Tekan play, dan dengarkan playlist cinta kami sampai lagu terakhir.
+            </div>
+            <div class="spwr-side-eq">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============ MAIN STORY (full-page scrolling phone) ============ -->
+    <div class="phone-container is-locked" id="content-body">
+        <div class="story-backdrop" style="background-image: linear-gradient(rgba(0,0,0,0.86), rgba(0,0,0,0.92)), url('{{photo_background}}');"></div>
+        <div class="story-grain"></div>
+        <div class="scroll-progress" id="scroll-progress"></div>
+
+        <div class="mock-app-screen">
+
+            <!-- ===== WRAPPED INTRO (coded animation, plays on open) ===== -->
+            <div id="spwr-intro" class="spwr-intro" aria-hidden="true">
+                <div class="spwr-intro-stage">
+                    <div class="spwr-intro-card spwr-ic-1"></div>
+                    <div class="spwr-intro-card spwr-ic-2"></div>
+                    <div class="spwr-intro-card spwr-ic-3"></div>
+                    <div class="spwr-intro-logo">
+                        <span class="spwr-logo-dot big"></span>
+                        <span>2026 WRAPPED</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== COVER ("Your Wrapped is ready" gate) ===== -->
+            <section id="theme-cover" class="section-cover"
+                style="background-image: linear-gradient(160deg, #1db954 0%, #0d6b31 30%, #121212 78%);">
+                <div class="cover-zoom" style="background-image: url('{{photo_cover}}');"></div>
+                <div class="cover-scrim"></div>
+
+                <div class="cover-topbar">
+                    <span class="spwr-wordmark"><span class="spwr-logo-dot"></span> Wedativy</span>
+                </div>
+
+                <div class="cover-stage">
+                    <div class="cover-eyebrow">Undangan spesial untuk</div>
+                    <div class="cover-guest" data-var="nama_tamu">{{nama_tamu}}</div>
+
+                    <div class="cover-cardstack">
+                        <div class="cover-albumart">
+                            <img class="cover-album-img" src="{{photo_cover}}" alt="" onerror="this.style.display='none'">
+                            <span class="cover-album-tag">WRAPPED</span>
+                        </div>
+                    </div>
+
+                    <h2 class="cover-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h2>
+                    <div class="cover-ready">Your 2026 Wrapped is ready 🎧</div>
+                    <div class="cover-date" data-var="wedding_date">{{wedding_date}}</div>
+
+                    <button class="spwr-play-btn" id="btn-open-invitation" type="button">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+                        <span>Putar Undangan</span>
+                    </button>
+
+                    <div class="cover-actions">
+                        <button class="btn-ghost-round" id="btn-show-qr" type="button">Tampilkan QR Check-in</button>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ===== HERO / NOW PLAYING ===== -->
+            <section id="hero-next" class="section-nowplaying">
+                <div class="np-topline reveal-item">
+                    <span class="spwr-logo-dot"></span> NOW PLAYING
+                </div>
+
+                <div class="np-cover reveal-item" style="background-image: url('{{photo_hero_cover}}');">
+                    <div class="np-eq"><span></span><span></span><span></span><span></span></div>
+                </div>
+
+                <div class="np-info reveal-item">
+                    <div class="np-title">Our Love Story</div>
+                    <div class="np-artist"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></div>
+                </div>
+
+                <div class="np-scrubber reveal-item">
+                    <div class="np-bar"><span id="np-bar-fill" class="np-bar-fill"></span></div>
+                    <div class="np-times">
+                        <span id="np-elapsed">0:00</span>
+                        <span data-var="wedding_date">{{wedding_date}}</span>
+                    </div>
+                </div>
+
+                <p class="np-intro reveal-item" data-var="kalimat_pembuka">{{kalimat_pembuka}}</p>
+
+                <p class="np-synopsis reveal-item" data-var="quote">{{quote}}</p>
+                <div class="np-synopsis-by reveal-item" data-var="quote_by">— {{quote_by}}</div>
+
+                <button class="np-scroll-chevron reveal-item" data-scroll-next aria-label="Lihat lebih lanjut">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+            </section>
+
+
+            <!-- ===== WRAPPED STAT: countdown as "minutes listened" ===== -->
+            <section class="section-wrapped-stat" id="countdown">
+                <div class="ws-card reveal-item ws-grad-1">
+                    <div class="ws-kicker">Kamu menantikan hari ini selama</div>
+                    <div class="ws-count" id="countdown-wrap">
+                        <div class="ws-unit"><b id="days" data-var="countdown_hari">200</b><small>Hari</small></div>
+                        <div class="ws-unit"><b id="hours" data-var="countdown_jam">01</b><small>Jam</small></div>
+                        <div class="ws-unit"><b id="minutes" data-var="countdown_menit">44</b><small>Menit</small></div>
+                        <div class="ws-unit"><b id="seconds" data-var="countdown_detik">19</b><small>Detik</small></div>
+                    </div>
+                    <div class="ws-foot">…menuju lagu terindah kami. #Wrapped2026</div>
+                </div>
+            </section>
+
+
+            <!-- ===== TOP ARTISTS (couple) ===== -->
+            <section id="couples" class="section-artists">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Your Top Artists</span>
+                    <h3 class="sec-title">Duo #1 Tahun Ini</h3>
+                </div>
+
+                <div class="artist-grid">
+                    <div class="artist-card reveal-item">
+                        <div class="artist-photo" style="background-image: url('{{photo_groom_photo}}');">
+                            <span class="artist-rank">#1</span>
+                            <div class="artist-photo-scrim"></div>
+                            <h3 class="artist-name" data-var="groom_name">{{groom_name}}</h3>
+                        </div>
+                        <div class="artist-info">
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="artist-sub">Putra dari<br>Bpk. <span data-var="nama_bapak_laki_laki">{{nama_bapak_laki_laki}}</span> &amp; Ibu <span data-var="nama_ibu_laki_laki">{{nama_ibu_laki_laki}}</span></div>
+                            {{/if}}
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="artist-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener" data-var="ig_laki_laki">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                                @{{ig_laki_laki}}
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    <div class="artist-card reveal-item">
+                        <div class="artist-photo" style="background-image: url('{{photo_bride_photo}}');">
+                            <span class="artist-rank">#2</span>
+                            <div class="artist-photo-scrim"></div>
+                            <h3 class="artist-name" data-var="bride_name">{{bride_name}}</h3>
+                        </div>
+                        <div class="artist-info">
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="artist-sub">Putri dari<br>Bpk. <span data-var="nama_bapak_perempuan">{{nama_bapak_perempuan}}</span> &amp; Ibu <span data-var="nama_ibu_perempuan">{{nama_ibu_perempuan}}</span></div>
+                            {{/if}}
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="artist-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener" data-var="ig_perempuan">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                                @{{ig_perempuan}}
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ===== TRACKLIST (schedule / episodes) ===== -->
+            <section id="schedule" class="section-tracklist">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">On This Album</span>
+                    <h3 class="sec-title">2 Track Wajib Didengar</h3>
+                </div>
+
+                <div class="track reveal-item">
+                    <div class="track-num">1</div>
+                    <div class="track-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                    <div class="track-body">
+                        <div class="track-title">Akad Nikah</div>
+                        <div class="track-sub" data-var="nama_lokasi_akad">{{nama_lokasi_akad}}</div>
+                        <div class="track-sub track-addr" data-var="keterangan_lokasi_akad">{{keterangan_lokasi_akad}}</div>
+                        <div class="track-when">
+                            <span data-var="tanggal_akad">{{tanggal_akad}}</span> · <span data-var="jam_akad">{{jam_akad}}</span>
+                        </div>
+                        <a href="{{akad_map}}" target="_blank" rel="noopener" class="track-map">Buka Lokasi ↗</a>
+                    </div>
+                </div>
+
+                {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                <div class="track reveal-item">
+                    <div class="track-num">2</div>
+                    <div class="track-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                    <div class="track-body">
+                        <div class="track-title">Resepsi</div>
+                        <div class="track-sub" data-var="nama_lokasi_resepsi">{{nama_lokasi_resepsi}}</div>
+                        <div class="track-sub track-addr" data-var="keterangan_lokasi_resepsi">{{keterangan_lokasi_resepsi}}</div>
+                        <div class="track-when">
+                            <span data-var="tanggal_resepsi">{{tanggal_resepsi}}</span> · <span data-var="jam_resepsi">{{jam_resepsi}}</span>
+                        </div>
+                        <a href="{{resepsi_map}}" target="_blank" rel="noopener" class="track-map">Buka Lokasi ↗</a>
+                    </div>
+                </div>
+                {{/if}}
+
+                <div id="wedding-calendar" class="wedding-calendar reveal-item" data-wedding-date="{{wedding_date_iso}}"></div>
+            </section>
+
+
+            <!-- ===== LIVE STREAMING ("Live Event") ===== -->
+            {{#if is_fitur_live_streaming}}
+            <section id="streaming" class="section-streaming">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Now Streaming</span>
+                    <h3 class="sec-title">Live Event</h3>
+                </div>
+                <div class="stream-card reveal-item">
+                    <div class="stream-live"><span class="stream-dot"></span> LIVE</div>
+                    <p class="stream-copy">Bagi yang tidak dapat hadir langsung, saksikan momen bahagia kami lewat siaran langsung.</p>
+                    <a href="{{link_live_streaming}}" target="_blank" rel="noopener" class="spwr-cta stream-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Tonton Sekarang
+                    </a>
+                </div>
+            </section>
+            {{/if}}
+
+
+            <!-- ===== TIMELINE KISAH ("Our Story" / listening history) ===== -->
+            {{#if flag_pakai_timeline_kisah}}
+            <section id="story" class="section-story">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Recently Played</span>
+                    <h3 class="sec-title">Kisah Cinta Kami</h3>
+                </div>
+                <div class="story-list" data-loop="timeline_kisah">
+                    {{#each timeline_kisah}}
+                    <div class="story-track reveal-item">
+                        <div class="story-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                        <div class="story-track-body">
+                            <div class="story-track-top">
+                                <span class="story-track-title" data-var="this.judul">{{this.judul}}</span>
+                                <span class="story-track-date" data-var="this.tanggal">{{this.tanggal}}</span>
+                            </div>
+                            <p class="story-track-text" data-var="this.deskripsi">{{this.deskripsi}}</p>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </section>
+            {{/if}}
+
+
+            <!-- ===== RSVP ("Add to your library") ===== -->
+            <section id="rsvp" class="section-rsvp">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Save this playlist</span>
+                    <h3 class="sec-title">Konfirmasi Kehadiran</h3>
+                </div>
+
+                {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                <div class="rsvp-card reveal-item" id="rsvp-form">
+                    <div class="rsvp-field">
+                        <label>Kode Undangan</label>
+                        <input class="spwr-input" type="text" id="rsvp-code" placeholder="Kode undangan" value="{{kode_undangan}}">
+                    </div>
+                    {{#if is_link_umum_and_not_for_spesific_guest}}
+                    <div class="rsvp-field">
+                        <label>Nama Tamu</label>
+                        <input class="spwr-input" type="text" id="guest-name-input" placeholder="Nama kamu">
+                    </div>
+                    {{/if}}
+                    <div class="rsvp-field">
+                        <label>Jumlah Tamu</label>
+                        <select class="spwr-input" id="rsvp-guests">
+                            <option value="" disabled selected>Jumlah kehadiran</option>
+                            <option value="1">1 Orang</option>
+                            <option value="2">2 Orang</option>
+                            <option value="3">3 Orang</option>
+                            <option value="4">4 Orang</option>
+                        </select>
+                    </div>
+                    <div class="rsvp-field">
+                        <label>Kehadiran</label>
+                        <select class="spwr-input" id="rsvp-status">
+                            <option value="" disabled selected>Konfirmasi kehadiran</option>
+                            <option value="hadir">Hadir</option>
+                            <option value="tidak-hadir">Tidak Hadir</option>
+                        </select>
+                    </div>
+                    <button class="spwr-cta" id="btn-submit-kehadiran" type="button">＋ Simpan ke Library</button>
+                </div>
+                {{/unless}}
+
+                {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                <div class="rsvp-thanks reveal-item" id="alert-submit-kehadiran">
+                    {{#if is_hadir}}
+                    <div class="rsvp-thanks-emoji">🎉</div>
+                    <div class="rsvp-thanks-text">Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>!<br>Kami senang kamu bisa hadir. Sampai jumpa di lokasi!</div>
+                    {{/if}}
+                    {{#unless is_hadir}}
+                    <div class="rsvp-thanks-emoji">🙏</div>
+                    <div class="rsvp-thanks-text">Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>.<br>Kami mengerti kamu belum bisa hadir. Terima kasih atas doa restunya!</div>
+                    {{/unless}}
+                </div>
+                {{/if}}
+            </section>
+
+
+            <!-- ===== GALLERY ("Your Top Moments" — Spotify album grid) ===== -->
+            {{#if is_fitur_gallery}}
+            <section id="gallery" class="section-gallery">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Your Top Moments</span>
+                    <h3 class="sec-title">Momen Favorit</h3>
+                    <p class="sec-desc">Cover art dari lagu-lagu terindah kami tahun ini 📸</p>
+                </div>
+                {{#if has_gallery}}
+                <div class="gallery-grid" data-loop="galleries">
+                    {{#each galleries}}
+                    <a class="gallery-card gallery-item reveal-item" caption="Momen">
+                        <div class="gallery-art">
+                            <img src="{{this.url}}" alt="Momen {{@index_plus_1}}" loading="lazy" class="lightbox-injection">
+                            <span class="gallery-rank">{{@index_plus_1}}</span>
+                            <span class="gallery-play">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            </span>
+                        </div>
+                        <div class="gallery-meta">
+                            <div class="gallery-track">Momen #{{@index_plus_1}}</div>
+                            <div class="gallery-sub"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></div>
+                        </div>
+                    </a>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </section>
+            {{/if}}
+
+
+            <!-- ===== BERBAGI KEBAHAGIAAN (Instagram Story reply) ===== -->
+            {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+            <section id="happiness" class="section-happiness">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Add to your Story</span>
+                    <h3 class="sec-title">Berbagi Kebahagiaan</h3>
+                    <p class="sec-desc">Ambil screenshot kartu kenangan di bawah, bagikan ke Instagram Story kamu, dan tandai kami!</p>
+                </div>
+
+                <div class="story-carousel-wrap reveal-item">
+                    <div class="story-carousel" id="story-carousel">
+                        <div class="story-slide">
+                            <div class="story-card-inner">
+                                <img src="{{sample_story_1}}" alt="Memory 1" class="story-card-photo">
+                                <img src="{{frame_balasan_instagram}}" alt="Frame" class="story-card-frame">
+                                <div class="story-card-badge">♪ STORIES</div>
+                                <div class="story-card-caption">Tawa &amp; Ceria · Ep 1</div>
+                            </div>
+                        </div>
+                        <div class="story-slide">
+                            <div class="story-card-inner">
+                                <img src="{{sample_story_2}}" alt="Memory 2" class="story-card-photo">
+                                <img src="{{frame_balasan_instagram}}" alt="Frame" class="story-card-frame">
+                                <div class="story-card-badge">♪ STORIES</div>
+                                <div class="story-card-caption">Langkah Bersama · Ep 2</div>
+                            </div>
+                        </div>
+                        <div class="story-slide">
+                            <div class="story-card-inner">
+                                <img src="{{sample_story_3}}" alt="Memory 3" class="story-card-photo">
+                                <img src="{{frame_balasan_instagram}}" alt="Frame" class="story-card-frame">
+                                <div class="story-card-badge">♪ STORIES</div>
+                                <div class="story-card-caption">Janji Suci · Ep 3</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="story-dots" id="story-dots">
+                        <span class="story-dot-nav is-active"></span>
+                        <span class="story-dot-nav"></span>
+                        <span class="story-dot-nav"></span>
+                    </div>
+                </div>
+
+                <div class="happiness-foot reveal-item">
+                    <a href="{{link_balasan_instagram}}" target="_blank" rel="noopener" id="btn-share-instagram" class="spwr-cta happiness-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                        Bagikan Momen
+                    </a>
+                    <p class="happiness-tag">Tandai <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong> ✨</p>
+                </div>
+            </section>
+            {{/if}}
+
+
+            <!-- ===== WISHES ("Reviews") ===== -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
+            <section id="wishes" class="section-wishes">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Listener Reviews</span>
+                    <h3 class="sec-title">Ucapan &amp; Doa</h3>
+                </div>
+
+                {{#unless is_sudah_isi_ucapan}}
+                <div class="wish-form reveal-item" id="wish-form">
+                    <input class="spwr-input" type="text" id="wish-name" placeholder="Nama kamu" value="{{guest_name}}">
+                    <textarea class="spwr-input" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa terbaik..."></textarea>
+                    <button type="button" id="btn-submit-ucapan" class="spwr-cta">Kirim Review ★</button>
+                </div>
+                {{/unless}}
+
+                {{#if is_sudah_isi_ucapan}}
+                <div class="wish-thanks reveal-item" id="alert-submit-ucapan">
+                    <div class="rsvp-thanks-emoji">⭐</div>
+                    <div class="rsvp-thanks-text">Terima kasih atas ucapan &amp; doanya!<br>Semoga kebaikanmu kembali berlipat.</div>
+                </div>
+                {{/if}}
+
+                <div class="wish-list">
+                    {{#each wishes}}
+                    <div class="wish-item">
+                        <div class="wish-ava">{{this.guest_name}}</div>
+                        <div class="wish-body">
+                            <div class="wish-top">
+                                <span class="wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
+                                <span class="wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
+                            </div>
+                            <div class="wish-stars">★★★★★</div>
+                            <div class="wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </section>
+            {{/unless}}
+
+
+            <!-- ===== GIFT / AMPLOP ONLINE ("Support the Artists") ===== -->
+            {{#if tampilkan_amplop_online}}
+            <section id="gift" class="section-gift">
+                <div class="sec-head reveal-item">
+                    <span class="sec-eyebrow">Support the Artists</span>
+                    <h3 class="sec-title">Wedding Gift</h3>
+                    <p class="sec-desc">Doa restu kamu sudah sangat berarti. Bila ingin memberi kado, kami sediakan fitur ini.</p>
+                </div>
+
+                <div class="gift-grid">
+                    <!-- Account cards: side-by-side when there are two -->
+                    <div class="gift-banks{{#if flag_pakai_2_rekening}} gift-banks-2{{/if}}">
+                        <!-- Rekening 1 -->
+                        <div class="gift-card reveal-item">
+                            <div class="gift-banner">♪ Gift Card</div>
+                            <div class="gift-bank" data-var="bank_1">{{bank_1}}</div>
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <div class="gift-qris"><img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="gift-qris-img"></div>
+                            {{/if}}
+                            <div class="gift-num-label">Nomor Rekening</div>
+                            <div class="gift-num" id="acc-1" data-var="rek_1">{{rek_1}}</div>
+                            <div class="gift-owner" data-var="nama_rek_1">a.n. {{nama_rek_1}}</div>
+                            <button class="gift-copy" type="button" onclick="copyToClipboard('acc-1', this)">Salin Nomor</button>
+                        </div>
+
+                        <!-- Rekening 2 -->
+                        {{#if flag_pakai_2_rekening}}
+                        <div class="gift-card reveal-item">
+                            <div class="gift-banner">♪ Gift Card</div>
+                            <div class="gift-bank" data-var="bank_2">{{bank_2}}</div>
+                            {{#if flag_pakai_qris_rekening_2}}
+                            <div class="gift-qris"><img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="gift-qris-img"></div>
+                            {{/if}}
+                            <div class="gift-num-label">Nomor Rekening</div>
+                            <div class="gift-num" id="acc-2" data-var="rek_2">{{rek_2}}</div>
+                            <div class="gift-owner" data-var="nama_rek_2">a.n. {{nama_rek_2}}</div>
+                            <button class="gift-copy" type="button" onclick="copyToClipboard('acc-2', this)">Salin Nomor</button>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <!-- Kirim hadiah fisik -->
+                    {{#if flag_kirim_hadiah_offline}}
+                    <div class="gift-card reveal-item gift-card-offline">
+                        <div class="gift-banner">♪ Hadiah Fisik</div>
+                        <div class="gift-bank">🎁 Kirim Hadiah</div>
+                        <div class="gift-owner" data-var="nama_lokasi_kirim_hadiah_offline">{{nama_lokasi_kirim_hadiah_offline}}</div>
+                        <div class="gift-addr" id="gift-addr" data-var="alamat_lokasi_kirim_hadiah_offline">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                        <button class="gift-copy" type="button" onclick="copyToClipboard('gift-addr', this)">Salin Alamat</button>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{/if}}
+
+
+            <!-- ===== CLOSING ("Outro") ===== -->
+            <section class="section-closing" style="background-image: linear-gradient(rgba(18,18,18,0.75), rgba(18,18,18,0.95)), url('{{photo_closing}}');">
+                <div class="closing-inner reveal-item">
+                    <div class="spwr-logo-dot big"></div>
+                    <p class="closing-message" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
+                    <h2 class="closing-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h2>
+                    <div class="closing-date" data-var="wedding_date">{{wedding_date}}</div>
+
+                    <div class="outro-card" data-scroll-top tabindex="0" role="button">
+                        <div class="outro-eq"><span></span><span></span><span></span></div>
+                        <div class="outro-txt">
+                            <small>UP NEXT</small>
+                            <b>Putar Ulang Undangan</b>
+                        </div>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <div class="footer-name" data-var="site_name">{{site_name}}</div>
+                    <div class="footer-tag" data-var="tagline">{{tagline}}</div>
+                    <a class="footer-url" href="{{site_url}}" target="_blank" rel="noopener" data-var="site_url">{{site_url}}</a>
+                    <div class="footer-copyright">Digital wedding invitation &copy; 2026</div>
+                    <div class="footer-social">
+                        {{#if flag_use_tiktok_webconfig}}
+                        <a aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_instagram_webconfig}}
+                        <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_youtube_webconfig}}
+                        <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_whatsapp_webconfig}}
+                        <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener">
+                            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                        </a>
+                        {{/if}}
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ===== FLOATING PLAYER BAR (main controls) =====
+                 QR · Prev-section · Play/Pause music · Next-section · Menu
+                 NOTE: the host forces `#theme-fab-container { display:block !important }`
+                 when opened, so the flex ROW lives on the inner .spwr-playerbar,
+                 not on #theme-fab-container itself. -->
+            <div id="theme-fab-container" class="spwr-playerbar-wrap" style="display:none;">
+              <div class="spwr-playerbar">
+                <button id="btn-show-qr" class="pb-btn pb-side" aria-label="QR Check-in">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="6" height="6" x="3" y="3" rx="1"></rect><rect width="6" height="6" x="15" y="3" rx="1"></rect><rect width="6" height="6" x="3" y="15" rx="1"></rect><path d="M15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z" fill="currentColor" stroke="none"></path></svg>
+                </button>
+
+                <button class="pb-btn" id="pb-prev" aria-label="Section sebelumnya">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"></path></svg>
+                </button>
+
+                <button class="pb-btn pb-play" id="btn-toggle-music" aria-label="Putar / jeda musik">
+                    <span id="music-icon-container">
+                        <svg id="play-icon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" style="display:block;"><path d="M8 5v14l11-7z"></path></svg>
+                        <svg id="pause-icon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zm8 0h4v14h-4z"></path></svg>
+                    </span>
+                </button>
+
+                <button class="pb-btn" id="pb-next" aria-label="Section berikutnya">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z"></path></svg>
+                </button>
+
+                <button id="btn-show-menu" class="pb-btn pb-side" aria-label="Lihat menu" uk-toggle="target: #menu-modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <div id="menu-modal" class="uk-modal-full" uk-modal="">
+                <div class="uk-modal-dialog uk-flex uk-flex-center uk-flex-middle spwr-menu-bg" uk-height-viewport="">
+                    <button class="uk-modal-close-full menu-close-btn" type="button" uk-toggle="target: #menu-modal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <div class="menu-content uk-text-center">
+                        <div class="menu-header">
+                            <div class="menu-brand"><span class="spwr-logo-dot"></span> 2026 WRAPPED</div>
+                            <h2 class="menu-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h2>
+                            <div class="menu-date">{{wedding_date}}</div>
+                        </div>
+                        <ul class="uk-nav uk-nav-primary uk-nav-center menu-list">
+                            <li><a href="#couples" uk-scroll="" uk-toggle="target: #menu-modal">Top Artists</a></li>
+                            <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Tracklist</a></li>
+                            <li><a href="#story" uk-scroll="" uk-toggle="target: #menu-modal">Our Story</a></li>
+                            <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Cover Art</a></li>
+                            <li><a href="#happiness" uk-scroll="" uk-toggle="target: #menu-modal">Stories</a></li>
+                            <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Reviews</a></li>
+                            <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Support</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <audio id="bg-music" loop="">
+                <source src="{{link_backsound_music}}" type="audio/mpeg">
+            </audio>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
