@@ -26,6 +26,10 @@ import sampleStory2 from '@/assets/img/sample_story_2.jpg';
 import sampleStory3 from '@/assets/img/sample_story_3.jpg';
 import defaultFrame from '@/assets/img/frame.png';
 
+// Daftar kategori gaya standar (samakan dengan ManageThemesPage). "Lainnya"
+// dipakai sebagai pemicu untuk mengetik kategori kustom di form editor.
+const STYLE_CATEGORIES = ['Modern', 'Tradisional', 'Minimalis', 'Floral', 'Rustic', 'Lainnya'] as const;
+
 const isValidImageUrl = (url: any): boolean => {
     if (!url || typeof url !== 'string') return false;
     const cleanUrl = url.includes('|') ? url.split('|')[1] : url;
@@ -100,6 +104,15 @@ const validateThemeCode = (raw: string): string => {
     return '';
 };
 
+// Interpret a stored flag_draft value into a strict boolean. The backend only
+// treats a theme as a draft when flag_draft is truthy (true / 'true' / 'TRUE');
+// ANY other representation of "published" (false, 'false', 'FALSE', 0, '', null,
+// undefined, blank cell) must read as NOT draft. Using this everywhere keeps the
+// editor's change-detection aligned with the backend — otherwise clicking
+// "Simpan Draf" on a published theme is wrongly detected as "no change" and the
+// draft toggle is silently skipped.
+const isDraftFlag = (v: any): boolean => v === true || v === 'true' || v === 'TRUE';
+
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -157,6 +170,9 @@ export function ThemeEditorPage() {
     const [codeError, setCodeError] = useState('');
     const [planType, setPlanType] = useState<PlanType>('basic');
     const [styleCategory, setStyleCategory] = useState('Lainnya');
+    // Kategori gaya yang benar-benar dipakai tema lain di DB (mis. "playable"),
+    // digabung dengan daftar baku agar dropdown tak hanya dari konstanta FE.
+    const [dbStyleCategories, setDbStyleCategories] = useState<string[]>([]);
     const [previewImage, setPreviewImage] = useState('');
     const [htmlCode, setHtmlCode] = useState('<!-- Tambahkan tombol dengan id="btn-open-invitation" di cover -->\n<div class="wedding-theme">\n  <h1>{{bride_name}} & {{groom_name}}</h1>\n  <button id="btn-open-invitation">Buka Undangan</button>\n</div>');
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
@@ -421,7 +437,7 @@ export function ThemeEditorPage() {
                     setInitialHtmlCode(theme.html_template || '');
                     setInitialCssCode(theme.css_template || '');
                     setInitialJsCode(theme.js_template || '');
-                    setFlagDraft(theme.flag_draft !== false && theme.flag_draft !== 'false');
+                    setFlagDraft(isDraftFlag(theme.flag_draft));
                     setFlagUseSystemActionButton(theme.flag_use_system_action_button !== false && theme.flag_use_system_action_button !== 'false');
 
                     // Robust image_types parsing
@@ -448,7 +464,7 @@ export function ThemeEditorPage() {
                         setInitialHtmlCode(refetchedTheme.html_template || '');
                         setInitialCssCode(refetchedTheme.css_template || '');
                         setInitialJsCode(refetchedTheme.js_template || '');
-                        setFlagDraft(refetchedTheme.flag_draft !== false && refetchedTheme.flag_draft !== 'false');
+                        setFlagDraft(isDraftFlag(refetchedTheme.flag_draft));
                         setFlagUseSystemActionButton(refetchedTheme.flag_use_system_action_button !== false && refetchedTheme.flag_use_system_action_button !== 'false');
 
                         // Robust image_types parsing
@@ -496,6 +512,24 @@ export function ThemeEditorPage() {
     useEffect(() => {
         loadData();
     }, [id]);
+
+    // Ambil kategori gaya yang sudah ada di DB (dari tema lain) sekali saat mount,
+    // supaya dropdown "Kategori Gaya" menampilkan kategori kustom yang benar-benar
+    // dipakai (mis. "playable") — bukan hanya daftar hardcoded di STYLE_CATEGORIES.
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            try {
+                const res = await themeApi.getThemes();
+                if (!active) return;
+                const list = (res?.data || [])
+                    .map((t: any) => (t.style_category || '').trim())
+                    .filter((c: string) => c !== '');
+                setDbStyleCategories(Array.from(new Set<string>(list)));
+            } catch { /* diamkan: dropdown tetap pakai daftar baku */ }
+        })();
+        return () => { active = false; };
+    }, []);
 
     // Handle tenant selection from store once loaded
     useEffect(() => {
@@ -1544,7 +1578,7 @@ export function ThemeEditorPage() {
                     return JSON.stringify(Array.isArray(it) ? it : []);
                 })();
                 const origAssetList = JSON.stringify(parseAssetMediaList(orig?.asset_media_list));
-                const origDraft = orig ? (orig.flag_draft !== false && orig.flag_draft !== 'false') : true;
+                const origDraft = orig ? isDraftFlag(orig.flag_draft) : true;
                 const origSysBtn = orig ? (orig.flag_use_system_action_button !== false && orig.flag_use_system_action_button !== 'false') : true;
                 const metaChanged =
                     name !== (orig?.name ?? '') ||
@@ -2388,23 +2422,56 @@ export function ThemeEditorPage() {
                                     </div>
                                     <div className="flex flex-col">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Gaya (Style)</label>
-                                        {/* Kombinasi dropdown + input bebas: pilih yang sudah ada ATAU ketik kategori baru */}
-                                        <input
-                                            type="text"
-                                            list="style-category-options"
-                                            value={styleCategory}
-                                            onChange={e => setStyleCategory(e.target.value)}
-                                            placeholder="Pilih atau ketik kategori baru…"
-                                            className="input-field"
-                                        />
-                                        <datalist id="style-category-options">
-                                            <option value="Minimalist" />
-                                            <option value="Elegant" />
-                                            <option value="Nature" />
-                                            <option value="Romantic" />
-                                            <option value="Cultural" />
-                                            <option value="Lainnya" />
-                                        </datalist>
+                                        {/* Dropdown kategori standar; pilih "Lainnya" untuk mengetik kategori kustom.
+                                            isCustomStyle = value bukan salah satu kategori baku (selain "Lainnya"). */}
+                                        {(() => {
+                                            const baseline = STYLE_CATEGORIES.filter(c => c !== 'Lainnya');
+                                            // Gabungkan daftar baku dengan kategori dari DB (mis. "playable"),
+                                            // dedup case-insensitive tapi pertahankan label pertama yang muncul.
+                                            const seen = new Set(baseline.map(c => c.toLowerCase()));
+                                            const preset = [
+                                                ...baseline,
+                                                ...dbStyleCategories.filter(c => {
+                                                    const k = c.toLowerCase();
+                                                    if (seen.has(k)) return false;
+                                                    seen.add(k);
+                                                    return true;
+                                                }),
+                                            ];
+                                            const isCustomStyle = !preset.some(c => c === styleCategory);
+                                            return (
+                                                <>
+                                                    <select
+                                                        value={isCustomStyle ? 'Lainnya' : styleCategory}
+                                                        onChange={e => {
+                                                            const v = e.target.value;
+                                                            // "Lainnya" → kosongkan agar user mengetik kategori baru
+                                                            setStyleCategory(v === 'Lainnya' ? '' : v);
+                                                        }}
+                                                        className="input-field"
+                                                    >
+                                                        {preset.map(c => (
+                                                            <option key={c} value={c}>{c}</option>
+                                                        ))}
+                                                        <option value="Lainnya">Lainnya (kategori kustom)…</option>
+                                                    </select>
+                                                    {isCustomStyle && (
+                                                        <input
+                                                            type="text"
+                                                            value={styleCategory === 'Lainnya' ? '' : styleCategory}
+                                                            onChange={e => setStyleCategory(e.target.value)}
+                                                            placeholder="Ketik nama kategori kustom…"
+                                                            maxLength={40}
+                                                            className="input-field mt-2"
+                                                            autoFocus
+                                                        />
+                                                    )}
+                                                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                                        Digunakan untuk filter kategori di halaman Kelola Tema.
+                                                    </p>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
 
                                     <div className="flex flex-col">

@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     HiOutlineCheck,
-    HiOutlineSparkles,
-    HiOutlineStar,
-    HiOutlineChatAlt,
     HiOutlineChevronLeft,
     HiOutlineChevronRight,
     HiOutlineChevronDown,
@@ -12,11 +9,6 @@ import {
     HiOutlineMenu,
     HiOutlineX,
     HiOutlineArrowRight,
-    HiOutlinePuzzle,
-    HiOutlinePaperAirplane,
-    HiOutlineQrcode,
-    HiOutlineColorSwatch,
-    HiOutlineGift
 } from 'react-icons/hi';
 import { FaInstagram, FaTiktok, FaYoutube, FaWhatsapp } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
@@ -29,6 +21,11 @@ import kosaIcon from '@/assets/img/kosa-icon.png';
 // The preview forces this theme onto the demo tenant's real invitation data.
 // Must match an ACTIVE tenant's domain_slug, otherwise the preview shows "not found".
 const PREVIEW_DEMO_SLUG = 'dini-galang';
+
+// Theme code + slug used for the LIVE hero preview iframe. Built as a constant
+// so the URL is dynamic (assembled from vars) yet easy to swap here.
+const HERO_PREVIEW_THEME = 'metal-slug';
+const HERO_PREVIEW_URL = `#/preview/${HERO_PREVIEW_THEME}/${PREVIEW_DEMO_SLUG}`;
 
 const NAV_LINKS = ['Keunggulan', 'Tema', 'Harga', 'Fitur', 'Testimoni', 'FAQ'];
 
@@ -78,6 +75,23 @@ const DUMMY_REVIEWS: Array<Pick<ReviewAndRating, 'id' | 'comment' | 'rate_star' 
     { id: 'd10', rate_star: 5, comment: 'Pilihan temanya banyak dan semuanya mewah. Kami sempat coba beberapa lewat fitur preview sebelum memutuskan. Hasil akhirnya sesuai banget dengan konsep pernikahan kami.', bride_name: 'Fitri', groom_name: 'Galih', wedding_date: '2024', alamat: 'Bekasi' },
 ];
 
+// ── Retro-game feature highlights (icons are emoji so no extra deps needed) ──
+const RETRO_FEATURES: Array<{ emoji: string; title: string; desc: string; hero?: boolean; tag?: string }> = [
+    {
+        emoji: '🎮',
+        title: 'Undangan yang Bisa DIMAINKAN',
+        desc: 'Tamu bermain langsung di dalam undangan untuk membuka tiap bagiannya — petualangan interaktif ala game retro yang mengubah undangan jadi momen seru. Tetap ramah untuk semua tamu berkat tombol "LIHAT UNDANGAN" instan.',
+        hero: true,
+        tag: 'EKSKLUSIF',
+    },
+    { emoji: '🪄', title: 'Fully controllable', desc: 'Kamu punya akses untuk mengubah isi undangan sesuai dengan keinginanmu. Mulai dari data mempelai, lokasi acara, foto, love story, music background, sampai live streaming.' },
+    { emoji: '💰', title: 'Anti boncos', desc: 'Adjustment apapun yang kamu lakukan sendiri tidak akan ditambahkan kedalam hitungan biaya, lakukan perubahan bahkan di detik-detik terakhir sebelum hari H!' },
+    { emoji: '💻', title: 'Live preview', desc: 'Nikmati pengalaman melihat hasil perubahan design undangan secara real-time langsung dari Desktop kamu — cepat, praktis, dan tanpa ribet.' },
+    { emoji: '📲', title: 'Scanner kehadiran', desc: 'Tracking data tamu menggunakan QR code, tamu yang di undangan secara khusus maupun tamu umum semua mendapatkan QR code, jadi kamu tidak perlu khawatir akan ada data tamu yang tidak tercatat.' },
+    { emoji: '👨‍👩‍👧', title: 'Google contact + WhatsApp', desc: 'Tidak perlu repot buat data tamu undangan satu persatu, kamu bisa import dari google contact. dan dikirim undangan personal via Whatsapp.' },
+    { emoji: '📖', title: 'Data reporting', desc: 'Semua data ucapan, kehadiran tamu, gift yang masuk akan tercatat sehingga kamu bisa mengeceknya kapan saja.' },
+];
+
 export function NewLandingPage() {
     // Data States
     const [config, setConfig] = useState<WebsiteConfig | null>(null);
@@ -86,6 +100,7 @@ export function NewLandingPage() {
     const [planFeatures, setPlanFeatures] = useState<MstPlanFeature[]>([]);
     const [reviews, setReviews] = useState<ReviewAndRating[]>([]);
     const [additionalFeatures, setAdditionalFeatures] = useState<MstAdditionalFeature[]>([]);
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     // UI States
@@ -127,10 +142,12 @@ export function NewLandingPage() {
                     setReviews(configRes.data.reviews || []);
                     setAdditionalFeatures(configRes.data.features || []);
 
-                    // Update Favicon with dynamic site logo if loaded
+                    // Resolve the site logo once (base64) — reused by the navbar/
+                    // footer logo blocks AND the favicon, matching the auth pages.
                     if (configRes.data.site_logo) {
                         const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
                         const resolvedLogo = await fetchProxyImageBase64(configRes.data.site_logo);
+                        setLogoUrl(resolvedLogo);
                         let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
                         if (fav) {
                             fav.href = resolvedLogo;
@@ -160,15 +177,23 @@ export function NewLandingPage() {
         return () => { document.body.style.overflow = ''; };
     }, [menuOpen]);
 
-    // Theme Grouping
+    // Theme Grouping — tab kategori dibangun DINAMIS dari kategori yang benar-benar
+    // ada di DB (kosong diabaikan, di-dedup & diurutkan). Tema tanpa kategori hanya
+    // muncul di tab "All", sehingga tab tidak pernah kosong (konsisten dgn admin).
     const themeCategories = useMemo(() => {
-        const categories = Array.from(new Set(themes.map(t => t.style_category || 'Modern')));
+        const categories = Array.from(
+            new Set(
+                themes
+                    .map(t => (t.style_category || '').trim())
+                    .filter(c => c !== '')
+            )
+        ).sort((a, b) => a.localeCompare(b, 'id'));
         return ['All', ...categories];
     }, [themes]);
 
     const filteredThemes = useMemo(() => {
         if (activeThemeCategory === 'All') return themes;
-        return themes.filter(t => t.style_category === activeThemeCategory);
+        return themes.filter(t => (t.style_category || '').trim() === activeThemeCategory);
     }, [themes, activeThemeCategory]);
 
     // Order plan cards so "premium" sits in the middle on desktop and on top on mobile
@@ -229,10 +254,13 @@ export function NewLandingPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin"></div>
-                    <p className="text-gray-500 font-medium animate-pulse tracking-wide">Menyiapkan Pengalaman Premium...</p>
+            <div className="rm-lp min-h-screen flex items-center justify-center" style={{ background: 'var(--lp-ink)' }}>
+                <RetroStyles />
+                <div className="flex flex-col items-center gap-6">
+                    <div className="lp-coin-spin" />
+                    <p className="lp-pixel text-[10px] lp-blink" style={{ color: 'var(--lp-coin)' }}>
+                        LOADING… PRESS START
+                    </p>
                 </div>
             </div>
         );
@@ -241,40 +269,40 @@ export function NewLandingPage() {
     const siteName = config?.site_name || 'WEDDING SAAS';
 
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 selection:bg-gold-500/30 selection:text-gold-900 overflow-x-hidden">
+        <div className="rm-lp min-h-screen font-sans overflow-x-hidden" style={{ background: 'var(--lp-ink)', color: '#fff' }}>
+            <RetroStyles />
+
             {/* ============ NAVBAR ============ */}
-            <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled || menuOpen ? 'bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl shadow-sm border-b border-gray-100 dark:border-gray-800 py-3' : 'bg-transparent py-5 lg:py-6'}`}>
+            <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${scrolled || menuOpen ? 'lp-nav-solid py-2.5' : 'py-4 lg:py-5'}`}>
                 <div className="container mx-auto px-5 sm:px-6 flex items-center justify-between">
-                    <Link to="/landing-page" className="flex items-center gap-2.5 sm:gap-3 group">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-tr from-gold-600 to-gold-400 rounded-xl flex items-center justify-center text-white shadow-lg shadow-gold-500/20 transform rotate-3 group-hover:rotate-6 transition-transform">
-                            <HiOutlineSparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Link to="/landing-page" className="flex items-center gap-3 group">
+                        <div className="lp-logo-block overflow-hidden p-2">
+                            <img src={logoUrl || kosaIcon} alt={siteName} className="w-full h-full object-contain" />
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-lg sm:text-xl font-black tracking-tighter text-gray-900 dark:text-white leading-none">
+                        <div className="flex flex-col leading-none">
+                            <span className="lp-pixel text-[13px] sm:text-[15px] text-white" style={{ textShadow: '2px 2px 0 rgba(0,0,0,.5)' }}>
                                 {siteName}
                             </span>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-gold-600 uppercase tracking-[0.2em]">Undangan Digital</span>
+                            <span className="lp-pixel text-[6px] sm:text-[7px] mt-1.5 tracking-[0.2em]" style={{ color: 'var(--lp-coin)' }}>UNDANGAN DIGITAL</span>
                         </div>
                     </Link>
 
-                    <div className="hidden lg:flex items-center gap-10">
+                    <div className="hidden lg:flex items-center gap-8">
                         {NAV_LINKS.map((item) => (
-                            <a key={item} href={`#${item.toLowerCase()}`} onClick={(e) => scrollToSection(e, item.toLowerCase())} className="text-[13px] font-bold uppercase tracking-widest hover:text-gold-500 transition-colors relative group">
+                            <a key={item} href={`#${item.toLowerCase()}`} onClick={(e) => scrollToSection(e, item.toLowerCase())}
+                                className="lp-pixel text-[8px] uppercase tracking-widest text-white/80 hover:text-[var(--lp-coin)] transition-colors">
                                 {item}
-                                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-500 transition-all group-hover:w-full"></span>
                             </a>
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-3 sm:gap-4">
-                        <Link to="/login" className="hidden sm:block text-sm font-bold text-gray-500 hover:text-gold-500 transition-colors">MASUK</Link>
-                        <Link to="/register" className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-2.5 px-5 sm:px-6 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-transform active:scale-95">
-                            DAFTAR
-                        </Link>
+                    <div className="flex items-center gap-3">
+                        <Link to="/login" className="hidden sm:block lp-pixel text-[8px] uppercase tracking-widest text-white/70 hover:text-[var(--lp-coin)] transition-colors">MASUK</Link>
+                        <Link to="/register" className="lp-btn lp-btn-coin text-[8px] px-4 py-2.5">DAFTAR</Link>
                         <button
                             onClick={() => setMenuOpen(o => !o)}
                             aria-label="Buka menu"
-                            className="lg:hidden w-10 h-10 -mr-1.5 flex items-center justify-center text-gray-700 dark:text-gray-200"
+                            className="lg:hidden w-10 h-10 -mr-1.5 flex items-center justify-center text-white"
                         >
                             {menuOpen ? <HiOutlineX className="w-6 h-6" /> : <HiOutlineMenu className="w-6 h-6" />}
                         </button>
@@ -283,13 +311,13 @@ export function NewLandingPage() {
 
                 {/* Mobile / Tablet menu */}
                 <div className={`lg:hidden overflow-hidden transition-all duration-500 ease-out ${menuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="container mx-auto px-5 sm:px-6 py-4 flex flex-col gap-1">
+                    <div className="container mx-auto px-5 sm:px-6 py-4 flex flex-col gap-1.5">
                         {NAV_LINKS.map((item) => (
                             <a
                                 key={item}
                                 href={`#${item.toLowerCase()}`}
                                 onClick={(e) => scrollToSection(e, item.toLowerCase())}
-                                className="py-3 px-4 rounded-2xl text-sm font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:text-gold-600 transition-colors"
+                                className="lp-pixel text-[9px] py-3 px-4 uppercase tracking-widest text-white/80 hover:text-[var(--lp-coin)] hover:bg-white/5 rounded transition-colors"
                             >
                                 {item}
                             </a>
@@ -297,7 +325,7 @@ export function NewLandingPage() {
                         <Link
                             to="/login"
                             onClick={() => setMenuOpen(false)}
-                            className="sm:hidden py-3 px-4 rounded-2xl text-sm font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:text-gold-600 transition-colors"
+                            className="sm:hidden lp-pixel text-[9px] py-3 px-4 uppercase tracking-widest text-white/80 hover:text-[var(--lp-coin)] hover:bg-white/5 rounded transition-colors"
                         >
                             Masuk
                         </Link>
@@ -306,204 +334,162 @@ export function NewLandingPage() {
             </nav>
 
             {/* ============ HERO ============ */}
-            <section className="relative min-h-[88vh] lg:min-h-screen flex items-center pt-28 pb-16 lg:pt-20 lg:pb-0 overflow-hidden">
-                <div className="absolute inset-0 z-0">
-                    <img
-                        src="/wedding_saas_hero.png"
-                        alt=""
-                        aria-hidden="true"
-                        className="w-full h-full object-cover opacity-10 dark:opacity-20 scale-110 animate-slow-zoom"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-b from-white via-white/85 to-white dark:from-gray-950 dark:via-gray-950/85 dark:to-gray-950"></div>
-                    {/* Decorative gold glow */}
-                    <div className="absolute -top-24 -right-24 w-[28rem] h-[28rem] bg-gold-500/10 blur-[120px] rounded-full"></div>
-                    <div className="absolute bottom-0 -left-24 w-[24rem] h-[24rem] bg-gold-400/10 blur-[120px] rounded-full"></div>
+            <section className="lp-hero relative min-h-[92vh] lg:min-h-screen flex items-center pt-28 pb-20 lg:pt-24 overflow-hidden">
+                {/* pixel sky decor */}
+                <div className="lp-hero-deco" aria-hidden="true">
+                    <span className="lp-cloud c1" /><span className="lp-cloud c2" /><span className="lp-cloud c3" />
+                    <span className="lp-hill h1" /><span className="lp-hill h2" />
+                    <span className="lp-qblock d1">?</span><span className="lp-qblock d2">?</span>
+                    <span className="lp-coin co1" /><span className="lp-coin co2" />
+                    <span className="lp-pipe" /><span className="lp-goomba" />
                 </div>
+                {/* ground strip */}
+                <div className="lp-ground" aria-hidden="true" />
 
                 <div className="container mx-auto px-5 sm:px-6 relative z-10">
-                    <div className="grid lg:grid-cols-12 gap-12 lg:gap-10 items-center">
-                        <div className="lg:col-span-6 space-y-6 sm:space-y-7 text-center lg:text-left">
-                            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/70 dark:bg-gray-900/60 backdrop-blur-sm border border-gold-200/60 dark:border-gold-800/50 shadow-sm text-gold-600 dark:text-gold-400 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] sm:tracking-[0.3em] animate-fade-in-up">
-                                <span className="relative flex w-2 h-2">
-                                    <span className="absolute inline-flex w-full h-full rounded-full bg-gold-500 opacity-75 animate-ping"></span>
-                                    <span className="relative inline-flex w-2 h-2 rounded-full bg-gold-500"></span>
-                                </span>
-                                Undangan Pernikahan Digital
+                    <div className="grid lg:grid-cols-12 gap-10 items-center">
+                        <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+                            <div className="lp-badge inline-flex items-center gap-2 lp-bob">
+                                <span className="lp-badge-dot" />
+                                UNDANGAN PERNIKAHAN DIGITAL
                             </div>
-                            <h1 className="font-display text-[2.75rem] leading-[1.02] sm:text-6xl lg:text-7xl xl:text-[5.25rem] font-black tracking-tight dark:text-white">
-                                {config?.tagline || 'Momen Spesial,'} <br className="hidden sm:block" />{' '}
-                                <span className="text-gradient-gold italic">Berkelas.</span>
+
+                            <h1 className="lp-pixel text-[1.65rem] sm:text-4xl lg:text-[3.2rem] leading-[1.5] text-white" style={{ textShadow: '4px 4px 0 rgba(0,0,0,.4)' }}>
+                                {config?.tagline || 'MOMEN SPESIAL'}<br />
+                                <span style={{ color: 'var(--lp-coin)' }}>LEVEL UP!</span>
                             </h1>
-                            <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 max-w-md sm:max-w-lg mx-auto lg:mx-0 leading-relaxed font-medium">
-                                {config?.site_description || 'Buat undangan digital impian Anda dengan platform tercanggih. Mewah, praktis, dan elegan.'}
+
+                            <p className="text-sm sm:text-base text-white/85 max-w-lg mx-auto lg:mx-0 leading-relaxed font-medium">
+                                {config?.site_description || 'Buat undangan digital impian Anda dengan platform tercanggih. Seru dimainkan, praktis, dan berkesan untuk setiap tamu.'}
                             </p>
 
                             {/* Quick highlights — fitur nyata yang menjual */}
-                            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2">
+                            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5">
                                 {['RSVP Real-time', 'Scan QR Check-in', 'WhatsApp Blast'].map((feat) => (
-                                    <span key={feat} className="inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-bold text-gray-600 dark:text-gray-300">
-                                        <HiOutlineCheck className="w-4 h-4 text-gold-500 shrink-0" />
+                                    <span key={feat} className="lp-chip">
+                                        <HiOutlineCheck className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--lp-green)' }} />
                                         {feat}
                                     </span>
                                 ))}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 justify-center lg:justify-start max-w-md mx-auto lg:mx-0 pt-1">
-                                <Link to="/register" className="group inline-flex items-center justify-center gap-2 whitespace-nowrap px-7 sm:px-8 py-4 bg-gold-600 text-white rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider hover:bg-gold-700 shadow-xl shadow-gold-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                                    Mulai Sekarang
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center lg:justify-start max-w-md mx-auto lg:mx-0 pt-2">
+                                <Link to="/register" className="lp-btn lp-btn-coin group inline-flex items-center justify-center gap-2 text-[11px] px-6 py-4">
+                                    PRESS START
                                     <HiOutlineArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </Link>
-                                <a href="#tema" onClick={(e) => scrollToSection(e, 'tema')} className="inline-flex items-center justify-center whitespace-nowrap px-7 sm:px-8 py-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-800 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm">
-                                    Lihat Tema
+                                <a href="#tema" onClick={(e) => scrollToSection(e, 'tema')} className="lp-btn lp-btn-green inline-flex items-center justify-center text-[11px] px-6 py-4">
+                                    LIHAT TEMA
                                 </a>
                             </div>
 
                             {/* Trust row — rating & jumlah ulasan (data real saja) */}
                             {avgRating && (
-                                <div className="flex items-center justify-center lg:justify-start gap-3 pt-3 sm:pt-4">
-                                    <div className="flex items-center gap-0.5">
+                                <div className="flex items-center justify-center lg:justify-start gap-3 pt-3">
+                                    <div className="flex items-center gap-1">
                                         {[...Array(5)].map((_, i) => (
-                                            <HiOutlineStar key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-gold-500 fill-current" />
+                                            <span key={i} className="lp-star" />
                                         ))}
                                     </div>
-                                    <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
-                                        <span className="font-black text-gray-900 dark:text-white">{avgRating}</span>
-                                        <span className="text-gray-400"> · dari {reviews.length} ulasan</span>
+                                    <div className="lp-pixel text-[8px] text-white/80">
+                                        <span style={{ color: 'var(--lp-coin)' }}>{avgRating}</span>
+                                        <span className="text-white/50"> · {reviews.length} ULASAN</span>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Hero image — visible from tablet up */}
-                        <div className="hidden md:block lg:col-span-6 relative mt-8 lg:mt-0">
-                            <div className="absolute -inset-4 bg-gold-500/10 blur-[100px] rounded-full"></div>
-                            <div className="relative z-10 mx-auto w-[68%] lg:w-[82%]">
-                                <div className="absolute -top-5 -left-5 w-24 h-24 border-t-2 border-l-2 border-gold-400/40 rounded-tl-[2rem]"></div>
-                                <div className="absolute -bottom-5 -right-5 w-24 h-24 border-b-2 border-r-2 border-gold-400/40 rounded-br-[2rem]"></div>
-                                <img
-                                    src="/wedding_saas_hero.png"
-                                    alt="Pratinjau undangan digital"
-                                    className="w-full rounded-[1.2rem] lg:rounded-[1.4rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] border-[6px] lg:border-[8px] border-white dark:border-gray-800 transform rotate-2 hover:rotate-0 transition-transform duration-1000"
-                                />
-                                {/* Floating rating chip on the mockup */}
+                        {/* Hero live-preview — a pixel phone frame running the real
+                            invitation theme in an iframe. Visible from tablet up. */}
+                        <div className="hidden md:block lg:col-span-5 relative">
+                            <div className="lp-hero-phone mx-auto">
+                                <div className="lp-hero-card-top">
+                                    <span className="lp-dot r" /><span className="lp-dot y" /><span className="lp-dot g" />
+                                    <span className="lp-pixel text-[7px] text-white/70 ml-2">WORLD 1-1</span>
+                                    <span className="lp-live-badge ml-auto"><span className="lp-live-dot" /> LIVE</span>
+                                </div>
+                                <div className="lp-hero-screen">
+                                    <iframe
+                                        src={HERO_PREVIEW_URL}
+                                        title="Pratinjau undangan interaktif"
+                                        loading="lazy"
+                                        className="lp-hero-iframe"
+                                        scrolling="no"
+                                    />
+                                </div>
                                 {avgRating && (
-                                    <div className="absolute -bottom-5 -left-6 lg:-left-10 z-20 flex items-center gap-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 px-4 py-3">
-                                        <div className="w-9 h-9 rounded-xl bg-gold-50 dark:bg-gold-900/30 flex items-center justify-center text-gold-500">
-                                            <HiOutlineStar className="w-5 h-5 fill-current" />
-                                        </div>
+                                    <div className="lp-hero-chip">
+                                        <span className="lp-star" />
                                         <div className="leading-tight">
-                                            <div className="text-sm font-black text-gray-900 dark:text-white">{avgRating} / 5.0</div>
-                                            <div className="text-[10px] font-bold text-gray-400">{reviews.length} ulasan</div>
+                                            <div className="lp-pixel text-[9px]" style={{ color: 'var(--lp-coin)' }}>{avgRating}/5.0</div>
+                                            <div className="lp-pixel text-[6px] text-white/60 mt-1">{reviews.length} ULASAN</div>
                                         </div>
                                     </div>
                                 )}
                             </div>
+                            {/* Tap-through overlay CTA: open the full preview in a new tab */}
+                            <a
+                                href={HERO_PREVIEW_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="lp-btn lp-btn-coin text-[8px] px-4 py-2.5 mt-5 inline-flex items-center gap-2 mx-auto"
+                                style={{ display: 'flex', width: 'fit-content' }}
+                            >
+                                ▶ MAINKAN PREVIEW
+                            </a>
                         </div>
                     </div>
                 </div>
             </section>
 
             {/* ============ KEUNGGULAN (Why Choose Us) ============ */}
-            <section id="keunggulan" className="scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-gray-50 dark:bg-gray-900/50 relative overflow-hidden">
-                {/* Decorative gold glow */}
-                <div className="absolute -top-24 right-0 w-[28rem] h-[28rem] bg-gold-500/5 blur-[120px] rounded-full pointer-events-none"></div>
-
+            <section id="keunggulan" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24 relative overflow-hidden">
                 <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-                        <div className="text-gold-500 font-black text-[10px] uppercase tracking-[0.3em] mb-3 sm:mb-4">Kenapa Memilih Kami</div>
-                        <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight dark:text-white leading-tight mb-4 sm:mb-5">
-                            Undangan yang <span className="text-gradient-gold italic">Tak Terlupakan</span>
+                        <div className="lp-eyebrow">★ KENAPA MEMILIH KAMI ★</div>
+                        <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4 mb-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
+                            UNDANGAN YANG <span style={{ color: 'var(--lp-coin)' }}>TAK TERLUPAKAN</span>
                         </h2>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium text-sm sm:text-base">
-                            Bukan sekadar undangan digital — sebuah pengalaman istimewa untuk Anda dan setiap tamu.
+                        <p className="text-white/70 font-medium text-sm sm:text-base">
+                            Bukan sekadar undangan digital — sebuah petualangan istimewa untuk Anda dan setiap tamu.
                         </p>
                     </div>
 
-                    {/* Bento-style highlight grid: first card is the hero highlight (spans 2 cols on lg) */}
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 max-w-6xl mx-auto">
-                        {/* 1 — Playable invitation (hero highlight) */}
-                        <div className="sm:col-span-2 group relative overflow-hidden p-7 sm:p-9 rounded-[1.2rem] sm:rounded-[1.4rem] bg-gray-900 text-white border border-gold-500/30 shadow-2xl shadow-gold-500/10">
-                            <div className="absolute -top-16 -right-16 w-64 h-64 bg-gold-500/20 blur-[90px] rounded-full"></div>
-                            <div className="relative z-10 flex flex-col h-full">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
+                        {RETRO_FEATURES.map((f, i) => (
+                            <div
+                                key={i}
+                                className={`lp-card group ${f.hero ? 'sm:col-span-2 lg:col-span-3 lp-card-hero' : ''}`}
+                            >
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-gold-500/15 rounded-2xl flex items-center justify-center text-gold-400 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                        <HiOutlinePuzzle className="w-6 h-6 sm:w-7 sm:h-7" />
-                                    </div>
-                                    <span className="px-3 py-1 rounded-full bg-gold-500/15 text-gold-300 text-[9px] font-black uppercase tracking-[0.2em]">Eksklusif</span>
+                                    <span className="lp-feat-ico group-hover:-translate-y-1 transition-transform">{f.emoji}</span>
+                                    {f.tag && <span className="lp-tag">{f.tag}</span>}
                                 </div>
-                                <h3 className="font-display text-2xl sm:text-3xl font-black mb-3 leading-tight">
-                                    Undangan yang Bisa <span className="text-gradient-gold italic">Dimainkan</span>
+                                <h3 className={`lp-pixel text-white mb-3 leading-[1.5] ${f.hero ? 'text-sm sm:text-lg' : 'text-[11px] sm:text-xs'}`}>
+                                    {f.title}
                                 </h3>
-                                <p className="text-gray-300 text-sm sm:text-base leading-relaxed max-w-xl">
-                                    Hadirkan pengalaman tak terlupakan: tamu bermain langsung di dalam undangan untuk membuka tiap bagiannya —
-                                    sebuah petualangan interaktif yang mengubah undangan menjadi momen seru. Tetap ramah untuk semua tamu, dengan
-                                    tombol <span className="font-bold text-white">“Lihat Undangan”</span> instan yang membuka undangan penuh kapan saja.
+                                <p className={`text-white/75 leading-relaxed ${f.hero ? 'text-sm sm:text-base max-w-xl' : 'text-xs sm:text-sm'}`}>
+                                    {f.desc}
                                 </p>
-                                <div className="mt-5 flex items-center gap-1.5 text-[11px] font-bold text-gold-300/90 uppercase tracking-widest">
-                                    <HiOutlineSparkles className="w-4 h-4" /> Efek wow & mudah dibagikan
-                                </div>
+                                {f.hero && (
+                                    <div className="mt-5 lp-pixel text-[8px] tracking-widest inline-flex items-center gap-1.5" style={{ color: 'var(--lp-coin)' }}>
+                                        ⭐ EFEK WOW & MUDAH DIBAGIKAN
+                                    </div>
+                                )}
                             </div>
-                        </div>
-
-                        {/* 2 — WhatsApp Blast personal */}
-                        <div className="group p-7 sm:p-8 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 mb-5 bg-gold-50 dark:bg-gold-900/20 rounded-2xl flex items-center justify-center text-gold-500 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                <HiOutlinePaperAirplane className="w-6 h-6 sm:w-7 sm:h-7 rotate-45" />
-                            </div>
-                            <h3 className="text-lg sm:text-xl font-black mb-2 dark:text-white">Undangan Personal per Tamu</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Sekali atur, kirim ke ratusan tamu lewat WhatsApp — tiap link otomatis menampilkan nama tamu masing-masing.
-                                Hemat waktu, dengan kesan personal dan eksklusif.
-                            </p>
-                        </div>
-
-                        {/* 3 — QR Check-in + dashboard */}
-                        <div className="group p-7 sm:p-8 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 mb-5 bg-gold-50 dark:bg-gold-900/20 rounded-2xl flex items-center justify-center text-gold-500 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                <HiOutlineQrcode className="w-6 h-6 sm:w-7 sm:h-7" />
-                            </div>
-                            <h3 className="text-lg sm:text-xl font-black mb-2 dark:text-white">Check-in QR & Pantau Real-time</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Catat kehadiran tamu di hari-H cukup dengan scan QR, lengkap dengan input manual untuk tamu dadakan.
-                                Semua kehadiran & konfirmasi terpantau langsung dari dashboard.
-                            </p>
-                        </div>
-
-                        {/* 4 — Themes & customization */}
-                        <div className="group p-7 sm:p-8 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 mb-5 bg-gold-50 dark:bg-gold-900/20 rounded-2xl flex items-center justify-center text-gold-500 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                <HiOutlineColorSwatch className="w-6 h-6 sm:w-7 sm:h-7" />
-                            </div>
-                            <h3 className="text-lg sm:text-xl font-black mb-2 dark:text-white">Tema Mewah & Bisa Disesuaikan</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Pilihan tema elegan dengan karakter beragam — dari klasik mewah hingga yang unik dan berbeda.
-                                Bisa dipratinjau dulu, lalu disesuaikan dengan konsep pernikahan Anda.
-                            </p>
-                        </div>
-
-                        {/* 5 — Complete guest features */}
-                        <div className="sm:col-span-2 lg:col-span-1 group p-7 sm:p-8 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 mb-5 bg-gold-50 dark:bg-gold-900/20 rounded-2xl flex items-center justify-center text-gold-500 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                <HiOutlineGift className="w-6 h-6 sm:w-7 sm:h-7" />
-                            </div>
-                            <h3 className="text-lg sm:text-xl font-black mb-2 dark:text-white">Fitur Tamu Lengkap dalam Satu Undangan</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Buku ucapan digital, amplop online & QRIS, galeri foto, backsound musik, live streaming akad, countdown,
-                                hingga love story — semua aktif dan tersimpan otomatis.
-                            </p>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
 
             {/* ============ THEMES ============ */}
-            <section id="tema" className="scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-white dark:bg-gray-950">
+            <section id="tema" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24">
                 <div className="container mx-auto px-5 sm:px-6">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 mb-10 sm:mb-16">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 sm:mb-14">
                         <div className="max-w-xl">
-                            <div className="text-gold-500 font-black text-[10px] uppercase tracking-[0.3em] mb-3 sm:mb-4">Eksplorasi Kreativitas</div>
-                            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight dark:text-white leading-tight">
-                                Pilih Gaya Undangan <span className="text-gradient-gold italic">Impian Anda</span>
+                            <div className="lp-eyebrow">▶ SELECT YOUR STAGE ◀</div>
+                            <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
+                                PILIH GAYA <span style={{ color: 'var(--lp-coin)' }}>UNDANGANMU</span>
                             </h2>
                         </div>
 
@@ -513,7 +499,7 @@ export function NewLandingPage() {
                                 <button
                                     key={cat}
                                     onClick={() => setActiveThemeCategory(cat)}
-                                    className={`px-5 sm:px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeThemeCategory === cat ? 'bg-gold-500 text-white shadow-lg shadow-gold-500/20' : 'bg-gray-50 dark:bg-gray-900 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                    className={`lp-pixel text-[8px] px-4 py-2.5 uppercase tracking-widest whitespace-nowrap transition-all lp-pill ${activeThemeCategory === cat ? 'is-active' : ''}`}
                                 >
                                     {cat}
                                 </button>
@@ -523,53 +509,60 @@ export function NewLandingPage() {
 
                     {/* Mobile: horizontal snap-scroll row. sm+: regular grid. */}
                     <div className="flex sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none -mx-5 px-5 sm:mx-0 sm:px-0 pb-4 sm:pb-0 no-scrollbar">
-                        {filteredThemes.length > 0 ? filteredThemes.map((theme) => (
-                            <div key={theme.id} className="group relative shrink-0 w-[44vw] max-w-[11rem] sm:w-auto sm:max-w-none snap-start overflow-hidden rounded-[1rem] sm:rounded-[1.2rem] bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500">
-                                <div className="aspect-[9/16] overflow-hidden relative bg-gray-100 dark:bg-gray-950">
+                        {filteredThemes.length > 0 ? filteredThemes.map((theme) => {
+                            // Themes tagged "Playable" get the deluxe treatment: a
+                            // glowing coin-gold frame, a 🎮 PLAYABLE ribbon, floating
+                            // coins, and a "MAINKAN" preview button — the wow tier.
+                            const isPlayable = (theme.style_category || '').trim().toLowerCase() === 'playable';
+                            return (
+                            <div key={theme.id} className={`lp-theme group relative shrink-0 w-[44vw] max-w-[11rem] sm:w-auto sm:max-w-none snap-start ${isPlayable ? 'lp-theme-playable' : ''}`}>
+                                <div className="aspect-[9/16] overflow-hidden relative" style={{ background: '#0e0e1a' }}>
+                                    {isPlayable && <div className="lp-play-ribbon">🎮 PLAYABLE</div>}
                                     <ProxyImage
                                         src={theme.preview_image || `https://placehold.co/450x800?text=${encodeURIComponent(theme.name)}`}
                                         alt={theme.name}
                                         loading="lazy"
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                     />
-                                    {/* Always-visible gradient so the badge is readable; CTA reveals on hover (desktop) and is tappable on mobile */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0"></div>
-                                    <div className="absolute inset-x-0 bottom-0 p-3 flex justify-center lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-500">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/0 to-black/0"></div>
+                                    <div className="absolute inset-x-0 bottom-0 p-3 flex justify-center lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
                                         {theme.code ? (
                                             <a
                                                 href={`#/preview/${theme.code}/${PREVIEW_DEMO_SLUG}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="bg-white text-gray-900 px-4 py-2 rounded-full font-black text-[9px] uppercase tracking-widest lg:transform lg:translate-y-4 lg:group-hover:translate-y-0 transition-transform duration-500 hover:bg-gold-500 hover:text-white shadow-xl"
+                                                className={`lp-btn text-[7px] px-3 py-2 ${isPlayable ? 'lp-btn-green' : 'lp-btn-coin'}`}
                                             >
-                                                Preview
+                                                {isPlayable ? '▶ MAINKAN' : '▶ PREVIEW'}
                                             </a>
                                         ) : (
                                             <span
                                                 title="Tema ini belum punya kode preview"
-                                                className="bg-white/70 text-gray-500 px-4 py-2 rounded-full font-black text-[9px] uppercase tracking-widest cursor-not-allowed"
+                                                className="lp-pixel text-[7px] px-3 py-2 uppercase tracking-widest cursor-not-allowed"
+                                                style={{ background: 'rgba(255,255,255,.6)', color: '#555', border: '2px solid #000' }}
                                             >
-                                                Segera
+                                                SEGERA
                                             </span>
                                         )}
                                     </div>
-                                    <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-gold-600 shadow-lg">
-                                        {theme.plan_type}
-                                    </div>
+                                    <div className="lp-theme-tag">{theme.plan_type}</div>
                                 </div>
-                                <div className="p-3 sm:p-4">
-                                    <h3 className="text-sm font-black mb-0.5 dark:text-white truncate">{theme.name}</h3>
-                                    <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">{theme.style_category || 'Modern Style'}</p>
+                                <div className="p-3 sm:p-3.5">
+                                    <h3 className="lp-pixel text-[9px] mb-2 text-white truncate">{theme.name}</h3>
+                                    <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest truncate" style={{ color: isPlayable ? 'var(--lp-green)' : 'var(--lp-coin)' }}>
+                                        {isPlayable ? '★ BISA DIMAINKAN ★' : (theme.style_category || 'Modern Style')}
+                                    </p>
                                 </div>
                             </div>
-                        )) : (
+                            );
+                        }) : (
                             // Skeleton themes if empty
                             [1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="group relative shrink-0 w-[44vw] max-w-[11rem] sm:w-auto sm:max-w-none snap-start overflow-hidden rounded-[1rem] sm:rounded-[1.2rem] bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse">
-                                    <div className="aspect-[9/16] bg-gray-200 dark:bg-gray-800"></div>
-                                    <div className="p-3 sm:p-4 space-y-2">
-                                        <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                                        <div className="h-2.5 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
+                                <div key={i} className="lp-theme shrink-0 w-[44vw] max-w-[11rem] sm:w-auto sm:max-w-none snap-start animate-pulse">
+                                    <div className="aspect-[9/16] bg-black/40"></div>
+                                    <div className="p-3 space-y-2">
+                                        <div className="h-3 w-1/2 bg-white/10 rounded"></div>
+                                        <div className="h-2 w-1/3 bg-white/10 rounded"></div>
                                     </div>
                                 </div>
                             ))
@@ -579,78 +572,76 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ PRICING ============ */}
-            <section id="harga" className="scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-white dark:bg-gray-950">
+            <section id="harga" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24">
                 <div className="container mx-auto px-5 sm:px-6">
-                    <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-20">
-                        <div className="text-gold-500 font-black text-[10px] uppercase tracking-[0.3em] mb-3 sm:mb-4">Investasi Kebahagiaan</div>
-                        <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight dark:text-white">Pilih Paket <span className="text-gradient-gold italic">Terbaik</span></h2>
+                    <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+                        <div className="lp-eyebrow">🪙 INSERT COIN 🪙</div>
+                        <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
+                            PILIH PAKET <span style={{ color: 'var(--lp-coin)' }}>TERBAIK</span>
+                        </h2>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 max-w-6xl mx-auto items-start">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto items-start">
                         {orderedPlans.length > 0 ? orderedPlans.map((p) => {
                             const isPremium = p.plan_type === 'premium';
                             return (
                                 <div
                                     key={p.plan_type}
-                                    className={`relative p-8 sm:p-10 lg:p-12 rounded-[1.2rem] sm:rounded-[1.4rem] border transition-all duration-500 ${isPremium
-                                        ? 'border-gold-500 bg-gray-900 text-white shadow-2xl shadow-gold-500/10 lg:scale-105 lg:-translate-y-2 z-10 sm:col-span-2 lg:col-span-1 lg:order-2'
-                                        : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white hover:-translate-y-1 hover:shadow-xl'} ${p.plan_type === 'pro' ? 'lg:order-1' : ''} ${p.plan_type === 'basic' ? 'lg:order-3' : ''}`}
+                                    className={`lp-price relative ${isPremium ? 'lp-price-best sm:col-span-2 lg:col-span-1 lg:order-2' : ''} ${p.plan_type === 'pro' ? 'lg:order-1' : ''} ${p.plan_type === 'basic' ? 'lg:order-3' : ''}`}
                                 >
                                     {isPremium && (
-                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-5 sm:px-6 py-2 bg-gold-500 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-xl">
-                                            Best Choice
-                                        </div>
+                                        <div className="lp-best-tag">★ BEST CHOICE ★</div>
                                     )}
-                                    <div className="mb-8 sm:mb-10">
-                                        <h3 className={`text-sm font-black uppercase tracking-[0.3em] mb-3 sm:mb-4 ${isPremium ? 'text-gold-400' : 'text-gray-400'}`}>
+                                    <div className="mb-8">
+                                        <h3 className="lp-pixel text-[10px] uppercase tracking-[0.2em] mb-4" style={{ color: isPremium ? 'var(--lp-coin)' : 'rgba(255,255,255,.55)' }}>
                                             {p.plan_type}
                                         </h3>
                                         <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl sm:text-5xl font-black tracking-tighter">Rp {(p.price / 1000).toFixed(0)}k</span>
-                                            <span className={`text-xs font-bold ${isPremium ? 'text-gray-400' : 'text-gray-500'}`}>/lifetime</span>
+                                            <span className="lp-pixel text-2xl sm:text-3xl text-white">Rp {(p.price / 1000).toFixed(0)}k</span>
+                                            <span className="text-[10px] font-bold text-white/50">/lifetime</span>
                                         </div>
                                     </div>
 
-                                    <div className={`h-px w-full mb-8 sm:mb-10 ${isPremium ? 'bg-white/10' : 'bg-gray-100 dark:bg-gray-800'}`}></div>
+                                    <div className="lp-divider mb-8" />
 
-                                    <ul className="space-y-4 sm:space-y-5 mb-10 sm:mb-12">
-                                        <li className="flex items-center gap-3 text-sm font-medium">
-                                            <HiOutlineCheck className="w-5 h-5 text-gold-500 shrink-0" />
+                                    <ul className="space-y-4 mb-10">
+                                        <li className="flex items-center gap-3 text-sm font-medium text-white/90">
+                                            <span className="lp-check" />
                                             <span>Limit {p.guest_limit} Tamu</span>
                                         </li>
                                         {planFeatures.filter(f => f.plan_id === p.plan_type).map(f => (
-                                            <li key={f.id} className="flex items-center gap-3 text-sm font-medium">
-                                                <HiOutlineCheck className="w-5 h-5 text-gold-500 shrink-0" />
+                                            <li key={f.id} className="flex items-center gap-3 text-sm font-medium text-white/90">
+                                                <span className="lp-check" />
                                                 <span>{f.feature}</span>
                                             </li>
                                         ))}
                                     </ul>
 
-                                    <Link to="/register" className={`w-full py-4 sm:py-5 rounded-[1.2rem] font-black text-xs uppercase tracking-[0.2em] text-center block transition-all ${isPremium ? 'bg-gold-500 text-white hover:bg-gold-600 hover:shadow-[0_20px_40px_-10px_rgba(198,167,105,0.4)]' : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
-                                        Pilih Paket
+                                    <Link to="/register" className={`lp-btn w-full text-center block text-[10px] py-4 ${isPremium ? 'lp-btn-coin' : 'lp-btn-ghost'}`}>
+                                        PILIH PAKET
                                     </Link>
                                 </div>
                             );
                         }) : (
                             // Loading state for plans
-                            [1, 2, 3].map(i => <div key={i} className="h-[480px] bg-gray-50 dark:bg-gray-900 rounded-[1.4rem] animate-pulse"></div>)
+                            [1, 2, 3].map(i => <div key={i} className="h-[480px] bg-black/30 lp-pixel-border animate-pulse"></div>)
                         )}
                     </div>
                 </div>
             </section>
 
             {/* ============ FEATURES (Additional) ============ */}
-            <section id="fitur" className="scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-gray-50 dark:bg-gray-900/50">
+            <section id="fitur" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24">
                 <div className="container mx-auto px-5 sm:px-6">
                     <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-                        <div className="text-gold-500 font-black text-[10px] uppercase tracking-[0.3em] mb-3 sm:mb-4">Fitur Tambahan</div>
-                        <h2 className="font-display text-3xl sm:text-4xl lg:text-6xl font-black tracking-tight dark:text-white leading-[1.05] mb-5 sm:mb-6">
-                            Lebih Dari Sekadar <br className="hidden sm:block" /> <span className="text-gradient-gold italic">Undangan Biasa</span>
+                        <div className="lp-eyebrow">🎁 POWER-UPS 🎁</div>
+                        <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4 mb-5" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
+                            LEBIH DARI <span style={{ color: 'var(--lp-coin)' }}>UNDANGAN BIASA</span>
                         </h2>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium text-sm sm:text-base">Layanan eksklusif untuk melengkapi undangan Anda. Aktifkan sesuai kebutuhan.</p>
+                        <p className="text-white/70 font-medium text-sm sm:text-base">Layanan eksklusif untuk melengkapi undangan Anda. Aktifkan sesuai kebutuhan.</p>
                     </div>
 
-                    <div className="max-w-3xl mx-auto divide-y divide-gray-100 dark:divide-gray-800 rounded-[1rem] sm:rounded-[1.2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm px-5 sm:px-8 lg:px-10">
+                    <div className="max-w-3xl mx-auto lp-list">
                         {(additionalFeatures.length > 0
                             ? additionalFeatures.map(f => ({
                                 key: f.id,
@@ -667,17 +658,15 @@ export function NewLandingPage() {
                                 { key: 'stream', name: 'Live Streaming', desc: 'Siarkan akad & resepsi secara langsung untuk keluarga yang tak bisa hadir di lokasi.', price: '' },
                             ]
                         ).map(f => (
-                            <div key={f.key} className="flex items-center gap-4 sm:gap-6 py-6 sm:py-7 group">
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-gold-50 dark:bg-gold-900/20 rounded-2xl flex items-center justify-center text-gold-500 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                    <HiOutlineSparkles className="w-6 h-6 sm:w-7 sm:h-7" />
-                                </div>
+                            <div key={f.key} className="lp-list-item flex items-center gap-4 sm:gap-5 py-5 sm:py-6 group">
+                                <span className="lp-qmark group-hover:-translate-y-1 transition-transform">?</span>
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="text-base sm:text-lg font-black dark:text-white truncate">{f.name}</h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">{f.desc}</p>
+                                    <h3 className="lp-pixel text-[10px] sm:text-[11px] text-white truncate mb-1.5">{f.name}</h3>
+                                    <p className="text-white/70 text-xs sm:text-sm leading-relaxed">{f.desc}</p>
                                 </div>
                                 {f.price && (
-                                    <div className={`shrink-0 text-sm sm:text-base font-black ${f.price === 'Free' ? 'text-emerald-500' : 'text-gold-600'}`}>
-                                        {f.price}
+                                    <div className="shrink-0 lp-pixel text-[9px] sm:text-[10px]" style={{ color: f.price === 'Free' ? 'var(--lp-green)' : 'var(--lp-coin)' }}>
+                                        {f.price === 'Free' ? 'FREE' : f.price}
                                     </div>
                                 )}
                             </div>
@@ -687,12 +676,12 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ TESTIMONIALS ============ */}
-            <section id="testimoni" className="scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-gold-50/40 dark:bg-gray-900/50">
+            <section id="testimoni" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24">
                 <div className="container mx-auto px-5 sm:px-6">
                     <div className="text-center mb-12 sm:mb-16">
-                        <div className="inline-block text-gold-600 dark:text-gold-400 font-bold text-[11px] uppercase tracking-[0.3em] px-5 py-2 rounded-full border border-gold-200/70 dark:border-gold-800/50 mb-5 sm:mb-6">Testimoni</div>
-                        <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight dark:text-white leading-tight">
-                            Mereka Sudah <br /> <span className="text-gradient-gold italic">Membuktikannya</span>
+                        <div className="lp-eyebrow">💬 HIGH SCORES 💬</div>
+                        <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
+                            MEREKA SUDAH <span style={{ color: 'var(--lp-coin)' }}>MEMBUKTIKANNYA</span>
                         </h2>
                     </div>
 
@@ -708,7 +697,6 @@ export function NewLandingPage() {
                                 style={{ transform: `translateX(-${slide * (100 / perView)}%)` }}
                             >
                                 {displayReviews.map((r, i) => {
-                                    // Highlight the card currently in the middle of the visible page
                                     const highlight = perView === 3 && (i - slide) % 3 === 1;
                                     const initials = `${(r.bride_name?.[0] || '').toUpperCase()}${(r.groom_name?.[0] || '').toUpperCase()}`;
                                     return (
@@ -717,28 +705,24 @@ export function NewLandingPage() {
                                             className="shrink-0 px-2.5 sm:px-3"
                                             style={{ width: `${100 / perView}%` }}
                                         >
-                                            <div
-                                                className={`flex flex-col h-full p-7 sm:p-8 rounded-[1rem] sm:rounded-[1.2rem] transition-colors duration-500 ${highlight
-                                                    ? 'bg-gray-900 text-white shadow-2xl shadow-gold-500/10'
-                                                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 shadow-sm'}`}
-                                            >
-                                                <div className="flex items-center gap-1 mb-5 sm:mb-6">
+                                            <div className={`lp-testi flex flex-col h-full ${highlight ? 'lp-testi-hi' : ''}`}>
+                                                <div className="flex items-center gap-1 mb-5">
                                                     {[...Array(Math.max(0, Math.min(5, Number(r.rate_star) || 0)))].map((_, s) => (
-                                                        <HiOutlineStar key={s} className="w-4 h-4 sm:w-5 sm:h-5 text-gold-500 fill-current" />
+                                                        <span key={s} className="lp-star" />
                                                     ))}
                                                 </div>
 
-                                                <blockquote className={`text-sm sm:text-[15px] leading-relaxed italic mb-7 sm:mb-8 flex-1 ${highlight ? 'text-gray-200' : 'text-gray-600 dark:text-gray-300'}`}>
+                                                <blockquote className={`text-sm leading-relaxed mb-7 flex-1 ${highlight ? 'text-white/85' : 'text-white/75'}`}>
                                                     "{r.comment}"
                                                 </blockquote>
 
                                                 <div className="flex items-center gap-3.5 mt-auto">
-                                                    <div className="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-full bg-gradient-to-tr from-gold-600 to-gold-400 flex items-center justify-center text-white text-xs font-black tracking-wider shadow-md">
-                                                        {initials || <HiOutlineChatAlt className="w-5 h-5" />}
+                                                    <div className="lp-avatar">
+                                                        {initials || '♥'}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="text-sm font-black truncate">{r.bride_name} &amp; {r.groom_name}</div>
-                                                        <div className={`flex items-center gap-1.5 text-xs font-medium ${highlight ? 'text-gold-400' : 'text-gray-400'}`}>
+                                                        <div className="lp-pixel text-[8px] text-white truncate">{r.bride_name} &amp; {r.groom_name}</div>
+                                                        <div className="flex items-center gap-1.5 text-xs font-medium mt-1.5" style={{ color: highlight ? 'var(--lp-coin)' : 'rgba(255,255,255,.5)' }}>
                                                             <HiOutlineLocationMarker className="w-3 h-3 shrink-0" />
                                                             <span className="truncate">{r.alamat || 'Indonesia'}{r.wedding_date ? `, ${r.wedding_date}` : ''}</span>
                                                         </div>
@@ -757,14 +741,14 @@ export function NewLandingPage() {
                                 <button
                                     aria-label="Testimoni sebelumnya"
                                     onClick={() => setSlide(s => (s <= 0 ? maxSlide : s - 1))}
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 lg:-translate-x-1/2 w-11 h-11 lg:w-14 lg:h-14 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-110 hover:text-gold-500 transition-all"
+                                    className="lp-nav-btn absolute left-0 top-1/2 -translate-y-1/2 lg:-translate-x-1/2"
                                 >
                                     <HiOutlineChevronLeft className="w-5 h-5 lg:w-6 lg:h-6" />
                                 </button>
                                 <button
                                     aria-label="Testimoni berikutnya"
                                     onClick={() => setSlide(s => (s >= maxSlide ? 0 : s + 1))}
-                                    className="absolute right-0 top-1/2 -translate-y-1/2 lg:translate-x-1/2 w-11 h-11 lg:w-14 lg:h-14 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-110 hover:text-gold-500 transition-all"
+                                    className="lp-nav-btn absolute right-0 top-1/2 -translate-y-1/2 lg:translate-x-1/2"
                                 >
                                     <HiOutlineChevronRight className="w-5 h-5 lg:w-6 lg:h-6" />
                                 </button>
@@ -776,7 +760,7 @@ export function NewLandingPage() {
                                             key={i}
                                             aria-label={`Ke testimoni ${i + 1}`}
                                             onClick={() => setSlide(i)}
-                                            className={`h-2 rounded-full transition-all ${i === slide ? 'w-7 bg-gold-500' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gold-300'}`}
+                                            className={`lp-dot-nav ${i === slide ? 'is-active' : ''}`}
                                         />
                                     ))}
                                 </div>
@@ -787,32 +771,31 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ FAQ ============ */}
-            <section id="faq" className="scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-white dark:bg-gray-950">
+            <section id="faq" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24">
                 <div className="container mx-auto px-5 sm:px-6">
                     <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
-                        <div className="text-gold-500 font-black text-[10px] uppercase tracking-[0.3em] mb-3 sm:mb-4">Punya Pertanyaan?</div>
-                        <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight dark:text-white">Pertanyaan <span className="text-gradient-gold italic">Umum</span></h2>
+                        <div className="lp-eyebrow">❔ NEED A HINT ❔</div>
+                        <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
+                            PERTANYAAN <span style={{ color: 'var(--lp-coin)' }}>UMUM</span>
+                        </h2>
                     </div>
 
                     <div className="max-w-3xl mx-auto space-y-4">
                         {FAQ_ITEMS.map((item, i) => {
                             const open = openFaq === i;
                             return (
-                                <div
-                                    key={i}
-                                    className={`rounded-[1.2rem] sm:rounded-[1.4rem] border transition-colors duration-300 ${open ? 'border-gold-300 dark:border-gold-700 bg-gold-50/50 dark:bg-gold-900/10' : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900'}`}
-                                >
+                                <div key={i} className={`lp-faq ${open ? 'is-open' : ''}`}>
                                     <button
                                         onClick={() => setOpenFaq(open ? null : i)}
                                         aria-expanded={open}
-                                        className="w-full flex items-center justify-between gap-4 text-left px-6 sm:px-8 py-5 sm:py-6"
+                                        className="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-7 py-5"
                                     >
-                                        <span className="text-base sm:text-lg font-black dark:text-white">{item.q}</span>
-                                        <HiOutlineChevronDown className={`w-5 h-5 shrink-0 text-gold-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+                                        <span className="lp-pixel text-[10px] sm:text-[11px] leading-[1.6] text-white">{item.q}</span>
+                                        <HiOutlineChevronDown className={`w-5 h-5 shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ color: 'var(--lp-coin)' }} />
                                     </button>
                                     <div className={`grid transition-all duration-300 ease-out ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                         <div className="overflow-hidden">
-                                            <p className="px-6 sm:px-8 pb-6 sm:pb-7 text-sm sm:text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                                            <p className="px-5 sm:px-7 pb-6 text-sm text-white/75 leading-relaxed whitespace-pre-line">
                                                 {item.a}
                                             </p>
                                         </div>
@@ -825,18 +808,19 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ CTA BANNER ============ */}
-            <section className="py-16 sm:py-20 bg-white dark:bg-gray-950">
+            <section className="lp-band lp-band-dark py-16 sm:py-20">
                 <div className="container mx-auto px-5 sm:px-6">
-                    <div className="relative overflow-hidden rounded-[1.2rem] sm:rounded-[1.4rem] bg-gray-900 px-6 sm:px-12 lg:px-20 py-14 sm:py-20 text-center">
-                        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold-500/20 blur-[120px] rounded-full"></div>
-                        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold-400/10 blur-[120px] rounded-full"></div>
+                    <div className="lp-cta relative overflow-hidden px-6 sm:px-12 lg:px-20 py-14 sm:py-20 text-center">
+                        <div className="lp-cta-deco" aria-hidden="true">
+                            <span className="lp-coin co1" /><span className="lp-coin co2" /><span className="lp-qblock d1">?</span>
+                        </div>
                         <div className="relative z-10 max-w-2xl mx-auto">
-                            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight mb-5 sm:mb-6">
-                                Siap Membuat Undangan <span className="text-gradient-gold italic">Impian?</span>
+                            <h2 className="lp-pixel text-lg sm:text-2xl lg:text-3xl text-white leading-[1.55] mb-6" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.5)' }}>
+                                SIAP BIKIN UNDANGAN <span style={{ color: 'var(--lp-coin)' }}>IMPIAN?</span>
                             </h2>
-                            <p className="text-gray-300 text-sm sm:text-base mb-8 sm:mb-10">Daftar dan mulai rancang undangan digital Anda dalam hitungan menit.</p>
-                            <Link to="/register" className="inline-flex items-center justify-center gap-2 px-10 py-4 sm:py-5 bg-gold-500 text-white rounded-2xl font-black text-xs sm:text-sm uppercase tracking-widest hover:bg-gold-600 shadow-xl shadow-gold-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                                Daftar Sekarang
+                            <p className="text-white/80 text-sm sm:text-base mb-9">Daftar dan mulai rancang undangan digital Anda dalam hitungan menit.</p>
+                            <Link to="/register" className="lp-btn lp-btn-coin inline-flex items-center justify-center gap-2 text-[11px] px-9 py-4 lp-blink-soft">
+                                DAFTAR SEKARANG
                                 <HiOutlineArrowRight className="w-4 h-4" />
                             </Link>
                         </div>
@@ -845,34 +829,34 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ FOOTER ============ */}
-            <footer className="bg-white dark:bg-gray-950 pt-16 sm:pt-24 pb-10 sm:pb-12 border-t border-gray-100 dark:border-gray-800">
+            <footer className="lp-footer pt-16 sm:pt-20 pb-10">
                 <div className="container mx-auto px-5 sm:px-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 sm:gap-12 lg:gap-16 mb-12 sm:mb-20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16 mb-12 sm:mb-16">
                         {/* Brand Column */}
-                        <div className="space-y-6 sm:space-y-8">
+                        <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gold-500 rounded-xl flex items-center justify-center text-white">
-                                    <HiOutlineSparkles className="w-6 h-6" />
+                                <div className="lp-logo-block overflow-hidden p-2">
+                                    <img src={logoUrl || kosaIcon} alt={siteName} className="w-full h-full object-contain" />
                                 </div>
-                                <span className="text-2xl font-black tracking-tighter">{siteName}</span>
+                                <span className="lp-pixel text-sm text-white">{siteName}</span>
                             </div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium max-w-sm">
-                                Platform pembuatan undangan digital untuk mengabadikan setiap momen kebahagiaan Anda dengan cara yang berkelas.
+                            <p className="text-white/60 text-sm leading-relaxed font-medium max-w-sm">
+                                Platform pembuatan undangan digital untuk mengabadikan setiap momen kebahagiaan Anda — seru, praktis, dan tak terlupakan.
                             </p>
                             {(config?.site_instagram || config?.site_tiktok || config?.site_youtube) && (
-                                <div className="flex items-center gap-3 sm:gap-4">
+                                <div className="flex items-center gap-3">
                                     {config?.site_instagram && (
-                                        <a href={`https://instagram.com/${config.site_instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-10 h-10 bg-gray-50 dark:bg-gray-900 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gold-500 hover:text-white transition-all">
+                                        <a href={`https://instagram.com/${config.site_instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="lp-social">
                                             <FaInstagram className="w-5 h-5" />
                                         </a>
                                     )}
                                     {config?.site_tiktok && (
-                                        <a href={config.site_tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-10 h-10 bg-gray-50 dark:bg-gray-900 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gold-500 hover:text-white transition-all">
+                                        <a href={config.site_tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="lp-social">
                                             <FaTiktok className="w-4 h-4" />
                                         </a>
                                     )}
                                     {config?.site_youtube && (
-                                        <a href={config.site_youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-10 h-10 bg-gray-50 dark:bg-gray-900 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gold-500 hover:text-white transition-all">
+                                        <a href={config.site_youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="lp-social">
                                             <FaYoutube className="w-5 h-5" />
                                         </a>
                                     )}
@@ -882,30 +866,30 @@ export function NewLandingPage() {
 
                         {/* Quick Links — anchor sections that actually exist */}
                         <div>
-                            <h4 className="text-xs font-black uppercase tracking-[0.3em] mb-6 sm:mb-8 text-gold-600">Navigasi</h4>
-                            <ul className="space-y-3 sm:space-y-4">
+                            <h4 className="lp-pixel text-[9px] uppercase tracking-[0.2em] mb-6" style={{ color: 'var(--lp-coin)' }}>NAVIGASI</h4>
+                            <ul className="space-y-3.5">
                                 {NAV_LINKS.map(item => (
-                                    <li key={item}><a href={`#${item.toLowerCase()}`} onClick={(e) => scrollToSection(e, item.toLowerCase())} className="text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">{item}</a></li>
+                                    <li key={item}><a href={`#${item.toLowerCase()}`} onClick={(e) => scrollToSection(e, item.toLowerCase())} className="text-sm font-bold text-white/60 hover:text-[var(--lp-coin)] transition-colors">{item}</a></li>
                                 ))}
-                                <li><Link to="/login" className="text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">Masuk</Link></li>
-                                <li><Link to="/register" className="text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">Daftar</Link></li>
+                                <li><Link to="/login" className="text-sm font-bold text-white/60 hover:text-[var(--lp-coin)] transition-colors">Masuk</Link></li>
+                                <li><Link to="/register" className="text-sm font-bold text-white/60 hover:text-[var(--lp-coin)] transition-colors">Daftar</Link></li>
                             </ul>
                         </div>
 
                         {/* Contact — only shown when configured */}
                         {(config?.contact_email || config?.contact_whatsapp) && (
                             <div>
-                                <h4 className="text-xs font-black uppercase tracking-[0.3em] mb-5 sm:mb-6 text-gold-600">Kontak Kami</h4>
-                                <div className="space-y-3 sm:space-y-4">
+                                <h4 className="lp-pixel text-[9px] uppercase tracking-[0.2em] mb-6" style={{ color: 'var(--lp-coin)' }}>KONTAK KAMI</h4>
+                                <div className="space-y-4">
                                     {config?.contact_email && (
-                                        <a href={`mailto:${config.contact_email}`} className="flex items-center gap-3 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white break-all">
-                                            <HiOutlineMail className="w-5 h-5 text-gold-500 shrink-0" />
+                                        <a href={`mailto:${config.contact_email}`} className="flex items-center gap-3 text-sm font-bold text-white/60 hover:text-white break-all">
+                                            <HiOutlineMail className="w-5 h-5 shrink-0" style={{ color: 'var(--lp-coin)' }} />
                                             {config.contact_email}
                                         </a>
                                     )}
                                     {config?.contact_whatsapp && (
-                                        <a href={`https://wa.me/${config.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                                            <FaWhatsapp className="w-5 h-5 text-gold-500 shrink-0" />
+                                        <a href={`https://wa.me/${config.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm font-bold text-white/60 hover:text-white">
+                                            <FaWhatsapp className="w-5 h-5 shrink-0" style={{ color: 'var(--lp-coin)' }} />
                                             +{config.contact_whatsapp}
                                         </a>
                                     )}
@@ -914,13 +898,373 @@ export function NewLandingPage() {
                         )}
                     </div>
 
-                    <div className="pt-8 sm:pt-12 border-t border-gray-100 dark:border-gray-800">
-                        <p className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest text-center">
-                            © 2026 {siteName}. All rights reserved.
+                    <div className="pt-8 border-t border-white/10">
+                        <p className="lp-pixel text-[7px] sm:text-[8px] text-white/40 uppercase tracking-widest text-center leading-[1.8]">
+                            © 2026 {siteName}. GAME OVER? INSERT COIN TO CONTINUE ♥
                         </p>
                     </div>
                 </div>
             </footer>
         </div>
+    );
+}
+
+/* ==========================================================================
+   Retro-game styling — scoped to `.rm-lp` so it can't leak into the rest of
+   the app. Loads the pixel font, defines the NES palette, pixel borders,
+   3D block buttons, and all the floating Mario-style decor.
+   ========================================================================== */
+function RetroStyles() {
+    return (
+        <style>{`
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+.rm-lp {
+    --lp-sky: #5c94fc;
+    --lp-sky-2: #7aa8ff;
+    --lp-sky-deep: #3a6ad6;
+    --lp-ink: #0e0e1a;
+    --lp-ink-2: #171326;
+    --lp-panel: #1b1530;
+    --lp-coin: #fac000;
+    --lp-coin-deep: #e89000;
+    --lp-red: #e52521;
+    --lp-red-2: #b81b18;
+    --lp-green: #43b047;
+    --lp-green-2: #2f8a33;
+    --lp-ground: #c84c0c;
+    --lp-ground-2: #e07b2a;
+    -webkit-tap-highlight-color: transparent;
+}
+.rm-lp .lp-pixel { font-family: 'Press Start 2P', monospace; }
+
+/* ---- pixel-block buttons (3D NES press feel) ---- */
+.rm-lp .lp-btn {
+    font-family: 'Press Start 2P', monospace;
+    text-transform: uppercase; letter-spacing: 1px; line-height: 1.5;
+    border: 3px solid #000; cursor: pointer; text-decoration: none;
+    transition: transform .1s, box-shadow .1s; display: inline-block;
+}
+.rm-lp .lp-btn:active { transform: translateY(4px); }
+.rm-lp .lp-btn-coin { background: var(--lp-coin); color: #000; box-shadow: 0 5px 0 var(--lp-coin-deep); }
+.rm-lp .lp-btn-coin:active { box-shadow: 0 1px 0 var(--lp-coin-deep); }
+.rm-lp .lp-btn-green { background: var(--lp-green); color: #fff; box-shadow: 0 5px 0 var(--lp-green-2); }
+.rm-lp .lp-btn-green:active { box-shadow: 0 1px 0 var(--lp-green-2); }
+.rm-lp .lp-btn-ghost { background: rgba(255,255,255,.08); color: #fff; box-shadow: 0 5px 0 rgba(0,0,0,.5); }
+.rm-lp .lp-btn-ghost:active { box-shadow: 0 1px 0 rgba(0,0,0,.5); }
+
+.rm-lp .lp-pixel-border { border: 4px solid #000; box-shadow: 6px 6px 0 rgba(0,0,0,.5); }
+
+/* ---- navbar ---- */
+.rm-lp .lp-nav-solid {
+    background: rgba(14,14,26,.92); backdrop-filter: blur(6px);
+    border-bottom: 3px solid #000; box-shadow: 0 4px 0 rgba(0,0,0,.35);
+}
+.rm-lp .lp-logo-block {
+    width: 40px; height: 40px; flex: 0 0 40px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace; font-size: 16px; color: #7a4d00;
+    background: var(--lp-coin); border: 3px solid #000; border-radius: 3px;
+    box-shadow: inset 0 0 0 3px var(--lp-coin-deep), 3px 3px 0 rgba(0,0,0,.4);
+    animation: lp-bob 2.4s steps(2) infinite;
+}
+
+/* ---- hero ---- */
+.rm-lp .lp-hero {
+    background: linear-gradient(180deg, var(--lp-sky-deep) 0%, var(--lp-sky) 55%, var(--lp-sky-2) 100%);
+}
+.rm-lp .lp-ground {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 46px; z-index: 2;
+    background: repeating-linear-gradient(90deg, var(--lp-ground) 0 30px, var(--lp-ground-2) 30px 32px);
+    border-top: 4px solid #000;
+}
+.rm-lp .lp-hero-deco { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.rm-lp .lp-hero-deco > span { position: absolute; image-rendering: pixelated; }
+
+.rm-lp .lp-cloud {
+    width: 30px; height: 12px; background: #fff; border-radius: 7px;
+    box-shadow: 16px -7px 0 0 #fff, 34px 0 0 0 #fff, -3px 0 0 0 #fff; opacity: .9;
+    animation: lp-drift 26s linear infinite;
+}
+.rm-lp .lp-cloud.c1 { top: 12%; left: -16%; }
+.rm-lp .lp-cloud.c2 { top: 26%; left: -24%; transform: scale(1.3); animation-duration: 36s; }
+.rm-lp .lp-cloud.c3 { top: 18%; left: -12%; transform: scale(.8); animation-duration: 30s; animation-delay: -8s; }
+.rm-lp .lp-hill { bottom: 46px; width: 150px; height: 74px; background: #3a8a3a; border-radius: 74px 74px 0 0; opacity: .5; }
+.rm-lp .lp-hill.h1 { left: -40px; }
+.rm-lp .lp-hill.h2 { right: -50px; width: 190px; height: 96px; background: #2f6a2f; }
+.rm-lp .lp-qblock {
+    width: 32px; height: 32px; border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+    background: var(--lp-coin); color: #7a4d00; border-radius: 3px;
+    font-family: 'Press Start 2P', monospace; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    animation: lp-bob 3s ease-in-out infinite;
+}
+.rm-lp .lp-qblock.d1 { top: 20%; right: 10%; }
+.rm-lp .lp-qblock.d2 { top: 44%; right: 6%; animation-delay: -1s; }
+.rm-lp .lp-coin {
+    width: 16px; height: 20px; background: #fde36a; border: 2px solid #b56f00; border-radius: 4px;
+    box-shadow: 0 0 0 1.5px #000; opacity: .95; animation: lp-spin 1.6s steps(8) infinite;
+}
+.rm-lp .lp-coin.co1 { top: 34%; left: 12%; }
+.rm-lp .lp-coin.co2 { top: 54%; right: 18%; animation-delay: -.6s; }
+.rm-lp .lp-pipe {
+    bottom: 46px; right: 8%; width: 52px; height: 66px; background: var(--lp-green);
+    border: 3px solid #000; opacity: .9;
+    box-shadow: inset -8px 0 0 rgba(0,0,0,.18), inset 8px 0 0 rgba(255,255,255,.22);
+}
+.rm-lp .lp-pipe::before {
+    content: ''; position: absolute; top: -10px; left: -7px; right: -7px; height: 14px;
+    background: var(--lp-green); border: 3px solid #000;
+}
+.rm-lp .lp-goomba {
+    bottom: 50px; left: 13%; width: 30px; height: 26px; background: #9a5a2a;
+    border: 3px solid #000; border-radius: 15px 15px 4px 4px; opacity: .92;
+    animation: lp-walk 3s ease-in-out infinite;
+}
+.rm-lp .lp-goomba::before, .rm-lp .lp-goomba::after { content: ''; position: absolute; top: 9px; width: 5px; height: 6px; background: #fff; }
+.rm-lp .lp-goomba::before { left: 5px; } .rm-lp .lp-goomba::after { right: 5px; }
+
+.rm-lp .lp-badge {
+    font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1.5px; color: #fff;
+    background: var(--lp-red); padding: 8px 12px; border: 3px solid #000; border-radius: 3px;
+    box-shadow: 3px 3px 0 rgba(0,0,0,.35);
+}
+.rm-lp .lp-badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: lp-blink 1s steps(2) infinite; }
+
+.rm-lp .lp-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #fff;
+    background: rgba(0,0,0,.28); border: 2px solid rgba(0,0,0,.5); border-radius: 4px; padding: 6px 10px;
+}
+.rm-lp .lp-star {
+    width: 16px; height: 16px; display: inline-block; background: var(--lp-coin);
+    clip-path: polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+    filter: drop-shadow(1px 1px 0 rgba(0,0,0,.4));
+}
+
+/* Pixel phone frame holding the live-preview iframe (portrait 9:16). */
+.rm-lp .lp-hero-phone {
+    position: relative; width: 260px; max-width: 100%;
+    border: 5px solid #000; background: var(--lp-panel);
+    box-shadow: 8px 8px 0 rgba(0,0,0,.5); transform: rotate(1.5deg);
+    transition: transform .6s; border-radius: 6px; overflow: hidden;
+}
+@media (min-width: 1024px) { .rm-lp .lp-hero-phone { width: 400px; } }
+.rm-lp .lp-hero-phone:hover { transform: rotate(0); }
+.rm-lp .lp-hero-card-top {
+    display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+    background: var(--lp-red); border-bottom: 3px solid #000;
+}
+.rm-lp .lp-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #000; }
+.rm-lp .lp-dot.r { background: #ff5a55; } .rm-lp .lp-dot.y { background: var(--lp-coin); } .rm-lp .lp-dot.g { background: var(--lp-green); }
+.rm-lp .lp-live-badge {
+    display: inline-flex; align-items: center; gap: 5px; font-family: 'Press Start 2P', monospace;
+    font-size: 6px; letter-spacing: 1px; color: #fff; background: rgba(0,0,0,.35);
+    border: 2px solid #000; border-radius: 3px; padding: 3px 6px;
+}
+.rm-lp .lp-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--lp-green); animation: lp-blink 1s steps(2) infinite; }
+/* the 9:16 screen; iframe fills it and is scaled so a phone-width invitation
+   fits the narrow frame without its own scrollbars. */
+.rm-lp .lp-hero-screen {
+    position: relative; width: 100%; aspect-ratio: 9 / 16; background: #000; overflow: hidden;
+}
+.rm-lp .lp-hero-iframe {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border: 0; display: block; background: #0e0e1a;
+}
+.rm-lp .lp-hero-chip {
+    position: absolute; bottom: 10px; left: 10px; display: flex; align-items: center; gap: 8px;
+    background: rgba(14,14,26,.92); border: 3px solid #000; box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+    padding: 7px 10px; border-radius: 3px; z-index: 2;
+}
+
+/* ---- section bands ---- */
+.rm-lp .lp-band { position: relative; }
+.rm-lp .lp-band-dark { background: var(--lp-ink); }
+.rm-lp .lp-band-sky {
+    background:
+        radial-gradient(circle at 18% 22%, rgba(255,255,255,.05) 0 6px, transparent 7px),
+        radial-gradient(circle at 82% 16%, rgba(255,255,255,.04) 0 5px, transparent 6px),
+        linear-gradient(180deg, #2a4fb0 0%, #3a6ad6 55%, #2b5ac0 100%);
+}
+/* solid ground strip capping every band bottom */
+.rm-lp .lp-band::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
+    background: repeating-linear-gradient(90deg, var(--lp-ground) 0 30px, #a83e08 30px 32px);
+    border-top: 4px solid var(--lp-ground-2);
+}
+.rm-lp .lp-band-dark::after {
+    background: repeating-linear-gradient(90deg, #6a4422 0 30px, #523218 30px 32px);
+    border-top: 4px solid #8a5a2c;
+}
+
+.rm-lp .lp-eyebrow {
+    display: inline-block; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 2px;
+    color: #000; background: var(--lp-coin); border: 3px solid #000; border-radius: 3px;
+    padding: 6px 10px; box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+}
+
+/* ---- keunggulan cards ---- */
+.rm-lp .lp-card {
+    position: relative; background: var(--lp-panel); border: 4px solid #000;
+    box-shadow: 6px 6px 0 rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
+    padding: 26px 22px; transition: transform .2s;
+}
+.rm-lp .lp-card:hover { transform: translateY(-4px); }
+.rm-lp .lp-card-hero { background: linear-gradient(180deg, #241a44, #15102a); border-color: #000; box-shadow: 6px 6px 0 rgba(0,0,0,.55), inset 0 0 0 2px var(--lp-coin); }
+.rm-lp .lp-feat-ico {
+    width: 48px; height: 48px; flex: 0 0 48px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 24px; background: rgba(0,0,0,.3); border: 3px solid #000; border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+}
+.rm-lp .lp-tag {
+    font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; color: #000;
+    background: var(--lp-coin); border: 2px solid #000; padding: 5px 8px; border-radius: 3px; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+}
+
+/* ---- pill filter ---- */
+.rm-lp .lp-pill {
+    color: #fff; background: rgba(14,14,26,.55); border: 3px solid #000; border-radius: 3px;
+    box-shadow: 0 3px 0 rgba(0,0,0,.5); line-height: 1.5;
+}
+.rm-lp .lp-pill:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.5); }
+.rm-lp .lp-pill.is-active { background: var(--lp-coin); color: #000; }
+
+/* ---- theme cards ---- */
+.rm-lp .lp-theme {
+    overflow: hidden; background: var(--lp-panel); border: 4px solid #000;
+    box-shadow: 5px 5px 0 rgba(0,0,0,.5); transition: transform .3s;
+}
+.rm-lp .lp-theme:hover { transform: translateY(-4px); }
+.rm-lp .lp-theme-tag {
+    position: absolute; top: 8px; right: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px;
+    letter-spacing: 1px; text-transform: uppercase; color: #000; background: var(--lp-coin);
+    border: 2px solid #000; padding: 4px 7px; border-radius: 3px; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+    z-index: 3;
+}
+
+/* ---- PLAYABLE deluxe theme card (the "wow" tier) ----
+   Highlight WITHOUT changing the card's box size, so the grid stays aligned:
+   the glowing coin frame lives on the inner image (clipped, no spill), the
+   ribbon sits inside the top-left, and only a lift on hover — no scale. */
+.rm-lp .lp-theme-playable {
+    border-color: var(--lp-coin);
+    box-shadow: 5px 5px 0 rgba(0,0,0,.5), 0 0 18px rgba(250,192,0,.5);
+    animation: lp-playglow 1.8s ease-in-out infinite;
+}
+.rm-lp .lp-theme-playable:hover { transform: translateY(-6px); }
+@keyframes lp-playglow {
+    0%, 100% { box-shadow: 5px 5px 0 rgba(0,0,0,.5), 0 0 14px rgba(250,192,0,.4); }
+    50%      { box-shadow: 5px 5px 0 rgba(0,0,0,.5), 0 0 26px rgba(250,192,0,.8); }
+}
+/* PLAYABLE ribbon — sits at the top-right, directly BELOW the plan tag (which
+   keeps its usual top-right spot), so the two badges stack neatly on one side. */
+.rm-lp .lp-play-ribbon {
+    position: absolute; top: 30px; right: 8px; z-index: 4;
+    font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; white-space: nowrap;
+    color: #000; background: var(--lp-green); border: 2px solid #000;
+    padding: 4px 7px; border-radius: 3px; box-shadow: 2px 2px 0 rgba(0,0,0,.45);
+    text-shadow: none;
+}
+
+/* ---- pricing ---- */
+.rm-lp .lp-price {
+    background: var(--lp-panel); border: 4px solid #000; box-shadow: 6px 6px 0 rgba(0,0,0,.5);
+    padding: 32px 28px; transition: transform .3s;
+}
+.rm-lp .lp-price:not(.lp-price-best):hover { transform: translateY(-4px); }
+.rm-lp .lp-price-best {
+    background: linear-gradient(180deg, #241a44, #15102a);
+    box-shadow: 6px 6px 0 rgba(0,0,0,.55), 0 0 0 4px var(--lp-coin), inset 0 0 0 2px rgba(255,255,255,.06);
+}
+@media (min-width: 1024px) { .rm-lp .lp-price-best { transform: translateY(-8px) scale(1.03); } }
+.rm-lp .lp-best-tag {
+    position: absolute; top: 0; left: 50%; transform: translate(-50%,-55%);
+    font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 1px; color: #000;
+    background: var(--lp-coin); border: 3px solid #000; padding: 7px 12px; border-radius: 3px;
+    box-shadow: 3px 3px 0 rgba(0,0,0,.4); white-space: nowrap;
+}
+.rm-lp .lp-divider { height: 3px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.25) 0 6px, transparent 6px 12px); }
+.rm-lp .lp-check {
+    width: 16px; height: 16px; flex: 0 0 16px; background: var(--lp-green); border: 2px solid #000; border-radius: 3px; position: relative;
+}
+.rm-lp .lp-check::after {
+    content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
+/* ---- feature list (power-ups) ---- */
+.rm-lp .lp-list {
+    background: var(--lp-panel); border: 4px solid #000; box-shadow: 6px 6px 0 rgba(0,0,0,.5);
+    padding: 4px 22px;
+}
+.rm-lp .lp-list-item + .lp-list-item { border-top: 3px dashed rgba(255,255,255,.14); }
+.rm-lp .lp-qmark {
+    width: 46px; height: 46px; flex: 0 0 46px; display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace; font-size: 18px; color: #7a4d00;
+    background: var(--lp-coin); border: 3px solid #000; border-radius: 4px;
+    box-shadow: inset 0 0 0 3px var(--lp-coin-deep), 2px 2px 0 rgba(0,0,0,.4);
+}
+
+/* ---- testimonials ---- */
+.rm-lp .lp-testi {
+    background: var(--lp-panel); border: 4px solid #000; box-shadow: 5px 5px 0 rgba(0,0,0,.5);
+    padding: 26px 22px; transition: transform .3s;
+}
+.rm-lp .lp-testi-hi { background: linear-gradient(180deg, #241a44, #15102a); box-shadow: 5px 5px 0 rgba(0,0,0,.55), inset 0 0 0 2px var(--lp-coin); }
+.rm-lp .lp-avatar {
+    width: 46px; height: 46px; flex: 0 0 46px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace; font-size: 10px; color: #000;
+    background: var(--lp-coin); border: 3px solid #000; border-radius: 3px; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+}
+.rm-lp .lp-nav-btn {
+    width: 44px; height: 44px; background: var(--lp-coin); border: 3px solid #000; color: #000; cursor: pointer;
+    box-shadow: 0 4px 0 var(--lp-coin-deep); display: flex; align-items: center; justify-content: center; z-index: 2;
+    transition: transform .1s, box-shadow .1s;
+}
+@media (min-width: 1024px) { .rm-lp .lp-nav-btn { width: 54px; height: 54px; } }
+.rm-lp .lp-nav-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--lp-coin-deep); }
+.rm-lp .lp-dot-nav { width: 12px; height: 12px; background: rgba(255,255,255,.25); border: 2px solid #000; transition: all .2s; }
+.rm-lp .lp-dot-nav.is-active { width: 28px; background: var(--lp-coin); }
+
+/* ---- FAQ ---- */
+.rm-lp .lp-faq { background: var(--lp-panel); border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,.45); transition: border-color .2s; }
+.rm-lp .lp-faq.is-open { border-color: var(--lp-coin); box-shadow: 4px 4px 0 rgba(0,0,0,.45), inset 0 0 0 2px rgba(250,192,0,.2); }
+
+/* ---- CTA ---- */
+.rm-lp .lp-cta {
+    background: linear-gradient(180deg, #241a44, #120e26); border: 4px solid #000;
+    box-shadow: 8px 8px 0 rgba(0,0,0,.5), 0 0 0 4px var(--lp-coin);
+}
+.rm-lp .lp-cta-deco { position: absolute; inset: 0; pointer-events: none; }
+.rm-lp .lp-cta-deco .lp-coin.co1 { top: 20%; left: 8%; }
+.rm-lp .lp-cta-deco .lp-coin.co2 { bottom: 24%; right: 10%; }
+.rm-lp .lp-cta-deco .lp-qblock.d1 { top: 60%; left: 12%; opacity: .5; }
+
+/* ---- footer ---- */
+.rm-lp .lp-footer { background: #08060f; border-top: 4px solid #000; }
+.rm-lp .lp-social {
+    width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; color: #fff;
+    background: rgba(255,255,255,.06); border: 3px solid #000; border-radius: 3px;
+    box-shadow: 0 3px 0 rgba(0,0,0,.5); transition: all .15s;
+}
+.rm-lp .lp-social:hover { background: var(--lp-coin); color: #000; transform: translateY(-2px); }
+
+/* ---- loading coin ---- */
+.rm-lp .lp-coin-spin {
+    width: 40px; height: 52px; background: var(--lp-coin); border: 4px solid #000; border-radius: 6px;
+    box-shadow: inset 0 0 0 4px var(--lp-coin-deep); animation: lp-spin .8s steps(6) infinite;
+}
+
+/* ---- animations ---- */
+@keyframes lp-drift { from { transform: translateX(0); } to { transform: translateX(150vw); } }
+@keyframes lp-bob { 50% { transform: translateY(-6px); } }
+@keyframes lp-spin { 50% { transform: scaleX(.15); } }
+@keyframes lp-blink { 50% { opacity: .3; } }
+@keyframes lp-walk { 50% { transform: translateX(24px) scaleX(-1); } }
+.rm-lp .lp-bob { animation: lp-bob 2.6s ease-in-out infinite; }
+.rm-lp .lp-blink { animation: lp-blink 1.1s steps(2) infinite; }
+.rm-lp .lp-blink-soft { animation: lp-blink 1.6s steps(2) infinite; }
+
+.rm-lp .no-scrollbar::-webkit-scrollbar { display: none; }
+.rm-lp .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
     );
 }

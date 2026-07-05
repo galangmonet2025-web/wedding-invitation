@@ -166,20 +166,41 @@
    and the discoverable-info icons). */
 .rm-hud .hud-world-row {
     display: inline-flex; align-items: center; justify-content: flex-end;
-    gap: 5px;
+    gap: 5px; pointer-events: none;
 }
-/* Difficulty badge — shows the EFFECTIVE level (world base + chosen mode),
-   colour-coded so the guest always knows how hard the current stage is. */
+/* WORLD number sits inside a little GREEN-PIPE placard (matches the inventory
+   pipes + view button) so the stage marker reads as a Mario sign, not plain
+   text on the sky. */
+/* WORLD number — a small FROSTED-GLASS placard (matches the toolbar/inventory
+   glass). Clean and simple, white text. */
+.rm-hud .hud-world-row #rm-world {
+    color: #fff; font-size: 9px; line-height: 1; padding: 4px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 7px;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+/* Difficulty badge — a GLASS pill; the effective level is shown by a small
+   coloured dot + text tint (green/orange/red) so it still reads at a glance. */
 .rm-hud .hud-diff {
     flex: none;
     font-family: var(--rm-pixel); font-size: 7px; line-height: 1;
-    color: #fff; padding: 3px 5px; border: 1.5px solid #000;
-    border-radius: 3px; text-shadow: 1px 1px 0 #000;
-    box-shadow: 2px 2px 0 rgba(0,0,0,0.4); letter-spacing: 0.5px;
+    color: #fff; padding: 4px 7px 4px 13px; position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 7px;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.14);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
-.rm-hud .hud-diff[data-lvl="easy"]   { background: #2e9e3a; }
-.rm-hud .hud-diff[data-lvl="medium"] { background: #e08a1e; }
-.rm-hud .hud-diff[data-lvl="hard"]   { background: #d22d2d; }
+/* the level-colour status dot */
+.rm-hud .hud-diff::before {
+    content: ''; position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%; box-shadow: 0 0 3px currentColor;
+}
+.rm-hud .hud-diff[data-lvl="easy"]::before   { background: #38d64a; color: #38d64a; }
+.rm-hud .hud-diff[data-lvl="medium"]::before { background: #ffb43a; color: #ffb43a; }
+.rm-hud .hud-diff[data-lvl="hard"]::before   { background: #ff5a55; color: #ff5a55; }
 .rm-coin-ico {
     display: inline-block; width: 9px; height: 12px; vertical-align: -1px;
     background: var(--rm-coin); border: 1.5px solid #000; border-radius: 50%;
@@ -196,52 +217,50 @@
     position: absolute; top: 46px; left: 10px; z-index: 31;
     display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
 }
+/* Toolbar buttons — SIMPLE FROSTED GLASS. A translucent white pane with a
+   backdrop blur, a hairline light border and a soft top sheen; icons are solid
+   BLACK so they read on any background. No brick/pipe texture, no hard NES
+   shadow — clean and minimal, per request. */
 .rm-iconbtn {
     position: relative; width: 44px; height: 44px; padding: 0;
-    background: #2a2452;                          /* flat panel fill */
-    border: 3px solid #000; border-radius: 0;
-    box-shadow: 4px 4px 0 #000,                                   /* hard block shadow */
-                inset 0 2px 0 rgba(255,255,255,0.35),             /* 1px top highlight */
-                inset 0 -3px 0 rgba(0,0,0,0.45);                  /* bottom shade */
-    image-rendering: pixelated;
+    background: rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(7px);
+    backdrop-filter: blur(7px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);          /* glass top sheen */
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    pointer-events: auto; transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
+    pointer-events: auto; transition: transform 0.08s ease, background 0.12s ease;
 }
-.rm-iconbtn:hover { background: #38326a; }
-.rm-iconbtn:active {                                              /* press into the shadow */
-    transform: translate(4px, 4px);
-    box-shadow: 0 0 0 #000, inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -3px 0 rgba(0,0,0,0.45);
-}
+.rm-iconbtn:hover { background: rgba(255, 255, 255, 0.30); }
+.rm-iconbtn:active { transform: translateY(2px); background: rgba(255, 255, 255, 0.22); }
+/* BLACK icons — force both stroke- and fill-based SVGs dark, overriding the
+   per-button colours baked into the HTML markup. */
 .rm-iconbtn svg { width: 24px; height: 24px; position: relative; z-index: 1; }
+.rm-iconbtn svg [stroke], .rm-iconbtn svg { stroke: #111 !important; }
+.rm-iconbtn svg [fill]:not([fill="none"]), .rm-iconbtn svg path[fill] { fill: #111 !important; }
 .rm-star-btn svg { width: 26px; height: 26px; }
-/* star/cheat ON — flat gold, hard pixel flash (no blur glow) */
+.rm-star-btn svg path { fill: #111 !important; }
+/* star/cheat ON — the glass tints warm gold + gently pulses; icon stays dark. */
 .rm-star-btn.is-on {
-    background: #fac000; border-color: #000;
-    box-shadow: 4px 4px 0 #000, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 0 rgba(154,94,0,0.7);
-    animation: rm-star-pulse 0.4s steps(2) infinite;
+    background: rgba(250, 192, 0, 0.34);
+    border-color: rgba(255, 255, 255, 0.7);
+    animation: rm-star-pulse 0.5s steps(2) infinite;
 }
-@keyframes rm-star-pulse { 0% { background: #fac000; } 100% { background: #ffe07a; } }
-/* per-button flat accent fills so the stack reads at a glance */
-.rm-sound-btn { background: #1f4a5a; }
-.rm-sound-btn:hover { background: #2a5e72; }
-.rm-sound-btn.is-muted { background: #3a3a44; }
-.rm-qr-btn { background: #1f5a32; }
-.rm-qr-btn:hover { background: #2a7340; }
-
-/* View-invitation button: locked = flat grey & dim; open = flat Mario green */
-.rm-view-btn.is-locked { background: #2a2a32; filter: brightness(0.8); opacity: 0.6; cursor: not-allowed; }
-.rm-view-btn:not(.is-locked) {
-    background: #2f9e3a; border-color: #000;
-    box-shadow: 4px 4px 0 #000, inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(15,58,18,0.8);
-}
-.rm-view-btn:not(.is-locked):hover { background: #3fb84a; }
+@keyframes rm-star-pulse { 0% { background: rgba(250,192,0,0.30); } 100% { background: rgba(255,224,122,0.5); } }
+.rm-sound-btn.is-muted { background: rgba(120, 120, 130, 0.22); }
+/* View-invitation button: locked = dim + not clickable; open = subtle green
+   glass tint (the "go somewhere" cue) with the same dark icon. */
+.rm-view-btn.is-locked { opacity: 0.45; filter: grayscale(0.6); cursor: not-allowed; }
+.rm-view-btn:not(.is-locked) { background: rgba(67, 176, 71, 0.30); border-color: rgba(255,255,255,0.6); }
+.rm-view-btn:not(.is-locked):hover { background: rgba(67, 176, 71, 0.45); }
 .rm-view-btn.just-unlocked { animation: rm-pop 0.5s steps(4); }
 
 /* ----- Inventory rail (top-right) -----
-   FLAT NES PIXEL-ART to match the left stack: square black-outlined cells with
-   a hard block shadow. Locked = flat dark + greyed icon; unlocked = flat gold
-   (like a collected coin/?-block) with a 1px bevel. No gradients, no glow,
-   no rounded corners — it reads as a row of pixel item-slots. */
+   FROSTED GLASS slots to match the toolbar. Locked = dim glass (icon greyed);
+   unlocked = brighter glass with its coloured pixel icon shown. Same clean,
+   minimal glass language as the left stack. */
 .rm-inv {
     position: absolute; top: 50px; right: 8px; z-index: 31;
     display: grid; grid-template-columns: repeat(2, 34px); gap: 6px;
@@ -249,21 +268,25 @@
 }
 .rm-inv-item {
     position: relative; width: 34px; height: 34px; padding: 0; cursor: default;
-    background: #1c1838; border: 3px solid #000; border-radius: 0;
-    box-shadow: 3px 3px 0 #000, inset 0 2px 0 rgba(255,255,255,0.18), inset 0 -3px 0 rgba(0,0,0,0.4);
-    image-rendering: pixelated;
+    background: rgba(255, 255, 255, 0.10);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.45);
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.06s steps(1), box-shadow 0.06s steps(1);
-    filter: grayscale(1) brightness(0.55); opacity: 0.7;
+    transition: transform 0.08s ease, background 0.12s ease;
+    filter: grayscale(1) brightness(0.7); opacity: 0.55;
 }
 .rm-inv-item canvas { width: 22px; height: 22px; image-rendering: pixelated; position: relative; z-index: 1; }
+/* Unlocked slot = brighter glass, full-colour icon (a collected piece). */
 .rm-inv-item.is-enabled {
     filter: none; opacity: 1; cursor: pointer;
-    background: #f0a830; border-color: #000;
-    box-shadow: 3px 3px 0 #000, inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 0 rgba(154,94,0,0.7);
+    background: rgba(255, 255, 255, 0.24);
+    border-color: rgba(255, 255, 255, 0.6);
 }
-.rm-inv-item.is-enabled:hover { background: #ffc24a; transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 0 rgba(154,94,0,0.7); }
-.rm-inv-item.is-enabled:active { transform: translate(3px, 3px); box-shadow: 0 0 0 #000, inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -3px 0 rgba(154,94,0,0.7); }
+.rm-inv-item.is-enabled:hover { background: rgba(255, 255, 255, 0.36); transform: translateY(-1px); }
+.rm-inv-item.is-enabled:active { transform: translateY(2px); background: rgba(255, 255, 255, 0.28); }
 .rm-inv-item.just-unlocked { animation: rm-pop 0.5s steps(5); }
 @keyframes rm-pop { 0% { transform: scale(0.4); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
 
@@ -278,8 +301,8 @@
 
 /* "new / unseen" notification badge on a freshly-unlocked icon */
 .rm-inv-item .rm-badge {
-    position: absolute; top: -5px; right: -5px; width: 12px; height: 12px;
-    background: var(--rm-red); border: 2px solid #000; border-radius: 50%;
+    position: absolute; top: -5px; right: -5px; width: 8px; height: 8px;
+    background: var(--rm-red); border-radius: 50%;
     display: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 .rm-inv-item.has-new .rm-badge { display: block; animation: rm-badge-blink 0.8s steps(2) infinite; }
@@ -358,6 +381,13 @@
     max-width: 80%;
 }
 .rm-toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+/* ----- Theme/game version badge (bottom-center, mirrors metalslug-wedding) ----- */
+.rm-version {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 4px; z-index: 9;
+    pointer-events: none; font-family: var(--rm-pixel); font-size: 7px; letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.5); text-align: center; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
 
 /* ============ COVER ============ */
 .rm-cover {
@@ -445,7 +475,7 @@
 }
 .rm-cover-guest .guest-name {
     display: block; font-family: var(--rm-pixel); font-size: 13px; color: var(--rm-coin);
-    margin-top: 8px; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4); word-break: break-word;
+    margin-top: 8px; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4); word-break: break-word; margin-bottom: 15px;
 }
 .rm-start-btn {
     margin-top: 30px; font-family: var(--rm-pixel); font-size: 13px; color: #000;
@@ -458,7 +488,8 @@
 .rm-cover-hint { margin-top: 16px; font-size: 11px; color: rgba(255, 255, 255, 0.8); line-height: 1.6; }
 /* Difficulty selector on the cover */
 .rm-diff { margin-top: 24px; }
-.rm-diff-label { font-family: var(--rm-pixel); font-size: 8px; letter-spacing: 2px; color: var(--rm-coin); margin-bottom: 8px; }
+.rm-diff-label { font-family: var(--rm-pixel); font-size: 8px; letter-spacing: 2px; color: var(--rm-coin); margin-bottom: 8px;     margin-bottom: 31px;
+    MARGIN-TOP: 22px;}
 .rm-diff-opts { display: inline-flex; gap: 8px; }
 .rm-diff-opt {
     font-family: var(--rm-pixel); font-size: 9px; color: #fff; cursor: pointer;

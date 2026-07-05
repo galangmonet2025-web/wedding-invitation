@@ -22,6 +22,25 @@
     @apply bg-wedding-dark text-gray-100;
   }
 
+  /* Native form controls (esp. the <input type="date"> calendar popup) render
+     their own chrome. Without a color-scheme, a dark-styled input on a
+     light-mode OS gets a mismatched popup — the cramped, overlapping calendar
+     bug. Tell the browser which scheme to paint so the popup lays out cleanly. */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="time"],
+  input[type="week"] {
+    color-scheme: light;
+  }
+  body.dark input[type="date"],
+  body.dark input[type="datetime-local"],
+  body.dark input[type="month"],
+  body.dark input[type="time"],
+  body.dark input[type="week"] {
+    color-scheme: dark;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
   }

@@ -32,6 +32,37 @@
         function onCleanup(fn) { cleanupFns.push(fn); }
         window.__rmCleanup = function () { cleanupFns.forEach(function (f) { try { f(); } catch (e) {} }); cleanupFns = []; };
 
+        // Theme/game version — shown bottom-center of the stage (like metalslug-wedding).
+        var RM_VERSION = 'v1.3.2';   // v1.3.2: fix BLACK game area on the LIVE invitation (esp. after LANJUTKAN/MULAI BARU)
+                                     //         — the host re-injects the theme HTML and REPLACES the <canvas> node, but our
+                                     //         JS isn't re-run, so we kept drawing into the OLD detached canvas while the new
+                                     //         one stayed blank (HUD/buttons are separate DOM, so they still showed). Now the
+                                     //         loop self-heals: reacquire() detects a detached canvas, re-grabs the live
+                                     //         canvas/ctx/stage, re-attaches the ResizeObserver, and re-sizes+repaints. Also
+                                     //         (v1.3.1) resize() reports success + the loop retries until the stage measures a
+                                     //         real size, covering the 0×0-at-startup black-screen race;
+                                     // v1.3.0: fix overlay buttons dead on the LIVE invitation (LANJUTKAN/MULAI BARU/
+                                     //         intro/stage/win/rescue "stuck di screen") — they were bound directly to
+                                     //         host-re-injected nodes; now routed through the delegated document listener
+                                     //         (RM_DELEGATED_BTNS), like the cover buttons. Plus a glass toolbar/inventory
+                                     //         redesign (CSS only): frosted panes + black icons;
+                                     // v1.2.1: REAL idle/crouch judder fix — a standing Mario never actually settled
+                                     //         (GRAV re-applied each frame + the block collider tests feet at (y+h-1),
+                                     //         which stays in the empty row above → never snapped → player.y & onGround
+                                     //         oscillated 594.0/594.55 forever, so sy rounded 590/591 = 1px buzz/frame).
+                                     //         Two-layer fix: (a) collideAxis GROUNDED SETTLE snaps feet flush when
+                                     //         falling slow onto a solid directly underfoot (stabilises y+onGround at the
+                                     //         source); (b) drawPlayer anchors sy to the probed tile SURFACE, not the live
+                                     //         y or the flickering onGround flag — verified rock-steady via Node harness;
+                                     // v1.2.0: richer SMB-style animation — 4-frame WALK + 4-frame RUN (bigger stride,
+                                     //         pumping arms, faster cadence past walk-max), fire THROW pose (in air & on
+                                     //         ground), idle "breath" (idle/idle2 alt), climb/pole-grab poses, and a
+                                     //         transform FLICKER on grow/shrink/fire pickup;
+                                     // v1.1.1: fix idle/crouch vertical judder — anchor feet on player.onGround, not the vy window;
+                                     // v1.1.0: version badge + lower mobile brick band (2 rows less);
+                                     // v1.0.x: delegated cover buttons (PRESS START/difficulty survive host re-injection)
+        try { console.log('%c[retromario] ' + RM_VERSION, 'background:#e52521;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
+
         // ---- copyToClipboard (used by gift buttons; global like other themes) ----
         window.copyToClipboard = function (id, btn) {
             var el = document.getElementById(id);
@@ -87,9 +118,11 @@
             // Bottom safe-area (virtual px) reserved BELOW the ground top for the
             // on-screen touch controls, so the joystick/buttons never cover Mario.
             // Filled with thick "deep ground" so it reads as solid earth, not a bar.
-            // 0 on desktop (controls hidden), ~6 tiles on touch devices (resize()).
+            // 0 on desktop (controls hidden), ~5 tiles on touch devices (resize()).
             var BOTTOM_SAFE = 0;
-            var BOTTOM_SAFE_TILES = 7; // ~7 tiles of deep ground under the surface on mobile
+            var BOTTOM_SAFE_TILES = 5; // deep-ground rows under the surface on mobile.
+                                       // Lowered 7→5 (−2 rows) so the mobile brick/ground
+                                       // band isn't too tall below the touch controls.
 
             // Physics (tuned to feel responsive, not floaty — bible §3, §game-feel)
             var GRAV = 0.55;
@@ -865,7 +898,7 @@
                     vx: 0, vy: 0, onGround: false, face: 1,
                     big: false, fire: false, star: 0, dead: false, deadT: 0,
                     jumpHold: 0, jumping: false, invuln: 0, fireCd: 0, win: false,
-                    warpCd: 0,
+                    warpCd: 0, throwT: 0, morphT: 0,
                     cheat: player ? player.cheat : false
                 };
                 jumpQueued = 0; coyote = 0; // clear buffered input on (re)spawn
@@ -1403,6 +1436,7 @@
                     W.fireballs.push({ x: player.x + (player.face > 0 ? player.w : -4), y: player.y + 4,
                         vx: player.face * 4, vy: 2, alive: true, bounces: 0 });
                     player.fireCd = 18;
+                    player.throwT = 10;   // hold the shoot pose ~10 frames (drawPlayer reads this)
                     playSfx('fireball');
                 }
             }
@@ -1425,6 +1459,20 @@
                     if (p.vy > 0) {
                         var rB = Math.floor((p.y + p.h - 1) / TILE);
                         for (var c = c0; c <= c1; c++) if (solidAt(c, rB)) { p.y = rB * TILE - p.h; p.vy = 0; p.onGround = true; break; }
+                        // GROUNDED SETTLE (judder root fix): when moving DOWN slowly
+                        // and a solid sits right under the feet (the very next row),
+                        // snap the feet flush to that surface and mark grounded. Without
+                        // this, a standing Mario re-applies GRAV every frame and drifts
+                        // ~0.55px because the block-collision row above uses (y+h-1),
+                        // which stays in the EMPTY row and never snaps → player.y and
+                        // onGround oscillate forever → 1px sprite buzz. Settling here
+                        // pins y to a whole surface so the body is truly at rest.
+                        if (!p.onGround && p.vy <= GRAV * 1.5) {
+                            var rFoot = Math.floor((p.y + p.h) / TILE);
+                            for (var cf = c0; cf <= c1; cf++) {
+                                if (solidAt(cf, rFoot)) { p.y = rFoot * TILE - p.h; p.vy = 0; p.onGround = true; break; }
+                            }
+                        }
                     } else if (p.vy < 0) {
                         var rT = Math.floor(p.y / TILE);
                         for (var c2 = c0; c2 <= c1; c2++) if (solidAt(c2, rT)) { p.y = (rT + 1) * TILE; p.vy = 0; bumpBlock(c2, rT); break; }
@@ -1671,6 +1719,8 @@
                 // Timers
                 if (player.invuln > 0) player.invuln--;
                 if (player.fireCd > 0) player.fireCd--;
+                if (player.throwT > 0) player.throwT--;    // fire shoot-pose hold
+                if (player.morphT > 0) player.morphT--;    // grow/shrink transform flicker
                 if (player.star > 0) { player.star--; if (player.star === 0) toast('Bintang habis'); }
 
                 if (W.isBoss) {
@@ -1711,7 +1761,7 @@
                         player.y + player.h > pu.y && player.y < pu.y + pu.h) {
                         pu.alive = false;
                         if (pu.kind === 'mushroom') { setBig(true); addScore(1000); toast('SUPER!'); }
-                        else if (pu.kind === 'flower') { setBig(true); player.fire = true; addScore(1000); toast('FIRE POWER!'); }
+                        else if (pu.kind === 'flower') { var wasFire = player.fire; setBig(true); player.fire = true; if (!wasFire) player.morphT = 34; addScore(1000); toast('FIRE POWER!'); }
                         else if (pu.kind === 'star') { player.star = 600; addScore(1000); toast('★ INVINCIBLE ★'); }
                         playSfx('powerup');
                     }
@@ -1719,7 +1769,14 @@
                 W.powerups = W.powerups.filter(function (p) { return p.alive; });
             }
 
-            function setBig(b) { player.big = b; player.h = b ? 22 : 14; }
+            // Grow/shrink. Flag a short TRANSFORM FLICKER (morphT) so drawPlayer can
+            // strobe the sprite the way SMB does the moment Mario changes size/costume
+            // (mushroom → super, damage → small, flower → fire). Skip the flicker if
+            // the size didn't actually change (e.g. flower while already big).
+            function setBig(b) {
+                if (player.big !== b) player.morphT = 34;
+                player.big = b; player.h = b ? 22 : 14;
+            }
 
             // `force` = an unavoidable death (pit / timer): kills regardless of
             // size, star, or invulnerability frames (bible §8.1, §10.3 — star does
@@ -2317,7 +2374,21 @@
             // fire-flower recolours each get their own baked set (built lazily,
             // bounded: ~handful of colour combos over a whole run).
             // ============================================================
-            var MARIO_FRAMES = ['idle', 'walk0', 'walk1', 'walk2', 'jump', 'fall', 'skid', 'crouch'];
+            // Richer SMB-style animation set (research: SMB1/SMB3 pose library):
+            //   idle           — standing (a subtle blink is layered on top live)
+            //   idle2          — idle "breath" (chest/arms settle 1px) → alt idle frame
+            //   walk0..walk3   — a full 4-frame WALK cycle (was 3)
+            //   run0..run3     — a 4-frame RUN cycle: bigger stride + pumping arms,
+            //                    shown only at high speed (arms swing, leaning body)
+            //   jump           — ascending (arms up, legs tucked)
+            //   fall           — descending (arms out, legs splayed)
+            //   skid           — braking / turn-around
+            //   crouch         — ducking (whole body lowers)
+            //   throw          — fire-flower shoot pose (lead arm thrust forward)
+            //   climb0/climb1  — ladder/flag-pole grab (2-frame shimmy) [flag slide]
+            var MARIO_FRAMES = ['idle', 'idle2', 'walk0', 'walk1', 'walk2', 'walk3',
+                                'run0', 'run1', 'run2', 'run3',
+                                'jump', 'fall', 'skid', 'crouch', 'throw', 'climb0', 'climb1'];
             var marioSheets = {};   // key → { idle:rec, walk0:rec, ... } baked frames
 
             // Paint ONE Mario frame at native resolution into the current octx.
@@ -2340,6 +2411,10 @@
                 var isFall   = frame === 'fall';                       // descending
                 var isSkid   = frame === 'skid';                       // braking / turn-around
                 var isCrouch = frame === 'crouch';                     // ducking
+                var isThrow  = frame === 'throw';                      // fire shoot pose
+                var isIdle2  = frame === 'idle2';                      // idle breath (alt)
+                var isRun    = frame.indexOf('run') === 0;             // fast run cycle
+                var isClimb  = frame.indexOf('climb') === 0;           // ladder/pole grab
                 var airborne = isJumpUp || isFall;
 
                 // CROUCH is the one pose that lowers the WHOLE body (a real duck),
@@ -2403,8 +2478,20 @@
                 // ---------------- ARMS + GLOVES ----------------
                 // Pose-dependent arm placement (the silhouette ABOVE the hips is the
                 // same box; only the limbs move, which is allowed — they're authored
-                // inside the frame, not by shifting the whole sprite).
-                if (isJumpUp) {
+                // inside the frame, not by shifting the whole sprite). The sprite is
+                // mirrored by facing, so the +x side is always Mario's FRONT.
+                if (isThrow) {
+                    // FIRE THROW (SMB fire pose): FRONT arm thrust straight forward at
+                    // shoulder height (the hand that lobbed the fireball), back arm
+                    // tucked/braced. Reads as an active "shoot" the instant a fireball
+                    // leaves. Head stays put (no judder); only the limbs change.
+                    pc(shirt); px(bx + bw - 2, shoulder + 1, 8, 5);        // front upper arm out
+                    pc(glove); px(bx + bw + 6, shoulder, 8, 6);            // front gloved fist forward
+                    pc(gloveDk); px(bx + bw + 6, shoulder + 4, 8, 2);
+                    pc(shirt); px(bx - 4, shoulder + 4, 6, 7);             // back arm braced low
+                    pc(glove); px(bx - 6, shoulder + 10, 8, 6);
+                    pc(gloveDk); px(bx - 6, shoulder + 14, 8, 2);
+                } else if (isJumpUp) {
                     // both arms thrown UP (classic ascending jump)
                     pc(shirt); px(bx - 4, shoulder - 3, 6, 9); px(bx + bw - 2, shoulder - 3, 6, 9);
                     pc(glove); px(bx - 6, shoulder - 9, 8, 7); px(bx + bw - 2, shoulder - 9, 8, 7);
@@ -2414,17 +2501,47 @@
                     pc(shirt); px(bx - 6, shoulder + 1, 7, 6); px(bx + bw - 1, shoulder + 1, 7, 6);
                     pc(glove); px(bx - 10, shoulder - 1, 8, 7); px(bx + bw + 2, shoulder - 1, 8, 7);
                     pc(gloveDk); px(bx - 10, shoulder + 4, 8, 2); px(bx + bw + 2, shoulder + 4, 8, 2);
+                } else if (isClimb) {
+                    // CLIMB / pole-grab: both arms reach UP the pole, hands stacked;
+                    // climb1 swaps which hand is higher for a 2-frame shimmy.
+                    var hi = frame === 'climb1';
+                    pc(shirt); px(bx - 2, shoulder - 4, 6, 10); px(bx + bw - 4, shoulder - 4, 6, 10);
+                    pc(glove); px(bx - 3, shoulder - (hi ? 12 : 8), 7, 6); px(bx + bw - 4, shoulder - (hi ? 8 : 12), 7, 6);
+                    pc(gloveDk); px(bx - 3, shoulder - (hi ? 7 : 3), 7, 2); px(bx + bw - 4, shoulder - (hi ? 3 : 7), 7, 2);
                 } else if (isSkid) {
                     // SKID / turn-around: lead arm flung BACK (away from facing), trail
                     // arm braced low — reads as "digging the heels in" when changing
-                    // direction. The sprite is mirrored by facing, so "lead" = +x side.
+                    // direction.
                     pc(shirt); px(bx - 5, shoulder - 1, 7, 7); px(bx + bw - 1, shoulder + 4, 6, 7);
                     pc(glove); px(bx - 9, shoulder - 5, 8, 7); px(bx + bw - 1, shoulder + 10, 8, 6);
                     pc(gloveDk); px(bx - 9, shoulder, 8, 2); px(bx + bw - 1, shoulder + 14, 8, 2);
+                } else if (isRun) {
+                    // RUN: arms PUMP in counter-swing with the legs. run0/run2 swing the
+                    // front arm forward+up (elbow bent), run1/run3 swing it back+down.
+                    // Bigger amplitude than a walk → reads as a sprint (SMB3 dash).
+                    var fwd = (frame === 'run0' || frame === 'run2');
+                    if (fwd) {
+                        pc(shirt); px(bx + bw - 2, shoulder - 1, 6, 6);   // front arm up/fwd
+                        pc(glove); px(bx + bw + 2, shoulder - 4, 8, 6);
+                        pc(gloveDk); px(bx + bw + 2, shoulder, 8, 2);
+                        pc(shirt); px(bx - 4, shoulder + 5, 6, 7);        // back arm down/behind
+                        pc(glove); px(bx - 8, shoulder + 11, 8, 6);
+                        pc(gloveDk); px(bx - 8, shoulder + 15, 8, 2);
+                    } else {
+                        pc(shirt); px(bx - 2, shoulder - 1, 6, 6);        // (mirror) back-swing
+                        pc(glove); px(bx - 6, shoulder - 4, 8, 6);
+                        pc(gloveDk); px(bx - 6, shoulder, 8, 2);
+                        pc(shirt); px(bx + bw - 2, shoulder + 5, 6, 7);
+                        pc(glove); px(bx + bw, shoulder + 11, 8, 6);
+                        pc(gloveDk); px(bx + bw, shoulder + 15, 8, 2);
+                    }
                 } else {
-                    pc(shirt); px(bx - 4, shoulder + 3, 6, 8); px(bx + bw - 2, shoulder + 3, 6, 8);
-                    pc(glove); px(bx - 6, shoulder + 10, 8, 7); px(bx + bw - 2, shoulder + 10, 8, 7);
-                    pc(gloveDk); px(bx - 6, shoulder + 15, 8, 2); px(bx + bw - 2, shoulder + 15, 8, 2);
+                    // WALK / IDLE: arms rest at the sides. idle2 raises them 1px for a
+                    // subtle "breath" so a standing Mario isn't a dead statue.
+                    var dy = isIdle2 ? -1 : 0;
+                    pc(shirt); px(bx - 4, shoulder + 3 + dy, 6, 8); px(bx + bw - 2, shoulder + 3 + dy, 6, 8);
+                    pc(glove); px(bx - 6, shoulder + 10 + dy, 8, 7); px(bx + bw - 2, shoulder + 10 + dy, 8, 7);
+                    pc(gloveDk); px(bx - 6, shoulder + 15 + dy, 8, 2); px(bx + bw - 2, shoulder + 15 + dy, 8, 2);
                 }
 
                 // ---------------- LEGS / BOOTS (the ONLY per-frame difference) ----
@@ -2435,9 +2552,20 @@
                 var legW = 10, legH = H - legTopY;
                 // stride offsets per frame (native px, horizontal only)
                 var lDx = 0, rDx = 0, lToe = 0, rToe = 0;
+                // WALK: a 4-frame cycle (contact → passing → contact → passing) — the
+                // extra walk3 doubles the smoothness vs the old 3-frame loop.
                 if (frame === 'walk0') { lDx = -4; rDx = 1; lToe = 3; }
+                else if (frame === 'walk1') { lDx = -2; rDx = 2; }
                 else if (frame === 'walk2') { lDx = -1; rDx = 4; rToe = 3; }
-                else if (frame === 'walk1' || frame === 'walk3') { lDx = -2; rDx = 2; }
+                else if (frame === 'walk3') { lDx = -3; rDx = 3; lToe = 1; rToe = 1; }
+                // RUN: exaggerated stride (feet reach further, one toe kicked out) so a
+                // sprint reads distinctly faster/looser than a walk (SMB3 dash feel).
+                else if (frame === 'run0') { lDx = -6; rDx = 2; lToe = 5; }
+                else if (frame === 'run1') { lDx = -3; rDx = 3; }
+                else if (frame === 'run2') { lDx = -1; rDx = 6; rToe = 5; }
+                else if (frame === 'run3') { lDx = -4; rDx = 4; lToe = 2; rToe = 2; }
+                else if (isThrow)  { lDx = -3; rDx = 2; rToe = 2; } // braced throwing stance
+                else if (isClimb)  { lDx = -1; rDx = 1; }           // legs together on the pole
                 else if (isJumpUp) { lDx = -3; rDx = 3; }            // tucked-apart in air (rising)
                 else if (isFall)   { lDx = -5; rDx = 5; rToe = 3; }  // legs splayed wide (falling)
                 else if (isSkid)   { lDx = -6; rDx = 2; lToe = 5; }  // front foot braced forward (braking)
@@ -2521,6 +2649,10 @@
 
             function drawPlayer() {
                 if (player.invuln > 0 && Math.floor(player.invuln / 4) % 2 === 0) return;
+                // TRANSFORM FLICKER: the moment Mario grows/shrinks/gets fire, strobe
+                // the sprite for a few frames (SMB power-up blink). Faster strobe than
+                // the invuln blink so the two read differently.
+                if (player.morphT > 0 && Math.floor(player.morphT / 2) % 2 === 0) return;
                 var face = player.face;
                 var star = player.star > 0;
                 var moving = Math.abs(player.vx) > 0.3 && player.onGround;
@@ -2539,15 +2671,36 @@
                 var crouching = player.onGround && inDown && Math.abs(player.vx) < 1.2;
 
                 // Pick a FROZEN frame name (animation = frame swap only, no geometry
-                // change). Slower cadence (animT/7) → calmer, more readable stride.
-                // jump vs fall split on vertical velocity so the rising and falling
-                // arcs use distinct poses (item 1).
+                // change). Richer selection (research: SMB pose set):
+                //   • THROW wins briefly after shooting a fireball (throwT), in air OR
+                //     on the ground — the classic fire-Mario shoot pose.
+                //   • RUN vs WALK: past a speed threshold Mario breaks into a 4-frame
+                //     RUN cycle (bigger stride + pumping arms) at a FASTER cadence;
+                //     below it, the calmer 4-frame WALK. Both cadences scale a touch
+                //     with speed so the feet don't slide.
+                //   • IDLE alternates idle/idle2 for a subtle breath, with an
+                //     occasional blink (handled after, by overpainting eyelids).
+                var spd = Math.abs(player.vx);
+                var running = spd > MAXVX + 0.2;                 // above walk-max ⇒ sprinting
+                var throwing = player.throwT > 0 && !crouching;  // shoot pose (fire only)
                 var frameName;
-                if (airborne) frameName = (player.vy > 1.2 ? 'fall' : 'jump');
+                if (throwing) frameName = 'throw';
+                else if (airborne) frameName = (player.vy > 1.2 ? 'fall' : 'jump');
                 else if (crouching) frameName = 'crouch';
                 else if (skidding) frameName = 'skid';
-                else if (moving) frameName = MARIO_FRAMES[1 + (Math.floor(animT / 7) % 3)]; // walk0/1/2
-                else frameName = 'idle';
+                else if (moving) {
+                    if (running) {
+                        // fast cadence (every ~4 frames) through the 4-frame run cycle
+                        var rc = Math.floor(animT / 4) % 4;
+                        frameName = 'run' + rc;
+                    } else {
+                        // walk cadence scales gently with speed (slower step when slow)
+                        var wStep = spd > 1.8 ? 6 : 8;
+                        var wc = Math.floor(animT / wStep) % 4;
+                        frameName = 'walk' + wc;
+                    }
+                }
+                else frameName = (Math.floor(animT / 42) % 2 ? 'idle2' : 'idle'); // breath
 
                 // on-screen anchor: feet locked to the ground tile so the body never
                 // jitters vertically. The baked frame's feet sit at its own bottom
@@ -2555,21 +2708,44 @@
                 var vh = (big ? 26 : 18);                      // matches getMarioSheet
                 var P_VH = vh;
 
-                // Y anchor: while resting/settling on ground, snap feet to the tile
-                // top (constant every frame → zero shimmer). Airborne uses the live
-                // y for a smooth arc. (Physics/hitboxes untouched — render only.)
+                // Y anchor: while standing on solid ground, PIN the feet to the tile
+                // surface underfoot (constant every frame → zero shimmer). Airborne
+                // uses the live y for a smooth arc. (Physics/hitboxes untouched.)
+                //
+                // JUDDER — REAL ROOT CAUSE (why the two earlier fixes failed):
+                // A standing Mario NEVER settles to a fixed y. Every frame stepPlayer
+                // does: vy += GRAV (→0.55), onGround = false, y += 0.55, then the
+                // collider. But the collider tests the feet row as floor((y+h-1)/TILE)
+                // — with the +0.55 that row is still the EMPTY row above the ground,
+                // so it does NOT snap and does NOT set onGround. So at render time
+                // Mario permanently floats ~0.55px, `onGround` flickers false, and
+                // `player.y` alternates 594.0 / 594.55. BOTH prior anchors were tied
+                // to that oscillating state (vy-window, then player.onGround), so sy
+                // rounded to 590/591 on alternating frames — a 1px buzz every frame.
+                //
+                // FIX: don't trust vy / onGround / the live y at all. Probe for solid
+                // ground within ~2px BELOW the feet (covers the 0.55px float + a step)
+                // by scanning tile rows from the feet downward. If found, lock the
+                // sprite bottom to that tile's SURFACE (a whole, unchanging number).
+                // Only when there is genuinely no ground within reach (a real jump/
+                // fall) do we fall back to the live feet line for the airborne arc.
                 var feetCol = Math.floor((player.x + player.w / 2) / TILE);
-                var feetRow = Math.floor((player.y + player.h) / TILE);
-                var restingOnGround = player.vy >= 0 && player.vy <= GRAV * 1.2 &&
-                                    (solidAt(feetCol, feetRow) || solidAt(feetCol, feetRow + 1));
-                var feetWorldY;
-                if (restingOnGround) {
-                    var groundTopY = feetRow * TILE;
-                    if (!solidAt(feetCol, feetRow)) groundTopY = (feetRow + 1) * TILE;
-                    feetWorldY = groundTopY;                   // exact tile surface
-                } else {
-                    feetWorldY = player.y + player.h;          // live feet line
+                var feetBottom = player.y + player.h;          // live feet line
+                var groundedNear = false, groundTopY = 0;
+                if (player.vy >= -0.01) {                       // not moving UP (jump)
+                    // nearest solid tile top at/just under the feet (≤ ~2px gap)
+                    var probeRow = Math.floor((feetBottom - 0.5) / TILE);
+                    for (var pr = probeRow; pr <= probeRow + 2; pr++) {
+                        if (solidAt(feetCol, pr)) {
+                            var surf = pr * TILE;
+                            if (surf >= feetBottom - 2 && surf <= feetBottom + 2.5) {
+                                groundTopY = surf; groundedNear = true;
+                            }
+                            break;
+                        }
+                    }
                 }
+                var feetWorldY = groundedNear ? groundTopY : feetBottom;
                 // sprite box top so its BOTTOM aligns with the feet line
                 var sx = Math.round(player.x - camX - (P_VW - player.w) / 2);
                 var sy = Math.round(feetWorldY - P_VH);
@@ -3438,7 +3614,16 @@
             var rafId = null, lastT = 0;
             function loop(ts) {
                 rafId = requestAnimationFrame(loop);
+                // Heal a host-swapped canvas EVERY frame (even while an overlay is up),
+                // so the moment the live invitation re-injects the DOM we re-grab the
+                // new canvas and re-size it — no more permanent black game area.
+                if (!isLive(canvas)) { if (reacquire()) resize(); }
                 if (!running) return;
+                // If the stage wasn't laid out when we started (0×0 → black screen),
+                // keep retrying every frame until it measures a real size, then do
+                // one clean render. Until then, don't advance physics against a bad
+                // viewport — just wait.
+                if (!sized) { if (!resize()) return; render(); lastT = ts; return; }
                 var dt = ts - lastT; lastT = ts;
                 animT++;
                 stepPlayer();
@@ -3469,9 +3654,49 @@
             // (draws snap to whole virtual px → sharp edges, no extra shadow).
             // The camera math is unchanged (always VW tiles wide → no over-zoom).
             // ============================================================
+            // `sized` = has resize() ever run against a REAL (non-zero) stage rect?
+            // When the theme mounts, the stage can briefly be 0×0 (host still
+            // laying out / mobile frame not measured yet). If startGame() calls
+            // resize() during that window it bails early — the canvas keeps its
+            // default 300×150 backing store with an identity transform, so render()
+            // paints into the wrong space and the guest sees a BLACK screen while
+            // the HUD/buttons (separate DOM overlays) show fine. The loop then
+            // re-renders that same black frame forever because resize() only re-runs
+            // on window 'resize' events. `sized` lets the loop retry until layout
+            // is ready (see loop()).
+            var sized = false;
+
+            // STALE-CANVAS SELF-HEAL (the real "black screen on the live invitation"
+            // cause). `canvas`/`ctx`/`stage` are captured ONCE when start() runs.
+            // On the LIVE invitation the host re-injects the theme HTML (guest fetch
+            // resolving, etc.) which REPLACES the <canvas> node with a fresh one —
+            // but our JS is NOT re-run, so we keep drawing into the OLD, now-detached
+            // canvas. The new canvas in the DOM never gets painted → the game area is
+            // BLACK while the HUD/buttons (separate DOM) still show. Clicking
+            // LANJUTKAN/MULAI BARU is exactly when that re-injection tends to land.
+            //
+            // reacquire() detects a detached canvas and re-grabs the live nodes +
+            // re-attaches the ResizeObserver, so the running loop heals itself.
+            function isLive(el) {
+                if (!el) return false;
+                if ('isConnected' in el) return el.isConnected;
+                return document.documentElement.contains(el);     // older-engine fallback
+            }
+            function reacquire() {
+                if (isLive(canvas)) return false;                 // still live → nothing to do
+                var c = document.getElementById('rm-canvas');
+                var s = document.getElementById('rm-stage');
+                if (!c || !s) return false;                       // new DOM not ready yet
+                canvas = c; stage = s; ctx = canvas.getContext('2d');
+                sized = false;                                    // force a fresh resize on the new canvas
+                if (stageRO) { try { stageRO.disconnect(); stageRO.observe(stage); } catch (e) {} }
+                return true;
+            }
+
             function resize() {
+                reacquire();                                      // heal a stale canvas first
                 var rect = stage.getBoundingClientRect();
-                if (!rect.width || !rect.height) return;
+                if (!rect.width || !rect.height) return false;   // stage not laid out yet
 
                 // Width-lock the framing: a fixed number of columns is always
                 // visible across, so level pacing reads consistently. The vertical
@@ -3506,9 +3731,26 @@
                 // height is covered because VH was rounded up past the screen.
                 ctx.setTransform(canvas.width / VW, 0, 0, canvas.width / VW, 0, 0);
                 ctx.imageSmoothingEnabled = false;
+                sized = true;
+                return true;
             }
             window.addEventListener('resize', resize);
             onCleanup(function () { window.removeEventListener('resize', resize); });
+            // Belt-and-suspenders: a ResizeObserver on the stage fires the instant it
+            // FIRST gets a real size (and on any later container resize the window
+            // 'resize' event misses — host toggling the mobile frame, orientation,
+            // sidebar). It also detects the host swapping the stage/canvas. Re-render
+            // on each change so the canvas is never left stale/black. Guarded for
+            // older engines. Declared here (var, hoisted) so reacquire() can re-bind it.
+            var stageRO = null;
+            if (typeof ResizeObserver === 'function') {
+                stageRO = new ResizeObserver(function () {
+                    if (!isLive(canvas)) reacquire();
+                    if (resize() && running) render();
+                });
+                try { stageRO.observe(stage); } catch (e) {}
+                onCleanup(function () { try { stageRO.disconnect(); } catch (e) {} });
+            }
 
             // ============================================================
             // OVERLAYS / FLOW
@@ -3545,8 +3787,10 @@
                 camX = 0; time = 400;
                 running = true; started = true;
                 setHUD();
-                resize();
-                render();
+                // Size first; only paint if the stage is actually laid out. If not,
+                // the loop's `!sized` retry takes over and renders once it is — so we
+                // never leave a black canvas on screen (fixes "sering blank hitam").
+                if (resize()) render();
             }
 
             // Advance to the next stage carrying score/coins forward.
@@ -3560,7 +3804,7 @@
                 setHUD();
                 hideOverlays();
                 lastT = performance.now();
-                render();
+                if (sized) render(); else resize();
             }
 
             // Jump straight to a chosen stage (cheat stage-select). Keeps score.
@@ -3576,7 +3820,7 @@
                 if (invitation) invitation.classList.remove('show');
                 if (fab) fab.classList.remove('show');
                 lastT = performance.now();
-                render();
+                if (sized) render(); else resize();
             }
 
             // ============================================================
@@ -3755,23 +3999,26 @@
             var stageSelHint = document.getElementById('rm-stagesel-hint');
 
             // ---- Difficulty selector (cover): pick easy/medium/hard once at start ----
+            // NOTE: the actual click is handled by the DELEGATED document listener
+            // below (see "DELEGATED CLICK"), NOT by a per-element listener. On the
+            // live invitation the host re-injects the theme DOM (dangerouslySetInnerHTML)
+            // whenever htmlBase changes — e.g. once the async guest fetch resolves —
+            // WITHOUT re-running this JS, so any listener bound directly to the cover
+            // buttons dies with the replaced nodes and the buttons go dead. A single
+            // delegated listener on `document` survives every re-injection.
             var diffWrap = document.getElementById('rm-diff');
             function syncDiffUI() {
-                if (!diffWrap) return;
-                var opts = diffWrap.querySelectorAll('.rm-diff-opt');
+                // Query the whole document, not a cached diffWrap ref, so the sync
+                // still hits the CURRENT (possibly re-injected) buttons.
+                var opts = document.querySelectorAll('#rm-diff .rm-diff-opt');
                 for (var i = 0; i < opts.length; i++) {
                     opts[i].classList.toggle('is-sel', opts[i].getAttribute('data-diff') === gameDiff);
                 }
             }
-            if (diffWrap) {
-                diffWrap.addEventListener('click', function (e) {
-                    var b = e.target.closest ? e.target.closest('.rm-diff-opt') : null;
-                    if (!b) return;
-                    var d = b.getAttribute('data-diff');
-                    if (d === 'easy' || d === 'medium' || d === 'hard') { gameDiff = d; persist(); syncDiffUI(); playSfx('coin'); }
-                });
-                syncDiffUI();
+            function pickDiff(d) {
+                if (d === 'easy' || d === 'medium' || d === 'hard') { gameDiff = d; persist(); syncDiffUI(); playSfx('coin'); }
             }
+            syncDiffUI();
 
             // Does a meaningful saved game exist? (item 3) — true if the guest has
             // reached past World 1, finished a run, banked a score, or collected any
@@ -3800,13 +4047,19 @@
                 showOverlay('rm-continue');
             }
 
-            if (btnStart) btnStart.addEventListener('click', function () {
+            // PRESS START — begins the GAME. Called by the delegated document
+            // listener below (survives host DOM re-injection); do NOT bind it
+            // directly to btnStart, whose node is replaced on the live invitation.
+            function pressStart() {
                 audioCtx();
                 // The host auto-starts the tenant's music when its own cover is
                 // dismissed; the GAME must be silent, so pause it the moment the
                 // guest starts playing. Music resumes only on the invitation page.
                 pauseHostMusic();
-                if (cover) cover.classList.add('rm-hidden');
+                // Re-query the cover live: the cached `cover` ref may point at a
+                // node the host already replaced, so hiding it would be a no-op.
+                var coverEl = document.getElementById('rm-cover');
+                if (coverEl) coverEl.classList.add('rm-hidden');
                 buildInventory();
                 updateViewBtn();
                 // If saved progress exists, ask whether to continue or start fresh
@@ -3820,22 +4073,30 @@
                     running = false;
                     showOverlay('rm-intro');
                 }
-            });
+            }
 
             // LANJUTKAN — resume at the furthest world reached, keeping the saved
             // difficulty mode + already-collected invitation pieces (all still loaded
             // in `unlocked`/`gameDiff`). Jumps straight into play.
+            // OVERLAY BUTTON HANDLERS — defined as NAMED functions so the delegated
+            // document listener (below) can route to them. On the LIVE invitation the
+            // host re-injects the theme DOM, replacing these overlay nodes and killing
+            // any listener bound directly to them — which is exactly the "LANJUTKAN /
+            // MULAI BARU tidak masuk ke game, stuck di screen" bug. Delegation on
+            // `document` survives every re-injection. We still keep direct listeners
+            // as a harmless fallback (iframe preview, exotic hosts).
             var btnContinueLoad = document.getElementById('rm-continue-load');
             var btnContinueNew = document.getElementById('rm-continue-new');
-            if (btnContinueLoad) btnContinueLoad.addEventListener('click', function () {
+            // LANJUTKAN — resume at the furthest reached world.
+            function doContinueLoad() {
                 hideOverlays();
                 startGame(clamp(bestStage, 1, TOTAL_STAGES));
                 running = true; lastT = performance.now();
                 startBgm();
                 toast('Lanjut WORLD ' + (WORLDS[stageNum - 1] || WORLDS[0]).name + ' ▶', 1400);
-            });
+            }
             // MULAI BARU — wipe the save and start a clean run from World 1-1.
-            if (btnContinueNew) btnContinueNew.addEventListener('click', function () {
+            function doContinueNew() {
                 resetSave();
                 if (player) player.cheat = false;
                 if (starBtn) starBtn.classList.remove('is-on');
@@ -3846,20 +4107,21 @@
                 startGame(1);
                 running = false;
                 showOverlay('rm-intro');
-            });
+            }
+            // NOTE: these buttons are driven ONLY by the delegated document listener
+            // (see RM_DELEGATED_BTNS below). We intentionally do NOT also bind a
+            // direct listener here — that would double-fire (capture on document +
+            // bubble on the node) and could e.g. reset the save twice.
 
-            if (btnIntroGo) btnIntroGo.addEventListener('click', function () {
+            function doIntroGo() {
                 hideOverlays(); running = true; lastT = performance.now();
                 startBgMusic();
                 startBgm();         // begin the in-game chiptune
-            });
-
-            if (btnStageGo) btnStageGo.addEventListener('click', function () { nextStage(); startBgMusic(); startBgm(); });
-
-            if (btnWinGo) btnWinGo.addEventListener('click', function () {
-                hideOverlays();
-                openInvitation();
-            });
+            }
+            function doStageGo() { nextStage(); startBgMusic(); startBgm(); }
+            function doWinGo() { hideOverlays(); openInvitation(); }
+            // (routed via the delegated document listener only — no direct binding,
+            // see RM_DELEGATED_BTNS below.)
 
             // ---- Bonus rescue offer (item 3) ----
             // "YA, SELAMATKAN" → resume the live game so the guest can play on
@@ -3868,7 +4130,7 @@
             // left off (same stage, same world) without rebuilding anything.
             var btnRescueGo = document.getElementById('rm-rescue-go');
             var btnRescueSkip = document.getElementById('rm-rescue-skip');
-            if (btnRescueGo) btnRescueGo.addEventListener('click', function () {
+            function doRescueGo() {
                 hideOverlays();
                 if (started && W && player && !player.win) {
                     running = true; lastT = performance.now();
@@ -3878,12 +4140,10 @@
                     // No live run to return to (e.g. unlocked via cheat) — just start.
                     startGame(stageNum || 1); running = true; lastT = performance.now(); startBgm();
                 }
-            });
+            }
             // "Buka Undangan" → open the full invitation right away (skip the bonus).
-            if (btnRescueSkip) btnRescueSkip.addEventListener('click', function () {
-                hideOverlays();
-                openInvitation();
-            });
+            function doRescueSkip() { hideOverlays(); openInvitation(); }
+            // (routed via the delegated document listener only — no direct binding.)
 
             // Close: hide the invitation and RESUME the current game at the same
             // stage (no reset). If no run is in progress yet, fall back to intro.
@@ -4051,6 +4311,65 @@
             holdBtn('rm-jump', 'jump');
             holdBtn('rm-act', 'act', { tap: doAction });
             bindKey();
+
+            // ================================================================
+            // DELEGATED CLICK (robust on the LIVE invitation)
+            // ----------------------------------------------------------------
+            // In the Theme Editor the theme runs in an isolated <iframe>, so the
+            // per-element listeners above are stable. On the REAL invitation the
+            // host injects this theme via dangerouslySetInnerHTML and RE-INJECTS
+            // the DOM when htmlBase changes (the async guest fetch resolving,
+            // image resolve, RSVP submit, …) WITHOUT re-running this JS. Any
+            // listener bound directly to a node that gets replaced then dies —
+            // which is why the COVER buttons (PRESS START + difficulty) worked in
+            // preview but went dead when opened from the invitation link.
+            //
+            // A single delegated listener on `document` (matched by id / class via
+            // closest) survives every re-injection. It is registered in CAPTURE
+            // phase because the host (ThemeWrapper) also intercepts some clicks in
+            // capture phase and may stopImmediatePropagation() before a bubble
+            // listener runs — capture here guarantees the cover buttons fire.
+            // De-duped via a global guard so a stale listener from a half-cleaned
+            // prior injection can never double-fire.
+            // ================================================================
+            // Map of overlay button id → handler. Any button whose node the host
+            // may replace on re-injection MUST be routed here (not just via its own
+            // addEventListener), or it goes dead on the live invitation. This was the
+            // "LANJUTKAN / MULAI BARU tidak masuk ke game" bug: those handlers were
+            // bound directly to the re-injected nodes and never fired.
+            var RM_DELEGATED_BTNS = {
+                'rm-continue-load': function () { doContinueLoad(); },
+                'rm-continue-new':  function () { doContinueNew(); },
+                'rm-intro-go':      function () { doIntroGo(); },
+                'rm-stage-go':      function () { doStageGo(); },
+                'rm-win-go':        function () { doWinGo(); },
+                'rm-rescue-go':     function () { doRescueGo(); },
+                'rm-rescue-skip':   function () { doRescueSkip(); }
+            };
+            var rmDelegated = function (e) {
+                var t = e.target;
+                if (!t || !t.closest) return;
+                // Difficulty pick (cover): data-diff on .rm-diff-opt.
+                var diffBtn = t.closest('#rm-diff .rm-diff-opt');
+                if (diffBtn) { pickDiff(diffBtn.getAttribute('data-diff')); return; }
+                // PRESS START (cover).
+                if (t.closest('#rm-start-btn')) { pressStart(); return; }
+                // Overlay buttons (continue / intro / stage-clear / win / rescue) —
+                // survive host DOM re-injection because this listener lives on document.
+                for (var id in RM_DELEGATED_BTNS) {
+                    if (t.closest('#' + id)) { RM_DELEGATED_BTNS[id](); return; }
+                }
+            };
+            if (window.__rmDelegated) { try { document.removeEventListener('click', window.__rmDelegated, true); } catch (e) {} }
+            window.__rmDelegated = rmDelegated;
+            document.addEventListener('click', rmDelegated, true);
+            onCleanup(function () {
+                document.removeEventListener('click', rmDelegated, true);
+                if (window.__rmDelegated === rmDelegated) window.__rmDelegated = null;
+            });
+            // Global fallback so the game can be started even if delegation is
+            // somehow blocked by an exotic host wrapper (callable from console).
+            window.__rmStart = function () { try { pressStart(); } catch (e) {} };
 
             // ============================================================
             // COUNTDOWN + CALENDAR (invitation)
@@ -4529,6 +4848,9 @@
             resize();
             rafId = requestAnimationFrame(loop);
             onCleanup(function () { if (rafId) cancelAnimationFrame(rafId); running = false; });
+
+            // Stamp the theme/game version into the bottom-center badge.
+            try { var verEl = document.getElementById('rm-version'); if (verEl) verEl.textContent = RM_VERSION; } catch (e) {}
 
             // Restore any previously-unlocked inventory (so revisits keep progress)
             buildInventory();

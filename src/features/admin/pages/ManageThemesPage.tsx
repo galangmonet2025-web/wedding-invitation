@@ -28,8 +28,6 @@ import { useThemeStore } from '../store/themeStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { createPortal } from 'react-dom';
 
-const STYLE_CATEGORIES = ['Modern', 'Tradisional', 'Minimalis', 'Floral', 'Rustic', 'Lainnya'];
-
 export function ManageThemesPage() {
     const navigate = useNavigate();
     const { themes, loading, fetchThemes, deleteTheme, updateTheme } = useThemeStore();
@@ -49,7 +47,14 @@ export function ManageThemesPage() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedPreview, setSelectedPreview] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
-    const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+    const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
+        const saved = localStorage.getItem('manageThemesViewMode');
+        return saved === 'card' || saved === 'table' ? saved : 'table';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('manageThemesViewMode', viewMode);
+    }, [viewMode]);
 
     useEffect(() => {
         fetchThemes();
@@ -123,7 +128,7 @@ export function ManageThemesPage() {
         const matchesSearch = theme.name.toLowerCase().includes(search.toLowerCase()) || 
                              (theme.style_category || 'Lainnya').toLowerCase().includes(search.toLowerCase());
         const matchesPlan = selectedPlan === 'all' || theme.plan_type === selectedPlan;
-        const matchesCategory = selectedCategory === 'all' || (theme.style_category || 'Lainnya') === selectedCategory;
+        const matchesCategory = selectedCategory === 'all' || (theme.style_category || '').trim() === selectedCategory;
         
         const hasPreview = !!theme.preview_image;
         const matchesPreview = selectedPreview === 'all' ||
@@ -137,6 +142,16 @@ export function ManageThemesPage() {
 
         return matchesSearch && matchesPlan && matchesCategory && matchesPreview && matchesStatus;
     });
+
+    // Kategori untuk filter diambil DINAMIS dari kategori yang benar-benar ada di
+    // DB (bukan daftar hardcoded). Kategori kosong diabaikan, di-dedup & diurutkan.
+    const availableCategories = Array.from(
+        new Set(
+            themes
+                .map((t) => (t.style_category || '').trim())
+                .filter((c) => c !== '')
+        )
+    ).sort((a, b) => a.localeCompare(b, 'id'));
 
     const themesWithPreview = filteredThemes.filter(t => !!t.preview_image);
     const currentLightboxIndex = themesWithPreview.findIndex(t => t.id === selectedThemeForLightbox?.id);
@@ -352,6 +367,34 @@ export function ManageThemesPage() {
                     >
                         <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
+
+                    {/* View Mode Toggle (icon-only) */}
+                    <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`flex items-center justify-center p-1.5 rounded-lg transition-all ${
+                                viewMode === 'table'
+                                    ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                            }`}
+                            title="Tampilan Tabel"
+                            aria-label="Tampilan Tabel"
+                        >
+                            <HiOutlineViewList className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('card')}
+                            className={`flex items-center justify-center p-1.5 rounded-lg transition-all ${
+                                viewMode === 'card'
+                                    ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                            }`}
+                            title="Tampilan Card"
+                            aria-label="Tampilan Card"
+                        >
+                            <HiOutlineViewGrid className="w-4 h-4" />
+                        </button>
+                    </div>
                     <button onClick={handleInjectPremiumTheme} className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl shadow-md transition-all font-medium flex items-center gap-2 text-xs">
                         <i className="ri-flashlight-fill"></i>
                         <span>Inject Premium Theme</span>
@@ -405,7 +448,7 @@ export function ManageThemesPage() {
                             className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
                         >
                             <option value="all">Semua Kategori Style</option>
-                            {STYLE_CATEGORIES.map(cat => (
+                            {availableCategories.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
                         </select>
@@ -438,36 +481,11 @@ export function ManageThemesPage() {
                     </div>
                 </div>
 
-                {/* View Mode Toggle Switch */}
+                {/* Result counter */}
                 <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-800">
                     <span className="text-[10px] md:text-xs text-gray-405 font-bold uppercase tracking-wider">
                         Ditemukan {filteredThemes.length} tema
                     </span>
-                    
-                    <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-                        <button
-                            onClick={() => setViewMode('table')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                viewMode === 'table'
-                                    ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm'
-                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                            }`}
-                        >
-                            <HiOutlineViewList className="w-4 h-4" />
-                            <span>Tabel</span>
-                        </button>
-                        <button
-                            onClick={() => setViewMode('card')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                viewMode === 'card'
-                                    ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm'
-                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                            }`}
-                        >
-                            <HiOutlineViewGrid className="w-4 h-4" />
-                            <span>Card</span>
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -477,14 +495,31 @@ export function ManageThemesPage() {
                     {filteredThemes.map((item) => {
                         const hasPreview = !!item.preview_image;
                         const deleting = deletingId === item.id;
+                        // Per-plan hover accent so each tier feels distinct on hover
+                        // (border tint + a coloured glow ring). Full class strings so
+                        // Tailwind keeps them at build time.
+                        const planHover =
+                            item.plan_type === 'basic'
+                                ? 'hover:border-slate-400/70 dark:hover:border-slate-500/60 hover:shadow-slate-400/30 dark:hover:shadow-slate-500/20'
+                                : item.plan_type === 'pro'
+                                    ? 'hover:border-blue-400/70 dark:hover:border-blue-500/60 hover:shadow-blue-500/30 dark:hover:shadow-blue-500/20'
+                                    : 'hover:border-amber-400/80 dark:hover:border-gold-500/60 hover:shadow-amber-500/30 dark:hover:shadow-gold-500/20';
+                        // Accent colour used inside the hover overlay (glow + action-hover
+                        // + the per-plan name label & tinted name glow shown on hover).
+                        const planAccent =
+                            item.plan_type === 'basic'
+                                ? { glow: 'from-slate-300/40', act: 'hover:bg-slate-400', label: 'BASIC', labelCls: 'text-slate-200 bg-slate-500/40 ring-slate-300/40', nameGlow: '[text-shadow:0_2px_10px_rgba(148,163,184,0.55)]' }
+                                : item.plan_type === 'pro'
+                                    ? { glow: 'from-blue-500/40', act: 'hover:bg-blue-500', label: '◆ PRO', labelCls: 'text-blue-100 bg-blue-500/40 ring-blue-300/40', nameGlow: '[text-shadow:0_2px_12px_rgba(59,130,246,0.65)]' }
+                                    : { glow: 'from-amber-400/40', act: 'hover:bg-amber-500', label: '★ PREMIUM', labelCls: 'text-amber-100 bg-amber-500/40 ring-amber-300/50', nameGlow: '[text-shadow:0_2px_14px_rgba(245,158,11,0.7)]' };
                         return (
                             <div
                                 key={item.id}
-                                className={`group relative flex flex-col bg-white dark:bg-wedding-dark-card rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-xl hover:border-gold-300/50 dark:hover:border-gold-500/30 transition-all duration-300 ${deleting ? 'opacity-60 pointer-events-none' : ''}`}
+                                className={`group relative aspect-[3/4] box-content pb-[190px] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${planHover} ${deleting ? 'opacity-60 pointer-events-none' : ''}`}
                             >
-                                {/* Preview Thumbnail / Image */}
-                                <div 
-                                    className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 overflow-hidden cursor-pointer"
+                                {/* Full-bleed preview image */}
+                                <div
+                                    className="absolute inset-0 bg-gray-100 dark:bg-gray-800 cursor-pointer"
                                     onClick={() => setSelectedThemeForLightbox(item)}
                                 >
                                     {hasPreview ? (
@@ -494,61 +529,73 @@ export function ManageThemesPage() {
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 text-gray-450">
-                                            <svg className="w-10 h-10 mb-2 opacity-40 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <span className="text-xs font-semibold text-gray-400">Belum ada preview image</span>
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 text-center bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900">
+                                            {/* Inner dashed panel so empty cards read as an intentional placeholder, not a blank container */}
+                                            <div className="flex flex-col items-center justify-center gap-2 w-full h-full rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white/40 dark:bg-black/20">
+                                                <div className="p-2.5 rounded-full bg-gray-300/70 dark:bg-gray-600/60">
+                                                    <svg className="w-7 h-7 text-gray-500 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <span className="text-xs font-semibold text-gray-500 dark:text-gray-300">Belum ada preview</span>
+                                            </div>
                                         </div>
                                     )}
-
-                                    {/* Badges on Thumbnail */}
-                                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-md text-white
-                                            ${item.plan_type === 'basic' ? 'bg-gray-600' :
-                                                item.plan_type === 'pro' ? 'bg-blue-600' :
-                                                    'bg-gold-500'}`}
-                                        >
-                                            {item.plan_type}
-                                        </span>
-                                        {(item.flag_draft === true || item.flag_draft === 'true' || item.flag_draft === 'TRUE') && (
-                                            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-yellow-500 text-white shadow-md">
-                                                Draft
-                                            </span>
-                                        )}
-                                    </div>
                                 </div>
 
-                                {/* Content Details */}
-                                <div className="flex-1 p-4 flex flex-col justify-between">
-                                    <div className="space-y-2">
-                                        <h3 className="font-bold text-gray-850 dark:text-white text-sm group-hover:text-gold-500 transition-colors line-clamp-1">
+                                {/* Badges (always visible) — frosted glass style */}
+                                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pointer-events-none z-10">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider text-white ring-1 ring-inset ring-white/25 backdrop-blur-md shadow-lg shadow-black/20
+                                        ${item.plan_type === 'basic' ? 'bg-slate-500/60' :
+                                            item.plan_type === 'pro' ? 'bg-blue-600/60' :
+                                                'bg-amber-500/60'}`}>
+                                        {item.plan_type}
+                                    </span>
+                                    {(item.flag_draft === true || item.flag_draft === 'true' || item.flag_draft === 'TRUE') && (
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider text-white bg-orange-500/70 ring-1 ring-inset ring-white/25 backdrop-blur-md shadow-lg shadow-black/20">
+                                            Draft
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Per-plan colour glow at the bottom, revealed on hover */}
+                                <div className={`absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t ${planAccent.glow} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}></div>
+
+                                {/* Hover overlay: dark transparent scrim + info + actions */}
+                                <div className="absolute inset-0 flex flex-col p-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+                                    {/* Theme name — centered, bigger on hover, with a
+                                        per-plan label chip + plan-tinted text glow. */}
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-2 px-2">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ring-1 ring-inset backdrop-blur-sm opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ${planAccent.labelCls}`}>
+                                            {planAccent.label}
+                                        </span>
+                                        <h3 className={`font-bold text-white text-center text-base group-hover:text-xl leading-snug line-clamp-3 drop-shadow-lg scale-95 group-hover:scale-100 transition-all duration-300 ${planAccent.nameGlow}`}>
                                             {item.name}
                                         </h3>
+                                    </div>
+
+                                    <div className="space-y-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Style:</span>
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white ring-1 ring-inset ring-white/25 backdrop-blur-md">
                                                 {item.style_category || 'Lainnya'}
                                             </span>
                                         </div>
-                                    </div>
-
-                                    {/* Action Row */}
-                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                                        <div className="text-[10px] text-gray-400 font-medium">
+                                        <div className="text-[10px] text-white/70 font-medium">
                                             {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                                         </div>
-                                        <div className="flex items-center gap-1">
+
+                                        {/* Action Row */}
+                                        <div className="pt-2 mt-1 border-t border-white/15 flex items-center gap-1.5">
                                             <button
                                                 onClick={() => navigate(`/private/themes/editor/${item.id}`)}
-                                                className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors"
+                                                className={`p-2 rounded-lg bg-white/15 ${planAccent.act} text-white transition-colors`}
                                                 title="Edit Theme"
                                             >
                                                 <HiOutlinePencilAlt className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => navigate('/private/themes/editor/new', { state: { copiedTheme: item } })}
-                                                className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
+                                                className="p-2 rounded-lg bg-white/15 hover:bg-blue-500 text-white transition-colors"
                                                 title="Copy Theme"
                                             >
                                                 <HiOutlineDuplicate className="w-4 h-4" />
@@ -556,11 +603,11 @@ export function ManageThemesPage() {
                                             <button
                                                 onClick={() => setThemeToDelete(item)}
                                                 disabled={deleting}
-                                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors disabled:cursor-not-allowed"
+                                                className="p-2 rounded-lg bg-white/15 hover:bg-red-500 text-white transition-colors disabled:cursor-not-allowed"
                                                 title="Delete Theme"
                                             >
                                                 {deleting ? (
-                                                    <span className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                                                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                                                 ) : (
                                                     <HiOutlineTrash className="w-4 h-4" />
                                                 )}

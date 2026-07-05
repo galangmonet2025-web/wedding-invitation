@@ -398,8 +398,8 @@
 .msw-toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 .msw-version {
-    position: absolute; right: 6px; bottom: 4px; z-index: 9; pointer-events: none;
-    font-family: var(--msw-mono); font-size: 9px; color: rgba(183,163,106,.5);
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 4px; z-index: 9; pointer-events: none;
+    font-family: var(--msw-mono); font-size: 9px; color: rgba(183,163,106,.5); text-align: center;
 }
 
 /* ---------- SPRITE TUNER (PC dev tool) ----------
