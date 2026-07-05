@@ -1207,6 +1207,19 @@ a.couple-instagram:hover { color: #fff !important; }
   margin-top: 28px;
 }
 
+/* Shown once the wedding day arrives / passes, in place of the numbers */
+.countdown-status {
+  font-family: var(--outfit);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.5;
+  max-width: 340px;
+  margin: 8px auto 0;
+  text-wrap: balance;
+}
+
 /* The bordered container — number AND label sit inside it */
 .countdown-item {
   display: flex;

@@ -296,7 +296,10 @@
                             <div class="countdown-box" id="seconds">{{countdown_detik}}</div>
                             <div class="countdown-label">Detik</div>
                         </div>
+                        <div class="countdown-status" id="countdown-status" style="display:none"></div>
                     </div>
+                    <!-- Hidden holder so index.js can read the real wedding date from the DB -->
+                    <span id="tm-wed-date" data-wedding-date="{{wedding_date_iso}}" style="display:none"></span>
 
                     <div class="rsvp-form-container" id="rsvp-container">
 

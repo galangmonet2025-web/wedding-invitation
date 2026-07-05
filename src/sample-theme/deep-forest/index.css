@@ -1283,9 +1283,20 @@ body {
 
 .countdown-container {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 12px;
     margin-top: 18px;
+}
+
+.countdown-status {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.55;
+    max-width: 360px;
+    margin: 0 auto;
 }
 
 .countdown-item {

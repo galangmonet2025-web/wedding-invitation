@@ -245,20 +245,31 @@ function fallbackCopy(text, cb) {
         cleanupFns.push(function () { spawned.forEach(p => p.remove()); });
     }
 
-    // ---- 4. Countdown → also drives the Now-Playing scrubber ----
-    const rawDate = (function () {
-        const cal = document.getElementById('wedding-calendar');
-        return cal ? (cal.getAttribute('data-wedding-date') || '').trim() : '';
-    })();
+    // ---- 4. Countdown (+ Now-Playing scrubber) with H-day / finished states ----
+    // Backend returns wedding_date as "YYYY-MM-DD" (Utilities.formatDate). We
+    // count down to it; on the wedding day we check the reception time window:
+    //   before end time  → "Acara sedang berlangsung"
+    //   after end time    → "Acara sudah selesai, terima kasih…"
+    const cal = document.getElementById('wedding-calendar');
+    const rawDate = cal ? (cal.getAttribute('data-wedding-date') || '').trim() : '';
 
-    let target = null;
-    const iso = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) target = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 0, 0, 0);
-    else if (rawDate) { const d = new Date(rawDate); if (!isNaN(d.getTime())) target = d; }
-    if (!target || isNaN(target.getTime())) target = new Date(Date.now() + 90 * 864e5);
+    let weddingDay = null; // midnight of the wedding day (local)
+    const isoM = rawDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (isoM) weddingDay = new Date(Number(isoM[1]), Number(isoM[2]) - 1, Number(isoM[3]), 0, 0, 0);
+    else if (rawDate) { const d = new Date(rawDate); if (!isNaN(d.getTime())) weddingDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0); }
 
-    const startRef = Date.now();
-    const totalSpan = Math.max(1, target.getTime() - startRef);
+    // Parse the reception END time from "HH:MM - HH:MM" (fallback: end of day).
+    function receptionEnd(day) {
+        const holder = document.getElementById('ws-jam-resepsi');
+        const txt = holder ? (holder.textContent || '') : '';
+        const times = txt.match(/(\d{1,2}):(\d{2})/g) || [];
+        let endH = 23, endM = 59;
+        if (times.length >= 2) { const p = times[times.length - 1].split(':'); endH = +p[0]; endM = +p[1]; }
+        else if (times.length === 1) { const p = times[0].split(':'); endH = +p[0] + 3; endM = +p[1]; } // assume ~3h
+        const end = new Date(day.getTime());
+        end.setHours(Math.min(23, endH), endM, 0, 0);
+        return end;
+    }
 
     const daysEl = document.getElementById('days');
     const hoursEl = document.getElementById('hours');
@@ -266,46 +277,76 @@ function fallbackCopy(text, cb) {
     const secondsEl = document.getElementById('seconds');
     const barFill = document.getElementById('np-bar-fill');
     const elapsedEl = document.getElementById('np-elapsed');
+    const kickerEl = document.getElementById('ws-kicker');
+    const footEl = document.getElementById('ws-foot');
+    const countWrap = document.getElementById('countdown-wrap');
+    const statusEl = document.getElementById('ws-status');
+    const statusEmoji = document.getElementById('ws-status-emoji');
+    const statusText = document.getElementById('ws-status-text');
 
-    function tick() {
-        const now = Date.now();
-        const dist = target.getTime() - now;
-
-        if (dist > 0) {
-            const d = Math.floor(dist / 864e5);
-            const h = Math.floor((dist % 864e5) / 36e5);
-            const m = Math.floor((dist % 36e5) / 6e4);
-            const s = Math.floor((dist % 6e4) / 1000);
-            if (daysEl) daysEl.textContent = String(d).padStart(2, '0');
-            if (hoursEl) hoursEl.textContent = String(h).padStart(2, '0');
-            if (minutesEl) minutesEl.textContent = String(m).padStart(2, '0');
-            if (secondsEl) secondsEl.textContent = String(s).padStart(2, '0');
-
-            // Scrubber: fraction of the countdown already elapsed
-            const done = Math.min(1, Math.max(0, (now - startRef) / totalSpan));
-            if (barFill) barFill.style.width = (done * 100).toFixed(2) + '%';
-            if (elapsedEl) {
-                const mins = Math.floor(done * 233); // playful "minutes listened"
-                elapsedEl.textContent = Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0');
-            }
-        } else {
-            if (daysEl) daysEl.textContent = '00';
-            if (hoursEl) hoursEl.textContent = '00';
-            if (minutesEl) minutesEl.textContent = '00';
-            if (secondsEl) secondsEl.textContent = '00';
-            if (barFill) barFill.style.width = '100%';
-        }
+    function showNumbers() {
+        if (countWrap) countWrap.style.display = '';
+        if (footEl) footEl.style.display = '';
+        if (statusEl) statusEl.style.display = 'none';
     }
-    tick();
-    const countInterval = setInterval(tick, 1000);
-    cleanupFns.push(function () { clearInterval(countInterval); });
+    function showStatus(emoji, text, kicker) {
+        if (countWrap) countWrap.style.display = 'none';
+        if (footEl) footEl.style.display = 'none';
+        if (statusEl) statusEl.style.display = 'block';
+        if (statusEmoji) statusEmoji.textContent = emoji;
+        if (statusText) statusText.innerHTML = text;
+        if (kickerEl && kicker != null) kickerEl.textContent = kicker;
+    }
+
+    if (weddingDay && !isNaN(weddingDay.getTime())) {
+        const recEnd = receptionEnd(weddingDay);
+        const startRef = Date.now();
+        const totalSpan = Math.max(1, weddingDay.getTime() - startRef);
+
+        function tick() {
+            const now = Date.now();
+            const dist = weddingDay.getTime() - now;
+
+            if (dist > 0) {
+                // Upcoming — show the live countdown.
+                showNumbers();
+                const d = Math.floor(dist / 864e5);
+                const h = Math.floor((dist % 864e5) / 36e5);
+                const m = Math.floor((dist % 36e5) / 6e4);
+                const s = Math.floor((dist % 6e4) / 1000);
+                if (daysEl) daysEl.textContent = String(d).padStart(2, '0');
+                if (hoursEl) hoursEl.textContent = String(h).padStart(2, '0');
+                if (minutesEl) minutesEl.textContent = String(m).padStart(2, '0');
+                if (secondsEl) secondsEl.textContent = String(s).padStart(2, '0');
+
+                const done = Math.min(1, Math.max(0, (now - startRef) / totalSpan));
+                if (barFill) barFill.style.width = (done * 100).toFixed(2) + '%';
+                if (elapsedEl) {
+                    const mins = Math.floor(done * 233);
+                    elapsedEl.textContent = Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0');
+                }
+            } else if (now <= recEnd.getTime()) {
+                // Wedding day, still within (or before end of) the reception.
+                if (barFill) barFill.style.width = '100%';
+                showStatus('💚', 'Hari yang kami nantikan telah tiba.<br>Acara sedang berlangsung 🎶', 'Hari bahagia kami');
+            } else {
+                // After the reception has ended.
+                if (barFill) barFill.style.width = '100%';
+                showStatus('🙏', 'Acara kami sudah selesai.<br>Terima kasih atas support &amp; doa terbaiknya 💚', 'Sudah menikah');
+                clearInterval(countInterval);
+            }
+        }
+        tick();
+        var countInterval = setInterval(tick, 1000);
+        cleanupFns.push(function () { clearInterval(countInterval); });
+    }
 
     // ---- 5. Wedding-date calendar ----
     const calEl = document.getElementById('wedding-calendar');
-    if (calEl && !calEl.dataset.rendered && target && !isNaN(target.getTime())) {
+    if (calEl && !calEl.dataset.rendered && weddingDay && !isNaN(weddingDay.getTime())) {
         const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-        const year = target.getFullYear(), month = target.getMonth(), weddingDay = target.getDate();
+        const year = weddingDay.getFullYear(), month = weddingDay.getMonth(), wDayNum = weddingDay.getDate();
         const firstDow = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -315,7 +356,7 @@ function fallbackCopy(text, cb) {
         html += '</div><div class="cal-grid cal-body">';
         for (let i = 0; i < firstDow; i++) html += '<span class="cal-cell cal-empty"></span>';
         for (let d = 1; d <= daysInMonth; d++) {
-            const isW = d === weddingDay;
+            const isW = d === wDayNum;
             html += '<span class="cal-cell' + (isW ? ' cal-active' : '') + '">'
                 + (isW ? '<span class="cal-heart"></span>' : '')
                 + '<span class="cal-num">' + d + '</span></span>';

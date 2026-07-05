@@ -128,17 +128,31 @@
             </section>
 
 
-            <!-- ===== WRAPPED STAT: countdown as "minutes listened" ===== -->
+            <!-- ===== WRAPPED STAT: countdown as "minutes listened" =====
+                 JS reads the wedding date + #ws-jam-resepsi to decide state:
+                 upcoming → live countdown; H-day within reception hours →
+                 "sedang berlangsung"; after that → "sudah selesai". -->
             <section class="section-wrapped-stat" id="countdown">
-                <div class="ws-card reveal-item ws-grad-1">
-                    <div class="ws-kicker">Kamu menantikan hari ini selama</div>
+                <!-- hidden: reception time range "HH:MM - HH:MM" for JS to parse -->
+                <span id="ws-jam-resepsi" data-var="jam_resepsi" style="display:none">{{jam_resepsi}}</span>
+
+                <div class="ws-card reveal-item ws-grad-1" id="ws-card">
+                    <div class="ws-kicker" id="ws-kicker">Kamu menantikan hari ini selama</div>
+                    <!-- Initial values from HOST via {{countdown_*}}; theme JS keeps
+                         #days/#hours/#minutes/#seconds ticking every second. -->
                     <div class="ws-count" id="countdown-wrap">
-                        <div class="ws-unit"><b id="days" data-var="countdown_hari">200</b><small>Hari</small></div>
-                        <div class="ws-unit"><b id="hours" data-var="countdown_jam">01</b><small>Jam</small></div>
-                        <div class="ws-unit"><b id="minutes" data-var="countdown_menit">44</b><small>Menit</small></div>
-                        <div class="ws-unit"><b id="seconds" data-var="countdown_detik">19</b><small>Detik</small></div>
+                        <div class="ws-unit"><b id="days">{{countdown_hari}}</b><small>Hari</small></div>
+                        <div class="ws-unit"><b id="hours">{{countdown_jam}}</b><small>Jam</small></div>
+                        <div class="ws-unit"><b id="minutes">{{countdown_menit}}</b><small>Menit</small></div>
+                        <div class="ws-unit"><b id="seconds">{{countdown_detik}}</b><small>Detik</small></div>
                     </div>
-                    <div class="ws-foot">…menuju lagu terindah kami. #Wrapped2026</div>
+                    <div class="ws-foot" id="ws-foot">…menuju lagu terindah kami. #Wrapped2026</div>
+
+                    <!-- Shown by JS instead of the numbers when it's H-day / past -->
+                    <div class="ws-status" id="ws-status" style="display:none">
+                        <div class="ws-status-emoji" id="ws-status-emoji">🎉</div>
+                        <div class="ws-status-text" id="ws-status-text"></div>
+                    </div>
                 </div>
             </section>
 

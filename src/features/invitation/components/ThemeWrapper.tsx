@@ -48,6 +48,11 @@ export function ThemeWrapper({
     // position on scroll and restore it right after the DOM is replaced.
     const lastScroll = useRef<{ el: HTMLElement | Window; top: number }>({ el: window, top: 0 });
 
+    // Tracks the htmlBase from the previous render so we can tell an initial
+    // theme injection (keep the scroll-in animation) from a re-injection caused
+    // by a template re-parse after submitting RSVP/wish (force content visible).
+    const prevHtmlRef = useRef<string | null>(null);
+
     useEffect(() => {
         const handleScroll = (e: any) => {
             const tgt = e.target;
@@ -124,6 +129,24 @@ export function ThemeWrapper({
             try {
                 (window as any).UIkit.update(container, 'update');
             } catch (err) { }
+        }
+
+        // 5. Re-reveal scroll-animated content after a *re-injection*.
+        //    Scroll-reveal themes (spotify, netflix, lake-como, black-gold,
+        //    deep-forest, glassmorphism) style `.reveal-item` at opacity:0 and
+        //    add `.is-visible` from an IntersectionObserver in their theme JS.
+        //    When htmlBase changes (submitting RSVP/wish re-parses the template
+        //    to show the thank-you state), React swaps in FRESH HTML — every
+        //    `.reveal-item` is back at opacity:0 — but the host does NOT re-run
+        //    theme JS on htmlBase change (see the JS-injection effect below), so
+        //    nothing re-adds `.is-visible`. Result: previously-visible sections
+        //    go blank. Only the initial injection should keep the animation, so
+        //    guard on a real htmlBase change via prevHtmlRef.
+        const isReinjection = prevHtmlRef.current !== null && prevHtmlRef.current !== htmlBase;
+        prevHtmlRef.current = htmlBase;
+        if (isReinjection) {
+            container.querySelectorAll('.reveal-item:not(.is-visible)')
+                .forEach((el) => el.classList.add('is-visible'));
         }
     }, [isOpened, htmlBase]);
 

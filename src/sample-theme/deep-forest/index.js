@@ -51,42 +51,89 @@ function fallbackCopy(text, callback) {
     document.body.removeChild(textArea);
 }
 
-// Set the date we're counting down to
-const countDownDate = new Date("Dec 31, 2026 00:00:00").getTime();
+// ============ Countdown (reads the REAL wedding date from the DB) ============
+// Backend returns wedding_date as "YYYY-MM-DD" (Utilities.formatDate). We count
+// down to it and, once reached, show a status message instead of frozen zeros:
+//   upcoming        → live countdown numbers
+//   wedding day     → "Acara sedang berlangsung" (within the reception window)
+//   after reception → "Acara sudah selesai, terima kasih…"
+(function startWeddingCountdown() {
+    // Avoid stacking intervals when the host re-executes this script.
+    if (window.__tmCountdownTimer) { clearInterval(window.__tmCountdownTimer); window.__tmCountdownTimer = null; }
 
-// Update the count down every 1 second
-const x = setInterval(function () {
-
-    // Get today's date and time
-    const now = new Date().getTime();
-
-    // Find the distance between now and the count down date
-    const distance = countDownDate - now;
-
-    // Time calculations for days, hours, minutes and seconds
-    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-    // Output the result in elements
-    const daysEl = document.getElementById("days");
-    const hoursEl = document.getElementById("hours");
-    const minutesEl = document.getElementById("minutes");
-    const secondsEl = document.getElementById("seconds");
-    const countdownEl = document.getElementById("countdown");
-
-    if (daysEl) daysEl.innerHTML = days.toString().padStart(2, '0');
-    if (hoursEl) hoursEl.innerHTML = hours.toString().padStart(2, '0');
-    if (minutesEl) minutesEl.innerHTML = minutes.toString().padStart(2, '0');
-    if (secondsEl) secondsEl.innerHTML = seconds.toString().padStart(2, '0');
-
-    // If the count down is over, write some text 
-    if (distance < 0) {
-        clearInterval(x);
-        if (countdownEl) countdownEl.innerHTML = "ACARA SEDANG BERLANGSUNG";
+    function resolveWeddingDay() {
+        // #wedding-calendar[data-wedding-date] or #tm-wed-date[data-wedding-date]
+        var holder = document.getElementById('wedding-calendar') || document.getElementById('tm-wed-date');
+        var raw = holder ? (holder.getAttribute('data-wedding-date') || '').trim() : '';
+        var m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0);
+        if (raw) { var d = new Date(raw); if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0); }
+        return null;
     }
-}, 1000);
+
+    // Parse reception END time from an element carrying {{jam_resepsi}} ("HH:MM - HH:MM").
+    function receptionEnd(day) {
+        var holder = document.getElementById('tm-jam-resepsi')
+            || document.querySelector('[data-var="jam_resepsi"]');
+        var txt = holder ? (holder.textContent || '') : '';
+        var times = txt.match(/(\d{1,2}):(\d{2})/g) || [];
+        var endH = 23, endM = 59;
+        if (times.length >= 2) { var p = times[times.length - 1].split(':'); endH = +p[0]; endM = +p[1]; }
+        else if (times.length === 1) { var q = times[0].split(':'); endH = +q[0] + 3; endM = +q[1]; }
+        var end = new Date(day.getTime());
+        end.setHours(Math.min(23, endH), endM, 0, 0);
+        return end;
+    }
+
+    var weddingDay = resolveWeddingDay();
+
+    function setStatus(msg) {
+        var el = document.getElementById('countdown-status');
+        var box = document.getElementById('countdown-boxes') || document.getElementById('countdown');
+        if (el) { el.textContent = msg; el.style.display = 'block'; }
+        // Hide the number boxes (but keep #countdown-status visible if it lives inside).
+        if (box && el && box.contains(el)) {
+            var kids = box.children;
+            for (var i = 0; i < kids.length; i++) { if (kids[i] !== el) kids[i].style.display = 'none'; }
+        } else if (box) {
+            box.style.display = 'none';
+        }
+    }
+
+    function run() {
+        if (!weddingDay || isNaN(weddingDay.getTime())) return;
+        var recEnd = receptionEnd(weddingDay);
+
+        function tick() {
+            var now = Date.now();
+            var dist = weddingDay.getTime() - now;
+            var daysEl = document.getElementById('days');
+            var hoursEl = document.getElementById('hours');
+            var minutesEl = document.getElementById('minutes');
+            var secondsEl = document.getElementById('seconds');
+
+            if (dist > 0) {
+                var d = Math.floor(dist / 864e5);
+                var h = Math.floor((dist % 864e5) / 36e5);
+                var mm = Math.floor((dist % 36e5) / 6e4);
+                var s = Math.floor((dist % 6e4) / 1000);
+                if (daysEl) daysEl.innerHTML = String(d).padStart(2, '0');
+                if (hoursEl) hoursEl.innerHTML = String(h).padStart(2, '0');
+                if (minutesEl) minutesEl.innerHTML = String(mm).padStart(2, '0');
+                if (secondsEl) secondsEl.innerHTML = String(s).padStart(2, '0');
+            } else if (now <= recEnd.getTime()) {
+                setStatus('Hari yang kami nantikan telah tiba — acara sedang berlangsung 🎉');
+                clearInterval(window.__tmCountdownTimer); window.__tmCountdownTimer = null;
+            } else {
+                setStatus('Acara kami sudah selesai. Terima kasih atas dukungan & doa terbaiknya 🙏');
+                clearInterval(window.__tmCountdownTimer); window.__tmCountdownTimer = null;
+            }
+        }
+        tick();
+        window.__tmCountdownTimer = setInterval(tick, 1000);
+    }
+    run();
+})();
 
 // RSVP Form Logic
 document.addEventListener('DOMContentLoaded', function () {

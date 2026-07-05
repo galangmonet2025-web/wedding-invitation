@@ -1517,9 +1517,13 @@ export function ThemeEditorPage() {
                 const newId = createRes.data.id;
                 await chunkedSaveTheme(newId, {}, templates, onChunkProgress);
                 toast.success('Theme created successfully', { id: loadingToast });
-                addTheme({ ...createRes.data, ...metaPayload, ...templates }); // Update local cache
+                addTheme({ ...createRes.data, ...metaPayload, ...templates }); // Update local cache (optimistic)
                 setFlagDraft(isDraft);
                 setInitialPreviewImage(finalPreviewUrl);
+                // Force a fresh re-fetch so the list reflects exactly what the backend
+                // persisted (e.g. flag_use_system_action_button and other setup flags),
+                // not just the optimistic addTheme copy.
+                await fetchThemes(true);
                 // Redirect back to theme management list on new theme creation
                 navigate('/private/themes');
             } else {

@@ -442,11 +442,13 @@ section { position: relative; }
 }
 .countdown-container {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 14px;
     margin-top: 28px;
 }
 .countdown-item { text-align: center; }
+.countdown-status { width: 100%; text-align: center; font-family: var(--serif); font-size: 1.15rem; line-height: 1.55; max-width: 360px; margin: 0 auto; }
 .countdown-box {
     font-family: var(--serif);
     font-size: 2.6rem;

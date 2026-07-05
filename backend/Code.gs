@@ -541,7 +541,15 @@
     insert: function(sheetName, rowData) {
       var sheet = this.getSheet(sheetName);
       var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      var row = headers.map(function(h) { return rowData[h] || ''; });
+      // Use hasOwnProperty + null/undefined check instead of `|| ''` so that legit
+      // falsy values (false, 0) are written verbatim. The old `rowData[h] || ''`
+      // turned `flag_use_system_action_button: false` into '' on the sheet, which the
+      // read side then re-interpreted as the default `true` — so a NEW theme created
+      // with the FAB (or any boolean flag) toggled OFF came back ON.
+      var row = headers.map(function(h) {
+        var v = rowData[h];
+        return (v === undefined || v === null) ? '' : v;
+      });
       sheet.appendRow(row);
       return rowData;
     },

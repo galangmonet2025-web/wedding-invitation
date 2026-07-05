@@ -35,7 +35,7 @@
     };
 
     var BUILD = 'retromario-wedding';
-    var VERSION = 'v1.0.0';
+    var VERSION = 'v1.0.1';   // FIX blank/crash "Phaser.Math.Approach is not a function" (first update() frame threw → scene froze → blank canvas + hidden cover). Phaser 3 has no Math.Approach; replaced with a local approach(cur,target,step) helper for the player's momentum accel/friction.
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#e45c10;color:#fff;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -88,6 +88,12 @@
     }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+    // move `cur` toward `target` by at most `step` (Phaser 3 has no Math.Approach)
+    function approach(cur, target, step) {
+        if (cur < target) return Math.min(cur + step, target);
+        if (cur > target) return Math.max(cur - step, target);
+        return target;
+    }
 
     /* =================================================================
        SPRITE SHEET ASSETS (APPENDIX P) — OPTIONAL. Procedural is baseline.
@@ -2774,7 +2780,7 @@
             var target = input.right ? maxSpd : input.left ? -maxSpd : 0;
             if (input.right) pl.facing = 1; else if (input.left) pl.facing = -1;
             var accel = onGround ? (target ? C2.accel : C2.friction) : C2.airAccel;
-            var vx = Phaser.Math.Approach(pl.body.velocity.x, target, accel * dt / 1000);
+            var vx = approach(pl.body.velocity.x, target, accel * dt / 1000);
             pl.body.setVelocityX(vx);
 
             // coyote + jump buffer

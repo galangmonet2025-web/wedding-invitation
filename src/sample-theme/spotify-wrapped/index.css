@@ -527,6 +527,10 @@ body {
     margin-top: 6px;
 }
 .ws-foot { margin-top: 20px; font-weight: 700; color: #fff; font-size: 14px; }
+/* H-day / finished status (replaces the numbers) */
+.ws-status { padding: 6px 0 2px; }
+.ws-status-emoji { font-size: 40px; line-height: 1; margin-bottom: 12px; }
+.ws-status-text { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.6; }
 
 /* ============ SECTION HEAD (shared) ============ */
 .sec-head { padding: 42px 26px 4px; }
