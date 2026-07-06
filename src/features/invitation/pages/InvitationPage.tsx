@@ -20,6 +20,10 @@ import sampleStory3 from '@/assets/img/sample_story_3.jpg';
 import defaultFrame from '@/assets/img/frame.png';
 import { formatPhoneForWhatsApp } from '@/utils/whatsappUtils';
 import { normalizeInstagramUsername } from '@/utils/instagramUtils';
+// DEV-ONLY: local metal-slug theme sources (see the activeTheme override below).
+import MSW_LOCAL_HTML from '@/sample-theme/metalslug-wedding/index.html?raw';
+import MSW_LOCAL_CSS from '@/sample-theme/metalslug-wedding/index.css?raw';
+import MSW_LOCAL_JS from '@/sample-theme/metalslug-wedding/index.js?raw';
 
 // Build a wa.me link from a raw WhatsApp number (returns '' when no number is set)
 const buildWaMeUrl = (phone: any): string => {
@@ -65,6 +69,26 @@ const resolveProxyUrl = (src: string): string => {
         return `${baseUrl}?action=imageProxy&id=${driveId}`;
     }
     return cleanSrc;
+};
+
+// A DIRECTLY-RENDERABLE image URL for a Drive-backed src.
+//
+// Why this exists: our Apps Script `?action=imageProxy&id=…` endpoint returns the
+// image as a `data:image/…;base64,…` string served with `Content-Type: text/plain`.
+// That is perfect for fetch()+base64 caching, but a browser CANNOT render it in an
+// `<img src>` — it downloads text, not image bytes, so the tag shows a broken-image
+// icon. Theme templates emit plain `<img src="{{photo_…}}">` / `{{this.url}}`, so the
+// value we bind MUST be renderable on its own. When the fast-path base64 isn't ready
+// yet (or fails), we must NOT fall back to the raw imageProxy URL. Google Drive's
+// thumbnail endpoint returns real image bytes with an image Content-Type and renders
+// directly, so it's the correct pre-base64 fallback. `data:`/http(s) non-Drive URLs
+// pass through unchanged.
+const driveRenderUrl = (src?: string | null, size = 1600): string => {
+    if (!src) return '';
+    if (src.startsWith('data:')) return src;
+    const driveId = getDriveId(src);
+    if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${size}`;
+    return src;
 };
 
 interface TenantPublic {
@@ -903,7 +927,17 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
     );
 
     // THEME RENDERING - HOOKS MUST BE TOP LEVEL
-    const activeTheme = data?.theme;
+    // DEV-ONLY DIAGNOSTIC OVERRIDE: when running the Vite dev server, load the metal-slug
+    // theme's HTML/CSS/JS from the LOCAL src/sample-theme files instead of the DB copy.
+    // This bypasses a corrupted js_template stored in the Sheet (the "Unexpected token '}'"
+    // SyntaxError on inject that kills every button). Remove once the DB copy is re-saved.
+    const activeTheme = useMemo(() => {
+        const t = data?.theme as any;
+        if (import.meta.env.DEV && t && /metal[\s-]?slug/i.test(String(t.theme_code || t.code || t.name || ''))) {
+            return { ...t, html_template: MSW_LOCAL_HTML, css_template: MSW_LOCAL_CSS, js_template: MSW_LOCAL_JS };
+        }
+        return t;
+    }, [data?.theme]);
 
     // Build replacements dictionary as a context object
     const dataContext: Record<string, any> = useMemo(() => {
@@ -977,9 +1011,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             nama_rek_2: activeContent.nama_rekening_bank_2 || '',
             flag_pakai_2_rekening: getBool(activeContent.flag_pakai_2_rekening),
             flag_pakai_qris_rekening_1: getBool(activeContent.flag_pakai_qris_rekening_1),
-            gambar_qris_rekening_1: images['qris_1'] || activeContent.gambar_qris_rekening_1 || '',
+            gambar_qris_rekening_1: images['qris_1'] || driveRenderUrl(getImageUrl('qris_1')) || driveRenderUrl(activeContent.gambar_qris_rekening_1) || '',
             flag_pakai_qris_rekening_2: getBool(activeContent.flag_pakai_qris_rekening_2),
-            gambar_qris_rekening_2: images['qris_2'] || activeContent.gambar_qris_rekening_2 || '',
+            gambar_qris_rekening_2: images['qris_2'] || driveRenderUrl(getImageUrl('qris_2')) || driveRenderUrl(activeContent.gambar_qris_rekening_2) || '',
             flag_pakai_timeline_kisah: getBool(activeContent.flag_pakai_timeline_kisah),
             timeline_kisah: timeline,
             tampilkan_amplop_online: getBool(activeContent.tampilkan_amplop_online),
@@ -995,8 +1029,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             // Instagram Story Reply Feature (ADD_FTR_STORY_IG)
             flag_pakai_additional_feature_story_balasan_instagram: getBool(activeContent.flag_pakai_additional_feature_story_balasan_instagram),
             frame_balasan_instagram: images['frame_balasan_instagram'] ||
-                (getImageUrl('frame_balasan_instagram') ? resolveProxyUrl(getImageUrl('frame_balasan_instagram')) : null) ||
-                (isValidImageUrl(activeContent.frame_balasan_instagram) ? resolveProxyUrl(activeContent.frame_balasan_instagram!) : null) ||
+                // renderable Drive URL, not the raw imageProxy URL (text/plain → broken <img>)
+                (getImageUrl('frame_balasan_instagram') ? driveRenderUrl(getImageUrl('frame_balasan_instagram')) : null) ||
+                (isValidImageUrl(activeContent.frame_balasan_instagram) ? driveRenderUrl(activeContent.frame_balasan_instagram!) : null) ||
                 defaultFrame,
             link_balasan_instagram: activeContent.link_balasan_instagram || '',
             sample_story_1: sampleStory1,
@@ -1035,7 +1070,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             url_whatsapp_webconfig: buildWaMeUrl(websiteConfig?.contact_whatsapp) || activeContent?.url_whatsapp_webconfig || '',
             galleries: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
+                // base64 fast-path, else a DIRECTLY-RENDERABLE Drive URL — never the raw
+                // imageProxy URL (that returns text/plain base64 → broken <img>).
+                .map(img => ({ url: images[img.cdn_url] || driveRenderUrl(img.cdn_url) })),
             love_stories: activeContent.love_stories || [],
 
             // Wishes variables
@@ -1049,15 +1086,20 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             empty_wishes: !wishes || wishes.length === 0,
 
             // === Variabel Foto Standar ===
-            photo_hero_cover: images['hero_cover'] || getImageUrl('hero_cover'),
-            photo_groom_photo: images['groom_photo'] || getImageUrl('groom_photo'),
-            photo_bride_photo: images['bride_photo'] || getImageUrl('bride_photo'),
-            photo_background: images['background'] || getImageUrl('background') || images['cover'] || getImageUrl('cover'),
-            photo_closing: images['closing'] || getImageUrl('closing'),
-            photo_story_photo: images['story_photo'] || getImageUrl('story_photo'),
+            // base64 fast-path (from resolvedImages), else a DIRECTLY-RENDERABLE Drive
+            // URL. NEVER the raw `?action=imageProxy` URL: that endpoint returns the image
+            // as a text/plain base64 string, which a browser can't render in <img> (broken
+            // icon). getImageUrl() returns exactly that raw proxy URL, so it must be passed
+            // through driveRenderUrl() to become a real image URL before base64 arrives.
+            photo_hero_cover: images['hero_cover'] || driveRenderUrl(getImageUrl('hero_cover')),
+            photo_groom_photo: images['groom_photo'] || driveRenderUrl(getImageUrl('groom_photo')),
+            photo_bride_photo: images['bride_photo'] || driveRenderUrl(getImageUrl('bride_photo')),
+            photo_background: images['background'] || images['cover'] || driveRenderUrl(getImageUrl('background') || getImageUrl('cover')),
+            photo_closing: images['closing'] || driveRenderUrl(getImageUrl('closing')),
+            photo_story_photo: images['story_photo'] || driveRenderUrl(getImageUrl('story_photo')),
             photo_gallery: ((activeContent.galleries?.length ?? 0) > 0) ? activeContent.galleries : (data?.images || [])
                 .filter(img => img.image_type === 'gallery')
-                .map(img => ({ url: images[img.cdn_url] || img.cdn_url || '' })),
+                .map(img => ({ url: images[img.cdn_url] || driveRenderUrl(img.cdn_url) })),
 
             // Dynamic theme image variables - inject resolved base64 or CDN URLs
             ...images,

@@ -495,6 +495,7 @@
         });
         rewireHostFormsInside(scroll);
         rewireGalleryInside(scroll);
+        wireShareCarouselInside(scroll);
         $('msw-reveal').classList.add('show');
         // mirror music intent ON when invitation opens (host plays only when isOpened)
         setMusic(true);
@@ -566,6 +567,44 @@
             img.parentElement.addEventListener('click', function () {
                 var lb = $('msw-lightbox'); $('msw-lightbox-img').src = img.src; lb.classList.add('show');
             });
+        });
+    }
+
+    /* Netflix-style "BAGIKAN KEBAHAGIAAN" slider — active-scale + dots.
+       Runs on the CLONE inside #msw-reveal (source is display:none, offsets are 0 there). */
+    function wireShareCarouselInside(root) {
+        var car = root.querySelector('#msw-share-carousel');
+        if (!car || car.__mswBound) return; car.__mswBound = true;
+        var slides = Array.prototype.slice.call(car.querySelectorAll('.msw-share-slide'));
+        var dots = Array.prototype.slice.call(root.querySelectorAll('#msw-share-dots .msw-share-dot'));
+        if (!slides.length) return;
+        function activeIndex() {
+            var mid = car.scrollLeft + car.clientWidth / 2, best = 0, bestD = Infinity;
+            slides.forEach(function (s, i) {
+                var c = s.offsetLeft + s.offsetWidth / 2, d = Math.abs(c - mid);
+                if (d < bestD) { bestD = d; best = i; }
+            });
+            return best;
+        }
+        function sync() {
+            var idx = activeIndex();
+            slides.forEach(function (s, i) { s.classList.toggle('is-active', i === idx); });
+            dots.forEach(function (d, i) { d.classList.toggle('is-active', i === idx); });
+        }
+        var raf = false;
+        car.addEventListener('scroll', function () {
+            if (!raf) { requestAnimationFrame(function () { sync(); raf = false; }); raf = true; }
+        }, { passive: true });
+        dots.forEach(function (dot, i) {
+            dot.addEventListener('click', function () {
+                var s = slides[i];
+                if (s) car.scrollTo({ left: s.offsetLeft - (car.clientWidth - s.offsetWidth) / 2, behavior: 'smooth' });
+            });
+        });
+        // center the first slide once layout is ready (clone was just appended + shown)
+        requestAnimationFrame(function () {
+            car.scrollLeft = slides[0].offsetLeft - (car.clientWidth - slides[0].offsetWidth) / 2;
+            sync();
         });
     }
 
@@ -2082,6 +2121,9 @@
                 : 'Bersihkan sektor & maju menuju Markas Boss.';
             if (idx === C.sectors - 1) txt = 'Markas terakhir! Taklukkan Jenderal Pembatal Nikah & selamatkan mempelai.';
             $('msw-briefing-text').textContent = txt;
+            // reflect the chosen difficulty on the mission screen's "TINGKAT:" badge
+            var mdl = $('msw-mission-diff-lvl');
+            if (mdl) { mdl.textContent = (STORE.diff || 'normal').toUpperCase(); mdl.parentNode.setAttribute('data-lvl', STORE.diff || 'normal'); }
             showOverlay('msw-briefing');
         };
 

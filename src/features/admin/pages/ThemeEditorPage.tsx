@@ -69,6 +69,20 @@ const resolveProxyUrl = (src: string): string => {
     return cleanSrc;
 };
 
+// A DIRECTLY-RENDERABLE image URL for a Drive-backed src. Our `?action=imageProxy`
+// endpoint returns the image as a text/plain `data:image…base64` string — great for
+// fetch()+cache, but a raw <img src> pointing at it shows a broken-image icon (the
+// browser gets text, not image bytes). Theme templates emit plain <img src="{{…}}">,
+// so when the base64 fast-path isn't ready the fallback must still be renderable:
+// Drive's thumbnail endpoint returns real image bytes and renders directly.
+const driveRenderUrl = (src?: string | null, size = 1600): string => {
+    if (!src) return '';
+    if (src.startsWith('data:')) return src;
+    const driveId = getDriveId(src);
+    if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${size}`;
+    return src;
+};
+
 const extractDriveId = (url: string) => {
     if (!url) return null;
     const match = url.match(/[?&]id=([^&]+)/);
@@ -1756,7 +1770,9 @@ export function ThemeEditorPage() {
                     const realImg = (type: string, fallbackIdx = 0) => {
                         if (imgs[type]) return imgs[type];
                         const imgRec = previewImages.find(i => i.image_type === type);
-                        if (imgRec && imgRec.cdn_url) return imgRec.cdn_url;
+                        // Use a directly-renderable Drive URL, NOT the raw imageProxy cdn_url
+                        // (that returns text/plain base64 → broken <img> in the theme template).
+                        if (imgRec && imgRec.cdn_url) return driveRenderUrl(imgRec.cdn_url);
                         return dummies[fallbackIdx % dummies.length];
                     };
 
@@ -1773,7 +1789,9 @@ export function ThemeEditorPage() {
 
                     const galleryImgs = previewImages
                         .filter(img => img.image_type === 'gallery')
-                        .map(img => ({ url: imgs[img.cdn_url] || img.cdn_url || '', caption: img.file_name || '' }));
+                        // base64 fast-path, else a directly-renderable Drive URL (never the raw
+                        // imageProxy cdn_url — that returns text/plain base64 → broken <img>).
+                        .map(img => ({ url: imgs[img.cdn_url] || driveRenderUrl(img.cdn_url), caption: img.file_name || '' }));
 
                     const cGalleries = c.galleries || [];
                     const activeGalleries = cGalleries.length > 0 ? cGalleries : galleryImgs;
@@ -1839,13 +1857,13 @@ export function ThemeEditorPage() {
                         rek_1: c.nomor_rekening_bank_1 || '1234567890',
                         nama_rek_1: c.nama_rekening_bank_1 || t.groom_name || 'Galang',
                         flag_pakai_qris_rekening_1: getBool(c.flag_pakai_qris_rekening_1),
-                        gambar_qris_rekening_1: imgs['qris_1'] || previewImages.find(i => i.image_type === 'qris_1')?.cdn_url || c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
+                        gambar_qris_rekening_1: imgs['qris_1'] || driveRenderUrl(previewImages.find(i => i.image_type === 'qris_1')?.cdn_url) || c.gambar_qris_rekening_1 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=BCA-1234567890',
 
                         bank_2: c.nama_bank_2 || 'Mandiri',
                         rek_2: c.nomor_rekening_bank_2 || '0987654321',
                         nama_rek_2: c.nama_rekening_bank_2 || t.bride_name || 'Fiona',
                         flag_pakai_qris_rekening_2: getBool(c.flag_pakai_qris_rekening_2),
-                        gambar_qris_rekening_2: imgs['qris_2'] || previewImages.find(i => i.image_type === 'qris_2')?.cdn_url || c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
+                        gambar_qris_rekening_2: imgs['qris_2'] || driveRenderUrl(previewImages.find(i => i.image_type === 'qris_2')?.cdn_url) || c.gambar_qris_rekening_2 || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Mandiri-0987654321',
                         flag_pakai_2_rekening: getBool(c.flag_pakai_2_rekening),
 
                         link_backsound_music: c.link_backsound_music || '',
@@ -2098,11 +2116,19 @@ export function ThemeEditorPage() {
                                 
                                 setTimeout(() => {
                                     img.dataset.retryCount = retryCount + 1;
-                                    const baseSrc = img.src.split('?')[0];
-                                    // Use cache-busting to force reload from server
-                                    img.src = baseSrc + '?retry=' + Date.now();
+                                    // Cache-bust WITHOUT destroying the existing query string.
+                                    // Tenant images are Apps Script proxy URLs
+                                    // (…/exec?action=imageProxy&id=XXX). The old code did
+                                    // img.src.split('?')[0] which stripped action + id → the
+                                    // retry became …/exec?retry=… with no id → permanently
+                                    // broken (all tenant photos went blank). Strip only a prior
+                                    // _retry param and append a fresh one, keeping every other
+                                    // query param intact.
+                                    var cur = img.src.replace(/([?&])_retry=\\d+/g, '').replace(/[?&]$/, '');
+                                    var sep = cur.indexOf('?') === -1 ? '?' : '&';
+                                    img.src = cur + sep + '_retry=' + Date.now();
                                     img.style.opacity = '1';
-                                    console.log('[Preview] Retrying image load (' + (retryCount + 1) + '/' + maxRetries + '):', baseSrc);
+                                    console.log('[Preview] Retrying image load (' + (retryCount + 1) + '/' + maxRetries + '):', cur);
                                 }, 2000); // Retry every 2 seconds
                             } else {
                                 console.error('[Preview] Image failed after ' + maxRetries + ' retries:', img.src);

@@ -588,6 +588,97 @@
 .msw-loading-dots::after { content: ''; animation: msw-loaddots 1.2s steps(4) infinite; }
 @keyframes msw-loaddots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
 
+/* ============================ MISSION SCREEN (briefing) ============================
+   Shown after PRESS START. Full-frame Metal-Slug mission brief: pixel title, three
+   "how to play" step cards (amber icon tile + red left accent), difficulty badge,
+   and a big green MULAI MISI button. Reuses #msw-briefing-title/text + #msw-briefing-go. */
+.msw-mission {
+    /* denser CRT battlefield backdrop just for this screen */
+    background:
+        radial-gradient(760px 520px at 50% 26%, #21331d 0%, transparent 72%),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0 1px, transparent 1px 3px),
+        var(--msw-bg);
+    padding: 20px 16px;
+}
+.msw-mission-card {
+    position: relative; width: 100%; max-width: 380px; max-height: 100%; overflow-y: auto;
+    display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+    padding: 22px 20px 20px;
+    background:
+        repeating-linear-gradient(135deg, rgba(255,182,39,.045) 0 8px, transparent 8px 16px),
+        linear-gradient(180deg, #17210f 0%, #0c130a 100%);
+    border: 3px solid var(--msw-amber); border-radius: 12px;
+    box-shadow: 0 0 0 2px #000, 0 0 26px rgba(255,182,39,.16), 0 16px 46px rgba(0,0,0,.72);
+    scrollbar-width: none;
+}
+.msw-mission-card::-webkit-scrollbar { display: none; }
+/* arcade corner ticks (cyan) */
+.msw-mission-card::before, .msw-mission-card::after {
+    content: ''; position: absolute; width: 15px; height: 15px; border: 3px solid var(--msw-cyan); pointer-events: none;
+}
+.msw-mission-card::before { top: 7px; left: 7px; border-right: none; border-bottom: none; }
+.msw-mission-card::after { bottom: 7px; right: 7px; border-left: none; border-top: none; }
+/* faint moving scanline sheen over the card */
+.msw-mission-scan {
+    position: absolute; inset: 0; border-radius: 12px; pointer-events: none; z-index: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(79,214,200,.06) 50%, transparent 100%);
+    background-size: 100% 8px; animation: msw-mission-scroll 6s linear infinite; opacity: .5;
+}
+@keyframes msw-mission-scroll { from { background-position: 0 0; } to { background-position: 0 200px; } }
+.msw-mission-card > *:not(.msw-mission-scan) { position: relative; z-index: 1; }
+
+.msw-mission-head {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: var(--msw-mono); font-size: 12px; font-weight: 800; letter-spacing: 4px; color: var(--msw-amber);
+}
+.msw-mission-star { color: var(--msw-amber); text-shadow: 0 0 8px rgba(255,182,39,.6); }
+.msw-mission-kicker { text-shadow: 1px 1px 0 rgba(0,0,0,.5); }
+.msw-mission-title {
+    font-family: var(--msw-mono); font-weight: 800; font-size: 20px; letter-spacing: 1.5px; line-height: 1.2;
+    text-align: center; color: var(--msw-cream); text-shadow: 2px 2px 0 var(--msw-red), 3px 3px 0 rgba(0,0,0,.5);
+}
+.msw-mission-brief {
+    font-size: 12.5px; line-height: 1.55; color: #d8cfb6; text-align: center; margin: -2px 4px 4px;
+}
+
+.msw-mission-steps { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
+.msw-mission-step {
+    display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 12px;
+    padding: 12px 14px 12px 12px; text-align: left;
+    border-radius: 8px; border: 2px solid var(--msw-olive-d); border-left: 4px solid var(--msw-amber);
+    background: linear-gradient(180deg, rgba(30,42,22,.72), rgba(14,20,12,.72));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 3px 0 rgba(0,0,0,.35);
+}
+.msw-mission-ico {
+    display: grid; place-items: center; width: 44px; height: 44px; border-radius: 8px; font-size: 22px;
+    background: linear-gradient(180deg, #3a2e10, #1c1608); border: 2px solid var(--msw-amber);
+    box-shadow: inset 0 0 0 1px rgba(255,182,39,.2), 0 2px 0 #7a5410;
+}
+.msw-mission-step-title { font-family: var(--msw-mono); font-size: 12.5px; font-weight: 800; letter-spacing: .5px; color: var(--msw-amber); }
+.msw-mission-step-desc { font-size: 12px; line-height: 1.5; color: #cfc6ac; margin-top: 3px; }
+.msw-mission-step-desc b { color: var(--msw-cream); font-weight: 700; }
+
+.msw-mission-diff {
+    align-self: center; margin: 6px 0 2px; padding: 7px 20px; border-radius: 6px;
+    font-family: var(--msw-mono); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--msw-ink); background: linear-gradient(180deg, #7ed957, #3a9d3a);
+    border: 2px solid #2c7a2c; box-shadow: 0 3px 0 #1c5a1c;
+}
+.msw-mission-diff[data-lvl="easy"]   { background: linear-gradient(180deg, #7ed957, #3a9d3a); box-shadow: 0 3px 0 #1c5a1c; border-color:#2c7a2c; }
+.msw-mission-diff[data-lvl="normal"] { background: linear-gradient(180deg, #ffd066, #e0a020); box-shadow: 0 3px 0 #7a5410; border-color:#a5761a; }
+.msw-mission-diff[data-lvl="hard"]   { background: linear-gradient(180deg, #ff7a6e, #e23b2e); box-shadow: 0 3px 0 #6f140d; border-color:#a31d14; color: var(--msw-cream); }
+.msw-mission-diff span { font-weight: 800; }
+
+/* big green MULAI MISI (matches the reference) — overrides the red .msw-bigbtn */
+.msw-mission-go {
+    margin-top: 4px;
+    background: linear-gradient(180deg, #7ed957 0%, #45b545 45%, #2c7a2c 100%);
+    box-shadow: 0 4px 0 #1c5a1c; color: #0b1a08; font-weight: 800; letter-spacing: 1px;
+    border: 2px solid #2c7a2c;
+}
+.msw-mission-go:active { transform: translateY(3px); box-shadow: 0 1px 0 #1c5a1c; }
+.msw-mission-hint { font-size: 11px; color: var(--msw-cyan); font-family: var(--msw-mono); text-align: center; line-height: 1.5; margin-top: 2px; }
+
 .msw-stagesel-label { font-family: var(--msw-mono); font-size: 11px; letter-spacing: 2px; color: var(--msw-cyan); width: 100%; text-align: left; border-top: 1px solid var(--msw-olive-d); padding-top: 12px; }
 #msw-stagesel-diff .msw-diff-label { color: var(--msw-cyan); }
 /* MISSION SELECT — 2-column briefing cards: big stage number on the left,
@@ -634,13 +725,318 @@
     background: var(--msw-bg);
 }
 .msw-reveal.show { display: flex; animation: msw-fadein .25s ease; }
-/* extra bottom padding so the last content clears the floating "back to game" pill */
-.msw-reveal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+.msw-reveal-scroll {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;
+    position: relative; z-index: 1;
+}
+/* CRT scanlines + vignette fixed over the WHOLE reveal frame (not the scroll, so it
+   stays put while content scrolls under it). z-index above decor + content. */
+.msw-reveal::after {
+    content: ""; position: absolute; inset: 0; z-index: 45; pointer-events: none;
+    background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px),
+        radial-gradient(120% 90% at 50% 50%, transparent 60%, rgba(0,0,0,.45) 100%);
+    mix-blend-mode: multiply;
+}
+
+/* =====================================================================
+   INVITATION REVEAL — "MISSION DOSSIER" (reveal only; the small piece-modal
+   clones keep the compact base .msw-sec). Modelled on retromario's overworld
+   reveal: a persistent floating decor layer behind everything, each section a
+   distinct "world" band with a bold sec-head (eyebrow pill + title plaque +
+   descriptive line), content in bolted ammo-crate cards. Scoped to
+   .msw-reveal-scroll so #msw-modal-body stays compact.
+   ===================================================================== */
+
+/* -------- FLOATING DECOR LAYER (subtle haze OVER content, like rm-deco) --------
+   pointer-events:none so it never blocks the KEMBALI button / forms; low opacity so
+   it reads as ambient battlefield atmosphere floating above the section bands. */
+.msw-reveal-deco { position: absolute; inset: 0; z-index: 44; pointer-events: none; overflow: hidden; }
+.msw-reveal-deco > span { position: absolute; }
+@keyframes msw-rd-drift { from { transform: translateX(-14vw); } to { transform: translateX(120vw); } }
+@keyframes msw-rd-bob   { 50% { transform: translateY(-9px); } }
+@keyframes msw-rd-spin  { 50% { transform: scaleX(.18); } }
+/* drifting battlefield clouds */
+.msw-rd-cloud {
+    top: 10%; width: 76px; height: 26px; border-radius: 16px; opacity: .16;
+    background: #cfe3ea; box-shadow: 20px 6px 0 -4px #cfe3ea, -18px 6px 0 -6px #cfe3ea;
+    animation: msw-rd-drift 34s linear infinite;
+}
+.msw-rd-cloud.rc1 { top: 7%;  animation-duration: 40s; }
+.msw-rd-cloud.rc2 { top: 33%; transform: scale(1.3); animation-duration: 52s; opacity: .12; }
+.msw-rd-cloud.rc3 { top: 64%; transform: scale(.8); animation-duration: 44s; animation-direction: reverse; }
+/* floating amplop (💌) + medal coins bobbing */
+.msw-rd-amplop { font-size: 20px; opacity: .5; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); animation: msw-rd-bob 3s ease-in-out infinite; }
+.msw-rd-amplop.ra1 { top: 18%; right: 8%; }
+.msw-rd-amplop.ra2 { top: 72%; left: 9%; animation-delay: -1.2s; }
+.msw-rd-medal { width: 15px; height: 19px; border-radius: 4px; background: var(--msw-amber); border: 2px solid #7a5410; box-shadow: 0 0 0 1.5px #000; opacity: .55; animation: msw-rd-spin 1.7s steps(6) infinite; }
+.msw-rd-medal.rm1 { top: 26%; left: 12%; }
+.msw-rd-medal.rm2 { top: 58%; right: 13%; animation-delay: -.7s; }
+.msw-rd-star { color: var(--msw-amber); font-size: 13px; opacity: .5; animation: msw-rd-bob 2.6s ease-in-out infinite; text-shadow: 0 0 6px rgba(255,182,39,.5); }
+.msw-rd-star.rs1 { top: 30%; left: 8%; animation-delay: -.8s; }
+.msw-rd-star.rs2 { top: 48%; right: 9%; animation-delay: -1.6s; }
+.msw-rd-star.rs3 { top: 84%; right: 18%; animation-delay: -.4s; }
+/* sandbag ridge + a tank silhouette + ground strip pinned to the bottom */
+.msw-rd-ridge { left: 0; right: 0; bottom: 16px; height: 46px; opacity: .3;
+    background: radial-gradient(60px 30px at 20% 100%, var(--msw-olive) 60%, transparent 62%),
+                radial-gradient(70px 34px at 55% 100%, var(--msw-olive-d) 60%, transparent 62%),
+                radial-gradient(60px 30px at 88% 100%, var(--msw-olive) 60%, transparent 62%); }
+.msw-rd-tank {
+    left: 7%; bottom: 18px; width: 54px; height: 26px; opacity: .28;
+    background: var(--msw-olive-d); border: 2px solid #10140d; border-radius: 6px 8px 3px 3px;
+    box-shadow: 16px -8px 0 -6px var(--msw-olive-d), 30px -2px 0 -2px #10140d;
+}
+.msw-rd-tank::before { content: ""; position: absolute; top: -7px; right: -14px; width: 22px; height: 5px; background: var(--msw-olive-d); border: 2px solid #10140d; }
+.msw-rd-sandbag { bottom: 16px; width: 40px; height: 22px; opacity: .3; border-radius: 6px;
+    background: repeating-linear-gradient(0deg, #9a8a5a 0 7px, #6a5a32 7px 9px); border: 2px solid #4a3a1a; }
+.msw-rd-sandbag.rb1 { right: 10%; }
+.msw-rd-sandbag.rb2 { right: 22%; bottom: 34px; transform: scale(.8); }
+.msw-rd-ground { left: 0; right: 0; bottom: 0; height: 16px; opacity: .55;
+    background: repeating-linear-gradient(90deg, #3a4a2a 0 16px, #2e3a22 16px 18px); border-top: 3px solid #6a8a4a; }
+
+/* -------- SECTION BANDS — each reads as its own "world" -------- */
+.msw-reveal-scroll .msw-sec {
+    min-height: 100svh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; padding: 62px 22px calc(72px + env(safe-area-inset-bottom, 0px));
+    border-bottom: 0;
+    background:
+        radial-gradient(circle at 16% 20%, rgba(79,214,200,.06) 0 6px, transparent 7px),
+        radial-gradient(circle at 84% 14%, rgba(255,182,39,.06) 0 5px, transparent 6px),
+        linear-gradient(180deg, #12200e 0%, #0c1409 60%, #0a1109 100%);
+}
+/* even bands read as the darker "enemy base" world for rhythm */
+.msw-reveal-scroll .msw-sec:nth-child(even) {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(79,214,200,.06) 0 5px, transparent 6px),
+        linear-gradient(180deg, #0d1a14 0%, #0a130e 100%),
+        repeating-linear-gradient(0deg, transparent 0 28px, rgba(0,0,0,.16) 28px 30px);
+}
+/* olive/khaki ground course capping each section bottom (like rm-sec::after) */
+.msw-reveal-scroll .msw-sec::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 16px; z-index: 0;
+    background: repeating-linear-gradient(90deg, #3a4a2a 0 26px, #2e3a22 26px 28px);
+    border-top: 4px solid #6a8a4a; box-shadow: inset 0 4px 0 rgba(0,0,0,.25);
+}
+.msw-reveal-scroll .msw-sec:nth-child(even)::after {
+    background: repeating-linear-gradient(90deg, #4a4a2a 0 26px, #33301a 26px 28px); border-top-color: #8a7a3a;
+}
+.msw-reveal-scroll .msw-sec > * { position: relative; z-index: 2; }
+
+/* -------- SEC-HEAD (eyebrow pill + title plaque + descriptive line) -------- */
+.msw-sec-head { text-align: center; margin-bottom: 24px; position: relative; z-index: 2; }
+.msw-sec-eyebrow {
+    display: inline-block; font-family: var(--msw-mono); font-size: 9px; font-weight: 800; letter-spacing: 2px;
+    color: var(--msw-ink); background: var(--msw-amber); border: 3px solid #10140d; border-radius: 3px;
+    padding: 6px 10px; box-shadow: 3px 3px 0 rgba(0,0,0,.45); text-transform: uppercase;
+}
+/* title → a chunky olive "field plaque" with a floating amplop medallion above */
+.msw-reveal-scroll .msw-sec .msw-sec-title {
+    display: inline-block; font-family: var(--msw-mono); font-size: 16px; letter-spacing: 2px; color: var(--msw-cream);
+    margin: 18px 0 0; padding: 13px 20px; line-height: 1.4; text-transform: uppercase;
+    background: linear-gradient(180deg, #5d7349 0%, var(--msw-olive) 55%, var(--msw-olive-d) 100%);
+    border: 4px solid #10140d; border-radius: 5px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.55);
+    box-shadow: 0 6px 0 rgba(0,0,0,.45), inset 0 0 0 2px rgba(255,255,255,.12);
+}
+.msw-reveal-scroll .msw-sec .msw-sec-title::before,
+.msw-reveal-scroll .msw-sec .msw-sec-title::after { content: none; }  /* drop the base red ticks inside plaques */
+.msw-sec-head .msw-sec-title { position: relative; }
+.msw-sec-head .msw-sec-title::after {
+    content: "★"; position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+    font-size: 15px; color: var(--msw-amber); text-shadow: 0 0 8px rgba(255,182,39,.6);
+    animation: msw-rd-bob 2.4s ease-in-out infinite; width: auto; height: auto; background: none; box-shadow: none;
+}
+.msw-sec-quote { margin: 16px auto 0; max-width: 300px; font-size: 12.5px; line-height: 1.7; color: #d8cfb6; text-shadow: 1px 1px 0 rgba(0,0,0,.4); }
+
+/* -------- shared CARD (bolted ammo crate w/ pixel-strip top + amplop badge) -------- */
+.msw-card {
+    position: relative; width: 100%; max-width: 340px; margin: 0 auto 18px; padding: 20px 16px 16px;
+    background: linear-gradient(180deg, #14200f, #0b120a); border: 4px solid #10140d; border-radius: 6px;
+    box-shadow: 6px 6px 0 rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
+}
+.msw-card::before {  /* floating amplop badge top-right (like rm ? block) */
+    content: "💌"; position: absolute; top: -16px; right: 14px; width: 30px; height: 30px;
+    display: grid; place-items: center; font-size: 15px;
+    background: var(--msw-amber); border: 3px solid #10140d; border-radius: 4px; box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+    animation: msw-rd-bob 3s ease-in-out infinite;
+}
+.msw-card-strip { height: 6px; margin: -20px -16px 14px; background: repeating-linear-gradient(90deg, var(--msw-amber) 0 6px, transparent 6px 12px); }
+
+/* -------- shared HUD PANEL (forms / consoles) — now a card variant -------- */
+.msw-panel {
+    position: relative; width: 100%; max-width: 340px; margin: 0 auto; text-align: left;
+    border: 4px solid #10140d; border-radius: 6px; padding: 16px;
+    background: linear-gradient(180deg, #14200f, #0b120a);
+    box-shadow: 6px 6px 0 rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
+}
+.msw-panel-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    font-family: var(--msw-mono); font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+    color: var(--msw-amber); text-transform: uppercase;
+}
+.msw-panel-led { width: 8px; height: 8px; border-radius: 50%; background: var(--msw-cyan); box-shadow: 0 0 8px var(--msw-cyan); animation: msw-blink 1.4s steps(2) infinite; }
+.msw-panel-cyan { border-top: 5px solid var(--msw-cyan); }
+.msw-panel-red  { border-top: 5px solid var(--msw-red); text-align: center; }
+
+/* ============================ HERO (splash) ============================ */
+.msw-reveal-scroll .msw-hero { padding: 0; overflow: hidden; }
+.msw-reveal-scroll .msw-hero::after { display: none; }  /* no ground course over the photo */
+.msw-hero-grid {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .3;
+    background-image:
+        linear-gradient(rgba(79,214,200,.14) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,214,200,.14) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(120% 80% at 50% 100%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(120% 80% at 50% 100%, #000 20%, transparent 75%);
+}
+.msw-reveal-scroll .msw-hero-inner { z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 26px; }
+.msw-hero-badge {
+    font-family: var(--msw-mono); font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--msw-ink);
+    background: var(--msw-amber); padding: 5px 14px; border-radius: 3px; box-shadow: 0 3px 0 #7a5410;
+}
+.msw-hero-names {
+    font-size: 42px; line-height: 1.02; font-weight: 800; margin: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    text-shadow: 3px 3px 0 var(--msw-red), 5px 5px 0 rgba(0,0,0,.55);
+}
+.msw-hero-amp { font-size: 22px; color: var(--msw-amber); text-shadow: 2px 2px 0 rgba(0,0,0,.5); margin: 2px 0; }
+.msw-hero-date {
+    font-family: var(--msw-mono); color: var(--msw-cream); letter-spacing: 1px; font-size: 13px;
+    border: 1px solid var(--msw-olive); border-radius: 5px; padding: 6px 14px; background: rgba(14,21,12,.6);
+}
+.msw-hero-photo-frame {
+    position: relative; margin: 14px auto 2px; width: min(78%, 300px); padding: 6px;
+    background: #10140d; border: 3px solid var(--msw-olive); border-radius: 6px;
+    box-shadow: 6px 6px 0 rgba(0,0,0,.55), inset 0 0 0 1px rgba(79,214,200,.25);
+    transform: rotate(-1.2deg);
+}
+.msw-hero-photo-frame::before {  /* cyan corner keyline (Metal Slug reticle) */
+    content: ''; position: absolute; top: -3px; left: -3px; width: 16px; height: 16px;
+    border-top: 3px solid var(--msw-cyan); border-left: 3px solid var(--msw-cyan);
+}
+.msw-hero-photo-frame::after {
+    content: ''; position: absolute; bottom: -3px; right: -3px; width: 16px; height: 16px;
+    border-bottom: 3px solid var(--msw-cyan); border-right: 3px solid var(--msw-cyan);
+}
+.msw-hero-photo {
+    display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+    border-radius: 3px; background: #0e150c; image-rendering: auto;
+}
+.msw-hero-photo-tag {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    font-family: var(--msw-mono); font-size: 9px; font-weight: 800; letter-spacing: 2px;
+    color: var(--msw-ink); background: var(--msw-amber); padding: 3px 10px; border-radius: 3px;
+    box-shadow: 0 2px 0 #7a5410; white-space: nowrap;
+}
+.msw-hero-quote-wrap { max-width: 300px; margin-top: 4px; }
+.msw-hero-quote { font-style: italic; font-size: 13px; color: #d8cfb6; margin: 0 0 4px; line-height: 1.6; }
+.msw-hero-by { font-family: var(--msw-mono); font-size: 11px; color: var(--msw-amber); letter-spacing: 1px; }
+.msw-hero-cue {
+    margin-top: 10px; font-family: var(--msw-mono); font-size: 10px; letter-spacing: 2px; color: var(--msw-cyan);
+    animation: msw-cue 1.6s ease-in-out infinite;
+}
+@keyframes msw-cue { 0%,100% { transform: translateY(0); opacity: .6; } 50% { transform: translateY(4px); opacity: 1; } }
+
+/* ============================ COUPLE (character select) ============================ */
+.msw-couple-sec .msw-couple { gap: 12px; align-items: stretch; margin-top: 2px; }
+.msw-dossier {
+    position: relative; max-width: 152px; padding: 30px 12px 16px; border-radius: 6px;
+    border: 4px solid #10140d;
+    background: linear-gradient(180deg, #17230f, #0c130a);
+    box-shadow: 5px 5px 0 rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
+}
+.msw-dossier-rank {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    font-family: var(--msw-mono); font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--msw-ink);
+    background: var(--msw-amber); padding: 3px 12px; border-radius: 3px; border: 2px solid #10140d; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+}
+.msw-avatar-frame {
+    position: relative; width: 112px; height: 112px; margin: 4px auto 12px; padding: 0;
+    border: 4px solid #10140d; border-radius: 6px; box-shadow: 4px 4px 0 rgba(0,0,0,.45);
+    background: #0e150c;
+}
+.msw-avatar-frame::after {  /* cyan inner keyline */
+    content: ""; position: absolute; inset: 3px; border: 2px solid rgba(79,214,200,.5); border-radius: 3px; pointer-events: none;
+}
+.msw-couple-sec .msw-avatar { width: 100%; height: 100%; border: 0; border-radius: 3px; }
+.msw-couple-sec .msw-person-name { color: var(--msw-amber); font-family: var(--msw-mono); font-size: 13px; }
+.msw-couple-sec .msw-amp { align-self: center; font-family: var(--msw-mono); font-size: 22px; color: var(--msw-red); text-shadow: 0 0 12px rgba(226,59,46,.5); }
+
+/* ============================ RSVP (mission clock) ============================ */
+.msw-rsvp-sec .msw-countdown { margin: 0 auto 18px; }
+.msw-rsvp-sec .msw-cd-cell { min-width: 60px; padding: 12px 6px; border: 3px solid #10140d; box-shadow: 3px 3px 0 rgba(0,0,0,.4); background: #0e0e1a; }
+.msw-rsvp-sec .msw-cd-cell span { font-size: 24px; }
+
+/* ============================ SCHEDULE (objective cards) ============================ */
+.msw-events { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 340px; margin: 2px auto 0; }
+.msw-schedule-sec .msw-event {
+    position: relative; margin: 0; text-align: center; padding: 22px 16px 16px;
+    border: 4px solid #10140d; border-radius: 6px; background: linear-gradient(180deg, #14200f, #0b120a);
+    box-shadow: 6px 6px 0 rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
+}
+.msw-schedule-sec .msw-event-tag {
+    display: inline-block; color: var(--msw-ink); background: var(--msw-amber); padding: 4px 12px; border-radius: 3px;
+    border: 2px solid #10140d; box-shadow: 2px 2px 0 rgba(0,0,0,.4); letter-spacing: 2px; margin-bottom: 10px;
+}
+.msw-schedule-sec .msw-event-date { font-size: 16px; }
+.msw-schedule-sec .msw-event-time { color: var(--msw-amber); }
+.msw-schedule-sec .msw-event-place { font-size: 13px; margin-top: 8px; color: var(--msw-cream); }
+.msw-schedule-sec .msw-event .msw-btn-sm { margin-top: 14px; }
+
+/* ============================ STREAMING (live console) ============================ */
+.msw-stream-screen {
+    position: relative; height: 130px; display: grid; place-items: center; font-size: 46px;
+    border: 3px solid #10140d; border-radius: 6px; margin-bottom: 14px; overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, #17301c, #060b07);
+    box-shadow: inset 0 0 30px rgba(0,0,0,.7);
+}
+.msw-stream-rec { position: absolute; top: 8px; left: 8px; font-family: var(--msw-mono); font-size: 10px; font-weight: 800; letter-spacing: 1px; color: var(--msw-red); animation: msw-blink 1.2s steps(2) infinite; }
+.msw-stream-scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.25) 0 2px, transparent 2px 4px); }
+
+/* ============================ STORY (mission log) ============================ */
+.msw-story-sec .msw-timeline {
+    text-align: left; width: 100%; max-width: 340px; margin: 2px auto 0; padding: 18px 16px;
+    border: 4px solid #10140d; border-radius: 6px; background: linear-gradient(180deg, #14200f, #0b120a);
+    box-shadow: 6px 6px 0 rgba(0,0,0,.5);
+}
+.msw-story-sec .msw-tl-item { border-left: 2px dashed rgba(183,163,106,.4); padding-left: 12px; margin-left: 4px; }
+
+/* ============================ GALLERY (recon photos) ============================ */
+.msw-gallery-sec .msw-gallery-grid { gap: 8px; max-width: 340px; margin: 2px auto 0; }
+.msw-gallery-sec .msw-gallery-item {
+    border-radius: 4px; border: 3px solid #10140d; box-shadow: 4px 4px 0 rgba(0,0,0,.45); background: #0b120a;
+}
+.msw-gallery-sec .msw-gallery-item:nth-child(3n+1) { box-shadow: 4px 4px 0 rgba(255,182,39,.25); }
+.msw-gallery-sec .msw-gallery-item:nth-child(3n+2) { box-shadow: 4px 4px 0 rgba(79,214,200,.25); }
+
+/* ============================ HAPPINESS (share bay) ============================ */
+.msw-share-sec .msw-share-frames { margin: 4px 0 18px; }
+.msw-share-sec .msw-share-frame { border: 3px solid #10140d; box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
+
+/* ============================ WISHES (comms terminal) ============================ */
+.msw-wishes-sec .msw-wish-list {
+    width: 100%; max-width: 340px; margin: 16px auto 0; max-height: 44vh; padding: 4px;
+}
+.msw-wishes-sec .msw-wish-item {
+    border: 2px solid #10140d; border-left: 4px solid var(--msw-cyan); box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+    background: linear-gradient(180deg, rgba(14,21,12,.95), rgba(8,14,8,.95));
+}
+.msw-wishes-sec .msw-wish-author { color: var(--msw-cyan); font-family: var(--msw-mono); }
+
+/* ============================ GIFT (supply crates) ============================ */
+.msw-gift-sec .msw-gift-grid { margin-top: 2px; }
+
+/* ============================ CLOSING (mission clear) ============================ */
+.msw-reveal-scroll .msw-closing { padding: 0; }
+.msw-reveal-scroll .msw-closing::after { display: none; }
+.msw-reveal-scroll .msw-closing-inner { z-index: 3; }
 /* FLOATING "back to game" button — pinned to the bottom-right corner, over the scroll.
    Arcade pill: olive metal, amber border, hard bottom edge, press-down on tap. Respects
    the mobile safe-area inset so it isn't hidden behind the home indicator. */
 .msw-reveal-close {
-    position: absolute; z-index: 3; right: 14px; bottom: 14px;
+    position: absolute; z-index: 50; right: 14px; bottom: 14px;
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
     padding: 11px 16px; border-radius: 999px;
@@ -674,6 +1070,8 @@
 .msw-sec-text { font-size: 13px; line-height: 1.6; color: #d8cfb6; margin: 0 0 14px; }
 
 .msw-hero { min-height: 420px; display: grid; place-items: center; padding: 0; overflow: hidden; }
+/* in the reveal the hero is a full-screen splash */
+.msw-reveal-scroll .msw-hero { display: grid; }
 .msw-hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .msw-hero-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,10,7,.5), rgba(6,10,7,.85)); }
 .msw-hero-inner { position: relative; z-index: 2; padding: 30px; }
@@ -747,10 +1145,57 @@
 .msw-gallery-item { aspect-ratio: 1; overflow: hidden; border-radius: 4px; cursor: pointer; }
 .msw-gallery-item img { width: 100%; height: 100%; object-fit: cover; }
 
-.msw-share-frames { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
-.msw-share-frame { position: relative; width: 88px; aspect-ratio: 9/16; border-radius: 6px; overflow: hidden; }
-.msw-share-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.msw-frame-png { z-index: 2; }
+/* ---------- HAPPINESS: Netflix-style story slider (BIG cards, swipe + dots) ---------- */
+/* full-bleed: the section is display:flex; align-items:center, so a normal-flow child
+   SHRINKS to its content width — that collapsed the whole carousel narrow (tiny cards).
+   Force it to span the full section (align-self:stretch + width:100%) and cancel the
+   section's 22px side padding with the negative margin so it fills the whole frame. */
+.msw-share-carousel-wrap { position: relative; width: 100%; align-self: stretch; margin: 8px -22px 10px; }
+.msw-share-carousel {
+    display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
+    padding: 14px 11% 10px; -ms-overflow-style: none; scrollbar-width: none;
+}
+.msw-share-carousel::-webkit-scrollbar { display: none; }
+.msw-share-slide {
+    /* fixed-ish basis (not %, which collapsed) so each card is a big, dominant panel */
+    flex: 0 0 clamp(220px, 76%, 340px); scroll-snap-align: center;
+    transition: transform .4s ease, opacity .4s ease; opacity: .5;
+}
+.msw-share-slide.is-active { opacity: 1; transform: scale(1.02); }
+.msw-share-card {
+    position: relative; width: 100%; aspect-ratio: 9/16; overflow: hidden; border-radius: 10px;
+    border: 4px solid var(--msw-olive); background: #0e150c;
+    box-shadow: 8px 8px 0 rgba(0,0,0,.6);
+    transition: border-color .35s ease, box-shadow .35s ease;
+}
+.msw-share-slide.is-active .msw-share-card {
+    border-color: var(--msw-cyan);
+    box-shadow: 8px 8px 0 rgba(0,0,0,.6), 0 0 0 2px rgba(79,214,200,.55), 0 0 22px rgba(79,214,200,.4);
+}
+.msw-share-photo, .msw-share-frame-png { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.msw-share-photo { z-index: 1; }
+.msw-share-frame-png { z-index: 2; }
+.msw-share-card::after {  /* readable gradient for the overlay text */
+    content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    background: linear-gradient(rgba(8,12,9,.35) 0%, rgba(8,12,9,0) 30%, rgba(8,12,9,0) 55%, rgba(8,12,9,.85) 100%);
+}
+.msw-share-badge {
+    position: absolute; top: 14px; left: 14px; z-index: 4;
+    font-family: var(--msw-mono); font-size: 11px; font-weight: 800; letter-spacing: 2px;
+    color: var(--msw-ink); background: var(--msw-amber); padding: 4px 11px; border-radius: 3px;
+    box-shadow: 0 2px 0 #7a5410;
+}
+.msw-share-caption {
+    position: absolute; left: 16px; bottom: 16px; z-index: 4;
+    font-weight: 800; font-size: 20px; color: var(--msw-cream); text-align: left;
+    text-shadow: 2px 2px 0 var(--msw-red), 3px 3px 0 rgba(0,0,0,.5);
+}
+.msw-share-dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.msw-share-dot {
+    width: 9px; height: 9px; border-radius: 2px; background: rgba(255,182,39,.3);
+    cursor: pointer; transition: all .3s ease;
+}
+.msw-share-dot.is-active { background: var(--msw-amber); width: 26px; box-shadow: 0 0 8px rgba(255,182,39,.6); }
 
 .msw-wish-list { max-width: 320px; margin: 16px auto 0; text-align: left; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .msw-wish-item { background: #0e150c; border: 1px solid var(--msw-olive-d); border-radius: 6px; padding: 10px; }
@@ -761,6 +1206,19 @@
 
 /* ---------- GIFT: "supply crate" cards (tidy, centered QR + full-width button) ---------- */
 .msw-gift-grid { display: flex; flex-direction: column; gap: 16px; max-width: 320px; margin: 0 auto; }
+.msw-gift-grid:has(.msw-gift-banks--two) { max-width: 520px; }
+/* two bank crates sit SIDE BY SIDE when tenant enables 2 rekening */
+.msw-gift-banks { display: flex; flex-direction: column; gap: 16px; }
+.msw-gift-banks--two { flex-direction: row; align-items: stretch; }
+.msw-gift-banks--two .msw-gift-card { flex: 1 1 0; min-width: 0; padding-left: 12px; padding-right: 12px; }
+.msw-gift-banks--two .msw-gift-num { font-size: 15px; letter-spacing: 1px; word-break: break-all; }
+.msw-gift-banks--two .msw-qris { width: 110px; height: 110px; }
+.msw-gift-banks--two .msw-btn-gift { font-size: 11px; letter-spacing: .5px; }
+@media (max-width: 360px) {
+    .msw-gift-banks--two { flex-direction: column; }
+    .msw-gift-banks--two .msw-gift-num { font-size: 20px; letter-spacing: 2px; }
+    .msw-gift-banks--two .msw-qris { width: 150px; height: 150px; }
+}
 .msw-gift-card, .msw-gift-addr {
     position: relative; margin: 0; padding: 18px 16px 16px; text-align: center;
     border: 2px solid var(--msw-olive); border-radius: 10px;
@@ -812,6 +1270,7 @@
     box-shadow: 0 3px 0 #7a5410; 
     animation: msw-blink 1.6s steps(2) infinite;
 }
+.msw-closing-photo-frame { margin: 4px auto 16px; width: min(70%, 240px); transform: rotate(1.2deg); }
 .msw-closing-sub { font-family: var(--msw-mono); font-size: 11px; letter-spacing: 2px; color: var(--msw-cyan); margin: -6px 0 16px; }
 .msw-closing-text { font-size: 13px; line-height: 1.8; color: #e3dcc6; max-width: 320px; margin: 0 auto 18px; font-style: italic; }
 .msw-closing-rule { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px auto 14px; max-width: 220px; }

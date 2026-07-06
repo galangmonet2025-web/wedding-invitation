@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     HiOutlineCheck,
     HiOutlineChevronLeft,
@@ -12,10 +12,12 @@ import {
 } from 'react-icons/hi';
 import { FaInstagram, FaTiktok, FaYoutube, FaWhatsapp } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
-import { publicApi } from '@/core/api/endpoints';
-import { Theme, MstPlanType, MstPlanFeature, WebsiteConfig, ReviewAndRating, MstAdditionalFeature } from '@/types';
+import { ReviewAndRating } from '@/types';
 import { ProxyImage } from '@/shared/components/ProxyImage';
+import { useLandingStore } from '@/features/landing/store/landingStore';
 import kosaIcon from '@/assets/img/kosa-icon.png';
+import lp01 from '@/assets/img/lp01.jpg';
+import lp02 from '@/assets/img/lp02.jpg';
 
 // Demo tenant slug used by the theme-preview URL (/#/preview/<theme_code>/<slug>).
 // The preview forces this theme onto the demo tenant's real invitation data.
@@ -93,15 +95,21 @@ const RETRO_FEATURES: Array<{ emoji: string; title: string; desc: string; hero?:
 ];
 
 export function NewLandingPage() {
-    // Data States
-    const [config, setConfig] = useState<WebsiteConfig | null>(null);
-    const [themes, setThemes] = useState<Theme[]>([]);
-    const [planTypes, setPlanTypes] = useState<MstPlanType[]>([]);
-    const [planFeatures, setPlanFeatures] = useState<MstPlanFeature[]>([]);
-    const [reviews, setReviews] = useState<ReviewAndRating[]>([]);
-    const [additionalFeatures, setAdditionalFeatures] = useState<MstAdditionalFeature[]>([]);
-    const [logoUrl, setLogoUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    // Data comes from a session cache (Zustand). Fetched once and kept, so
+    // navigating to login/register and back renders instantly — no re-fetch,
+    // no loading flash. See landingStore.ts.
+    const config = useLandingStore(s => s.config);
+    const themes = useLandingStore(s => s.themes);
+    const planTypes = useLandingStore(s => s.planTypes);
+    const planFeatures = useLandingStore(s => s.planFeatures);
+    const reviews = useLandingStore(s => s.reviews);
+    const additionalFeatures = useLandingStore(s => s.additionalFeatures);
+    const logoUrl = useLandingStore(s => s.logoUrl);
+    const loaded = useLandingStore(s => s.loaded);
+    const isLoading = useLandingStore(s => s.isLoading);
+    const fetchAll = useLandingStore(s => s.fetchAll);
+    // Show the loading screen only on the very first load (nothing cached yet).
+    const loading = !loaded && isLoading;
 
     // UI States
     const [scrolled, setScrolled] = useState(false);
@@ -116,56 +124,15 @@ export function NewLandingPage() {
     // FAQ accordion (first item open by default)
     const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-    // Fetch All Data
+    // Fetch once and cache in the store. On return visits (from login/register)
+    // this is a no-op — the cached data is already in the store, so the page
+    // renders instantly with no loading flash.
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const [configRes, themesRes, plansRes, featuresRes] = await Promise.all([
-                    publicApi.getWebsiteConfig(),
-                    publicApi.getPublicThemes(),
-                    publicApi.getPublicPlanTypes(),
-                    publicApi.getPublicPlanFeatures()
-                ]);
+        fetchAll();
+    }, [fetchAll]);
 
-                // Update Favicon
-                let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                if (!favicon) {
-                    favicon = document.createElement('link');
-                    favicon.rel = 'icon';
-                    document.head.appendChild(favicon);
-                }
-                favicon.href = kosaIcon;
-
-                if (configRes.success) {
-                    setConfig(configRes.data);
-                    setReviews(configRes.data.reviews || []);
-                    setAdditionalFeatures(configRes.data.features || []);
-
-                    // Resolve the site logo once (base64) — reused by the navbar/
-                    // footer logo blocks AND the favicon, matching the auth pages.
-                    if (configRes.data.site_logo) {
-                        const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
-                        const resolvedLogo = await fetchProxyImageBase64(configRes.data.site_logo);
-                        setLogoUrl(resolvedLogo);
-                        let fav = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-                        if (fav) {
-                            fav.href = resolvedLogo;
-                        }
-                    }
-                }
-                if (themesRes.success) setThemes(themesRes.data);
-                if (plansRes.success) setPlanTypes(plansRes.data);
-                if (featuresRes.success) setPlanFeatures(featuresRes.data);
-            } catch (err) {
-                console.error('Landing Page Data Fetch Error:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-
+    // Track scroll for the navbar solid/transparent state.
+    useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 50);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
@@ -341,10 +308,9 @@ export function NewLandingPage() {
                     <span className="lp-hill h1" /><span className="lp-hill h2" />
                     <span className="lp-qblock d1">?</span><span className="lp-qblock d2">?</span>
                     <span className="lp-coin co1" /><span className="lp-coin co2" />
-                    <span className="lp-pipe" /><span className="lp-goomba" />
                 </div>
-                {/* ground strip */}
-                <div className="lp-ground" aria-hidden="true" />
+                {/* ground strip + playable endless-runner mini-game (PC only) */}
+                <HeroRunner />
 
                 <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="grid lg:grid-cols-12 gap-10 items-center">
@@ -354,7 +320,7 @@ export function NewLandingPage() {
                                 UNDANGAN PERNIKAHAN DIGITAL
                             </div>
 
-                            <h1 className="lp-pixel text-[1.65rem] sm:text-4xl lg:text-[3.2rem] leading-[1.5] text-white" style={{ textShadow: '4px 4px 0 rgba(0,0,0,.4)' }}>
+                            <h1 className="lp-pixel text-[1.5rem] sm:text-4xl lg:text-[3rem] text-white" style={{ textShadow: '4px 4px 0 rgba(0,0,0,.4)', lineHeight: 1 }}>
                                 {config?.tagline || 'MOMEN SPESIAL'}<br />
                                 <span style={{ color: 'var(--lp-coin)' }}>LEVEL UP!</span>
                             </h1>
@@ -374,11 +340,11 @@ export function NewLandingPage() {
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center lg:justify-start max-w-md mx-auto lg:mx-0 pt-2">
-                                <Link to="/register" className="lp-btn lp-btn-coin group inline-flex items-center justify-center gap-2 text-[11px] px-6 py-4">
-                                    PRESS START
-                                    <HiOutlineArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                </Link>
-                                <a href="#tema" onClick={(e) => scrollToSection(e, 'tema')} className="lp-btn lp-btn-green inline-flex items-center justify-center text-[11px] px-6 py-4">
+                                <a href="#keunggulan" onClick={(e) => scrollToSection(e, 'keunggulan')} id="lp-hero-start" className="lp-btn lp-btn-coin group inline-flex items-center justify-center gap-2 whitespace-nowrap text-[11px] px-6 py-4">
+                                    MULAI PETUALANGAN
+                                    <HiOutlineArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
+                                </a>
+                                <a href="#tema" onClick={(e) => scrollToSection(e, 'tema')} className="lp-btn lp-btn-green inline-flex items-center justify-center whitespace-nowrap text-[11px] px-6 py-4">
                                     LIHAT TEMA
                                 </a>
                             </div>
@@ -400,33 +366,11 @@ export function NewLandingPage() {
                         </div>
 
                         {/* Hero live-preview — a pixel phone frame running the real
-                            invitation theme in an iframe. Visible from tablet up. */}
+                            invitation theme in an iframe, flanked by two theme
+                            screenshots. Click a side frame to swap it to center.
+                            Visible from tablet up. */}
                         <div className="hidden md:block lg:col-span-5 relative">
-                            <div className="lp-hero-phone mx-auto">
-                                <div className="lp-hero-card-top">
-                                    <span className="lp-dot r" /><span className="lp-dot y" /><span className="lp-dot g" />
-                                    <span className="lp-pixel text-[7px] text-white/70 ml-2">WORLD 1-1</span>
-                                    <span className="lp-live-badge ml-auto"><span className="lp-live-dot" /> LIVE</span>
-                                </div>
-                                <div className="lp-hero-screen">
-                                    <iframe
-                                        src={HERO_PREVIEW_URL}
-                                        title="Pratinjau undangan interaktif"
-                                        loading="lazy"
-                                        className="lp-hero-iframe"
-                                        scrolling="no"
-                                    />
-                                </div>
-                                {avgRating && (
-                                    <div className="lp-hero-chip">
-                                        <span className="lp-star" />
-                                        <div className="leading-tight">
-                                            <div className="lp-pixel text-[9px]" style={{ color: 'var(--lp-coin)' }}>{avgRating}/5.0</div>
-                                            <div className="lp-pixel text-[6px] text-white/60 mt-1">{reviews.length} ULASAN</div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                            <HeroShowcase avgRating={avgRating} reviewCount={reviews.length} />
                             {/* Tap-through overlay CTA: open the full preview in a new tab */}
                             <a
                                 href={HERO_PREVIEW_URL}
@@ -444,6 +388,7 @@ export function NewLandingPage() {
 
             {/* ============ KEUNGGULAN (Why Choose Us) ============ */}
             <section id="keunggulan" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24 relative overflow-hidden">
+                <BandDecor variant="a" />
                 <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
                         <div className="lp-eyebrow">★ KENAPA MEMILIH KAMI ★</div>
@@ -483,8 +428,9 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ THEMES ============ */}
-            <section id="tema" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24">
-                <div className="container mx-auto px-5 sm:px-6">
+            <section id="tema" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24 relative overflow-hidden">
+                <BandDecor variant="b" />
+                <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 sm:mb-14">
                         <div className="max-w-xl">
                             <div className="lp-eyebrow">▶ SELECT YOUR STAGE ◀</div>
@@ -572,8 +518,9 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ PRICING ============ */}
-            <section id="harga" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24">
-                <div className="container mx-auto px-5 sm:px-6">
+            <section id="harga" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24 relative overflow-hidden">
+                <BandDecor variant="c" />
+                <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
                         <div className="lp-eyebrow">🪙 INSERT COIN 🪙</div>
                         <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
@@ -617,7 +564,7 @@ export function NewLandingPage() {
                                         ))}
                                     </ul>
 
-                                    <Link to="/register" className={`lp-btn w-full text-center block text-[10px] py-4 ${isPremium ? 'lp-btn-coin' : 'lp-btn-ghost'}`}>
+                                    <Link to={`/register?plan_type=${encodeURIComponent(p.plan_type)}`} className={`lp-btn w-full text-center block text-[10px] py-4 ${isPremium ? 'lp-btn-coin' : 'lp-btn-ghost'}`}>
                                         PILIH PAKET
                                     </Link>
                                 </div>
@@ -631,8 +578,9 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ FEATURES (Additional) ============ */}
-            <section id="fitur" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24">
-                <div className="container mx-auto px-5 sm:px-6">
+            <section id="fitur" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24 relative overflow-hidden">
+                <BandDecor variant="d" />
+                <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
                         <div className="lp-eyebrow">🎁 POWER-UPS 🎁</div>
                         <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4 mb-5" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
@@ -661,7 +609,7 @@ export function NewLandingPage() {
                             <div key={f.key} className="lp-list-item flex items-center gap-4 sm:gap-5 py-5 sm:py-6 group">
                                 <span className="lp-qmark group-hover:-translate-y-1 transition-transform">?</span>
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="lp-pixel text-[10px] sm:text-[11px] text-white truncate mb-1.5">{f.name}</h3>
+                                    <h3 className="lp-pixel text-[10px] sm:text-[11px] text-white leading-[1.6] break-words mb-1.5">{f.name}</h3>
                                     <p className="text-white/70 text-xs sm:text-sm leading-relaxed">{f.desc}</p>
                                 </div>
                                 {f.price && (
@@ -676,8 +624,9 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ TESTIMONIALS ============ */}
-            <section id="testimoni" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24">
-                <div className="container mx-auto px-5 sm:px-6">
+            <section id="testimoni" className="scroll-mt-24 lp-band lp-band-dark py-16 sm:py-24 relative overflow-hidden">
+                <BandDecor variant="e" />
+                <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="text-center mb-12 sm:mb-16">
                         <div className="lp-eyebrow">💬 HIGH SCORES 💬</div>
                         <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
@@ -771,8 +720,9 @@ export function NewLandingPage() {
             </section>
 
             {/* ============ FAQ ============ */}
-            <section id="faq" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24">
-                <div className="container mx-auto px-5 sm:px-6">
+            <section id="faq" className="scroll-mt-24 lp-band lp-band-sky py-16 sm:py-24 relative overflow-hidden">
+                <BandDecor variant="f" />
+                <div className="container mx-auto px-5 sm:px-6 relative z-10">
                     <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
                         <div className="lp-eyebrow">❔ NEED A HINT ❔</div>
                         <h2 className="lp-pixel text-xl sm:text-3xl lg:text-4xl text-white leading-[1.5] mt-4" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
@@ -910,6 +860,424 @@ export function NewLandingPage() {
 }
 
 /* ==========================================================================
+   HeroShowcase — the center live-preview phone flanked by two theme
+   screenshots. All three panels are the SAME size; the active one sits in the
+   center (the live iframe when it's active, an enlarged screenshot otherwise).
+   Clicking a side panel swaps it into the center. Screenshots ≥ xl only.
+   ========================================================================== */
+type ShowcaseKey = 'live' | 'shot1' | 'shot2';
+
+function HeroShowcase({ avgRating, reviewCount }: { avgRating: string | null; reviewCount: number }) {
+    const [center, setCenter] = useState<ShowcaseKey>('live');
+
+    // CRITICAL: the panels are rendered in a FIXED DOM order with stable keys and
+    // are NEVER conditionally mounted/unmounted. In particular the live <iframe>
+    // is mounted exactly once and stays mounted. Which panel appears in the
+    // center is decided purely by CSS `order` (flexbox), so clicking a side
+    // panel only re-styles nodes — it never re-creates the iframe, so the live
+    // preview (and any game running inside it) does NOT reload.
+    const PANELS: ShowcaseKey[] = ['live', 'shot1', 'shot2'];
+
+    // Assign flex `order` so `center` sits in the middle (order 1) and the other
+    // two flank it left (0) / right (2), keeping their natural relative order.
+    const flanks = PANELS.filter((k) => k !== center);
+    const orderOf = (key: ShowcaseKey): number => {
+        if (key === center) return 1;
+        return flanks[0] === key ? 0 : 2;
+    };
+
+    const sideProps = (key: ShowcaseKey) => ({
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick: () => setCenter(key),
+        onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCenter(key); }
+        },
+    });
+
+    return (
+        <div className="lp-hero-stage">
+            {PANELS.map((key) => {
+                const isCenter = key === center;
+                const order = orderOf(key);
+                // position class drives rotation/overlap of the two flanks
+                const pos = isCenter ? 'is-center' : order === 0 ? 'is-left' : 'is-right';
+                const cls = `lp-hero-slot ${isCenter ? 'lp-hero-slot-center' : 'lp-hero-slot-side'} ${pos}`;
+                // side panels are clickable; the centered one is not
+                const interactive = isCenter ? {} : sideProps(key);
+
+                if (key === 'live') {
+                    return (
+                        <div key="live" className={cls} style={{ order }} {...interactive}>
+                            {/* frame chrome */}
+                            <div className="lp-hero-frame">
+                                <div className="lp-hero-card-top">
+                                    <span className="lp-dot r" /><span className="lp-dot y" /><span className="lp-dot g" />
+                                    <span className="lp-pixel text-[7px] text-white/70 ml-2">WORLD 1-1</span>
+                                    <span className="lp-live-badge ml-auto"><span className="lp-live-dot" /> LIVE</span>
+                                </div>
+                                <div className="lp-hero-screen">
+                                    {/* mounted once, never torn down → no reload on swap */}
+                                    <iframe
+                                        src={HERO_PREVIEW_URL}
+                                        title="Pratinjau undangan interaktif"
+                                        loading="lazy"
+                                        className="lp-hero-iframe"
+                                        scrolling="no"
+                                    />
+                                    {/* when this panel is a flank, an overlay covers the
+                                        iframe so pointer events don't reach it and it reads
+                                        as a clickable card. The iframe keeps running underneath. */}
+                                    {!isCenter && (
+                                        <div className="lp-hero-live-poster">
+                                            <span className="lp-pixel text-[8px] text-white/90">▶ LIVE</span>
+                                            <span className="lp-pixel text-[6px] text-white/60 mt-2">KLIK UTK MAIN</span>
+                                        </div>
+                                    )}
+                                </div>
+                                {isCenter && avgRating && (
+                                    <div className="lp-hero-chip">
+                                        <span className="lp-star" />
+                                        <div className="leading-tight">
+                                            <div className="lp-pixel text-[9px]" style={{ color: 'var(--lp-coin)' }}>{avgRating}/5.0</div>
+                                            <div className="lp-pixel text-[6px] text-white/60 mt-1">{reviewCount} ULASAN</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+
+                // screenshot panels (shot1 / shot2)
+                const img = key === 'shot1' ? lp01 : lp02;
+                return (
+                    <div key={key} className={cls} style={{ order }} {...interactive}>
+                        <div className="lp-hero-frame">
+                            {isCenter && (
+                                <div className="lp-hero-card-top">
+                                    <span className="lp-dot r" /><span className="lp-dot y" /><span className="lp-dot g" />
+                                    <span className="lp-pixel text-[7px] text-white/70 ml-2">TEMA</span>
+                                    <span className="lp-live-badge ml-auto">DEMO</span>
+                                </div>
+                            )}
+                            <div className="lp-hero-screen">
+                                <img src={img} alt="" className="lp-hero-shot-img" loading="lazy" />
+                                {!isCenter && <span className="lp-hero-side-hint">KLIK</span>}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/* ==========================================================================
+   HeroRunner — a tiny playable endless-runner pinned to the hero's ground
+   strip (à la the Chrome dino game), Mario-flavoured. DESKTOP ONLY: hidden
+   under 900px via CSS (it needs a keyboard / deliberate click and shouldn't
+   steal taps on mobile). The player auto-runs; Space / ArrowUp / click jumps
+   over scrolling obstacles (goombas & pipes). Physics run on a single RAF loop
+   whose id + listeners are torn down on unmount so nothing leaks.
+   All sprites are CSS pixel blocks — no image assets.
+   ========================================================================== */
+function HeroRunner() {
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const playerRef = useRef<HTMLDivElement | null>(null);
+    const worldRef = useRef<HTMLDivElement | null>(null);   // holds obstacles
+    const scoreRef = useRef<HTMLSpanElement | null>(null);
+    const [dead, setDead] = useState(false);
+    const [started, setStarted] = useState(false);
+
+    useEffect(() => {
+        const root = rootRef.current, player = playerRef.current, world = worldRef.current;
+        if (!root || !player || !world) return;
+
+        // ---- tunables (ground-relative units, px) ----
+        const GROUND = 0;            // player bottom offset baseline
+        const GRAVITY = 2400;        // px/s²
+        const JUMP_V = 720;          // initial jump velocity px/s
+        const BASE_SPEED = 300;      // px/s obstacle scroll
+        const SPAWN_MIN = 0.9, SPAWN_MAX = 1.7; // seconds between spawns
+
+        const RUN_X_SPEED = 260;     // px/s horizontal walk speed (maju/mundur)
+        const PW = 26;               // player width (hitbox)
+
+        // default spawn X = horizontally under the hero PRESS START button, so
+        // the runner starts right below it. Falls back to a small left offset.
+        const defaultX = () => {
+            const btn = document.getElementById('lp-hero-start');
+            if (!btn) return 34;
+            const b = btn.getBoundingClientRect();
+            const r = root.getBoundingClientRect();
+            const x = b.left - r.left + b.width / 2 - PW / 2;   // center under button
+            return Math.max(8, Math.min(x, root.clientWidth - PW - 8));
+        };
+
+        type Obs = { el: HTMLDivElement; x: number; w: number; h: number };
+        let obstacles: Obs[] = [];
+        let y = 0, vy = 0;           // player vertical pos/vel
+        let px = defaultX();         // player horizontal position (left offset)
+        let moveDir = 0;             // -1 mundur, +1 maju, 0 diam (from held keys)
+        let facing = 1;              // last non-zero dir, for sprite flip
+        let running = false;
+        let over = false;
+        let hasStarted = false;
+        let speed = BASE_SPEED;
+        let dist = 0;
+        let spawnTimer = 0, nextSpawn = 1.2;
+        let last = 0, rafId = 0;
+        // deterministic-ish varied spawns without Math.random dependency issues
+        let seed = 12345;
+        const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+
+        const setScore = (v: number) => { if (scoreRef.current) scoreRef.current.textContent = String(Math.floor(v)).padStart(5, '0'); };
+
+        const spawn = () => {
+            const el = document.createElement('div');
+            const isPipe = rnd() > 0.55;
+            el.className = isPipe ? 'lp-run-obs lp-run-pipe' : 'lp-run-obs lp-run-goomba';
+            const w = isPipe ? 26 : 24;
+            const h = isPipe ? 34 : 22;
+            const rootW = root.clientWidth;
+            const o: Obs = { el, x: rootW + 20, w, h };
+            el.style.transform = `translateX(${o.x}px)`;
+            world.appendChild(el);
+            obstacles.push(o);
+        };
+
+        const clearObstacles = () => { obstacles.forEach(o => o.el.remove()); obstacles = []; };
+
+        const applyPlayer = () => { player.style.transform = `translate(${px - 34}px, ${-y}px) scaleX(${facing})`; };
+
+        const reset = () => {
+            over = false; y = 0; vy = 0; speed = BASE_SPEED; dist = 0;
+            px = defaultX(); moveDir = 0; facing = 1;
+            spawnTimer = 0; nextSpawn = 1.0; clearObstacles(); setScore(0);
+            applyPlayer();
+            player.classList.remove('is-dead');
+            root.classList.remove('is-over');
+            setDead(false);
+        };
+
+        const jump = () => {
+            if (over) { reset(); running = true; return; }
+            if (!hasStarted) { hasStarted = true; running = true; setStarted(true); }
+            if (y <= 0.5) vy = JUMP_V;         // only when grounded
+        };
+
+        const die = () => {
+            over = true; running = false;
+            player.classList.add('is-dead');
+            root.classList.add('is-over');
+            setDead(true);
+        };
+
+        const loop = (t: number) => {
+            rafId = requestAnimationFrame(loop);
+            if (!last) last = t;
+            let dt = (t - last) / 1000; last = t;
+            if (dt > 0.05) dt = 0.05;          // clamp after tab-switch
+
+            if (running && !over) {
+                // player physics — vertical (jump)
+                vy -= GRAVITY * dt;
+                y += vy * dt;
+                if (y < 0) { y = 0; vy = 0; }
+
+                // player physics — horizontal (maju/mundur), clamped in bounds
+                if (moveDir !== 0) {
+                    px += moveDir * RUN_X_SPEED * dt;
+                    facing = moveDir;
+                    const maxX = root.clientWidth - PW - 8;
+                    if (px < 8) px = 8;
+                    if (px > maxX) px = maxX;
+                }
+                // combined transform: horizontal position + jump height + facing flip
+                applyPlayer();
+
+                // difficulty ramps slowly with distance
+                dist += speed * dt;
+                speed = BASE_SPEED + Math.min(260, dist / 60);
+                setScore(dist / 10);
+
+                // spawn cadence
+                spawnTimer += dt;
+                if (spawnTimer >= nextSpawn) {
+                    spawnTimer = 0;
+                    nextSpawn = SPAWN_MIN + rnd() * (SPAWN_MAX - SPAWN_MIN);
+                    spawn();
+                }
+
+                // move obstacles + collide against the player's LIVE x (px)
+                for (const o of obstacles) {
+                    o.x -= speed * dt;
+                    o.el.style.transform = `translateX(${o.x}px)`;
+                    // AABB: player occupies [px, px+PW]; a hit needs horizontal
+                    // overlap AND the player low enough to touch the obstacle.
+                    const hit = o.x < px + PW && o.x + o.w > px && y < o.h - 4;
+                    if (hit) die();
+                }
+                // cull off-screen
+                if (obstacles.length && obstacles[0].x + obstacles[0].w < -10) {
+                    obstacles[0].el.remove();
+                    obstacles.shift();
+                }
+            }
+        };
+
+        // ignore game keys while typing in a field, and only when the runner is
+        // actually on screen (desktop)
+        const active = () => {
+            const tag = (document.activeElement?.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea') return false;
+            return getComputedStyle(root).display !== 'none';
+        };
+        const isJump = (e: KeyboardEvent) => e.code === 'Space' || e.code === 'ArrowUp' || e.key === ' ' || e.key === 'ArrowUp';
+        const isLeft = (e: KeyboardEvent) => e.code === 'ArrowLeft' || e.code === 'KeyA';
+        const isRight = (e: KeyboardEvent) => e.code === 'ArrowRight' || e.code === 'KeyD';
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (!(isJump(e) || isLeft(e) || isRight(e))) return;
+            if (!active()) return;
+            e.preventDefault();
+            if (isJump(e)) { jump(); return; }
+            // maju/mundur: auto-start the run on first move too
+            if (over) return;
+            if (!hasStarted) { hasStarted = true; running = true; setStarted(true); }
+            if (isLeft(e)) moveDir = -1;
+            else if (isRight(e)) moveDir = 1;
+        };
+        const onKeyUp = (e: KeyboardEvent) => {
+            if (isLeft(e) && moveDir === -1) moveDir = 0;
+            else if (isRight(e) && moveDir === 1) moveDir = 0;
+        };
+        const onClick = () => { if (active()) jump(); };
+
+        // keep the resting character under the PRESS START button; realign on
+        // resize but only while idle (don't yank the player mid-run).
+        const onResize = () => { if (!hasStarted || over) { px = defaultX(); applyPlayer(); } };
+
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        window.addEventListener('resize', onResize);
+        root.addEventListener('click', onClick);
+
+        // place the player under the button on first paint, then start the loop
+        px = defaultX();
+        applyPlayer();
+        rafId = requestAnimationFrame(loop);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('keyup', onKeyUp);
+            window.removeEventListener('resize', onResize);
+            root.removeEventListener('click', onClick);
+            clearObstacles();
+        };
+    }, []);
+
+    return (
+        <div className="lp-runner" ref={rootRef} aria-hidden="true">
+            {/* score */}
+            <div className="lp-run-score">HI <span ref={scoreRef}>00000</span></div>
+            {/* hint / game-over */}
+            {!started && <div className="lp-run-hint">◀ ▶ GERAK · SPASI LOMPAT · KLIK MAIN</div>}
+            {dead && <div className="lp-run-hint lp-run-over">GAME OVER · KLIK UNTUK ULANG</div>}
+            {/* moving world (obstacles injected here) */}
+            <div className="lp-run-world" ref={worldRef} aria-hidden="true" />
+            {/* the runner */}
+            <div className="lp-run-player" ref={playerRef} aria-hidden="true">
+                <span className="rp-cap" /><span className="rp-face" /><span className="rp-leg l" /><span className="rp-leg r" />
+            </div>
+            {/* the ground strip itself */}
+            <div className="lp-run-ground" aria-hidden="true" />
+        </div>
+    );
+}
+
+/* ==========================================================================
+   BandDecor — a non-interactive layer of floating pixel-art Mario props that
+   sits BEHIND each section's content (z-1, content is z-10). Every prop has
+   pointer-events:none + low opacity so it decorates without ever blocking a
+   tap or hurting text contrast. `variant` picks a different prop mix per band
+   so the page doesn't feel repetitive as you scroll.
+   ========================================================================== */
+function BandDecor({ variant }: { variant: 'a' | 'b' | 'c' | 'd' | 'e' | 'f' }) {
+    // Each variant is a small hand-placed arrangement. Positions are inline so
+    // one CSS block covers the shared look and the JSX controls placement.
+    const sets: Record<string, React.ReactNode> = {
+        // Keunggulan — clouds + coins + a couple of ? blocks up top
+        a: (
+            <>
+                <span className="bd-cloud" style={{ top: '8%', left: '-10%' }} />
+                <span className="bd-cloud" style={{ top: '52%', left: '-14%', animationDuration: '34s', transform: 'scale(.8)' }} />
+                <span className="bd-qblock" style={{ top: '16%', right: '5%' }}>?</span>
+                <span className="bd-coin" style={{ top: '38%', right: '9%' }} />
+                <span className="bd-star" style={{ bottom: '16%', left: '6%' }} />
+                <span className="bd-brick" style={{ bottom: '22%', right: '7%' }} />
+            </>
+        ),
+        // Tema — pipe + goomba near the ground, coins drifting
+        b: (
+            <>
+                <span className="bd-cloud" style={{ top: '10%', left: '-12%', animationDuration: '30s' }} />
+                <span className="bd-coin" style={{ top: '24%', left: '7%' }} />
+                <span className="bd-qblock" style={{ top: '60%', left: '4%' }}>?</span>
+                <span className="bd-pipe" style={{ bottom: '14px', right: '4%' }} />
+                <span className="bd-goomba" style={{ bottom: '16px', left: '9%' }} />
+                <span className="bd-star" style={{ top: '20%', right: '6%' }} />
+            </>
+        ),
+        // Harga — coins galore (money vibe) + ? blocks
+        c: (
+            <>
+                <span className="bd-coin" style={{ top: '14%', left: '6%' }} />
+                <span className="bd-coin" style={{ top: '30%', right: '7%', animationDelay: '-.5s' }} />
+                <span className="bd-coin" style={{ bottom: '24%', left: '10%', animationDelay: '-.8s' }} />
+                <span className="bd-qblock" style={{ top: '20%', right: '12%' }}>?</span>
+                <span className="bd-brick" style={{ top: '46%', left: '3%' }} />
+                <span className="bd-star" style={{ bottom: '18%', right: '6%' }} />
+            </>
+        ),
+        // Fitur — clouds + hill silhouette + a pipe
+        d: (
+            <>
+                <span className="bd-cloud" style={{ top: '9%', left: '-12%', animationDuration: '32s' }} />
+                <span className="bd-hill" style={{ bottom: '14px', left: '-30px' }} />
+                <span className="bd-hill" style={{ bottom: '14px', right: '-40px', width: '150px', height: '80px' }} />
+                <span className="bd-qblock" style={{ top: '18%', right: '5%' }}>?</span>
+                <span className="bd-coin" style={{ top: '44%', left: '5%' }} />
+                <span className="bd-goomba" style={{ bottom: '16px', right: '10%' }} />
+            </>
+        ),
+        // Testimoni — stars (high scores) + coins
+        e: (
+            <>
+                <span className="bd-star" style={{ top: '12%', left: '6%' }} />
+                <span className="bd-star" style={{ bottom: '20%', right: '7%', animationDelay: '-1s' }} />
+                <span className="bd-coin" style={{ top: '30%', right: '10%' }} />
+                <span className="bd-qblock" style={{ top: '54%', left: '4%' }}>?</span>
+                <span className="bd-cloud" style={{ top: '10%', left: '-12%', animationDuration: '36s' }} />
+            </>
+        ),
+        // FAQ — ? blocks (questions!) + a coin
+        f: (
+            <>
+                <span className="bd-qblock" style={{ top: '14%', left: '6%' }}>?</span>
+                <span className="bd-qblock" style={{ bottom: '22%', right: '7%', animationDelay: '-1s' }}>?</span>
+                <span className="bd-coin" style={{ top: '40%', right: '10%' }} />
+                <span className="bd-cloud" style={{ top: '8%', left: '-12%', animationDuration: '30s' }} />
+                <span className="bd-star" style={{ bottom: '18%', left: '9%' }} />
+            </>
+        ),
+    };
+    return <div className="lp-band-deco" aria-hidden="true">{sets[variant]}</div>;
+}
+
+/* ==========================================================================
    Retro-game styling — scoped to `.rm-lp` so it can't leak into the rest of
    the app. Loads the pixel font, defines the NES palette, pixel borders,
    3D block buttons, and all the floating Mario-style decor.
@@ -943,7 +1311,9 @@ function RetroStyles() {
     font-family: 'Press Start 2P', monospace;
     text-transform: uppercase; letter-spacing: 1px; line-height: 1.5;
     border: 3px solid #000; cursor: pointer; text-decoration: none;
-    transition: transform .1s, box-shadow .1s; display: inline-block;
+    white-space: nowrap;                 /* text + icon stay on one line */
+    transition: transform .1s, box-shadow .1s;
+    display: inline-flex; align-items: center; justify-content: center;
 }
 .rm-lp .lp-btn:active { transform: translateY(4px); }
 .rm-lp .lp-btn-coin { background: var(--lp-coin); color: #000; box-shadow: 0 5px 0 var(--lp-coin-deep); }
@@ -972,11 +1342,91 @@ function RetroStyles() {
 .rm-lp .lp-hero {
     background: linear-gradient(180deg, var(--lp-sky-deep) 0%, var(--lp-sky) 55%, var(--lp-sky-2) 100%);
 }
-.rm-lp .lp-ground {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 46px; z-index: 2;
-    background: repeating-linear-gradient(90deg, var(--lp-ground) 0 30px, var(--lp-ground-2) 30px 32px);
-    border-top: 4px solid #000;
+/* ---- Hero endless-runner mini-game (desktop only) ---- */
+.rm-lp .lp-runner {
+    position: absolute; left: -1px; right: -1px; bottom: 0; height: 92px; z-index: 5;
+    /* NO clipping on the root — so the player can jump above the strip with no
+       hard clip line. Off-screen obstacles are clipped by .lp-hero (overflow). */
+    overflow: visible;
+    cursor: pointer; display: none;   /* shown on desktop below */
+    /* The line some browsers painted at this box's top edge was a GPU
+       compositing seam: .lp-runner is promoted to its own layer (positioned +
+       animated children) and its box edge could land on a fractional pixel,
+       anti-aliasing against the hero gradient behind it. Pinning it to its own
+       pixel-snapped layer removes the seam. */
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    /* The intermittent full-width "border" was the browser's FOCUS OUTLINE:
+       clicking the runner focuses it (role=button + tabindex), then pressing a
+       key triggers :focus-visible, drawing an outline around this full-width
+       box — read as a line at its top edge. It's a game surface, not a
+       nav control, so suppress the outline. */
+    outline: none;
 }
+.rm-lp .lp-runner:focus, .rm-lp .lp-runner:focus-visible { outline: none; box-shadow: none; }
+@media (min-width: 900px) { .rm-lp .lp-runner { display: block; } }
+/* the ground strip the runner sits on (no top border — blends into the sky) */
+.rm-lp .lp-run-ground {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 46px; z-index: 1;
+    background: repeating-linear-gradient(90deg, var(--lp-ground) 0 30px, var(--lp-ground-2) 30px 32px);
+}
+/* Obstacle lane. It repaints every frame (obstacles translateX), and a
+   composited layer's hard TOP edge sitting over the sky flickers a 1px seam on
+   those repaints — THIS was the intermittent "border" that came and went with
+   the moving obstacles. Fix: push the lane's top FAR above the hero so its top
+   edge is off-screen (clipped by .lp-hero's overflow) and can never be seen.
+   Obstacles stay bottom-anchored (bottom:46px), so gameplay is unchanged. */
+.rm-lp .lp-run-world {
+    position: absolute; left: 0; right: 0; bottom: 0; top: -100vh; z-index: 2;
+}
+/* obstacles are absolutely placed on the ground line (46px up), moved via
+   translateX by JS. */
+.rm-lp .lp-run-obs { position: absolute; left: 0; bottom: 46px; image-rendering: pixelated; }
+.rm-lp .lp-run-pipe {
+    width: 26px; height: 34px; background: var(--lp-green); border: 3px solid #000;
+    box-shadow: inset -6px 0 0 rgba(0,0,0,.18), inset 6px 0 0 rgba(255,255,255,.22);
+}
+.rm-lp .lp-run-pipe::before {
+    content: ''; position: absolute; top: -8px; left: -5px; right: -5px; height: 11px;
+    background: var(--lp-green); border: 3px solid #000;
+}
+.rm-lp .lp-run-goomba {
+    width: 24px; height: 22px; background: #9a5a2a; border: 3px solid #000;
+    border-radius: 12px 12px 4px 4px;
+    /* NB: no transform-based walk here — JS drives translateX to scroll it, and
+       a CSS transform animation would clobber that. The scroll IS the motion. */
+    animation: lp-run-squash .5s steps(2) infinite;
+}
+@keyframes lp-run-squash { 50% { border-radius: 12px 12px 8px 8px; height: 20px; } }
+.rm-lp .lp-run-goomba::before, .rm-lp .lp-run-goomba::after { content: ''; position: absolute; top: 7px; width: 4px; height: 5px; background: #fff; }
+.rm-lp .lp-run-goomba::before { left: 4px; } .rm-lp .lp-run-goomba::after { right: 4px; }
+/* the player — a little pixel runner, bottom-anchored above the ground */
+.rm-lp .lp-run-player {
+    position: absolute; left: 34px; bottom: 46px; width: 26px; height: 28px; z-index: 3;
+    image-rendering: pixelated;
+}
+.rm-lp .rp-cap  { position: absolute; top: 0; left: 2px; width: 22px; height: 8px; background: var(--lp-red); border: 2px solid #000; }
+.rm-lp .rp-face { position: absolute; top: 7px; left: 4px; width: 18px; height: 12px; background: #ffcf9e; border: 2px solid #000; }
+.rm-lp .rp-leg  { position: absolute; bottom: 0; width: 8px; height: 9px; background: #2a4fb0; border: 2px solid #000; }
+.rm-lp .rp-leg.l { left: 3px; animation: lp-run-legA .18s steps(2) infinite; }
+.rm-lp .rp-leg.r { right: 3px; animation: lp-run-legB .18s steps(2) infinite; }
+@keyframes lp-run-legA { 50% { transform: translateY(-3px); } }
+@keyframes lp-run-legB { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(0); } }
+.rm-lp .lp-run-player.is-dead .rp-leg { animation: none; }
+.rm-lp .lp-run-player.is-dead { filter: grayscale(.5) brightness(.8); }
+/* HUD */
+.rm-lp .lp-run-score {
+    position: absolute; top: 8px; right: 12px; z-index: 4;
+    font-family: 'Press Start 2P', monospace; font-size: 9px; color: #fff;
+    text-shadow: 1px 1px 0 rgba(0,0,0,.6); opacity: .8; letter-spacing: 1px;
+}
+.rm-lp .lp-run-hint {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 4;
+    font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--lp-coin);
+    text-shadow: 1px 1px 0 rgba(0,0,0,.6); white-space: nowrap;
+    animation: lp-blink 1.1s steps(2) infinite;
+}
+.rm-lp .lp-run-over { color: #fff; background: rgba(0,0,0,.55); padding: 5px 9px; border: 2px solid #000; border-radius: 3px; animation: none; }
 .rm-lp .lp-hero-deco { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .rm-lp .lp-hero-deco > span { position: absolute; image-rendering: pixelated; }
 
@@ -1040,15 +1490,60 @@ function RetroStyles() {
     filter: drop-shadow(1px 1px 0 rgba(0,0,0,.4));
 }
 
-/* Pixel phone frame holding the live-preview iframe (portrait 9:16). */
-.rm-lp .lp-hero-phone {
+/* Hero stage: 3 EQUAL-size panels (center + 2 flanks). Panels are rendered in a
+   FIXED DOM order (live, shot1, shot2) and never remounted — their visual left/
+   center/right position is set purely by flexbox 'order' (inline style) + the
+   .is-left/.is-center/.is-right classes below. That's what keeps the live
+   iframe from reloading when you click a flank. */
+.rm-lp .lp-hero-stage {
+    position: relative; display: flex; align-items: center; justify-content: center;
+}
+.rm-lp .lp-hero-slot { flex: 0 0 auto; transition: transform .5s, filter .3s; }
+.rm-lp .lp-hero-slot-center { z-index: 3; }
+.rm-lp .lp-hero-slot-side { z-index: 1; display: none; cursor: pointer; }
+@media (min-width: 1280px) { .rm-lp .lp-hero-slot-side { display: block; } }
+/* flank positioning keyed off the position class (NOT :first/:last-child, since
+   DOM order is fixed and only 'order' changes) */
+.rm-lp .lp-hero-slot.is-left  { transform: rotate(-5deg) translateY(20px); margin-right: -30px; }
+.rm-lp .lp-hero-slot.is-right { transform: rotate(5deg)  translateY(20px); margin-left: -30px; }
+.rm-lp .lp-hero-slot.is-left:hover  { transform: rotate(-2deg) translateY(8px); }
+.rm-lp .lp-hero-slot.is-right:hover { transform: rotate(2deg)  translateY(8px); }
+
+/* The frame chrome (border/shadow/size) lives on .lp-hero-frame so the outer
+   slot can own position/order without fighting the frame's transform. */
+.rm-lp .lp-hero-frame {
     position: relative; width: 260px; max-width: 100%;
     border: 5px solid #000; background: var(--lp-panel);
-    box-shadow: 8px 8px 0 rgba(0,0,0,.5); transform: rotate(1.5deg);
-    transition: transform .6s; border-radius: 6px; overflow: hidden;
+    border-radius: 6px; overflow: hidden; transition: filter .3s, box-shadow .3s, transform .6s;
 }
-@media (min-width: 1024px) { .rm-lp .lp-hero-phone { width: 400px; } }
-.rm-lp .lp-hero-phone:hover { transform: rotate(0); }
+/* center = big + strong shadow + slight tilt that straightens on hover */
+.rm-lp .lp-hero-slot-center .lp-hero-frame {
+    box-shadow: 8px 8px 0 rgba(0,0,0,.5); transform: rotate(1.5deg);
+}
+.rm-lp .lp-hero-slot-center .lp-hero-frame:hover { transform: rotate(0); }
+@media (min-width: 1024px) { .rm-lp .lp-hero-slot-center .lp-hero-frame { width: 400px; } }
+/* flanks = same style, slightly smaller + dimmed until hovered */
+.rm-lp .lp-hero-slot-side .lp-hero-frame {
+    box-shadow: 6px 6px 0 rgba(0,0,0,.45); filter: brightness(.82) saturate(.9);
+}
+@media (min-width: 1280px) { .rm-lp .lp-hero-slot-side .lp-hero-frame { width: 300px; } }
+.rm-lp .lp-hero-slot-side:hover .lp-hero-frame { filter: brightness(1) saturate(1); }
+
+.rm-lp .lp-hero-shot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* poster overlays the (still-running) live iframe when it's a flank; it also
+   swallows pointer events so clicks land on the slot, not inside the iframe. */
+.rm-lp .lp-hero-live-poster {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; z-index: 3;
+    background: rgba(14,14,26,.72); backdrop-filter: blur(1px);
+}
+.rm-lp .lp-hero-side-hint {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    font-family: 'Press Start 2P', monospace; font-size: 7px;
+    background: var(--lp-coin); color: #0e0e1a; border: 2px solid #000;
+    padding: 3px 6px; border-radius: 3px; z-index: 2;
+}
+
 .rm-lp .lp-hero-card-top {
     display: flex; align-items: center; gap: 6px; padding: 8px 12px;
     background: var(--lp-red); border-bottom: 3px solid #000;
@@ -1094,6 +1589,69 @@ function RetroStyles() {
 .rm-lp .lp-band-dark::after {
     background: repeating-linear-gradient(90deg, #6a4422 0 30px, #523218 30px 32px);
     border-top: 4px solid #8a5a2c;
+}
+
+/* ---- per-band floating decor layer (behind content: z-1, content is z-10) ---- */
+.rm-lp .lp-band-deco {
+    position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none;
+}
+.rm-lp .lp-band-deco > span { position: absolute; image-rendering: pixelated; will-change: transform; }
+/* keep decor from crowding the text on dark bands (lower contrast there) */
+.rm-lp .lp-band-dark .lp-band-deco { opacity: .5; }
+.rm-lp .lp-band-sky  .lp-band-deco { opacity: .6; }
+
+/* pixel cloud (box-shadow puffs) — drifts across then loops */
+.rm-lp .bd-cloud {
+    width: 26px; height: 10px; background: #fff; border-radius: 6px;
+    box-shadow: 14px -6px 0 0 #fff, 30px 0 0 0 #fff, -2px 0 0 0 #fff;
+    animation: lp-drift 30s linear infinite;
+}
+/* ? question block (bobbing) */
+.rm-lp .bd-qblock {
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace; font-size: 12px; color: #7a4d00;
+    background: var(--lp-coin); border: 3px solid #000; border-radius: 3px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,.4); animation: lp-bob 3s ease-in-out infinite;
+}
+/* brick block */
+.rm-lp .bd-brick {
+    width: 26px; height: 26px; background: #b86a2c; border: 3px solid #000;
+    box-shadow: inset 0 0 0 2px #7a3d12, 2px 2px 0 rgba(0,0,0,.4);
+    animation: lp-bob 3.2s ease-in-out infinite;
+}
+/* spinning coin */
+.rm-lp .bd-coin {
+    width: 14px; height: 18px; background: #fde36a; border: 2px solid #b56f00; border-radius: 4px;
+    box-shadow: 0 0 0 1.5px #000; animation: lp-spin 1.6s steps(8) infinite;
+}
+/* star */
+.rm-lp .bd-star {
+    width: 20px; height: 20px; background: var(--lp-coin);
+    clip-path: polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+    filter: drop-shadow(1px 1px 0 rgba(0,0,0,.4)); animation: lp-bob 2.6s ease-in-out infinite;
+}
+/* green pipe (pinned near the ground strip) */
+.rm-lp .bd-pipe {
+    width: 42px; height: 52px; background: var(--lp-green); border: 3px solid #000;
+    box-shadow: inset -7px 0 0 rgba(0,0,0,.18), inset 7px 0 0 rgba(255,255,255,.22);
+}
+.rm-lp .bd-pipe::before {
+    content: ''; position: absolute; top: -9px; left: -6px; right: -6px; height: 12px;
+    background: var(--lp-green); border: 3px solid #000;
+}
+/* walking goomba */
+.rm-lp .bd-goomba {
+    width: 26px; height: 22px; background: #9a5a2a; border: 3px solid #000;
+    border-radius: 13px 13px 4px 4px; animation: lp-walk 3s ease-in-out infinite;
+}
+.rm-lp .bd-goomba::before, .rm-lp .bd-goomba::after { content: ''; position: absolute; top: 8px; width: 4px; height: 5px; background: #fff; }
+.rm-lp .bd-goomba::before { left: 5px; } .rm-lp .bd-goomba::after { right: 5px; }
+/* distant green hill */
+.rm-lp .bd-hill { width: 120px; height: 64px; background: #3a8a3a; border-radius: 64px 64px 0 0; opacity: .6; }
+
+/* respect reduced-motion: freeze the decor animations */
+@media (prefers-reduced-motion: reduce) {
+    .rm-lp .lp-band-deco > span { animation: none !important; }
 }
 
 .rm-lp .lp-eyebrow {
