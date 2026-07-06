@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import '../invitation.css';
 import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
-import type { Wish, InvitationContent, TimelineItem, ImageRecord } from '@/types';
+import type { Wish, InvitationContent, TimelineItem, ImageRecord, ThemeAssetMedia } from '@/types';
 import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@/shared/components/Modal';
@@ -1107,7 +1107,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             // Static theme asset media variables ({{asset_image_1}}, {{asset_video_1}}, ...)
             // Images resolve to the pre-fetched base64 (so they render in <img>);
             // videos/YouTube stay as their raw URL for <video>/<iframe>.
-            ...((activeTheme?.asset_media_list || []).reduce((acc: Record<string, string>, a) => {
+            ...((activeTheme?.asset_media_list || []).reduce((acc: Record<string, string>, a: ThemeAssetMedia) => {
                 if (a && a.media_code) {
                     acc[`asset_${a.media_code}`] = a.media_type === 'image'
                         ? (images[a.media_cdn_url] || a.media_cdn_url)
