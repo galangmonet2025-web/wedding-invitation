@@ -5,10 +5,10 @@ import { useAuthStore } from '../store/authStore';
 import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineExclamationCircle, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
-import { LoadingOverlay } from '@/shared/components/Loading';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 import { RetroAuthAside, RetroAuthStyle } from '../components/RetroAuthChrome';
+import { requestFullscreenAfterLogin } from '@/shared/hooks/useEnterFullscreenOnLogin';
 
 export function LoginPage() {
     const [username, setUsername] = useState('');
@@ -104,6 +104,8 @@ export function LoginPage() {
             setAuth('dummy-superadmin-token', fakeSuperAdminUser, mockTenant);
             toast.success(t('auth.welcome_superadmin'));
 
+            // On mobile, enter fullscreen on the first tap after the reload lands.
+            requestFullscreenAfterLogin();
             // Force a full page reload to clear all SPA state/stores for the new session
             window.location.href = window.location.origin + window.location.pathname + targetPath;
             return;
@@ -120,6 +122,8 @@ export function LoginPage() {
                     ? '/#/private/global-dashboard'
                     : (response.data.user.role === 'staff' ? '/#/private/scanner' : '/#/private/dashboard');
 
+                // On mobile, enter fullscreen on the first tap after the reload lands.
+                requestFullscreenAfterLogin();
                 // Force a full page reload to clear all SPA state/stores for the new session
                 window.location.href = window.location.origin + window.location.pathname + targetPath;
             } else {
@@ -136,7 +140,6 @@ export function LoginPage() {
     return (
         <div className="rm-lp min-h-screen flex" style={{ background: 'var(--lp-ink)' }}>
             <RetroAuthStyle />
-            {loading && <LoadingOverlay message={t('auth.logging_in')} />}
 
             {/* Panel kiri — "world 1-1" langit + dekorasi retro (lg+) */}
             <RetroAuthAside
@@ -239,8 +242,11 @@ export function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="lp-btn lp-btn-coin w-full text-[11px] py-4 mt-2"
+                            className="lp-btn lp-btn-coin w-full text-[11px] py-4 mt-2 inline-flex items-center justify-center gap-3"
                         >
+                            {loading && (
+                                <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                            )}
                             {loading ? t('auth.logging_in') : t('auth.login_button')}
                         </button>
                     </form>

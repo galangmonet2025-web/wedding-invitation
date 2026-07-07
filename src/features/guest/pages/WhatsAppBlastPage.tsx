@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react';
 import { useGuestStore } from '../store/guestStore';
 import {
     HiOutlineSearch,
     HiOutlineChatAlt2,
     HiOutlineCheckCircle,
     HiOutlineClock,
-    HiOutlineSave,
     HiOutlineRefresh,
+    HiOutlinePhone,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -14,6 +14,8 @@ import { invitationContentApi } from '@/core/api/endpoints';
 import { useTranslation } from 'react-i18next';
 import { InvitationContent } from '@/types';
 import { IconButton } from '@/shared/components/IconButton';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 // Helper: Convert WhatsApp Markdown to HTML for visual editor
 const whatsAppToHtml = (text: string) => {
@@ -74,14 +76,230 @@ const formatPhoneForWhatsApp = (phone: any) => {
 
 import { useInvitationContentStore } from '@/features/invitation/store/invitationContentStore';
 
+type GuestItemProps = {
+    guest: any,
+    onSend: (g: any) => void,
+    onUpdate: (id: string, data: any) => void,
+    onToggleStatus: (id: string, sent: boolean) => Promise<boolean> | void,
+};
+
+const isGuestSent = (guest: any) =>
+    guest.flag_sudah_kirim_undangan_via_whatsapp === true || guest.flag_sudah_kirim_undangan_via_whatsapp === 'TRUE';
+
+// Status badge yang bisa di-toggle. Saat menunggu update, badge menampilkan
+// spinner (bukan block screen). Update-nya sendiri senyap (skipLoader) & optimistik.
+function StatusToggleBadge({ guest, onToggleStatus, size = 'md' }: {
+    guest: any,
+    onToggleStatus: GuestItemProps['onToggleStatus'],
+    size?: 'sm' | 'md',
+}) {
+    const { t } = useTranslation();
+    const [isToggling, setIsToggling] = useState(false);
+    const isSent = isGuestSent(guest);
+
+    const handleClick = async () => {
+        if (isToggling) return;
+        setIsToggling(true);
+        try {
+            await onToggleStatus(guest.id, !isSent);
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    const pad = size === 'sm' ? 'px-2 py-0.5 text-[10px] gap-1' : 'px-2.5 py-1.5 text-[11px] gap-1.5 rounded-full';
+    const iconSize = size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5';
+
+    return (
+        <button
+            type="button"
+            onClick={handleClick}
+            disabled={isToggling}
+            title={isSent ? t('whatsapp_blast.mark_pending', 'Tandai belum terkirim') as string : t('whatsapp_blast.mark_sent', 'Tandai sudah terkirim') as string}
+            className={`inline-flex items-center rounded font-bold shrink-0 transition-all active:scale-95 disabled:opacity-70 ${pad} ${
+                isSent
+                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+                    : 'text-gray-500 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+        >
+            {isToggling ? (
+                <span className={`${iconSize} border-2 border-current/30 border-t-current rounded-full animate-spin`} />
+            ) : isSent ? (
+                <HiOutlineCheckCircle className={iconSize} />
+            ) : (
+                <HiOutlineClock className={iconSize} />
+            )}
+            {isSent ? t('whatsapp_blast.sent') : t('whatsapp_blast.pending')}
+        </button>
+    );
+}
+
+// Baris tabel desktop. Di-hoist ke module scope + memo agar identitasnya stabil:
+// update store pada 1 tamu tidak me-remount seluruh list (dulu bikin scroll loncat
+// ke atas tiap kali toggle status).
+const GuestRow = memo(({ guest, onSend, onUpdate, onToggleStatus }: GuestItemProps) => {
+    const { t } = useTranslation();
+    const [localName, setLocalName] = useState(guest.name || '');
+    const [localPhone, setLocalPhone] = useState(guest.phone || '');
+    const [isFocused, setIsFocused] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    useEffect(() => {
+        setLocalName(guest.name || '');
+        setLocalPhone(guest.phone || '');
+    }, [guest.name, guest.phone]);
+
+    const handleBlur = async () => {
+        setIsFocused(false);
+        if (localName !== guest.name || localPhone !== guest.phone) {
+            setIsUpdating(true);
+            try {
+                await onUpdate(guest.id, { name: localName, phone: localPhone });
+            } finally {
+                setIsUpdating(false);
+            }
+        }
+    };
+
+    return (
+        <tr className={`${isFocused ? 'bg-gold-50/50 dark:bg-gold-900/10 ring-1 ring-inset ring-gold-200 dark:ring-gold-900/50' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'} transition-all border-b border-gray-50 dark:border-gray-800 last:border-0 group`}>
+            <td className="px-3 py-1 relative">
+                <div className="flex items-center gap-2">
+                    <input
+                        type="text"
+                        value={localName}
+                        onChange={(e) => setLocalName(e.target.value)}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={handleBlur}
+                        className="w-full bg-transparent border-none focus:ring-0 rounded py-0.5 px-1 text-gray-800 dark:text-white font-medium text-sm transition-all"
+                        placeholder={t('common.name')}
+                    />
+                    {isUpdating && (
+                        <div className="w-3 h-3 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin shrink-0" />
+                    )}
+                </div>
+            </td>
+            <td className="px-3 py-1">
+                <input
+                    type="text"
+                    value={localPhone}
+                    onChange={(e) => setLocalPhone(e.target.value)}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={handleBlur}
+                    className="w-full bg-transparent border-none focus:ring-0 rounded py-0.5 px-1 text-xs text-gray-500 dark:text-gray-400 transition-all"
+                    placeholder={t('common.phone')}
+                />
+            </td>
+            <td className="px-3 py-1 text-center">
+                <StatusToggleBadge guest={guest} onToggleStatus={onToggleStatus} size="sm" />
+            </td>
+            <td className="px-3 py-1 text-right">
+                <button
+                    onClick={() => onSend({ ...guest, name: localName, phone: localPhone })}
+                    className="btn-primary py-1 px-3 text-[11px] flex items-center gap-1.5 ml-auto rounded-md transition-transform active:scale-95"
+                >
+                    <HiOutlineChatAlt2 className="w-3.5 h-3.5" />
+                    {t('whatsapp_blast.send')}
+                </button>
+            </td>
+        </tr>
+    );
+});
+
+// Kartu tamu versi mobile — hoisted + memo (alasan sama seperti GuestRow).
+const GuestMobileCard = memo(({ guest, onSend, onUpdate, onToggleStatus }: GuestItemProps) => {
+    const { t } = useTranslation();
+    const [localName, setLocalName] = useState(guest.name || '');
+    const [localPhone, setLocalPhone] = useState(guest.phone || '');
+    const [isFocused, setIsFocused] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    useEffect(() => {
+        setLocalName(guest.name || '');
+        setLocalPhone(guest.phone || '');
+    }, [guest.name, guest.phone]);
+
+    const handleBlur = async () => {
+        setIsFocused(false);
+        if (localName !== guest.name || localPhone !== guest.phone) {
+            setIsUpdating(true);
+            try {
+                await onUpdate(guest.id, { name: localName, phone: localPhone });
+            } finally {
+                setIsUpdating(false);
+            }
+        }
+    };
+
+    return (
+        <div
+            className={`rounded-xl p-3 relative transition-all duration-200 border ${
+                isFocused
+                    ? 'border-gold-400 shadow-md shadow-gold-500/10 bg-white dark:bg-wedding-dark-card'
+                    : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-wedding-dark-card shadow-sm'
+            }`}
+        >
+            {/* Top row: name (editable) + send button (tanpa avatar) */}
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <input
+                        type="text"
+                        value={localName}
+                        onChange={(e) => setLocalName(e.target.value)}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={handleBlur}
+                        className="w-full bg-transparent border-none focus:ring-0 rounded p-0 text-gray-850 dark:text-white font-bold text-sm leading-tight"
+                        placeholder={t('common.name')}
+                    />
+                    {isUpdating && (
+                        <div className="w-3 h-3 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin shrink-0" />
+                    )}
+                </div>
+
+                <button
+                    onClick={() => onSend({ ...guest, name: localName, phone: localPhone })}
+                    className="btn-primary py-1 px-2.5 text-[11px] flex items-center gap-1 rounded-full transition-transform active:scale-95 shadow-sm shrink-0 font-bold"
+                >
+                    <HiOutlineChatAlt2 className="w-3.5 h-3.5" />
+                    {t('whatsapp_blast.send')}
+                </button>
+            </div>
+
+            {/* Bottom row: phone sebagai FORM input asli (jelas bisa diubah) + status toggle */}
+            <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-dashed border-gray-100 dark:border-gray-800">
+                <div className="relative min-w-0 flex-1">
+                    <HiOutlinePhone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none z-10" />
+                    <input
+                        type="tel"
+                        inputMode="tel"
+                        value={localPhone}
+                        onChange={(e) => setLocalPhone(e.target.value)}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={handleBlur}
+                        className="w-full bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg py-1.5 pl-8 pr-2 text-[12px] text-gray-700 dark:text-gray-200 font-semibold leading-tight focus:outline-none focus:ring-2 focus:ring-gold-500/20 focus:border-gold-400 transition-all"
+                        placeholder={t('common.phone')}
+                    />
+                </div>
+
+                <StatusToggleBadge guest={guest} onToggleStatus={onToggleStatus} size="sm" />
+            </div>
+        </div>
+    );
+});
+
 export function WhatsAppBlastPage() {
     const { guests, loading: guestsLoading, fetchGuests, updateGuest, updateBlastStatus, setFilters } = useGuestStore();
-    const { content: invitationContent, loading: contentLoading, fetchContent, updateContent } = useInvitationContentStore();
+    const { content: invitationContent, loading: contentLoading, hasLoadedContent, fetchContent, updateContent } = useInvitationContentStore();
     const { t } = useTranslation();
     const { tenant } = useAuthStore();
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    const isAdminLayout = useBasePath() === '/admin';
     const editorRef = useRef<HTMLDivElement>(null);
+    const editorSeededRef = useRef(false);
+    // Markdown terakhir yang sudah tersimpan ke DB — dipakai agar auto-save saat
+    // blur tidak menembak API kalau isi editor tidak berubah.
+    const lastSavedMarkdownRef = useRef<string | null>(null);
     const [search, setSearch] = useState('');
-    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
     const loading = guestsLoading || contentLoading;
 
@@ -90,225 +308,81 @@ export function WhatsAppBlastPage() {
         `Halo {{nama}},\n\nKami mengundang Anda untuk hadir di acara pernikahan kami.\n\nDetail undangan dapat dilihat pada link berikut:\n{{link}}\n\nTerima kasih.`
     );
 
-    // Sub-component for editable row to prevent full-list re-renders
-    const GuestRow = ({ guest, onSend, onUpdate }: {
-        guest: any,
-        onSend: (g: any) => void,
-        onUpdate: (id: string, data: any) => void
-    }) => {
-        const [localName, setLocalName] = useState(guest.name || '');
-        const [localPhone, setLocalPhone] = useState(guest.phone || '');
-        const [isFocused, setIsFocused] = useState(false);
-        const [isUpdating, setIsUpdating] = useState(false);
-
-        // Sync local state if guest prop changes from store (e.g. after a fetch)
-        useEffect(() => {
-            setLocalName(guest.name || '');
-            setLocalPhone(guest.phone || '');
-        }, [guest.name, guest.phone]);
-
-        const handleBlur = async () => {
-            setIsFocused(false);
-            if (localName !== guest.name || localPhone !== guest.phone) {
-                setIsUpdating(true);
-                try {
-                    await onUpdate(guest.id, { name: localName, phone: localPhone });
-                } finally {
-                    setIsUpdating(false);
-                }
-            }
-        };
-
-        return (
-            <tr className={`${isFocused ? 'bg-gold-50/50 dark:bg-gold-900/10 ring-1 ring-inset ring-gold-200 dark:ring-gold-900/50' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'} transition-all border-b border-gray-50 dark:border-gray-800 last:border-0 group`}>
-                <td className="px-3 py-1 relative">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={localName}
-                            onChange={(e) => setLocalName(e.target.value)}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={handleBlur}
-                            className="w-full bg-transparent border-none focus:ring-0 rounded py-0.5 px-1 text-gray-800 dark:text-white font-medium text-sm transition-all"
-                            placeholder={t('common.name')}
-                        />
-                        {isUpdating && (
-                            <div className="w-3 h-3 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin shrink-0" />
-                        )}
-                    </div>
-                </td>
-                <td className="px-3 py-1">
-                    <input
-                        type="text"
-                        value={localPhone}
-                        onChange={(e) => setLocalPhone(e.target.value)}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={handleBlur}
-                        className="w-full bg-transparent border-none focus:ring-0 rounded py-0.5 px-1 text-xs text-gray-500 dark:text-gray-400 transition-all"
-                        placeholder={t('common.phone')}
-                    />
-                </td>
-                <td className="px-3 py-1 text-center">
-                    {(guest.flag_sudah_kirim_undangan_via_whatsapp === true || guest.flag_sudah_kirim_undangan_via_whatsapp === 'TRUE') ? (
-                        <div className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 px-2 py-0.5 rounded text-[10px] font-bold">
-                            <HiOutlineCheckCircle className="w-3 h-3" />
-                            {t('whatsapp_blast.sent')}
-                        </div>
-                    ) : (
-                        <div className="inline-flex items-center gap-1 text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-2 py-0.5 rounded text-[10px] font-bold">
-                            <HiOutlineClock className="w-3 h-3" />
-                            {t('whatsapp_blast.pending')}
-                        </div>
-                    )}
-                </td>
-                <td className="px-3 py-1 text-right">
-                    <button
-                        onClick={() => onSend({ ...guest, name: localName, phone: localPhone })}
-                        className="btn-primary py-1 px-3 text-[11px] flex items-center gap-1.5 ml-auto rounded-md transition-transform active:scale-95"
-                    >
-                        <HiOutlineChatAlt2 className="w-3.5 h-3.5" />
-                        {t('whatsapp_blast.send')}
-                    </button>
-                </td>
-            </tr>
-        );
-    };
-
-    // Sub-component for editable mobile guest card to prevent full-list re-renders
-    const GuestMobileCard = ({ guest, onSend, onUpdate }: {
-        guest: any,
-        onSend: (g: any) => void,
-        onUpdate: (id: string, data: any) => void
-    }) => {
-        const [localName, setLocalName] = useState(guest.name || '');
-        const [localPhone, setLocalPhone] = useState(guest.phone || '');
-        const [isFocused, setIsFocused] = useState(false);
-        const [isUpdating, setIsUpdating] = useState(false);
-
-        // Sync local state if guest prop changes from store (e.g. after a fetch)
-        useEffect(() => {
-            setLocalName(guest.name || '');
-            setLocalPhone(guest.phone || '');
-        }, [guest.name, guest.phone]);
-
-        const handleBlur = async () => {
-            setIsFocused(false);
-            if (localName !== guest.name || localPhone !== guest.phone) {
-                setIsUpdating(true);
-                try {
-                    await onUpdate(guest.id, { name: localName, phone: localPhone });
-                } finally {
-                    setIsUpdating(false);
-                }
-            }
-        };
-
-        return (
-            <div
-                className={`card p-2.5 space-y-1.5 relative transition-all duration-300 border ${
-                    isFocused
-                        ? 'border-gold-400 bg-gold-50/10 dark:bg-gold-950/5 shadow-md shadow-gold-500/5'
-                        : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-wedding-dark-card'
-                }`}
-            >
-                {/* Header / Name Edit Row */}
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <input
-                            type="text"
-                            value={localName}
-                            onChange={(e) => setLocalName(e.target.value)}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={handleBlur}
-                            className="w-full bg-transparent border-none focus:ring-0 rounded py-0 px-0 text-gray-850 dark:text-white font-bold text-[13px] leading-tight transition-all"
-                            placeholder={t('common.name')}
-                        />
-                        {isUpdating && (
-                            <div className="w-3 h-3 border-2 border-gold-500/20 border-t-gold-500 rounded-full animate-spin shrink-0" />
-                        )}
-                    </div>
-                    
-                    {/* Action Button right in Header */}
-                    <button
-                        onClick={() => onSend({ ...guest, name: localName, phone: localPhone })}
-                        className="btn-primary py-1 px-2.5 text-[11px] flex items-center gap-1 rounded-md transition-transform active:scale-95 shadow-sm shrink-0"
-                    >
-                        <HiOutlineChatAlt2 className="w-3.5 h-3.5" />
-                        {t('whatsapp_blast.send')}
-                    </button>
-                </div>
-
-                {/* Info Fields Stack */}
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-0.5">
-                    <div className="space-y-0.5">
-                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
-                            No. Telepon
-                        </span>
-                        <input
-                            type="text"
-                            value={localPhone}
-                            onChange={(e) => setLocalPhone(e.target.value)}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={handleBlur}
-                            className="w-full bg-transparent border-none focus:ring-0 rounded py-0 px-0 text-[10.5px] text-gray-655 dark:text-gray-300 font-semibold transition-all leading-tight"
-                            placeholder={t('common.phone')}
-                        />
-                    </div>
-
-                    <div className="space-y-0.5">
-                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">
-                            Status Blast
-                        </span>
-                        <div className="flex items-center">
-                            {(guest.flag_sudah_kirim_undangan_via_whatsapp === true || guest.flag_sudah_kirim_undangan_via_whatsapp === 'TRUE') ? (
-                                <span className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 px-1.5 py-0.5 rounded text-[9px] font-bold">
-                                    <HiOutlineCheckCircle className="w-2.5 h-2.5" />
-                                    {t('whatsapp_blast.sent')}
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center gap-1 text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-1.5 py-0.5 rounded text-[9px] font-bold">
-                                    <HiOutlineClock className="w-2.5 h-2.5" />
-                                    {t('whatsapp_blast.pending')}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     useEffect(() => {
         setFilters({ limit: 1000, page: 1 });
         fetchGuests();
         fetchContent();
     }, [fetchGuests, setFilters, fetchContent]);
 
-    // Update editor when invitationContent is loaded
+    // Seed the editor exactly once, dan HANYA setelah fetch content BENAR-BENAR
+    // selesai (hasLoadedContent === true).
+    //
+    // Bug sebelumnya (muncul saat refresh/reload): effect di-gate pada
+    // `!contentLoading`. Pada hard reload, `contentLoading` masih `false` di render
+    // pertama (fetchContent belum sempat set loading:true), jadi effect jalan saat
+    // invitationContent masih null → editor terisi template DEFAULT dan langsung
+    // dikunci (editorSeededRef=true). Ketika data DB akhirnya datang, seed di-skip,
+    // sehingga template dari DB tidak pernah tampil.
+    //
+    // `hasLoadedContent` adalah sinyal DEFINITIF bahwa fetch sudah balik (store
+    // baru men-set-nya true setelah response sukses), jadi tidak ada race lagi.
     useEffect(() => {
-        if (invitationContent?.wa_blast_template && editorRef.current && !editorRef.current.innerHTML) {
-            editorRef.current.innerHTML = whatsAppToHtml(invitationContent.wa_blast_template);
-        } else if (!invitationContent?.wa_blast_template && editorRef.current && !editorRef.current.innerHTML) {
-            editorRef.current.innerHTML = whatsAppToHtml(templateMarkdown);
-        }
-    }, [invitationContent]);
+        if (!hasLoadedContent || editorSeededRef.current || !editorRef.current) return;
 
-    const handleSaveTemplate = async () => {
-        setIsSavingTemplate(true);
-        const currentHtml = editorRef.current?.innerHTML || '';
-        const markdown = htmlToWhatsApp(currentHtml);
+        const source = invitationContent?.wa_blast_template || templateMarkdown;
+        editorRef.current.innerHTML = whatsAppToHtml(source);
+        lastSavedMarkdownRef.current = htmlToWhatsApp(editorRef.current.innerHTML);
+        editorSeededRef.current = true;
+    }, [invitationContent, hasLoadedContent, templateMarkdown]);
 
+    // Refresh: tarik ulang data. Buka kunci seed agar editor di-isi ulang dari
+    // template DB terbaru setelah fetch selesai (bukan menyisakan isi lama/default).
+    const handleRefresh = () => {
+        editorSeededRef.current = false;
+        fetchGuests(true);
+        fetchContent(true);
+    };
+
+    // Pada layout /admin, tombol refresh dipindah ke gold header (sebelah tombol
+    // "Buka Undangan") lewat store header-action. Di layout /private lama tombol
+    // tetap tampil inline di dalam halaman.
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={handleRefresh}
+                disabled={loading}
+                title="Refresh Data"
+                aria-label="Refresh Data"
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [loading, isAdminLayout]);
+
+    // Auto-save saat cursor user meninggalkan editor (onBlur). SILENT: tanpa
+    // loading/spinner, tanpa toast sukses — hanya toast kalau benar-benar gagal.
+    // Skip kalau isi tidak berubah dari yang terakhir tersimpan.
+    const handleAutoSave = async () => {
+        if (!editorSeededRef.current) return;
+        const markdown = htmlToWhatsApp(editorRef.current?.innerHTML || '');
+        if (markdown === lastSavedMarkdownRef.current) return;
+
+        // Optimistik: anggap tersimpan agar blur berikutnya yang tak berubah
+        // tidak menembak API lagi. Kalau gagal, di-rollback.
+        const previous = lastSavedMarkdownRef.current;
+        lastSavedMarkdownRef.current = markdown;
         try {
             const success = await updateContent({ wa_blast_template: markdown });
-            if (success) {
-                toast.success(t('whatsapp_blast.save_success'));
-            } else {
+            if (!success) {
+                lastSavedMarkdownRef.current = previous;
                 toast.error(t('whatsapp_blast.save_error'));
             }
         } catch (err) {
+            lastSavedMarkdownRef.current = previous;
             toast.error(t('common.error'));
-        } finally {
-            setIsSavingTemplate(false);
         }
     };
 
@@ -365,7 +439,7 @@ export function WhatsAppBlastPage() {
         });
     }, [guests, search]);
 
-    const handleSend = async (guest: any) => {
+    const handleSend = useCallback(async (guest: any) => {
         if (!tenant) return;
 
         const formattedPhone = formatPhoneForWhatsApp(guest.phone);
@@ -406,42 +480,47 @@ export function WhatsAppBlastPage() {
 
         // Update status in database silently in background
         updateBlastStatus(guest.id, true, true);
-    };
+    }, [tenant, invitationContent, updateBlastStatus, t]);
+
+    // Callback stabil agar GuestRow/GuestMobileCard (memo) tidak re-render
+    // percuma saat store update → mengurangi kerja render & jaga scroll tetap.
+    const handleUpdateGuest = useCallback(
+        (id: string, data: any) => updateGuest({ id, ...data }, true),
+        [updateGuest]
+    );
+    const handleToggleStatus = useCallback(
+        (id: string, sent: boolean) => updateBlastStatus(id, sent, true),
+        [updateBlastStatus]
+    );
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end mb-1">
-                <IconButton
-                    onClick={() => { fetchGuests(true); fetchContent(true); }}
-                    icon={<HiOutlineRefresh className="w-4 h-4" />}
-                    spinning={loading}
-                    size="sm"
-                    className="gap-1.5 text-xs font-bold uppercase tracking-wider"
-                    title="Refresh Data"
-                />
-            </div>
+            {/* Layout /admin: tombol refresh sudah dipindah ke gold header. Baris
+                ini hanya untuk layout /private lama. */}
+            {!isAdminLayout && (
+                <div className="flex items-center justify-end mb-1">
+                    <IconButton
+                        onClick={handleRefresh}
+                        icon={<HiOutlineRefresh className="w-4 h-4" />}
+                        spinning={loading}
+                        size="sm"
+                        className="gap-1.5 text-xs font-bold uppercase tracking-wider"
+                        title="Refresh Data"
+                    />
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Visual Editor Section */}
                 <div className="lg:col-span-1 space-y-4">
                     <div className="card h-full flex flex-col min-h-[500px]">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-1 h-3.5 bg-gold-500 rounded-full" />
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('whatsapp_blast.template_title')}</h2>
-                            </div>
-                            <button
-                                onClick={handleSaveTemplate}
-                                disabled={isSavingTemplate}
-                                className="btn-primary py-1 px-3 text-[11px] text-white flex items-center gap-1.5 rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-sm font-semibold"
-                            >
-                                {isSavingTemplate ? (
-                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <HiOutlineSave className="w-3.5 h-3.5" />
-                                )}
-                                {t('common.save')}
-                            </button>
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                            <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">{t('whatsapp_blast.template_title')}</h2>
+                            {/* Tersimpan otomatis saat cursor keluar dari editor — tanpa tombol Simpan. */}
+                            <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 flex items-center gap-1 shrink-0">
+                                <HiOutlineCheckCircle className="w-3.5 h-3.5" />
+                                {t('whatsapp_blast.autosave_hint', 'Tersimpan otomatis')}
+                            </span>
                         </div>
 
                         <div className="space-y-4 flex-1 flex flex-col">
@@ -528,38 +607,24 @@ export function WhatsAppBlastPage() {
                             <div
                                 ref={editorRef}
                                 contentEditable
+                                onBlur={handleAutoSave}
                                 className="input-field min-h-[300px] h-auto text-sm font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-gold-500/20 overflow-y-auto bg-white dark:bg-gray-900/50"
                                 style={{ whiteSpace: 'pre-wrap' }}
                             />
                         </div>
 
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
-                            <h4 className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1">{t('whatsapp_blast.preview_realtime')}</h4>
-                            <p className="text-[10px] text-emerald-600 dark:text-emerald-300 leading-tight">
-                                {t('whatsapp_blast.preview_desc')}
-                            </p>
-                        </div>
+   
 
-                        {/* Format Info Box Moved Here */}
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex gap-2">
-                            <HiOutlineChatAlt2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                            <div>
-                                <h4 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase mb-0.5">{t('whatsapp_blast.format_title')}</h4>
-                                <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
-                                    {t('whatsapp_blast.format_desc')}
-                                </p>
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
 
                 {/* Guest List Section */}
                 <div className="lg:col-span-2 space-y-4">
-                    <div className="card h-full flex flex-col min-h-[500px]">
+                    <div className="card flex flex-col">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                             <div className="flex items-center gap-2">
-                                <div className="w-1 h-3.5 bg-gold-500 rounded-full" />
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('whatsapp_blast.guest_list')}</h2>
+                                <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">{t('whatsapp_blast.guest_list')}</h2>
                             </div>
                             <div className="relative w-full sm:w-64">
                                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -573,11 +638,22 @@ export function WhatsAppBlastPage() {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gold-200 dark:scrollbar-thumb-gray-700">
+                        <div>
+
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex gap-2">
+                                <HiOutlineChatAlt2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <h4 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase mb-0.5">{t('whatsapp_blast.format_title')}</h4>
+                                    <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
+                                        {t('whatsapp_blast.format_desc')}
+                                    </p>
+                                </div>
+                            </div>
+
                             {/* Desktop Table View */}
                             <div className="hidden md:block">
                                 <table className="w-full text-left">
-                                    <thead className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                                    <thead className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                                         <tr>
                                             <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">Nama</th>
                                             <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">No. Telepon</th>
@@ -605,7 +681,8 @@ export function WhatsAppBlastPage() {
                                                     key={guest.id}
                                                     guest={guest}
                                                     onSend={handleSend}
-                                                    onUpdate={(id, data) => updateGuest({ id, ...data }, true)}
+                                                    onUpdate={handleUpdateGuest}
+                                                    onToggleStatus={handleToggleStatus}
                                                 />
                                             ))
                                         )}
@@ -630,7 +707,8 @@ export function WhatsAppBlastPage() {
                                             key={guest.id}
                                             guest={guest}
                                             onSend={handleSend}
-                                            onUpdate={(id, data) => updateGuest({ id, ...data }, true)}
+                                            onUpdate={handleUpdateGuest}
+                                            onToggleStatus={handleToggleStatus}
                                         />
                                     ))
                                 )}

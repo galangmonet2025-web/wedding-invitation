@@ -27,9 +27,11 @@ import { PREMIUM_THEME_PAYLOAD } from '../utils/premiumThemePayload';
 import { useThemeStore } from '../store/themeStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { createPortal } from 'react-dom';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 export function ManageThemesPage() {
     const navigate = useNavigate();
+    const base = useBasePath();
     const { themes, loading, fetchThemes, deleteTheme, updateTheme } = useThemeStore();
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [guideTab, setGuideTab] = useState<'guide' | 'variables' | 'logic'>('guide');
@@ -308,7 +310,7 @@ export function ManageThemesPage() {
                 return (
                     <div className="flex items-center gap-1.5">
                         <button
-                            onClick={() => navigate(`/private/themes/editor/${item.id}`)}
+                            onClick={() => navigate(`${base}/themes/editor/${item.id}`)}
                             disabled={deleting}
                             className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors tooltip tooltip-top disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Edit Theme"
@@ -317,7 +319,7 @@ export function ManageThemesPage() {
                             <span className="tooltip-text">Edit</span>
                         </button>
                         <button
-                            onClick={() => navigate('/private/themes/editor/new', { state: { copiedTheme: item } })}
+                            onClick={() => navigate(`${base}/themes/editor/new`, { state: { copiedTheme: item } })}
                             disabled={deleting}
                             className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors tooltip tooltip-top disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Copy Theme"
@@ -400,7 +402,7 @@ export function ManageThemesPage() {
                         <span>Inject Premium Theme</span>
                     </button>
                     <Button
-                        onClick={() => navigate('/private/themes/editor/new')}
+                        onClick={() => navigate(`${base}/themes/editor/new`)}
                         className="text-xs"
                         icon={<HiOutlinePlus className="w-4 h-4" />}
                     >
@@ -587,14 +589,14 @@ export function ManageThemesPage() {
                                         {/* Action Row */}
                                         <div className="pt-2 mt-1 border-t border-white/15 flex items-center gap-1.5">
                                             <button
-                                                onClick={() => navigate(`/private/themes/editor/${item.id}`)}
+                                                onClick={() => navigate(`${base}/themes/editor/${item.id}`)}
                                                 className={`p-2 rounded-lg bg-white/15 ${planAccent.act} text-white transition-colors`}
                                                 title="Edit Theme"
                                             >
                                                 <HiOutlinePencilAlt className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => navigate('/private/themes/editor/new', { state: { copiedTheme: item } })}
+                                                onClick={() => navigate(`${base}/themes/editor/new`, { state: { copiedTheme: item } })}
                                                 className="p-2 rounded-lg bg-white/15 hover:bg-blue-500 text-white transition-colors"
                                                 title="Copy Theme"
                                             >
@@ -741,7 +743,7 @@ export function ManageThemesPage() {
                                 <button
                                     onClick={() => {
                                         setSelectedThemeForLightbox(null);
-                                        navigate(`/private/themes/editor/${selectedThemeForLightbox.id}`);
+                                        navigate(`${base}/themes/editor/${selectedThemeForLightbox.id}`);
                                     }}
                                     className="w-full py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
                                 >
@@ -752,7 +754,7 @@ export function ManageThemesPage() {
                                     <button
                                         onClick={() => {
                                             setSelectedThemeForLightbox(null);
-                                            navigate('/private/themes/editor/new', { state: { copiedTheme: selectedThemeForLightbox } });
+                                            navigate(`${base}/themes/editor/new`, { state: { copiedTheme: selectedThemeForLightbox } });
                                         }}
                                         className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
                                     >

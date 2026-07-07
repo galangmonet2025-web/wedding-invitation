@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { additionalFeatureApi, paymentApi } from '@/core/api/endpoints';
 import { imageApi } from '@/core/api/imageApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -6,7 +6,17 @@ import { openSnapPayment } from '@/utils/midtrans';
 import { PageLoader } from '@/shared/components/Loading';
 import type { TenantActiveFeature } from '@/types';
 import toast from 'react-hot-toast';
-import { HiOutlineRefresh, HiOutlineSave, HiOutlinePlus, HiOutlineInformationCircle, HiOutlineShoppingCart, HiOutlineTrash } from 'react-icons/hi';
+import {
+    HiOutlineRefresh,
+    HiOutlineSave,
+    HiOutlinePlus,
+    HiOutlineInformationCircle,
+    HiOutlineShoppingCart,
+    HiOutlineTrash,
+    HiOutlinePuzzle,
+    HiOutlineCheckCircle,
+    HiOutlineClock,
+} from 'react-icons/hi';
 import { ImageUpload } from '@/shared/components/ImageUpload';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
@@ -15,6 +25,8 @@ import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/Button';
 import { IconButton } from '@/shared/components/IconButton';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 import { useTenantFeatureStore } from '../store/tenantFeatureStore';
 
@@ -30,10 +42,43 @@ export function TenantAdditionalFeaturePage() {
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, featureId: string, type: 'input' } | null>(null);
     const [isDeletingImg, setIsDeletingImg] = useState<string | null>(null);
     const { tasks } = useBackgroundTaskStore();
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    const isAdminLayout = useBasePath() === '/admin';
 
     useEffect(() => {
         fetchFeatures();
     }, []);
+
+    // Pada layout /admin, tombol refresh dipindah ke gold header (sebelah "Buka
+    // Undangan"). Di /private lama tetap inline.
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={() => fetchFeatures(true)}
+                disabled={loading}
+                title="Refresh Data"
+                aria-label="Refresh Data"
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [loading, isAdminLayout]);
+
+    // Ringkasan: total fitur, yang aktif, yang menunggu pembayaran.
+    const stats = useMemo(() => {
+        return features.reduce(
+            (acc, f) => {
+                acc.total += 1;
+                if (f.active) acc.active += 1;
+                if (f.payment_status === 'Menunggu pembayaran') acc.pending += 1;
+                return acc;
+            },
+            { total: 0, active: 0, pending: 0 }
+        );
+    }, [features]);
 
     const handleSaveInput = (featureId: string, value: string) => {
         updateLocalFeature(featureId, value);
@@ -236,25 +281,60 @@ export function TenantAdditionalFeaturePage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Fitur tambahan kustom untuk undangan Anda</p>
+            {/* ===== Header: action row + stat strip (samakan dgn Daftar Tamu) ===== */}
+            <div className="space-y-4">
+                {/* Action row */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                        <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">
+                            Fitur Tambahan
+                        </h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Fitur tambahan kustom untuk undangan Anda</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Layout /admin: refresh dipindah ke gold header. Inline hanya untuk /private. */}
+                        {!isAdminLayout && (
+                            <IconButton
+                                onClick={() => fetchFeatures(true)}
+                                title="Refresh Data"
+                                icon={<HiOutlineRefresh className="w-4 h-4" />}
+                                spinning={loading}
+                            />
+                        )}
+                        <Button
+                            onClick={() => setShowAddModal(true)}
+                            className="text-sm shrink-0"
+                            icon={<HiOutlinePlus className="w-4 h-4" />}
+                        >
+                            <span className="hidden sm:inline">Tambah Fitur</span>
+                            <span className="sm:hidden">Tambah</span>
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2.5 text-sm"
-                        icon={<HiOutlinePlus className="w-4 h-4" />}
-                    >
-                        Tambah Fitur
-                    </Button>
-                    <IconButton
-                        onClick={() => fetchFeatures(true)}
-                        title="Refresh Data"
-                        icon={<HiOutlineRefresh className="w-4 h-4" />}
-                        spinning={loading}
-                    />
-                </div>
+
+                {/* Stat strip — hanya tampil bila sudah ada fitur */}
+                {features.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <FeatureStatPill
+                            icon={<HiOutlinePuzzle className="w-4 h-4" />}
+                            value={stats.total}
+                            label="Total Fitur"
+                            tone="gold"
+                        />
+                        <FeatureStatPill
+                            icon={<HiOutlineCheckCircle className="w-4 h-4" />}
+                            value={stats.active}
+                            label="Aktif"
+                            tone="emerald"
+                        />
+                        <FeatureStatPill
+                            icon={<HiOutlineClock className="w-4 h-4" />}
+                            value={stats.pending}
+                            label="Menunggu Bayar"
+                            tone="amber"
+                        />
+                    </div>
+                )}
             </div>
 
             {features.length === 0 ? (
@@ -383,34 +463,58 @@ export function TenantAdditionalFeaturePage() {
                             <p className="text-sm text-gray-500 mt-2">Anda telah memiliki semua fitur tambahan yang tersedia saat ini.</p>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            {availableFeatures.map(feature => (
-                                <div key={feature.additional_feature_id} className="p-4 border border-gray-100 dark:border-gray-800 rounded-xl hover:border-gold-500 transition-colors group bg-gray-50/50 dark:bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-semibold text-gray-800 dark:text-white group-hover:text-gold-600 transition-colors">{feature.feature_name}</h4>
-                                            <span className="text-gold-600 font-bold text-sm">
-                                                {(feature.price || 0) > 0 ? `Rp ${(feature.price || 0).toLocaleString('id-ID')}` : 'Gratis'}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{feature.description || 'Tidak ada deskripsi'}</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => {
-                                            setPurchaseConfirm({
-                                                id: feature.additional_feature_id,
-                                                name: feature.feature_name || '',
-                                                price: feature.price || 0,
-                                                description: feature.description
-                                            });
-                                        }}
-                                        className="w-full md:w-auto flex items-center justify-center gap-2 py-2 px-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gold-500 hover:border-gold-500 hover:text-white rounded-lg text-sm font-medium transition-all shadow-sm"
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {availableFeatures.map(feature => {
+                                const isFree = (feature.price || 0) <= 0;
+                                return (
+                                    <div
+                                        key={feature.additional_feature_id}
+                                        className="group relative flex flex-col rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:border-gold-400 hover:shadow-md transition-all"
                                     >
-                                        <HiOutlineShoppingCart className="w-4 h-4" />
-                                        Beli Fitur
-                                    </button>
-                                </div>
-                            ))}
+                                        {/* Header: icon badge + nama + harga (pill terpisah, tidak wrap ke judul) */}
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                                <HiOutlinePuzzle className="w-5 h-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className="font-bold text-[15px] text-gray-900 dark:text-white leading-snug group-hover:text-gold-600 transition-colors">
+                                                    {feature.feature_name}
+                                                </h4>
+                                                <span
+                                                    className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                        isFree
+                                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                                            : 'bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400'
+                                                    }`}
+                                                >
+                                                    {isFree ? 'Gratis' : `Rp ${(feature.price || 0).toLocaleString('id-ID')}`}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Deskripsi */}
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-3 flex-1">
+                                            {feature.description || 'Tidak ada deskripsi'}
+                                        </p>
+
+                                        {/* CTA */}
+                                        <button
+                                            onClick={() => {
+                                                setPurchaseConfirm({
+                                                    id: feature.additional_feature_id,
+                                                    name: feature.feature_name || '',
+                                                    price: feature.price || 0,
+                                                    description: feature.description
+                                                });
+                                            }}
+                                            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 group-hover:bg-gold-500 group-hover:text-white transition-all active:scale-95"
+                                        >
+                                            <HiOutlineShoppingCart className="w-4 h-4" />
+                                            Beli Fitur
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -535,6 +639,42 @@ export function TenantAdditionalFeaturePage() {
                 confirmLabel="Ya, Hapus"
                 loading={!!isDeletingImg}
             />
+        </div>
+    );
+}
+
+// Kartu statistik ringkas untuk header — samakan gaya dengan StatPill di Daftar Tamu.
+const FEATURE_STAT_TONE: Record<string, { icon: string; value: string }> = {
+    gold: {
+        icon: 'bg-gold-100 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400',
+        value: 'text-gray-900 dark:text-white',
+    },
+    emerald: {
+        icon: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+        value: 'text-emerald-600 dark:text-emerald-400',
+    },
+    amber: {
+        icon: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+        value: 'text-amber-600 dark:text-amber-400',
+    },
+};
+
+function FeatureStatPill({ icon, value, label, tone }: {
+    icon: React.ReactNode;
+    value: number;
+    label: string;
+    tone: keyof typeof FEATURE_STAT_TONE;
+}) {
+    const c = FEATURE_STAT_TONE[tone] || FEATURE_STAT_TONE.gold;
+    return (
+        <div className="card !p-3 flex items-center gap-2.5 min-w-0">
+            <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
+                {icon}
+            </span>
+            <div className="min-w-0">
+                <p className={`text-xl font-black leading-none ${c.value}`}>{value}</p>
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 truncate mt-1">{label}</p>
+            </div>
         </div>
     );
 }

@@ -14,6 +14,7 @@ import { quotesApi } from '@/core/api/endpoints';
 import { QuotesVariant, RELIGION_OPTIONS } from '@/types';
 import { useMasterQuotesStore } from '../store/masterQuotesStore';
 import { useTenantStore } from '../store/tenantStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 const isTrue = (val: any) => val === true || val === 'TRUE' || val === 'true';
 
@@ -42,6 +43,7 @@ const emptyForm: FormState = {
 export function MasterQuotesFormPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const base = useBasePath();
     const { id } = useParams<{ id?: string }>();
     const isEdit = !!id;
 
@@ -133,7 +135,7 @@ export function MasterQuotesFormPage() {
                     ? t('master_quotes.update_success', 'Quote berhasil diperbarui')
                     : t('master_quotes.create_success', 'Quote berhasil dibuat'));
                 await fetchQuotes(true);
-                navigate('/private/master-quotes');
+                navigate(`${base}/master-quotes`);
             } else {
                 toast.error(res.message || t('master_quotes.save_error', 'Gagal menyimpan quote'));
             }
@@ -152,7 +154,7 @@ export function MasterQuotesFormPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <IconButton
-                        onClick={() => navigate('/private/master-quotes')}
+                        onClick={() => navigate(`${base}/master-quotes`)}
                         icon={<HiOutlineArrowLeft className="w-4 h-4" />}
                         title={t('master_quotes.back', 'Kembali') as string}
                     />
@@ -161,7 +163,7 @@ export function MasterQuotesFormPage() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="secondary" className="text-sm" onClick={() => navigate('/private/master-quotes')} disabled={saving}>
+                    <Button variant="secondary" className="text-sm" onClick={() => navigate(`${base}/master-quotes`)} disabled={saving}>
                         {t('master_quotes.cancel', 'Batal')}
                     </Button>
                     <Button className="text-sm" onClick={handleSave} loading={saving} icon={<HiOutlineSave className="w-4 h-4" />}>

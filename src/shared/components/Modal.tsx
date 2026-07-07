@@ -70,18 +70,19 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer, o
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white font-display tracking-tight">{title}</h3>
+                <div className="flex items-center justify-between gap-4 px-6 pt-5 pb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight leading-tight">{title}</h3>
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-all active:scale-90"
+                        aria-label="Tutup"
+                        className="group flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-100 transition-all active:scale-90 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600"
                     >
-                        <HiOutlineX className="w-6 h-6" />
+                        <HiOutlineX className="w-[18px] h-[18px] transition-transform group-hover:rotate-90" />
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">{children}</div>
+                <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">{children}</div>
 
                 {/* Footer */}
                 {footer && (

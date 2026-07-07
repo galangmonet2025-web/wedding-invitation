@@ -3,6 +3,7 @@ import { themeApi, tenantApi, publicApi, chunkedSaveTheme } from '@/core/api/end
 import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord, ThemeAssetMedia } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload, HiCheck, HiOutlineExternalLink } from 'react-icons/hi';
 import { Button } from '@/shared/components/Button';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -130,6 +131,7 @@ const isDraftFlag = (v: any): boolean => v === true || v === 'true' || v === 'TR
 export function ThemeEditorPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const base = useBasePath();
     const location = useLocation();
     const isNew = !id || id === 'new';
     const isNewTheme = isNew;
@@ -490,7 +492,7 @@ export function ThemeEditorPage() {
                         setAssetMediaList(parseAssetMediaList(refetchedTheme.asset_media_list));
                     } else {
                         toast.error('Theme not found');
-                        navigate('/private/themes');
+                        navigate(`${base}/themes`);
                     }
                 }
             } else if (copiedTheme) {
@@ -1573,7 +1575,7 @@ export function ThemeEditorPage() {
                 // not just the optimistic addTheme copy.
                 await fetchThemes(true);
                 // Redirect back to theme management list on new theme creation
-                navigate('/private/themes');
+                navigate(`${base}/themes`);
             } else {
                 // CHANGE DETECTION: only upload the templates (HTML/CSS/JS) that actually
                 // changed vs. what was loaded. An unchanged template is omitted from the
@@ -2305,7 +2307,7 @@ export function ThemeEditorPage() {
             {/* Toolbar */}
             <div className="flex-none flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm z-10">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/private/themes')} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <button onClick={() => navigate(`${base}/themes`)} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <HiOutlineArrowLeft className="w-5 h-5" />
                     </button>
                     <div>

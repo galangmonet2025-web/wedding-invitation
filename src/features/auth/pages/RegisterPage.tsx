@@ -8,7 +8,6 @@ import { useAuthStore } from '../store/authStore';
 import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
 import { HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
-import { LoadingOverlay } from '@/shared/components/Loading';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 import { RetroAuthAside, RetroAuthStyle } from '../components/RetroAuthChrome';
@@ -375,7 +374,6 @@ export function RegisterPage() {
     return (
         <div className="rm-lp min-h-screen flex" style={{ background: 'var(--lp-ink)' }}>
             <RetroAuthStyle />
-            {loading && <LoadingOverlay message={t('auth.creating_wedding')} />}
 
             {/* Panel kiri — "world 1-1" langit + dekorasi retro (lg+) */}
             <RetroAuthAside
@@ -590,8 +588,11 @@ export function RegisterPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="lp-btn lp-btn-coin w-full text-[11px] py-4 mt-2"
+                            className="lp-btn lp-btn-coin w-full text-[11px] py-4 mt-2 inline-flex items-center justify-center gap-3"
                         >
+                            {loading && (
+                                <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                            )}
                             {loading ? t('auth.creating_wedding') : t('auth.register_button')}
                         </button>
                     </form>

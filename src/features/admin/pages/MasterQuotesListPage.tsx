@@ -19,6 +19,7 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useMasterQuotesStore } from '../store/masterQuotesStore';
 import { quotesApi } from '@/core/api/endpoints';
 import { QuotesVariant } from '@/types';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 const isTrue = (val: any) => val === true || val === 'TRUE' || val === 'true';
 
@@ -29,6 +30,7 @@ type PendingChange =
 export function MasterQuotesListPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const base = useBasePath();
     const { quotes, loading, hasLoaded, fetchQuotes, deleteQuote } = useMasterQuotesStore();
 
     const [search, setSearch] = useState('');
@@ -112,7 +114,7 @@ export function MasterQuotesListPage() {
                     title={t('master_quotes.refresh', 'Refresh Data') as string}
                 />
                 <Button
-                    onClick={() => navigate('/private/master-quotes/new')}
+                    onClick={() => navigate(`${base}/master-quotes/new`)}
                     className="text-sm"
                     icon={<HiOutlinePlus className="w-4 h-4" />}
                 >
@@ -235,7 +237,7 @@ export function MasterQuotesListPage() {
                                                     <IconButton
                                                         shape="ghost"
                                                         color="gold"
-                                                        onClick={() => navigate(`/private/master-quotes/edit/${q.id}`)}
+                                                        onClick={() => navigate(`${base}/master-quotes/edit/${q.id}`)}
                                                         icon={<HiOutlinePencilAlt className="w-4 h-4" />}
                                                         title={t('master_quotes.edit', 'Edit') as string}
                                                     />

@@ -87,12 +87,60 @@
     @apply w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-gold-500/10 focus:border-gold-500 transition-all duration-300;
   }
 
+  /* <input type="time"> with a CUSTOM clock icon. Mobile Chrome renders BOTH a
+     spinner/arrow AND the picker indicator; we strip ALL native chrome via
+     appearance:none and hide every native indicator, leaving only our own clock
+     icon (see .time-input-wrap). The overlay <div> (.time-input-icon) is what
+     opens the picker on click. */
+  .time-input-wrap {
+    @apply relative;
+  }
+  .time-input-wrap > input[type="time"] {
+    @apply pr-10;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+  }
+  /* Kill every native indicator/spinner Chrome/WebKit may draw. */
+  .time-input-wrap > input[type="time"]::-webkit-calendar-picker-indicator,
+  .time-input-wrap > input[type="time"]::-webkit-inner-spin-button,
+  .time-input-wrap > input[type="time"]::-webkit-outer-spin-button,
+  .time-input-wrap > input[type="time"]::-webkit-clear-button {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .time-input-wrap > .time-input-icon {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer;
+  }
+
   .select-field {
-    @apply w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-4 focus:ring-gold-500/10 focus:border-gold-500 transition-all duration-300 cursor-pointer;
+    @apply w-full pl-4 pr-10 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-4 focus:ring-gold-500/10 focus:border-gold-500 transition-all duration-300 cursor-pointer;
+    /* Native <select> arrows ignore padding and sit flush against the right
+       edge (esp. on mobile Chrome). Hide the native arrow and paint our own
+       SVG chevron with a comfortable gap from the border. */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 16px 16px;
   }
 
   .label-field {
     @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5;
+  }
+
+  /* Kelola Konten (Step 1): match the smaller text size used in the
+     "Timeline Kisah Cinta" accordion across ALL section forms so every
+     input/label reads at the same (smaller) size the user prefers. */
+  .content-form-compact .input-field,
+  .content-form-compact .select-field {
+    @apply text-sm;
+  }
+  .content-form-compact .label-field {
+    @apply text-xs;
   }
 
   .stat-card {
@@ -190,6 +238,142 @@
 
   .tooltip-bottom .tooltip-text::after {
     @apply bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-gray-800;
+  }
+
+  /* ===================================================================
+     NEW ADMIN UI (/#/admin/*) — Gojek-inspired, mobile-first.
+     Solid gold header, clean white rounded cards, colorful service-icon
+     grid, minimalist bottom-nav. Scoped with the `admin-*` prefix so it
+     never touches the legacy /#/private dashboard styling. Content pages
+     rendered inside AdminLayout inherit these via `.admin-scope`.
+     =================================================================== */
+  .admin-shell {
+    @apply bg-[#F3F4F6] text-gray-800;
+  }
+  .admin-shell.dark {
+    @apply bg-wedding-dark text-gray-100;
+  }
+
+  /* The signature Gojek-style solid header band (gold instead of green). */
+  .admin-header {
+    @apply bg-gradient-to-br from-gold-500 to-gold-600 text-white;
+  }
+
+  /* Sidebar / more-sheet nav link */
+  .admin-navlink {
+    @apply flex items-center gap-3 px-2.5 py-2 rounded-2xl text-[13.5px] font-bold text-gray-500 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-white/5 hover:text-gold-700 transition-all duration-200;
+  }
+  .admin-navlink.is-active {
+    @apply bg-gold-50 dark:bg-gold-900/20 text-gold-700 dark:text-gold-400 shadow-sm;
+  }
+  .admin-navlink-icon {
+    @apply w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform duration-200;
+  }
+  .admin-navlink:hover .admin-navlink-icon {
+    @apply scale-105;
+  }
+
+  /* Round icon button in the topbar (sits on the gold header → white/glass) */
+  .admin-icon-btn {
+    @apply w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/15 hover:bg-white/25 transition-all active:scale-90;
+  }
+
+  /* Mobile bottom-nav tab */
+  .admin-tab {
+    @apply flex flex-col items-center justify-center gap-1 pt-2 pb-4 transition-transform active:scale-90;
+  }
+  .admin-tab-icon {
+    @apply w-6 h-6 flex items-center justify-center transition-all duration-200 text-gray-400;
+  }
+  .admin-tab.is-active .admin-tab-icon {
+    @apply text-gold-600;
+  }
+  .admin-tab-label {
+    @apply text-[10px] font-bold leading-none truncate max-w-[68px] text-gray-400;
+  }
+  .admin-tab.is-active .admin-tab-label {
+    @apply text-gold-700 dark:text-gold-400;
+  }
+
+  /* A service-grid tile: SOFT tinted icon badge + label (calm, premium look).
+     The tint (bg + icon color) comes from serviceIconTint() in AdminLayout;
+     the base class stays color-neutral. */
+  .admin-service {
+    @apply flex flex-col items-center gap-1.5 text-center active:scale-95 transition-transform;
+  }
+  .admin-service-icon {
+    @apply w-14 h-14 rounded-2xl flex items-center justify-center transition-colors;
+  }
+  .admin-service:hover .admin-service-icon {
+    @apply brightness-95;
+  }
+  .admin-service-label {
+    @apply text-[11px] font-semibold text-gray-600 dark:text-gray-300 leading-tight;
+  }
+
+  /* ---- Content-page restyle (Gojek cards/tables/inputs) ----
+     Applied under `.admin-scope` so the SAME page components look native to
+     the new UI without editing every page. Softer radii, cleaner borders. */
+  .admin-scope .card,
+  .admin-scope .stat-card {
+    @apply rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)];
+  }
+  .admin-scope .input-field,
+  .admin-scope .select-field {
+    @apply rounded-xl bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700;
+  }
+  .admin-scope .btn-primary {
+    @apply rounded-xl;
+  }
+  .admin-scope .btn-secondary,
+  .admin-scope .btn-danger {
+    @apply rounded-xl;
+  }
+  .admin-scope .table-header {
+    @apply bg-gray-50/80 dark:bg-gray-800/60;
+  }
+  /* Soft gold ring on focus, matching the header accent. */
+  .admin-scope .input-field:focus,
+  .admin-scope .select-field:focus {
+    @apply ring-gold-500/20 border-gold-400;
+  }
+
+  /* --- Neutralize clashing non-gold ACCENTS toward the gold theme ---
+     We deliberately remap only the light "-50" banner backgrounds and their
+     body text/borders (info-box chrome). We leave "-100" icon chips and solid
+     "-500" fills alone so the colorful StatCards and chart series keep their
+     intended palette (that colorfulness is on-brand for the Gojek look). */
+
+  /* Blue → gold */
+  .admin-scope .bg-blue-50   { @apply bg-gold-50; }
+  .admin-scope .text-blue-600,
+  .admin-scope .text-blue-700,
+  .admin-scope .text-blue-800 { @apply text-gold-700 dark:text-gold-400; }
+  .admin-scope .border-blue-100 { @apply border-gold-100; }
+  .admin-scope .border-blue-200 { @apply border-gold-200; }
+
+  /* Indigo → gold */
+  .admin-scope .bg-indigo-50  { @apply bg-gold-50; }
+  .admin-scope .text-indigo-600,
+  .admin-scope .text-indigo-700 { @apply text-gold-700 dark:text-gold-400; }
+
+  /* Violet / purple → gold (banner chrome only) */
+  .admin-scope .bg-violet-50,
+  .admin-scope .bg-purple-50  { @apply bg-gold-50; }
+  .admin-scope .text-purple-600,
+  .admin-scope .text-purple-700 { @apply text-gold-700 dark:text-gold-400; }
+
+  /* Raw NON-gold gradient CTA buttons → gold gradient (GuestPage blue,
+     PaymentPage violet). Matches .btn-primary's fill. We remap the resting
+     from/to stops; the hover shade is close enough to leave as-is. */
+  .admin-scope .from-blue-600,
+  .admin-scope .from-violet-500 { @apply from-gold-500; }
+  .admin-scope .to-blue-700,
+  .admin-scope .to-purple-600 { @apply to-gold-600; }
+
+  /* The shared .badge-info is hardcoded blue → make it gold-toned. */
+  .admin-scope .badge-info {
+    @apply bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400;
   }
 }
 

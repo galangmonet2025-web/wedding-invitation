@@ -35,16 +35,20 @@ import {
     HiOutlineX,
     HiOutlineRefresh,
     HiOutlineCalendar,
-    HiOutlineCheck
+    HiOutlineCheck,
+    HiOutlineClock
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { MapTutorialModal } from '../components/MapTutorialModal';
 import { ImageUpload } from '@/shared/components/ImageUpload';
+import { AutoTextarea } from '@/shared/components/AutoTextarea';
 import { QrisUpload } from '@/shared/components/QrisUpload';
 import { imageApi } from '@/core/api/imageApi';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 import type { ImageRecord } from '@/types';
 import { useThemeStore } from '@/features/admin/store/themeStore';
 import { Lightbox } from '@/shared/components/Lightbox';
@@ -61,25 +65,37 @@ export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, is
     onToggle: (id: string) => void;
 }) => {
     return (
-        <div className="card shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div
+            className={`group rounded-2xl border bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300
+                ${isOpen
+                    ? 'border-gold-200 dark:border-gold-900/40 shadow-lg shadow-gold-500/5 ring-1 ring-gold-100 dark:ring-gold-900/20'
+                    : 'border-gray-100 dark:border-gray-800 shadow-sm hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-md'}`}
+        >
             <button
                 type="button"
-                className="w-full flex items-center justify-between gap-3 text-left"
+                className="w-full flex items-center justify-between gap-3 text-left p-4 sm:p-5"
                 onClick={() => onToggle(id)}
             >
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 ${iconBg} rounded-lg ${iconColor} flex-shrink-0`}>
+                <div className="flex items-center gap-3.5 min-w-0">
+                    <div
+                        className={`grid place-items-center w-11 h-11 rounded-xl ${iconBg} ${iconColor} flex-shrink-0 transition-transform duration-300 group-hover:scale-105 ${isOpen ? 'scale-105' : ''}`}
+                    >
                         {icon}
                     </div>
-                    <h2 className="text-base font-semibold text-gray-800 dark:text-white">{title}</h2>
+                    <h2 className="text-[15px] sm:text-base font-semibold text-gray-800 dark:text-white truncate tracking-tight">{title}</h2>
                 </div>
-                <HiOutlineChevronDown
-                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                />
+                <div
+                    className={`grid place-items-center w-8 h-8 rounded-full flex-shrink-0 transition-all duration-300
+                        ${isOpen ? 'bg-gold-500 text-white rotate-180' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'}`}
+                >
+                    <HiOutlineChevronDown className="w-4 h-4" />
+                </div>
             </button>
             {isOpen && (
-                <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800 space-y-4 animate-fade-in">
-                    {children}
+                <div className="px-4 sm:px-5 pb-5 pt-1 space-y-4 animate-fade-in">
+                    <div className="border-t border-dashed border-gray-100 dark:border-gray-800 pt-4 space-y-4">
+                        {children}
+                    </div>
                 </div>
             )}
         </div>
@@ -105,7 +121,6 @@ export function InvitationContentPage() {
 
     const { themes, fetchThemes } = useThemeStore();
     const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
 
     // Master Quotes
     const [activeQuotes, setActiveQuotes] = useState<QuotesVariant[]>([]);
@@ -121,6 +136,9 @@ export function InvitationContentPage() {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const [isDirty, setIsDirty] = useState(false);
+    // Holds the latest autoSaveInBackground closure so the nav-blocker effect can
+    // call it without a stale-closure / temporal-dead-zone problem.
+    const autoSaveInBackgroundRef = useRef<(() => void) | null>(null);
     const isUploadingGallery = tasks.some(t => t.status === 'running' && t.id.startsWith('upload-gallery'));
 
     // Compute timelineItems from content.timeline_kisah
@@ -141,15 +159,15 @@ export function InvitationContentPage() {
         setIsDirty(true);
     };
 
-    // Navigation Blocker (internal routing)
+    // Navigation Blocker (internal routing). We no longer prompt the user —
+    // instead we silently flush any pending edits in the background and let the
+    // navigation proceed, matching the auto-save behaviour on step changes.
     const blocker = useBlocker(isDirty);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
 
     useEffect(() => {
         if (blocker.state === 'blocked') {
-            setShowConfirmModal(true);
-        } else {
-            setShowConfirmModal(false);
+            autoSaveInBackgroundRef.current?.();
+            blocker.proceed?.();
         }
     }, [blocker.state]);
 
@@ -199,7 +217,6 @@ export function InvitationContentPage() {
     const [selectedGalleryIds, setSelectedGalleryIds] = useState<Set<string>>(new Set());
     // 'selected' deletes the checked photos; 'all' deletes every gallery photo.
     const [galleryBulkMode, setGalleryBulkMode] = useState<'selected' | 'all' | null>(null);
-    const [galleryDeleting, setGalleryDeleting] = useState(false);
 
     const galleryImages = useMemo(() => images.filter(img => img.image_type === 'gallery'), [images]);
 
@@ -224,21 +241,20 @@ export function InvitationContentPage() {
         setSelectedGalleryIds(new Set());
     };
 
-    const handleGalleryBulkDeleteConfirmed = async () => {
+    const handleGalleryBulkDeleteConfirmed = () => {
         const ids = galleryBulkMode === 'all'
             ? galleryImages.map(img => img.id)
             : galleryImages.filter(img => selectedGalleryIds.has(img.id)).map(img => img.id);
 
-        if (ids.length === 0) { setGalleryBulkMode(null); return; }
+        // Close the confirm dialog and exit selection mode IMMEDIATELY — the user
+        // shouldn't have to wait for the (slow) Drive deletion to finish. The store
+        // removes the photos optimistically and toasts on success/failure, so the
+        // deletion runs entirely in the background.
+        setGalleryBulkMode(null);
+        exitGallerySelectionMode();
 
-        setGalleryDeleting(true);
-        try {
-            await bulkDeleteImages(ids);
-        } finally {
-            setGalleryDeleting(false);
-            setGalleryBulkMode(null);
-            exitGallerySelectionMode();
-        }
+        if (ids.length === 0) return;
+        void bulkDeleteImages(ids);
     };
 
     const handleNextImage = () => {
@@ -341,64 +357,109 @@ export function InvitationContentPage() {
 
 
 
-    const handleSave = async () => {
-        if (!content || !tenant) return;
-        setSaving(false); // No global loading needed since we use isDirty and saving state in button
-        setSaving(true);
-        setSaving(true);
-        try {
-            const success = await updateContent(content);
+    // Core persistence: writes content + theme + quotes. Returns whether the
+    // content write succeeded. Shared by the silent auto-save below.
+    const persistAll = async (): Promise<boolean> => {
+        if (!content || !tenant) return false;
+        const success = await updateContent(content);
 
-            // Save theme selection if changed
-            if (selectedThemeId !== tenant.theme_id) {
-                await tenantApi.updateTenant({
-                    id: tenant.id,
-                    theme_id: selectedThemeId || undefined
-                });
-                // Update the auth store to keep it in sync and persist across reloads
-                updateAuthTenant({
-                    ...tenant,
-                    theme_id: selectedThemeId || undefined
-                });
-            }
-
-            // Save quotes selection (custom upsert or master pick)
-            try {
-                if (customQuotesEnabled) {
-                    const res = await quotesApi.saveTenantQuotes({
-                        custom: true,
-                        ...customQuotes,
-                    } as any, { skipLoader: true } as any);
-                    if (res.success && res.data?.quotes_id) {
-                        updateAuthTenant({ ...tenant, quotes_id: res.data.quotes_id });
-                    }
-                } else if (selectedQuotesId && selectedQuotesId !== tenant.quotes_id) {
-                    const res = await quotesApi.saveTenantQuotes({
-                        custom: false,
-                        quotes_id: selectedQuotesId,
-                    } as any, { skipLoader: true } as any);
-                    if (res.success) {
-                        updateAuthTenant({ ...tenant, quotes_id: selectedQuotesId });
-                    }
-                }
-            } catch (e) {
-                console.error('Save quotes error:', e);
-            }
-
-            if (success) {
-                toast.success(t('invitation_content.save_success'));
-                setIsDirty(false);
-                setIframeKey(prev => prev + 1);
-            } else {
-                toast.error('Failed to save settings');
-            }
-        } catch (error: any) {
-            console.error('Save error:', error);
-            toast.error(t('invitation_content.save_error'));
-        } finally {
-            setSaving(false);
+        // Save theme selection if changed
+        if (selectedThemeId !== tenant.theme_id) {
+            await tenantApi.updateTenant({
+                id: tenant.id,
+                theme_id: selectedThemeId || undefined
+            });
+            updateAuthTenant({ ...tenant, theme_id: selectedThemeId || undefined });
         }
+
+        // Save quotes selection (custom upsert or master pick)
+        try {
+            if (customQuotesEnabled) {
+                const res = await quotesApi.saveTenantQuotes({
+                    custom: true,
+                    ...customQuotes,
+                } as any, { skipLoader: true } as any);
+                if (res.success && res.data?.quotes_id) {
+                    updateAuthTenant({ ...tenant, quotes_id: res.data.quotes_id });
+                }
+            } else if (selectedQuotesId && selectedQuotesId !== tenant.quotes_id) {
+                const res = await quotesApi.saveTenantQuotes({
+                    custom: false,
+                    quotes_id: selectedQuotesId,
+                } as any, { skipLoader: true } as any);
+                if (res.success) {
+                    updateAuthTenant({ ...tenant, quotes_id: selectedQuotesId });
+                }
+            }
+        } catch (e) {
+            console.error('Save quotes error:', e);
+        }
+        return success;
     };
+
+    // Silent background auto-save. No loading UI; only surfaces a toast if the
+    // save actually fails. Fired automatically when the user leaves a step that
+    // has unsaved edits, so there's no "Save settings" button to forget.
+    const autoSaveInBackground = () => {
+        if (!isDirty || !content || !tenant) return;
+        // Optimistically clear the dirty flag so navigation isn't blocked and we
+        // don't double-fire; the actual write happens in the background.
+        setIsDirty(false);
+        (async () => {
+            try {
+                const success = await persistAll();
+                if (success) {
+                    setIframeKey(prev => prev + 1);
+                } else {
+                    toast.error(t('invitation_content.save_error', 'Gagal menyimpan perubahan'));
+                    setIsDirty(true); // let a later navigation retry the save
+                }
+            } catch (error) {
+                console.error('Auto-save error:', error);
+                toast.error(t('invitation_content.save_error', 'Gagal menyimpan perubahan'));
+                setIsDirty(true);
+            }
+        })();
+    };
+
+    // Keep the ref pointing at the latest closure for the nav-blocker effect.
+    autoSaveInBackgroundRef.current = autoSaveInBackground;
+
+    // Move between wizard steps, auto-saving any edits made on the current step
+    // before switching. This replaces the old manual "Save settings" button.
+    const goToStep = (next: number) => {
+        if (next === currentStep) return;
+        autoSaveInBackground();
+        setCurrentStep(next);
+    };
+
+    const handleRefresh = async () => {
+        toast.loading(t('invitation_content.refresh_loading'), { id: 'refresh-data' });
+        await Promise.all([fetchContent(true), fetchImages(true)]);
+        toast.success(t('invitation_content.refresh_success'), { id: 'refresh-data' });
+    };
+
+    // On the new /admin layout, inject the refresh button into the gold header
+    // (next to "Buka Undangan"). On the legacy /private layout there's no such
+    // slot, so we keep an in-page refresh button instead (see below).
+    const base = useBasePath();
+    const isAdminLayout = base === '/admin';
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={handleRefresh}
+                disabled={loading}
+                title={t('invitation_content.refresh_tooltip') as string}
+                aria-label={t('invitation_content.refresh_tooltip') as string}
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [loading, isAdminLayout]);
 
     const updateField = (field: keyof InvitationContent, value: any) => {
         setContent({ ...content, [field]: value });
@@ -517,71 +578,101 @@ export function InvitationContentPage() {
         );
     };
 
+    // Time input with a custom clock icon (native spinner/arrow is stripped in
+    // CSS via .time-input-wrap). Clicking the icon opens the native picker.
+    const TimeInput = ({ value, onChange, title }: { value: string; onChange: (val: string) => void; title?: string }) => {
+        const ref = useRef<HTMLInputElement>(null);
+        const openPicker = () => {
+            const el = ref.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+            if (!el) return;
+            try { el.showPicker?.(); } catch { /* showPicker unsupported — the field itself is still tappable */ }
+            el.focus();
+        };
+        return (
+            <div className="time-input-wrap flex-1">
+                <input
+                    ref={ref}
+                    type="time"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="input-field shadow-none"
+                    title={title}
+                />
+                <HiOutlineClock className="time-input-icon w-5 h-5" onClick={openPicker} />
+            </div>
+        );
+    };
+
     const isInitialLoading = !hasLoadedContent || !content;
     if (loading && isInitialLoading) return <PageLoader />;
     if (!content) return <PageLoader />;
 
     return (
         <div className="space-y-6 animate-fade-in w-full max-w-[1600px] mx-auto pb-20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('invitation_content.description')}</p>
-                </div>
-                <div className="flex items-center gap-3">
+            {/* On /admin the refresh action lives in the header (injected via the
+                header-action store), so this top row is only rendered on the
+                legacy /private layout, where it just holds the refresh button. */}
+            {!isAdminLayout && (
+                <div className="flex items-center justify-end">
                     <IconButton
-                        onClick={async () => {
-                            toast.loading(t('invitation_content.refresh_loading'), { id: 'refresh-data' });
-                            await Promise.all([fetchContent(true), fetchImages(true)]);
-                            toast.success(t('invitation_content.refresh_success'), { id: 'refresh-data' });
-                        }}
+                        onClick={handleRefresh}
                         title={t('invitation_content.refresh_tooltip')}
                         spinning={loading}
                         icon={<HiOutlineRefresh className="w-5 h-5" />}
                     />
-                    <Button
-                        onClick={handleSave}
-                        disabled={saving || isUploadingGallery}
-                        loading={saving || isUploadingGallery}
-                        className="px-6 disabled:opacity-50 disabled:grayscale"
-                        icon={<HiOutlineSave className="w-5 h-5" />}
-                    >
-                        {saving ? t('invitation_content.saving') : isUploadingGallery ? t('invitation_content.uploading') : t('invitation_content.save_settings')}
-                    </Button>
                 </div>
-            </div>
+            )}
 
             <div className="flex flex-col lg:flex-row gap-6">
 
                 {/* LEFT PANE: Form Settings */}
                 <div className="w-full lg:w-[70%] flex-shrink-0 flex flex-col gap-6 pb-20">
                     {/* Stepper Header */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            {steps.map((step, idx) => (
-                                <div key={step.id} className="flex items-center flex-1 last:flex-none">
-                                    <div
-                                        onClick={() => setCurrentStep(step.id)}
-                                        className="flex flex-col items-center gap-2 cursor-pointer group"
-                                    >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
-                                                ${currentStep === step.id ? 'bg-gold-500 text-white ring-4 ring-gold-100 dark:ring-gold-900/30' :
-                                                currentStep > step.id ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'}`}>
-                                            {currentStep > step.id ? (
-                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            ) : step.id}
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 px-5 py-5 shadow-sm overflow-hidden">
+                        {/* Soft gold glow accent */}
+                        <div className="pointer-events-none absolute -top-16 -right-10 w-40 h-40 bg-gold-400/10 rounded-full blur-3xl" />
+
+                        {/* Current-step label + progress count (mobile shows this in place of per-step labels) */}
+                        <div className="flex items-end justify-between mb-4 sm:hidden">
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-gold-600">{t('common.step', 'Langkah')} {currentStep}/{steps.length}</p>
+                                <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{steps[currentStep - 1]?.title}</p>
+                            </div>
+                        </div>
+
+                        <div className="relative flex items-center justify-between">
+                            {steps.map((step, idx) => {
+                                const isActive = currentStep === step.id;
+                                const isDone = currentStep > step.id;
+                                return (
+                                    <div key={step.id} className="flex items-center flex-1 last:flex-none">
+                                        <div
+                                            onClick={() => goToStep(step.id)}
+                                            className="flex flex-col items-center gap-2 cursor-pointer group"
+                                        >
+                                            <div className={`relative w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-bold transition-all duration-300
+                                                    ${isActive ? 'bg-gradient-to-br from-gold-400 to-gold-600 text-white shadow-lg shadow-gold-500/30 scale-105' :
+                                                    isDone ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'}`}>
+                                                {isDone ? (
+                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                ) : step.id}
+                                                {isActive && <span className="absolute inset-0 rounded-2xl ring-4 ring-gold-200/50 dark:ring-gold-900/30 animate-pulse" />}
+                                            </div>
+                                            <div className="hidden sm:flex flex-col items-center text-center max-w-[110px]">
+                                                <span className={`text-xs font-bold leading-tight transition-colors ${isActive ? 'text-gold-600' : isDone ? 'text-emerald-600' : 'text-gray-500'}`}>{step.title}</span>
+                                                <span className="text-[10px] text-gray-400 mt-0.5 font-medium leading-tight">{step.subTitle}</span>
+                                            </div>
                                         </div>
-                                        <div className="hidden sm:flex flex-col items-center">
-                                            <span className={`text-xs font-bold leading-none ${currentStep === step.id ? 'text-gold-600' : 'text-gray-500'}`}>{step.title}</span>
-                                            <span className="text-[10px] text-gray-400 mt-1 font-medium">{step.subTitle}</span>
-                                        </div>
+                                        {idx < steps.length - 1 && (
+                                            <div className="flex-1 h-1 mx-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                                <div className={`h-full rounded-full bg-emerald-500 transition-all duration-500 ${isDone ? 'w-full' : 'w-0'}`} />
+                                            </div>
+                                        )}
                                     </div>
-                                    {idx < steps.length - 1 && (
-                                        <div className={`flex-1 h-0.5 mx-4 transition-colors duration-500 ${currentStep > step.id ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-800'}`}></div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -590,7 +681,7 @@ export function InvitationContentPage() {
 
                         {/* STEP 1: ISI KONTEN */}
                         {currentStep === 1 && (
-                            <div className="space-y-6 animate-slide-up">
+                            <div className="space-y-6 animate-slide-up content-form-compact">
                                 <AccordionItem id="mempelai" isOpen={openAccordions.has('mempelai')} onToggle={toggleAccordion} icon={<HiOutlineUserGroup className="w-5 h-5" />} iconBg="bg-rose-50 dark:bg-rose-900/20" iconColor="text-rose-600" title={t('invitation_content.couple_info')}>
                                     <div className="space-y-6">
                                         {/* ================= MEMPELAI UTAMA ================= */}
@@ -615,7 +706,7 @@ export function InvitationContentPage() {
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="label-field">{t('auth.religion_label')}</label>
-                                                    <select value={content.religion || ''} onChange={(e) => updateField('religion', e.target.value)} className="input-field">
+                                                    <select value={content.religion || ''} onChange={(e) => updateField('religion', e.target.value)} className="select-field">
                                                         <option value="" disabled>{t('auth.religion_placeholder')}</option>
                                                         <option value="Islam">Islam</option>
                                                         <option value="Kristen Protestan">Kristen Protestan</option>
@@ -719,17 +810,17 @@ export function InvitationContentPage() {
                                                     <div className="space-y-3">
                                                         <label className="label-field mb-0">{t('invitation_content.akad_time')}</label>
                                                         <div className="flex items-center gap-2">
-                                                            <input type="time" value={content.jam_awal_akad || ''} onChange={(e) => updateField('jam_awal_akad', e.target.value)} className="input-field shadow-none" title={t('invitation_content.start_time')} />
+                                                            <TimeInput value={content.jam_awal_akad || ''} onChange={(val) => updateField('jam_awal_akad', val)} title={t('invitation_content.start_time')} />
                                                             <span className="text-gray-400">-</span>
-                                                            <input type="time" value={content.jam_akhir_akad || ''} onChange={(e) => updateField('jam_akhir_akad', e.target.value)} className="input-field shadow-none" title={t('invitation_content.end_time')} />
+                                                            <TimeInput value={content.jam_akhir_akad || ''} onChange={(val) => updateField('jam_akhir_akad', val)} title={t('invitation_content.end_time')} />
                                                         </div>
                                                     </div>
                                                     <div className="space-y-3">
                                                         <label className="label-field mb-0">{t('invitation_content.resepsi_time')}</label>
                                                         <div className="flex items-center gap-2">
-                                                            <input type="time" value={content.jam_awal_resepsi || ''} onChange={(e) => updateField('jam_awal_resepsi', e.target.value)} className="input-field shadow-none" title={t('invitation_content.start_time')} />
+                                                            <TimeInput value={content.jam_awal_resepsi || ''} onChange={(val) => updateField('jam_awal_resepsi', val)} title={t('invitation_content.start_time')} />
                                                             <span className="text-gray-400">-</span>
-                                                            <input type="time" value={content.jam_akhir_resepsi || ''} onChange={(e) => updateField('jam_akhir_resepsi', e.target.value)} className="input-field shadow-none" title={t('invitation_content.end_time')} />
+                                                            <TimeInput value={content.jam_akhir_resepsi || ''} onChange={(val) => updateField('jam_akhir_resepsi', val)} title={t('invitation_content.end_time')} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -745,7 +836,7 @@ export function InvitationContentPage() {
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div>
                                                             <label className="label-field">{t('invitation_content.address_info')}</label>
-                                                            <textarea value={content.keterangan_lokasi_akad || ''} onChange={(e) => updateField('keterangan_lokasi_akad', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.address_placeholder_akad')} />
+                                                            <AutoTextarea value={content.keterangan_lokasi_akad || ''} onChange={(e) => updateField('keterangan_lokasi_akad', e.target.value)} className="input-field" minRows={2} placeholder={t('invitation_content.address_placeholder_akad')} />
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center justify-between mb-1">
@@ -781,7 +872,7 @@ export function InvitationContentPage() {
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
                                                                 <label className="label-field">{t('invitation_content.address_info')}</label>
-                                                                <textarea value={content.keterangan_lokasi_resepsi || ''} onChange={(e) => updateField('keterangan_lokasi_resepsi', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.address_placeholder_resepsi')} />
+                                                                <AutoTextarea value={content.keterangan_lokasi_resepsi || ''} onChange={(e) => updateField('keterangan_lokasi_resepsi', e.target.value)} className="input-field" minRows={2} placeholder={t('invitation_content.address_placeholder_resepsi')} />
                                                             </div>
                                                             <div>
                                                                 <div className="flex items-center justify-between mb-1">
@@ -979,7 +1070,7 @@ export function InvitationContentPage() {
                                                     </div>
                                                     <div>
                                                         <label className="label-field">{t('invitation_content.full_address_label')}</label>
-                                                        <textarea value={content.alamat_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('alamat_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.full_address_placeholder')} />
+                                                        <AutoTextarea value={content.alamat_lokasi_kirim_hadiah_offline || ''} onChange={(e) => updateField('alamat_lokasi_kirim_hadiah_offline', e.target.value)} className="input-field" minRows={2} placeholder={t('invitation_content.full_address_placeholder')} />
                                                     </div>
                                                 </div>
                                             )}
@@ -1030,11 +1121,11 @@ export function InvitationContentPage() {
                                                         </div>
                                                         <div>
                                                             <label className="label-field text-xs">{t('invitation_content.story_description_label')}</label>
-                                                            <textarea value={item.deskripsi} onChange={(e) => {
+                                                            <AutoTextarea value={item.deskripsi} onChange={(e) => {
                                                                 const newArr = [...timelineItems];
                                                                 newArr[idx].deskripsi = e.target.value;
                                                                 setTimelineItems(newArr);
-                                                            }} className="input-field min-h-[60px] text-sm" placeholder={t('invitation_content.love_story_placeholder')} />
+                                                            }} className="input-field text-sm" minRows={2} placeholder={t('invitation_content.love_story_placeholder')} />
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1059,7 +1150,7 @@ export function InvitationContentPage() {
                                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.use_custom_opening')}</span>
                                                 </label>
                                                 {getBool(content.flag_pakai_kalimat_pembuka_custom) && (
-                                                    <textarea value={content.kalimat_pembuka_undangan || ''} onChange={(e) => updateField('kalimat_pembuka_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.opening_placeholder')} />
+                                                    <AutoTextarea value={content.kalimat_pembuka_undangan || ''} onChange={(e) => updateField('kalimat_pembuka_undangan', e.target.value)} className="input-field" minRows={3} placeholder={t('invitation_content.opening_placeholder')} />
                                                 )}
                                             </div>
                                             <div className="space-y-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20">
@@ -1068,24 +1159,24 @@ export function InvitationContentPage() {
                                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('invitation_content.use_custom_closing')}</span>
                                                 </label>
                                                 {getBool(content.flag_pakai_kalimat_penutup_custom) && (
-                                                    <textarea value={content.kalimat_penutup_undangan || ''} onChange={(e) => updateField('kalimat_penutup_undangan', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.closing_placeholder')} />
+                                                    <AutoTextarea value={content.kalimat_penutup_undangan || ''} onChange={(e) => updateField('kalimat_penutup_undangan', e.target.value)} className="input-field" minRows={3} placeholder={t('invitation_content.closing_placeholder')} />
                                                 )}
                                             </div>
                                             <div>
                                                 <label className="label-field">{t('invitation_content.quote_label')}</label>
-                                                <textarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.quote_placeholder')} />
+                                                <AutoTextarea value={content.custom_kalimat_1 || ''} onChange={(e) => updateField('custom_kalimat_1', e.target.value)} className="input-field" minRows={3} placeholder={t('invitation_content.quote_placeholder')} />
                                             </div>
                                             <div>
                                                 <label className="label-field">{t('invitation_content.welcome_text_label')}</label>
-                                                <textarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.welcome_text_placeholder')} />
+                                                <AutoTextarea value={content.custom_kalimat_2 || ''} onChange={(e) => updateField('custom_kalimat_2', e.target.value)} className="input-field" minRows={3} placeholder={t('invitation_content.welcome_text_placeholder')} />
                                             </div>
                                             <div>
                                                 <label className="label-field">{t('invitation_content.protocol_text_label')}</label>
-                                                <textarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.protocol_text_placeholder')} />
+                                                <AutoTextarea value={content.custom_kalimat_3 || ''} onChange={(e) => updateField('custom_kalimat_3', e.target.value)} className="input-field" minRows={3} placeholder={t('invitation_content.protocol_text_placeholder')} />
                                             </div>
                                             <div>
                                                 <label className="label-field">{t('invitation_content.footer_text_label')}</label>
-                                                <textarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field min-h-[80px]" placeholder={t('invitation_content.footer_text_placeholder')} />
+                                                <AutoTextarea value={content.custom_kalimat_4 || ''} onChange={(e) => updateField('custom_kalimat_4', e.target.value)} className="input-field" minRows={3} placeholder={t('invitation_content.footer_text_placeholder')} />
                                             </div>
                                         </div>
                                     </div>
@@ -1205,7 +1296,7 @@ export function InvitationContentPage() {
                                                                     gallerySelectionMode ? (
                                                                         <div
                                                                             key={img.id}
-                                                                            onClick={() => { if (!galleryDeleting) toggleGallerySelected(img.id); }}
+                                                                            onClick={() => toggleGallerySelected(img.id)}
                                                                             className={`relative group rounded-xl overflow-hidden border-2 cursor-pointer transition-all aspect-square ${selectedGalleryIds.has(img.id) ? 'border-red-500 ring-2 ring-red-400/40' : 'border-gray-200 dark:border-gray-700'}`}
                                                                             title="Klik untuk memilih"
                                                                         >
@@ -1257,7 +1348,7 @@ export function InvitationContentPage() {
                         )}
 
                         {currentStep === 3 && (
-                            <div className="space-y-6 animate-slide-up">
+                            <div className="space-y-6 animate-slide-up content-form-compact">
                                 {/* SECTION: MEDIA & AUDIO */}
                                 <div className="card p-6 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 mb-6">
@@ -1451,51 +1542,74 @@ export function InvitationContentPage() {
                                             <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{t('invitation_content.quotes_custom', 'Buat quotes sendiri (custom)')}</span>
                                         </label>
 
-                                        {/* Quotes table: read-only when not custom, editable when custom */}
-                                        <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                                        <th className="px-3 py-2 w-10">#</th>
-                                                        <th className="px-3 py-2">{t('invitation_content.quotes_quote', 'Quote')}</th>
-                                                        <th className="px-3 py-2 w-1/3">{t('invitation_content.quotes_by', 'Penulis / Sumber')}</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                                                        <tr key={i} className="align-top">
-                                                            <td className="px-3 py-2 text-gray-400 font-medium">{i}</td>
-                                                            <td className="px-3 py-2">
-                                                                {customQuotesEnabled ? (
-                                                                    <textarea
-                                                                        rows={2}
-                                                                        value={customQuotes[`quote_${i}`] || ''}
-                                                                        onChange={(e) => { setCustomQuotes(prev => ({ ...prev, [`quote_${i}`]: e.target.value })); setIsDirty(true); }}
-                                                                        className="input-field resize-none text-sm"
-                                                                        placeholder={t('invitation_content.quotes_quote_placeholder', 'Isi quote...') as string}
-                                                                    />
-                                                                ) : (
-                                                                    <span className="text-gray-700 dark:text-gray-200">{(selectedQuote as any)[`quote_${i}`] || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                {customQuotesEnabled ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        value={customQuotes[`quote_by_${i}`] || ''}
-                                                                        onChange={(e) => { setCustomQuotes(prev => ({ ...prev, [`quote_by_${i}`]: e.target.value })); setIsDirty(true); }}
-                                                                        className="input-field text-sm"
-                                                                        placeholder={t('invitation_content.quotes_by_placeholder', 'Penulis...') as string}
-                                                                    />
-                                                                ) : (
-                                                                    <span className="text-gray-600 dark:text-gray-300">{(selectedQuote as any)[`quote_by_${i}`] || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                        {/* Quotes list. Renders per-row Quote + Penulis fields.
+                                            Desktop (sm+): side-by-side table columns.
+                                            Mobile (<sm): stacked cards — Quote on top, Penulis below. */}
+                                        {(() => {
+                                            const renderQuote = (i: number) => customQuotesEnabled ? (
+                                                <AutoTextarea
+                                                    minRows={2}
+                                                    value={customQuotes[`quote_${i}`] || ''}
+                                                    onChange={(e) => { setCustomQuotes(prev => ({ ...prev, [`quote_${i}`]: e.target.value })); setIsDirty(true); }}
+                                                    className="input-field text-sm"
+                                                    placeholder={t('invitation_content.quotes_quote_placeholder', 'Isi quote...') as string}
+                                                />
+                                            ) : (
+                                                <span className="text-gray-700 dark:text-gray-200">{(selectedQuote as any)[`quote_${i}`] || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
+                                            );
+                                            const renderBy = (i: number) => customQuotesEnabled ? (
+                                                <input
+                                                    type="text"
+                                                    value={customQuotes[`quote_by_${i}`] || ''}
+                                                    onChange={(e) => { setCustomQuotes(prev => ({ ...prev, [`quote_by_${i}`]: e.target.value })); setIsDirty(true); }}
+                                                    className="input-field text-sm"
+                                                    placeholder={t('invitation_content.quotes_by_placeholder', 'Penulis...') as string}
+                                                />
+                                            ) : (
+                                                <span className="text-gray-600 dark:text-gray-300">{(selectedQuote as any)[`quote_by_${i}`] || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
+                                            );
+
+                                            return (
+                                                <>
+                                                    {/* Desktop table */}
+                                                    <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+                                                        <table className="w-full text-sm">
+                                                            <thead>
+                                                                <tr className="bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                                    <th className="px-3 py-2 w-10">#</th>
+                                                                    <th className="px-3 py-2">{t('invitation_content.quotes_quote', 'Quote')}</th>
+                                                                    <th className="px-3 py-2 w-1/3">{t('invitation_content.quotes_by', 'Penulis / Sumber')}</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                                                    <tr key={i} className="align-top">
+                                                                        <td className="px-3 py-2 text-gray-400 font-medium">{i}</td>
+                                                                        <td className="px-3 py-2">{renderQuote(i)}</td>
+                                                                        <td className="px-3 py-2">{renderBy(i)}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+
+                                                    {/* Mobile stacked cards — Quote on top, Penulis below */}
+                                                    <div className="sm:hidden space-y-3">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                                            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20 p-3 space-y-2.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="grid place-items-center w-6 h-6 rounded-full bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 text-xs font-bold flex-shrink-0">{i}</span>
+                                                                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t('invitation_content.quotes_quote', 'Quote')}</span>
+                                                                </div>
+                                                                {renderQuote(i)}
+                                                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider pt-1">{t('invitation_content.quotes_by', 'Penulis / Sumber')}</p>
+                                                                {renderBy(i)}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>
@@ -1503,25 +1617,28 @@ export function InvitationContentPage() {
 
                     </div>
 
-                    {/* Navigation Footer */}
-                    <div className="flex items-center justify-between p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mt-auto">
-                        <Button
-                            variant="secondary"
+                    {/* Navigation Footer — edits are auto-saved on step change, so
+                        the last step just finishes (also flushing any final edits). */}
+                    <div className="flex items-center justify-between gap-3 p-4 sm:p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mt-auto">
+                        <button
+                            type="button"
                             disabled={currentStep === 1}
-                            onClick={() => setCurrentStep(prev => prev - 1)}
-                            className={`px-6 ${currentStep === 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
-                            icon={<HiOutlineChevronLeft className="w-5 h-5" />}
+                            onClick={() => goToStep(currentStep - 1)}
+                            className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95
+                                ${currentStep === 1
+                                    ? 'opacity-30 cursor-not-allowed border-gray-100 dark:border-gray-800 text-gray-400'
+                                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
                         >
+                            <HiOutlineChevronLeft className="w-5 h-5" />
                             {t('common.previous')}
-                        </Button>
+                        </button>
                         <button
                             type="button"
                             onClick={() => {
-                                if (currentStep < 4) setCurrentStep(prev => prev + 1);
-                                else handleSave();
+                                if (currentStep < 4) goToStep(currentStep + 1);
+                                else autoSaveInBackground();
                             }}
-                            disabled={currentStep === 4 && (saving || isUploadingGallery)}
-                            className={`btn-primary flex items-center gap-2 px-8 ${(currentStep === 4 && (saving || isUploadingGallery)) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-gold-400 to-gold-600 shadow-lg shadow-gold-500/25 hover:shadow-gold-500/40 hover:brightness-105 transition-all active:scale-95"
                         >
                             {currentStep < 4 ? (
                                 <>
@@ -1530,17 +1647,8 @@ export function InvitationContentPage() {
                                 </>
                             ) : (
                                 <>
-                                    {saving || isUploadingGallery ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            {isUploadingGallery ? t('invitation_content.uploading_photos') : t('common.saving')}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <HiOutlineSave className="w-5 h-5" />
-                                            {t('invitation_content.save_settings')}
-                                        </>
-                                    )}
+                                    <HiOutlineCheck className="w-5 h-5" />
+                                    {t('invitation_content.finish', 'Selesai')}
                                 </>
                             )}
                         </button>
@@ -1615,50 +1723,21 @@ export function InvitationContentPage() {
             {/* MODAL KONFIRMASI HAPUS FOTO GALERI (MASSAL) */}
             <ConfirmDialog
                 isOpen={galleryBulkMode !== null}
-                onClose={() => { if (!galleryDeleting) setGalleryBulkMode(null); }}
+                onClose={() => setGalleryBulkMode(null)}
                 onConfirm={handleGalleryBulkDeleteConfirmed}
                 title={galleryBulkMode === 'all' ? 'Hapus Semua Foto' : 'Hapus Foto Terpilih'}
                 variant="danger"
                 warningTitle="Konfirmasi Hapus"
                 message={
                     galleryBulkMode === 'all'
-                        ? <>Apakah Anda yakin ingin menghapus <b>SEMUA {galleryImages.length} foto</b> galeri? Foto juga akan dihapus permanen dari Google Drive dan tidak bisa dikembalikan.</>
-                        : <>Apakah Anda yakin ingin menghapus <b>{selectedGalleryIds.size} foto</b> terpilih? Foto juga akan dihapus permanen dari Google Drive dan tidak bisa dikembalikan.</>
+                        ? <>Apakah Anda yakin ingin menghapus <b>SEMUA {galleryImages.length} foto</b> galeri? Foto akan dihapus permanen dari Google Drive di latar belakang dan tidak bisa dikembalikan.</>
+                        : <>Apakah Anda yakin ingin menghapus <b>{selectedGalleryIds.size} foto</b> terpilih? Foto akan dihapus permanen dari Google Drive di latar belakang dan tidak bisa dikembalikan.</>
                 }
                 confirmLabel={galleryBulkMode === 'all' ? 'Ya, Hapus Semua' : `Ya, Hapus (${selectedGalleryIds.size})`}
-                loading={galleryDeleting}
             />
 
-            {/* MODAL KONFIRMASI NAVIGASI (UNSAVED CHANGES) */}
-            {blocker.state === 'blocked' && (
-                <Modal
-                    isOpen={blocker.state === 'blocked'}
-                    onClose={() => blocker.reset?.()}
-                    title={t('common.unsaved_changes')}
-                >
-                    <div className="space-y-6">
-                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/50">
-                            <div className="flex gap-3 text-amber-800 dark:text-amber-400">
-                                <HiOutlineSave className="w-5 h-5 shrink-0 mt-0.5" />
-                                <div className="text-sm">
-                                    <p className="font-semibold text-base mb-1">{t('common.confirm_leave_title')}</p>
-                                    <p>{t('common.confirm_leave_message')}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-3">
-                            <button onClick={() => blocker.reset?.()} className="btn-ghost">{t('common.cancel_stay')}</button>
-                            <button 
-                                onClick={() => blocker.proceed?.()} 
-                                className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-6 rounded-lg font-semibold transition-colors"
-                            >
-                                {t('common.confirm_leave_action')}
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
+            {/* Unsaved-changes navigation prompt removed: edits now auto-save in
+                the background when leaving a step or the page. */}
         </div>
     );
 }

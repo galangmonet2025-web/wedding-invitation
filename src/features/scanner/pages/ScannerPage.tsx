@@ -309,18 +309,11 @@ export function ScannerPage() {
     });
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-fade-in" onDragOver={handleDragOver} onDrop={handleDrop}>
-            <div className="text-center mb-8">
-                <p className="text-gray-500 dark:text-gray-400">
-                    Pindai QR Code tamu atau catat kehadiran tamu secara manual.
-                </p>
-            </div>
-
+        <div className="max-w-7xl mx-auto space-y-6 animate-fade-in w-full min-w-0" onDragOver={handleDragOver} onDrop={handleDrop}>
             <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 items-start">
                 {/* Left Column: Scanner */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                     <div className="p-6 text-center space-y-6">
-                        <h2 className="font-semibold text-lg text-gray-800 dark:text-white mb-4">Scanner QR</h2>
 
                         {/* Camera Feed Container */}
                         <div className="w-full max-w-sm mx-auto min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative">
@@ -426,7 +419,7 @@ export function ScannerPage() {
             </div>
 
             {/* Right Column: Manual Input Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full min-h-[500px]">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full min-h-[500px] min-w-0">
                 <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50 dark:bg-gray-800/50">
                     <div>
                         <h2 className="font-semibold text-lg text-gray-800 dark:text-white">Input Manual</h2>
@@ -451,7 +444,8 @@ export function ScannerPage() {
                     </div>
                 </div>
 
-                <div className="p-0 overflow-x-auto flex-1">
+                {/* Desktop: editable table (md and up) */}
+                <div className="hidden md:block p-0 overflow-x-auto flex-1 min-w-0">
                     <table className="w-full text-left border-collapse min-w-[500px]">
                         <thead>
                             <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
@@ -466,7 +460,7 @@ export function ScannerPage() {
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                             {sortedManualGuests.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                                         Belum ada data manual.<br />Klik <b>Tambah Baris</b> untuk mencatat tamu.
                                     </td>
                                 </tr>
@@ -548,6 +542,109 @@ export function ScannerPage() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile: editable cards (below md) — same layout language as Daftar Tamu */}
+                <div className="block md:hidden flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
+                    {sortedManualGuests.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Belum ada data manual.<br />Ketuk <b>Tambah Baris</b> untuk mencatat tamu.
+                        </div>
+                    ) : (
+                        sortedManualGuests.map((guest) => {
+                            const locked = guest.status === 'saved' || guest.status === 'saving';
+                            return (
+                                <div
+                                    key={guest.id}
+                                    className={`rounded-2xl border p-3.5 transition-colors ${
+                                        guest.status === 'saved'
+                                            ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-900/10'
+                                            : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800'
+                                    }`}
+                                >
+                                    {/* Header: status pill + delete */}
+                                    <div className="flex items-center justify-between gap-2 mb-3">
+                                        {guest.status === 'saved' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">✓ Tersimpan</span>}
+                                        {guest.status === 'saving' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Menyimpan…</span>}
+                                        {guest.status === 'draft' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Belum Disimpan</span>}
+
+                                        {guest.status !== 'saved' && (
+                                            <button
+                                                onClick={() => handleRemoveRow(guest.id)}
+                                                disabled={guest.status === 'saving'}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 bg-red-50 dark:bg-red-900/20 active:scale-90 transition-transform disabled:opacity-50"
+                                                title="Hapus baris"
+                                                aria-label="Hapus baris"
+                                            >
+                                                <HiOutlineTrash className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Nama */}
+                                    <div className="mb-2.5">
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama (Wajib)</label>
+                                        <input
+                                            type="text"
+                                            value={guest.name}
+                                            onChange={(e) => handleUpdateRow(guest.id, 'name', e.target.value)}
+                                            disabled={locked}
+                                            placeholder="Nama Tamu"
+                                            className="w-full px-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:opacity-75"
+                                        />
+                                    </div>
+
+                                    {/* Kategori */}
+                                    <div className="mb-2.5">
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kategori</label>
+                                        <select
+                                            value={guest.category}
+                                            onChange={(e) => handleUpdateRow(guest.id, 'category', e.target.value)}
+                                            disabled={locked}
+                                            className="w-full px-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:opacity-75"
+                                        >
+                                            <option value="Keluarga Laki-laki">Keluarga Laki-laki</option>
+                                            <option value="Keluarga Perempuan">Keluarga Perempuan</option>
+                                            <option value="Teman/Rekan Kerja">Teman/Rekan Kerja</option>
+                                            <option value="Tamu Undangan Umum">Tamu Undangan Umum</option>
+                                            <option value="VIP">VIP</option>
+                                        </select>
+                                    </div>
+
+                                    {/* No. Telp + Jumlah Tamu */}
+                                    <div className="flex items-end gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">No. Telp</label>
+                                            <input
+                                                type="text"
+                                                value={guest.phone}
+                                                onChange={(e) => handleUpdateRow(guest.id, 'phone', e.target.value)}
+                                                disabled={locked}
+                                                placeholder="Opsional"
+                                                className="w-full px-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:opacity-75"
+                                            />
+                                        </div>
+                                        <div className="shrink-0">
+                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 text-center">Jml Tamu</label>
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    onClick={() => handleUpdateRow(guest.id, 'pax', Math.max(1, guest.pax - 1))}
+                                                    disabled={locked || guest.pax <= 1}
+                                                    className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-600 dark:text-gray-300 text-lg font-bold flex items-center justify-center active:scale-90 transition-transform"
+                                                >−</button>
+                                                <span className="text-sm font-bold w-6 text-center">{guest.pax}</span>
+                                                <button
+                                                    onClick={() => handleUpdateRow(guest.id, 'pax', guest.pax + 1)}
+                                                    disabled={locked}
+                                                    className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-600 dark:text-gray-300 text-lg font-bold flex items-center justify-center active:scale-90 transition-transform"
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
 
                 {/* Footer / Save Button */}

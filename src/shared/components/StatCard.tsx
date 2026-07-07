@@ -45,8 +45,10 @@ export function StatCard({ title, value, icon, trend, color = 'gold' }: StatCard
             <div className={`absolute top-0 right-0 w-24 h-24 -mr-6 -mt-6 rounded-full blur-2xl opacity-10 dark:opacity-20 transition-opacity group-hover:opacity-20 dark:group-hover:opacity-30 ${colors.bg}`} />
 
             <div className="relative flex items-center gap-3 md:gap-4">
-                <div className={`p-2 md:p-2.5 rounded-xl ${colors.bg} transition-all duration-300 group-hover:scale-105`}>
-                    <div className={`${colors.icon} w-4 h-4 md:w-5 md:h-5`}>{icon}</div>
+                {/* Fixed-size square badge, icon centered & normalized to one size
+                    regardless of the size class the caller put on the SVG. */}
+                <div className={`shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center ${colors.bg} ${colors.icon} transition-all duration-300 group-hover:scale-105 [&>svg]:w-5 [&>svg]:h-5`}>
+                    {icon}
                 </div>
 
                 <div className="flex-1 min-w-0">

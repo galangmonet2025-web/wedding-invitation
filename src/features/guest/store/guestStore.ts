@@ -269,7 +269,7 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         }));
 
         try {
-            const response = await guestApi.updateGuestBlastStatus(id, sent);
+            const response = await guestApi.updateGuestBlastStatus(id, sent, silent);
             if (response.success) {
                 if (!silent) toast.success('Status blast diperbarui');
                 return true;

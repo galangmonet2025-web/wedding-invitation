@@ -14,6 +14,8 @@ import { NewLandingPage } from '@/features/landing/pages/NewLandingPage';
 // invitation should never download any of this — code-splitting keeps the
 // dashboard out of the public bundle entirely. ---
 const DashboardLayout = lazy(() => import('@/core/layout/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const AdminLayout = lazy(() => import('@/core/layout/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminHomePage = lazy(() => import('@/features/dashboard/pages/AdminHomePage').then(m => ({ default: m.AdminHomePage })));
 const ProtectedRoute = lazy(() => import('@/core/guards/ProtectedRoute').then(m => ({ default: m.ProtectedRoute })));
 const ImpersonatePage = lazy(() => import('@/features/auth/pages/ImpersonatePage').then(m => ({ default: m.ImpersonatePage })));
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -326,6 +328,200 @@ export const router = createHashRouter([
                             },
                         ],
                     },
+                ],
+            },
+            {
+                // NEW admin experience — a bold & colorful, mobile-first re-skin
+                // of the exact same page components used under /private. The
+                // legacy /private tree above is intentionally left untouched;
+                // this is a parallel tree so both URLs keep working.
+                path: 'admin',
+                element: L(
+                    <ProtectedRoute>
+                        <AdminLayout />
+                    </ProtectedRoute>
+                ),
+                children: [
+                    { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+                    { path: 'dashboard', element: <AdminHomePage /> },
+                    {
+                        path: 'global-dashboard',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <GlobalDashboardPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    { path: 'guests', element: <GuestPage /> },
+                    {
+                        path: 'whatsapp-blast',
+                        element: (
+                            <ProtectedRoute allowedRoles={['tenant_admin', 'superadmin']}>
+                                <WhatsAppBlastPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'staff',
+                        element: (
+                            <ProtectedRoute allowedRoles={['tenant_admin']}>
+                                <StaffPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'scanner',
+                        element: (
+                            <ProtectedRoute allowedRoles={['tenant_admin', 'staff']}>
+                                <ScannerPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'tenants',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <TenantPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'themes',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <ManageThemesPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'themes/editor/:id',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <ThemeEditorPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'website-config',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <WebsiteConfigPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'plan-config',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <PlanConfigPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'reviews',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <ReviewPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'master-quotes',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <MasterQuotesListPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'master-quotes/new',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <MasterQuotesFormPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'master-quotes/edit/:id',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <MasterQuotesFormPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'wishes',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <WishesPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'gifts',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <GiftsPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'activity',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <ActivityPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'invitation-content',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <InvitationContentPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'additional-features',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin', 'tenant_admin']}>
+                                <AdditionalFeatureRouter />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'payments',
+                        element: (
+                            <ProtectedRoute allowedRoles={['tenant_admin']}>
+                                <PaymentPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'transactions',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <TransactionMonitoringPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'coupons',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <CouponPage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    {
+                        path: 'archive-restore',
+                        element: (
+                            <ProtectedRoute allowedRoles={['superadmin']}>
+                                <ArchiveRestorePage />
+                            </ProtectedRoute>
+                        ),
+                    },
+                    { path: 'unauthorized', element: <UnauthorizedPage /> },
                 ],
             },
             {

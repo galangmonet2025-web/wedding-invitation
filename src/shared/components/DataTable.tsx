@@ -8,6 +8,15 @@ export interface Column<T> {
     width?: string;
 }
 
+export interface MobileCardHelpers {
+    /** Whether this row is currently selected (bulk-select). */
+    isSelected: boolean;
+    /** Toggle this row's selection. Only meaningful when onSelectChange is set. */
+    toggleSelect: () => void;
+    /** True when bulk selection is enabled for this table. */
+    selectable: boolean;
+}
+
 interface DataTableProps<T> {
     columns: Column<T>[];
     data: T[];
@@ -17,6 +26,12 @@ interface DataTableProps<T> {
     selectedIds?: string[];
     onSelectChange?: (ids: string[]) => void;
     idKey?: keyof T;
+    /**
+     * Optional custom renderer for the mobile (< md) card. When provided it fully
+     * replaces the generic "labelled 2-column grid" card, letting a page ship a
+     * purpose-built, friendlier layout. The desktop table is unaffected.
+     */
+    renderMobileCard?: (item: T, helpers: MobileCardHelpers) => React.ReactNode;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -28,6 +43,7 @@ export function DataTable<T extends Record<string, any>>({
     selectedIds = [],
     onSelectChange,
     idKey = 'id' as keyof T,
+    renderMobileCard,
 }: DataTableProps<T>) {
     const allSelected = data.length > 0 && data.every((item) => selectedIds.includes(String(item[idKey])));
 
@@ -168,9 +184,23 @@ export function DataTable<T extends Record<string, any>>({
             </div>
 
             {/* Mobile Cards List View */}
-            <div className="block md:hidden space-y-2.5">
+            <div className="block md:hidden space-y-3">
                 {data.map((item, index) => {
                     const isSelected = selectedIds.includes(String(item[idKey]));
+
+                    // Page-provided custom card takes over entirely when present.
+                    if (renderMobileCard) {
+                        return (
+                            <React.Fragment key={String(item[idKey]) || index}>
+                                {renderMobileCard(item, {
+                                    isSelected,
+                                    toggleSelect: () => handleSelectRow(String(item[idKey])),
+                                    selectable: !!onSelectChange,
+                                })}
+                            </React.Fragment>
+                        );
+                    }
+
                     const actionColumn = columns.find((col) => col.key === 'actions');
                     const displayColumns = columns.filter((col) => col.key !== 'actions');
                     const primaryCol = displayColumns[0];

@@ -11,6 +11,7 @@ import { detectQRCodeBounds } from '../utils/detectQRCode';
 import { ProxyImage } from './ProxyImage';
 import { Lightbox } from '@/shared/components/Lightbox';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { isHeic, ensureBrowserDecodable } from '@/shared/utils/imagePrepare';
 
 interface QrisUploadProps {
     imageType: string;
@@ -59,11 +60,24 @@ export function QrisUpload({
     // Handle File Selection (Pre-Crop)
     const handleFileSelect = async (files: FileList | File[]) => {
         if (!files || files.length === 0) return;
-        const file = Array.isArray(files) ? files[0] : files[0];
+        let file = Array.isArray(files) ? files[0] : files[0];
 
-        if (!file.type.startsWith('image/')) {
+        if (!file.type.startsWith('image/') && !isHeic(file)) {
             toast.error(`File "${file.name}" bukan gambar yang valid.`);
             return;
+        }
+
+        // Convert HEIC/HEIF (iPhone default) to JPEG BEFORE cropping — the
+        // cropper draws into an <img>/<canvas> that can't decode HEIC on many
+        // Android browsers, so it would fail on those devices only.
+        if (isHeic(file)) {
+            try {
+                file = await ensureBrowserDecodable(file);
+            } catch (e) {
+                console.error('HEIC convert error (QRIS):', e);
+                toast.error(`Format foto (HEIC) tidak dapat diproses di perangkat ini. Ubah Pengaturan Kamera ke "Most Compatible" / JPEG, lalu ulangi.`);
+                return;
+            }
         }
 
         setSelectedFile(file);
@@ -110,7 +124,7 @@ export function QrisUpload({
             // Close modal
             setImageSrc(null);
 
-            const fileToUpload = new File([croppedFile], `${selectedFile.name.replace(/\.[^/.]+$/, "")}_qris.webp`, { type: 'image/webp' });
+            const fileToUpload = new File([croppedFile], `${selectedFile.name.replace(/\.[^/.]+$/, "")}_qris.jpg`, { type: 'image/jpeg' });
 
             const taskId = `upload-${imageType}-${Date.now()}`;
             addTask({
@@ -123,10 +137,18 @@ export function QrisUpload({
                 maxSizeMB: 0.15,
                 maxWidthOrHeight: 800,
                 useWebWorker: true,
-                fileType: 'image/webp'
+                // JPEG, not WebP: universal canvas.toBlob support across devices.
+                fileType: 'image/jpeg'
             };
 
-            const compressedFile = await imageCompression(fileToUpload, options);
+            // If compression fails on this device, fall back to the cropped file.
+            let compressedFile: File = fileToUpload;
+            try {
+                const out = await imageCompression(fileToUpload, options);
+                if (out && out.size > 0) compressedFile = out as File;
+            } catch (compErr) {
+                console.warn('QRIS compression failed, uploading cropped original:', compErr);
+            }
             
             const getDimensions = (): Promise<{ w: number, h: number }> => {
                 return new Promise((resolve) => {
@@ -148,11 +170,11 @@ export function QrisUpload({
                         image_type: imageType,
                         file_name: fileToUpload.name,
                         base64_data: base64Data,
-                        mime_type: 'image/webp',
+                        mime_type: 'image/jpeg',
                         width: dims.w,
                         height: dims.h,
                         size_kb: Math.round(compressedFile.size / 1024)
-                    }, { skipLoader: true } as any);
+                    }, { skipLoader: true, timeout: 90000 } as any);
 
                     if (response.success && response.data) {
                         onUploadSuccess(response.data.cdn_url || response.data.drive_url);
@@ -315,7 +337,7 @@ export function QrisUpload({
                         <input
                             type="file"
                             className="hidden"
-                            accept="image/jpeg, image/png, image/webp"
+                            accept="image/jpeg, image/png, image/webp, image/heic, image/heif, .heic, .heif"
                             onChange={(e) => {
                                 if (e.target.files && e.target.files.length > 0) {
                                     handleFileSelect(e.target.files);

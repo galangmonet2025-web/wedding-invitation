@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useGuestStore } from '../store/guestStore';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Pagination } from '@/shared/components/Pagination';
@@ -18,12 +18,21 @@ import {
     HiOutlineTrash,
     HiOutlinePencil,
     HiOutlineQrcode,
-    HiOutlineUpload,
     HiOutlineRefresh,
     HiOutlineUserGroup,
     HiOutlineSpeakerphone,
+    HiOutlineDocumentDownload,
+    HiOutlineDocumentText,
+    HiOutlineDownload,
+    HiOutlineDotsHorizontal,
+    HiOutlineUsers,
+    HiOutlineCheckCircle,
+    HiOutlineClock,
 } from 'react-icons/hi';
 import { GoogleContactModal } from '../components/GoogleContactModal';
+import { GuestCard } from '../components/GuestCard';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 export function GuestPage() {
     const { t } = useTranslation();
@@ -46,6 +55,8 @@ export function GuestPage() {
 
     const { user, tenant } = useAuthStore();
     const isStaff = user?.role === 'staff';
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    const isAdminLayout = useBasePath() === '/admin';
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -64,11 +75,57 @@ export function GuestPage() {
     });
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [toolsOpen, setToolsOpen] = useState(false);
+    const toolsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setFilters({ limit: 1000, page: 1 });
         fetchGuests();
     }, [filters.status, filters.category]);
+
+    // Tutup dropdown "Ekspor & Impor" saat klik di luar area menu.
+    useEffect(() => {
+        if (!toolsOpen) return;
+        const onDown = (e: MouseEvent) => {
+            if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setToolsOpen(false);
+        };
+        document.addEventListener('mousedown', onDown);
+        return () => document.removeEventListener('mousedown', onDown);
+    }, [toolsOpen]);
+
+    // Pada layout /admin, tombol refresh dipindah ke gold header (sebelah "Buka
+    // Undangan") lewat store header-action. Di /private lama tetap inline.
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={() => fetchGuests(true)}
+                disabled={loading}
+                title={t('common.refresh') as string}
+                aria-label={t('common.refresh') as string}
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [loading, isAdminLayout]);
+
+    // Ringkasan cepat untuk penyelenggara — dihitung dari seluruh tamu (bukan
+    // hasil filter), pakai isTrue-tolerant karena backend bisa kirim string.
+    const stats = useMemo(() => {
+        const norm = (s: any) => String(s || '').toLowerCase();
+        return guests.reduce(
+            (acc, g) => {
+                acc.total += 1;
+                acc.headcount += Number(g.number_of_guests) || 0;
+                if (norm(g.status) === 'confirmed') acc.confirmed += 1;
+                else if (norm(g.status) === 'pending') acc.pending += 1;
+                return acc;
+            },
+            { total: 0, confirmed: 0, pending: 0, headcount: 0 }
+        );
+    }, [guests]);
 
     const filteredGuests = useMemo(() => {
         if (!searchTerm) return guests;
@@ -341,89 +398,151 @@ export function GuestPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {t('guests.total_count', { count: total })}
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-                    <IconButton
-                        onClick={() => fetchGuests(true)}
-                        className="shrink-0"
-                        title={t('common.refresh')}
-                        spinning={loading}
-                        icon={<HiOutlineRefresh className="w-4 h-4" />}
-                    />
-                    {!isStaff && (
-                        <>
-                            <label className="btn-ghost cursor-pointer text-sm flex items-center gap-2 shrink-0">
-                                <HiOutlineUpload className="w-4 h-4" />
-                                {t('common.import')}
-                                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-                            </label>
-                            <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1 border border-gray-200 dark:border-gray-700 shrink-0">
-                                <button onClick={handleExportExcel} className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
-                                    Excel
-                                </button>
-                                <button onClick={handleExportPdf} className="px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors flex items-center gap-2 justify-center">
-                                    PDF
-                                </button>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                onClick={() => setShowGoogleModal(true)}
-                                className="text-sm text-blue-600 hover:text-blue-700 shrink-0"
-                                icon={<HiOutlineUserGroup className="w-4 h-4" />}
-                            >
-                                Google
-                            </Button>
-                            <Button
-                                onClick={() => { resetForm(); setShowAddModal(true); }}
-                                className="text-sm shrink-0"
-                                icon={<HiOutlinePlus className="w-4 h-4" />}
-                            >
-                                {t('guests.add_new')}
-                            </Button>
-                        </>
-                    )}
-                </div>
-            </div>
+            {/* ===== Header: action row + stat strip + search/filters (satu blok) ===== */}
+            <div className="space-y-4">
+                {/* Action row */}
+                <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">
+                        {t('guests.management')}
+                    </h2>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Layout /admin: refresh dipindah ke gold header. Inline hanya untuk /private. */}
+                        {!isAdminLayout && (
+                            <IconButton
+                                onClick={() => fetchGuests(true)}
+                                title={t('common.refresh')}
+                                spinning={loading}
+                                icon={<HiOutlineRefresh className="w-4 h-4" />}
+                            />
+                        )}
+                        {!isStaff && (
+                            <>
+                                {/* Ekspor & Impor — satu dropdown menggantikan 4 tombol */}
+                                <div className="relative" ref={toolsRef}>
+                                    <button
+                                        onClick={() => setToolsOpen((v) => !v)}
+                                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
+                                        title={t('guests.tools_menu')}
+                                    >
+                                        <HiOutlineDotsHorizontal className="w-4 h-4" />
+                                        <span className="hidden sm:inline">{t('guests.tools_menu')}</span>
+                                    </button>
+                                    {toolsOpen && (
+                                        <div className="absolute right-0 mt-2 w-56 z-30 rounded-2xl bg-white dark:bg-wedding-dark-card border border-gray-100 dark:border-gray-700 shadow-xl overflow-hidden animate-fade-in">
+                                            <button
+                                                onClick={() => { handleExportExcel(); setToolsOpen(false); }}
+                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                            >
+                                                <span className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center shrink-0">
+                                                    <HiOutlineDocumentDownload className="w-4 h-4" />
+                                                </span>
+                                                {t('guests.export_excel')}
+                                            </button>
+                                            <button
+                                                onClick={() => { handleExportPdf(); setToolsOpen(false); }}
+                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                            >
+                                                <span className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center shrink-0">
+                                                    <HiOutlineDocumentText className="w-4 h-4" />
+                                                </span>
+                                                {t('guests.export_pdf')}
+                                            </button>
+                                            <div className="h-px bg-gray-100 dark:bg-gray-800" />
+                                            <label className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                                                <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-300 flex items-center justify-center shrink-0">
+                                                    <HiOutlineDownload className="w-4 h-4" />
+                                                </span>
+                                                {t('guests.import_csv')}
+                                                <input type="file" accept=".csv" className="hidden" onChange={(e) => { handleImportCSV(e); setToolsOpen(false); }} />
+                                            </label>
+                                            <button
+                                                onClick={() => { setShowGoogleModal(true); setToolsOpen(false); }}
+                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                            >
+                                                <span className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center shrink-0">
+                                                    <HiOutlineUserGroup className="w-4 h-4" />
+                                                </span>
+                                                {t('guests.import_google')}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
 
-            <div className="card">
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder={t('guests.search_placeholder')}
-                            className="input-field pl-10"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                                {/* Aksi utama */}
+                                <Button
+                                    onClick={() => { resetForm(); setShowAddModal(true); }}
+                                    className="text-sm shrink-0"
+                                    icon={<HiOutlinePlus className="w-4 h-4" />}
+                                >
+                                    <span className="hidden sm:inline">{t('guests.add_new')}</span>
+                                    <span className="sm:hidden">{t('guests.add_new_short')}</span>
+                                </Button>
+                            </>
+                        )}
                     </div>
-                    <div className="flex gap-3">
-                        <select
-                            value={filters.status}
-                            onChange={(e) => setFilters({ status: e.target.value as GuestStatus | '', page: 1 })}
-                            className="select-field w-auto"
-                        >
-                            <option value="">{t('guests.all_status')}</option>
-                            <option value="confirmed">{t('guests.status.confirmed')}</option>
-                            <option value="declined">{t('guests.status.declined')}</option>
-                            <option value="pending">{t('guests.status.pending')}</option>
-                        </select>
-                        <select
-                            value={filters.category}
-                            onChange={(e) => setFilters({ category: e.target.value, page: 1 })}
-                            className="select-field w-auto"
-                        >
-                            <option value="">{t('guests.all_categories')}</option>
-                            <option value="Family">{t('guests.categories.family')}</option>
-                            <option value="Friends">{t('guests.categories.friends')}</option>
-                            <option value="Work">{t('guests.categories.work')}</option>
-                            <option value="VIP">{t('guests.categories.vip')}</option>
-                        </select>
+                </div>
+
+                {/* Stat strip */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <StatPill
+                        icon={<HiOutlineUsers className="w-4 h-4" />}
+                        value={stats.total}
+                        label={t('guests.stat_total')}
+                        tone="gold"
+                    />
+                    <StatPill
+                        icon={<HiOutlineCheckCircle className="w-4 h-4" />}
+                        value={stats.confirmed}
+                        label={t('guests.stat_confirmed')}
+                        tone="emerald"
+                    />
+                    <StatPill
+                        icon={<HiOutlineClock className="w-4 h-4" />}
+                        value={stats.pending}
+                        label={t('guests.stat_pending')}
+                        tone="amber"
+                    />
+                </div>
+
+                {/* Search + filters. `content-form-compact` matches the smaller
+                    text size used by the Step-1 forms in Kelola Undangan. The
+                    dropdown arrow spacing is handled globally by `.select-field`
+                    (custom SVG chevron with a gap from the border). */}
+                <div className="card !p-3 sm:!p-4 content-form-compact">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1 relative">
+                            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder={t('guests.search_placeholder')}
+                                className="input-field pl-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex gap-2 sm:gap-3">
+                            <select
+                                value={filters.status}
+                                onChange={(e) => setFilters({ status: e.target.value as GuestStatus | '', page: 1 })}
+                                className="select-field flex-1 sm:w-auto sm:flex-none"
+                            >
+                                <option value="">{t('guests.all_status')}</option>
+                                <option value="confirmed">{t('guests.status.confirmed')}</option>
+                                <option value="declined">{t('guests.status.declined')}</option>
+                                <option value="pending">{t('guests.status.pending')}</option>
+                            </select>
+                            <select
+                                value={filters.category}
+                                onChange={(e) => setFilters({ category: e.target.value, page: 1 })}
+                                className="select-field flex-1 sm:w-auto sm:flex-none"
+                            >
+                                <option value="">{t('guests.all_categories')}</option>
+                                <option value="Family">{t('guests.categories.family')}</option>
+                                <option value="Friends">{t('guests.categories.friends')}</option>
+                                <option value="Work">{t('guests.categories.work')}</option>
+                                <option value="VIP">{t('guests.categories.vip')}</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -454,6 +573,19 @@ export function GuestPage() {
                 emptyMessage={t('guests.no_guests')}
                 selectedIds={!isStaff ? selectedIds : undefined}
                 onSelectChange={!isStaff ? setSelectedIds : undefined}
+                renderMobileCard={(g, { isSelected, toggleSelect, selectable }) => (
+                    <GuestCard
+                        guest={g}
+                        isSelected={isSelected}
+                        selectable={selectable}
+                        selectionMode={selectedIds.length > 0}
+                        onToggleSelect={toggleSelect}
+                        isStaff={isStaff}
+                        onQr={openQRModal}
+                        onEdit={openEditModal}
+                        onDelete={(guest) => { setDeleteTargetId(guest.id); setShowDeleteConfirm(true); }}
+                    />
+                )}
             />
 
             {totalPages > 1 && (
@@ -592,11 +724,48 @@ export function GuestPage() {
                 cancelLabel={t('common.cancel')}
             />
 
-            <GoogleContactModal 
+            <GoogleContactModal
                 isOpen={showGoogleModal}
                 onClose={() => setShowGoogleModal(false)}
                 onImport={handleImportGoogleContacts}
             />
+        </div>
+    );
+}
+
+// Kartu statistik ringkas untuk header. Warna mengikuti bahasa desain yang
+// sudah dipakai di GuestCard (status pill emerald/amber, aksen gold).
+const STAT_TONE: Record<string, { icon: string; value: string }> = {
+    gold: {
+        icon: 'bg-gold-100 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400',
+        value: 'text-gray-900 dark:text-white',
+    },
+    emerald: {
+        icon: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+        value: 'text-emerald-600 dark:text-emerald-400',
+    },
+    amber: {
+        icon: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+        value: 'text-amber-600 dark:text-amber-400',
+    },
+};
+
+function StatPill({ icon, value, label, tone }: {
+    icon: React.ReactNode;
+    value: number;
+    label: string;
+    tone: keyof typeof STAT_TONE;
+}) {
+    const c = STAT_TONE[tone] || STAT_TONE.gold;
+    return (
+        <div className="card !p-3 flex items-center gap-2.5 min-w-0">
+            <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
+                {icon}
+            </span>
+            <div className="min-w-0">
+                <p className={`text-xl font-black leading-none ${c.value}`}>{value}</p>
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 truncate mt-1">{label}</p>
+            </div>
         </div>
     );
 }

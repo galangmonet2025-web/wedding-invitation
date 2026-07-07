@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import kosaIcon from '@/assets/img/kosa-icon.png';
 
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
+import { useEnterFullscreenOnLogin } from '@/shared/hooks/useEnterFullscreenOnLogin';
 import {
     HiOutlineHome,
     HiOutlineUsers,
@@ -35,11 +36,13 @@ import {
     HiOutlineArchive,
     HiOutlineChevronDoubleLeft,
     HiOutlineChevronDoubleRight,
+    HiOutlineDeviceMobile,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
 import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ViewSwitchButton } from '@/shared/components/ViewSwitchButton';
 
 function MobileMenuOverlay({
     isOpen,
@@ -54,7 +57,8 @@ function MobileMenuOverlay({
     toggleTheme,
     canOpenInvitation,
     siteName,
-    siteLogo
+    siteLogo,
+    switchToMobile
 }: any) {
     if (!isOpen) return null;
 
@@ -158,6 +162,15 @@ function MobileMenuOverlay({
 
                 {/* Bottom Profile & Actions */}
                 <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
+                    {/* Switch to the new mobile-first /admin UI */}
+                    <button
+                        onClick={() => { onClose(); switchToMobile(); }}
+                        className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 shadow-md shadow-fuchsia-500/30 active:scale-95 transition-transform"
+                    >
+                        <HiOutlineDeviceMobile className="w-5 h-5" />
+                        {t('view_switch.to_mobile', 'Versi Mobile')}
+                    </button>
+
                     <div className="p-4 bg-gray-50 dark:bg-wedding-dark-card rounded-3xl border border-gray-100 dark:border-gray-800/50">
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
@@ -224,6 +237,9 @@ export function DashboardLayout() {
         try { localStorage.setItem('sidebar_collapsed', String(next)); } catch { /* ignore */ }
         return next;
     });
+    // On mobile, enter fullscreen on the first tap after login (see hook).
+    useEnterFullscreenOnLogin();
+
     const { user, tenant, logout } = useAuthStore();
     const { isDark, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
@@ -370,6 +386,7 @@ export function DashboardLayout() {
                 canOpenInvitation={showTenantMenu}
                 siteName={siteName}
                 siteLogo={siteLogo}
+                switchToMobile={() => navigate(`${location.pathname.replace(/^\/private/, '/admin') || '/admin/dashboard'}${location.search}`)}
             />
 
             {/* Desktop Sidebar (Only visible on LG up) */}
@@ -529,6 +546,9 @@ export function DashboardLayout() {
 
                         <div className="flex items-center gap-3">
                             <div className="hidden lg:flex items-center gap-3">
+                                {/* Switch to the new mobile-first /admin UI */}
+                                <ViewSwitchButton variant="full" />
+
                                 {/* Open Invitation Shortcut */}
                                 {tenant?.domain_slug && showTenantMenu && (
                                     <a

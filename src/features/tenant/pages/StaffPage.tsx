@@ -8,11 +8,15 @@ import { HiOutlinePlus, HiOutlineUserAdd, HiOutlineTrash, HiOutlineUserGroup, Hi
 import toast from 'react-hot-toast';
 import { useStaffStore } from '../store/staffStore';
 import { useTranslation } from 'react-i18next';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 export function StaffPage() {
     const { t } = useTranslation();
     const { user } = useAuthStore();
     const { staffs, loading: isLoading, fetchStaffs, addStaff, deleteStaff: deleteStaffInStore } = useStaffStore();
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    const isAdminLayout = useBasePath() === '/admin';
 
     // Modals visibility state
     const [isCreatingModalOpen, setIsCreatingModalOpen] = useState(false);
@@ -23,6 +27,24 @@ export function StaffPage() {
     useEffect(() => {
         fetchStaffs();
     }, []);
+
+    // Pada layout /admin, tombol refresh dipindah ke gold header (sebelah "Buka
+    // Undangan") lewat store header-action. Di /private lama tetap inline.
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={() => fetchStaffs(true)}
+                disabled={isLoading}
+                title={t('common.refresh', 'Refresh Data') as string}
+                aria-label={t('common.refresh', 'Refresh Data') as string}
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [isLoading, isAdminLayout]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,21 +86,47 @@ export function StaffPage() {
         return <div className="p-6 text-center text-red-500 font-bold">{t('common.access_denied', 'Akses Ditolak')}</div>;
     }
 
+    // Empty state — dipakai desktop (dalam <td colSpan>) & mobile. Ikon + judul +
+    // deskripsi + CTA agar tidak sekadar satu baris teks polos.
+    const EmptyState = () => (
+        <div className="flex flex-col items-center justify-center text-center py-14 px-6">
+            <div className="w-16 h-16 rounded-2xl bg-gold-50 dark:bg-gold-900/20 flex items-center justify-center mb-4">
+                <HiOutlineUserGroup className="w-8 h-8 text-gold-500 dark:text-gold-400" />
+            </div>
+            <h3 className="text-base font-black text-gray-800 dark:text-white">
+                {t('staff.empty_title', 'Belum ada akun staff')}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 max-w-xs mx-auto leading-relaxed">
+                {t('staff.empty_desc', 'Buat akun staff untuk memberi akses scanner check-in tamu di resepsi. Mulai dengan membuat akun pertama.')}
+            </p>
+            <button
+                onClick={() => setIsCreatingModalOpen(true)}
+                className="btn-primary mt-5 py-2.5 px-5 inline-flex items-center gap-2 text-sm"
+            >
+                <HiOutlineUserAdd className="w-4 h-4" />
+                {t('staff.empty_cta', 'Buat Akun Staff Pertama')}
+            </button>
+        </div>
+    );
+
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                        onClick={() => fetchStaffs(true)}
-                        className="p-2.5 bg-white dark:bg-wedding-dark-card border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm flex items-center justify-center"
-                        title="Refresh Data"
-                    >
-                        <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    </button>
+            <div className="flex flex-row justify-between items-center gap-4">
+                <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">
+                    {t('staff.page_title', 'Kelola Staff')}
+                </h2>
+                <div className="flex items-center gap-2 shrink-0">
+                    {/* Layout /admin: refresh dipindah ke gold header. Inline hanya untuk /private. */}
+                    {!isAdminLayout && (
+                        <button
+                            onClick={() => fetchStaffs(true)}
+                            className="p-2.5 bg-white dark:bg-wedding-dark-card border border-gray-200 dark:border-gray-700 hover:border-gold-500 text-gray-400 hover:text-gold-500 rounded-xl transition-all shadow-sm flex items-center justify-center"
+                            title="Refresh Data"
+                        >
+                            <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                    )}
                     <Button
                         onClick={() => setIsCreatingModalOpen(true)}
                         className="text-sm shrink-0"
@@ -122,8 +170,8 @@ export function StaffPage() {
                                 </tr>
                             ) : staffs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-gray-550 dark:text-gray-400">
-                                        {t('staff.empty_message', 'Tidak ada akun staff ditemukan. Buat akun pertama untuk memulai!')}
+                                    <td colSpan={4} className="p-0">
+                                        <EmptyState />
                                     </td>
                                 </tr>
                             ) : (
@@ -168,9 +216,7 @@ export function StaffPage() {
                             </div>
                         </div>
                     ) : staffs.length === 0 ? (
-                        <div className="py-8 text-center text-gray-550 dark:text-gray-400">
-                            {t('staff.empty_message', 'Tidak ada akun staff ditemukan. Buat akun pertama untuk memulai!')}
-                        </div>
+                        <EmptyState />
                     ) : (
                         staffs.map((staff) => (
                             <div

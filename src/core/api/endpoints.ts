@@ -131,8 +131,8 @@ export const guestApi = {
         return res.data;
     },
     
-    updateGuestBlastStatus: async (id: string, status: boolean): Promise<ApiResponse<null>> => {
-        const res = await apiClient.post('', { action: 'updateGuestBlastStatus', id, sent: status });
+    updateGuestBlastStatus: async (id: string, status: boolean, silent = false): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'updateGuestBlastStatus', id, sent: status }, silent ? ({ skipLoader: true } as any) : undefined);
         return res.data;
     },
 };

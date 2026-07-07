@@ -7,6 +7,7 @@ import { ProxyImage } from './ProxyImage';
 import { Modal } from './Modal';
 import { useBackgroundTaskStore } from '../store/backgroundTaskStore';
 import { setCachedImage } from './ProxyImage';
+import { isHeic, convertHeicToJpeg } from '@/shared/utils/imagePrepare';
 import type { ImageRecord } from '@/types';
 
 interface ImageUploadProps {
@@ -85,7 +86,10 @@ export function ImageUpload({
             maxSizeMB,
             maxWidthOrHeight,
             useWebWorker: true,
-            fileType: 'image/webp' // Target format WebP based on standard
+            // Target JPEG, NOT WebP. WebP encoding via canvas.toBlob() is
+            // unsupported on older Safari / vendor WebViews (returns null →
+            // upload fails on those devices only). JPEG's toBlob is universal.
+            fileType: 'image/jpeg',
         };
     };
 
@@ -132,12 +136,12 @@ export function ImageUpload({
 
         for (let i = 0; i < total; i++) {
             if (i > 0) await sleep(1000); // Beri jeda 1 detik antar upload agar lebih stabil
-            const file = filesArray[i];
+            let file = filesArray[i];
             setUploadProgress({ current: i + 1, total });
 
-            // Basic validation
-            if (!file.type.startsWith('image/')) {
-                toast.error(`File "${file.name}" bukan gambar yang valid.`);
+            // Record a failure with a device-specific reason so it's diagnosable.
+            const recordFailure = (msg: string) => {
+                toast.error(msg);
                 failCount++;
                 failedFiles.push(file.name);
                 updateTask(taskId, {
@@ -145,32 +149,58 @@ export function ImageUpload({
                     failedFiles,
                     progress: Math.round(((successCount + failCount) / total) * 100)
                 });
+            };
+
+            // Basic validation — accept HEIC/HEIF too (empty/odd MIME is common
+            // for iPhone photos, so also allow by extension).
+            if (!file.type.startsWith('image/') && !isHeic(file)) {
+                recordFailure(`File "${file.name}" bukan gambar yang valid.`);
                 continue;
             }
 
             if (file.size > 10 * 1024 * 1024) {
-                toast.error(`Ukuran "${file.name}" terlalu besar (Max 10MB).`);
-                failCount++;
-                failedFiles.push(file.name);
-                updateTask(taskId, {
-                    failCount,
-                    failedFiles,
-                    progress: Math.round(((successCount + failCount) / total) * 100)
-                });
+                recordFailure(`Ukuran "${file.name}" terlalu besar (Max 10MB).`);
                 continue;
             }
 
-            try {
-                // Compress image
-                const options = getCompressionOptions();
-                const compressedFile = await imageCompression(file, options);
+            const originalName = file.name;
 
-                // Get dimensions
+            try {
+                // 1) Convert HEIC/HEIF → JPEG first (iPhone default format that
+                //    most Android browsers can't decode). Do this BEFORE the
+                //    canvas compression step, which would otherwise fail.
+                if (isHeic(file)) {
+                    try {
+                        file = await convertHeicToJpeg(file);
+                    } catch (heicErr) {
+                        console.error('HEIC convert error:', heicErr);
+                        recordFailure(`Format foto "${originalName}" (HEIC) tidak dapat diproses di perangkat ini. Coba ubah Pengaturan Kamera ke "Most Compatible" / JPEG, lalu ulangi.`);
+                        continue;
+                    }
+                }
+
+                // 2) Compress (target JPEG). If the canvas/encoder step fails on
+                //    this device, fall back to the (already HEIC-decoded) source
+                //    file so the upload still goes through instead of hard-failing.
+                let uploadFile: File = file;
+                try {
+                    const options = getCompressionOptions();
+                    const compressed = await imageCompression(file, options);
+                    // Guard against a degenerate/empty result from a flaky encoder.
+                    if (compressed && compressed.size > 0) uploadFile = compressed;
+                } catch (compErr) {
+                    console.warn('Compression failed, uploading original:', compErr);
+                    // uploadFile stays as the source file.
+                }
+
+                // Get dimensions (best-effort; 0 if the browser can't decode it).
                 const getDimensions = (): Promise<{ w: number, h: number }> => {
                     return new Promise((resolve) => {
                         const img = new Image();
-                        img.onload = () => resolve({ w: img.width, h: img.height });
-                        img.src = URL.createObjectURL(compressedFile);
+                        const url = URL.createObjectURL(uploadFile);
+                        img.onload = () => { resolve({ w: img.width, h: img.height }); URL.revokeObjectURL(url); };
+                        img.onerror = () => { resolve({ w: 0, h: 0 }); URL.revokeObjectURL(url); };
+                        img.src = url;
                     });
                 };
                 const dims = await getDimensions();
@@ -180,19 +210,20 @@ export function ImageUpload({
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result as string);
                     reader.onerror = reject;
-                    reader.readAsDataURL(compressedFile);
+                    reader.readAsDataURL(uploadFile);
                 });
                 const base64Data = dataUrl.split(',')[1];
+
+                // The output is always a JPEG now (compressed or HEIC-converted).
+                const safeFileName = originalName
+                    .replace(/\.[^/.]+$/, "") // Remove extension
+                    .replace(/[^a-z0-9]/gi, '_') // Replace non-alphanumeric with underscore
+                    .toLowerCase() + ".jpg";
 
                 // Upload via API with Retry Logic
                 let response = null;
                 let retries = 0;
                 const maxRetries = 1; // Reduced retries for faster failure feedback
-
-                const safeFileName = file.name
-                    .replace(/\.[^/.]+$/, "") // Remove extension
-                    .replace(/[^a-z0-9]/gi, '_') // Replace non-alphanumeric with underscore
-                    .toLowerCase() + ".webp";
 
                 while (retries <= maxRetries) {
                     try {
@@ -201,11 +232,11 @@ export function ImageUpload({
                             image_type: imageType,
                             file_name: safeFileName,
                             base64_data: base64Data,
-                            mime_type: 'image/webp',
+                            mime_type: 'image/jpeg',
                             width: dims.w,
                             height: dims.h,
-                            size_kb: Math.round(compressedFile.size / 1024)
-                        }, { skipLoader: true } as any);
+                            size_kb: Math.round(uploadFile.size / 1024)
+                        }, { skipLoader: true, timeout: 90000 } as any);
 
                         if (response.success) break;
 
@@ -236,18 +267,23 @@ export function ImageUpload({
                         cdn_url: response.data.cdn_url,
                         width: dims.w,
                         height: dims.h,
-                        size_kb: Math.round(compressedFile.size / 1024),
+                        size_kb: Math.round(uploadFile.size / 1024),
                         created_at: new Date().toISOString()
                     };
                     onUploadSuccess(newRecord);
                 } else {
                     failCount++;
-                    failedFiles.push(file.name);
+                    failedFiles.push(originalName);
                 }
 
             } catch (error: any) {
                 failCount++;
-                failedFiles.push(file.name);
+                failedFiles.push(originalName);
+                // Classify the error so the user gets an actionable message.
+                const isTimeout = error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '');
+                if (isTimeout) {
+                    toast.error(`Upload "${originalName}" gagal: koneksi terlalu lambat / timeout. Coba lagi dengan sinyal lebih stabil.`);
+                }
                 console.error('Upload Error:', error);
             }
 
@@ -437,7 +473,7 @@ export function ImageUpload({
                     <input
                         type="file"
                         className="hidden"
-                        accept="image/jpeg, image/png, image/webp"
+                        accept="image/jpeg, image/png, image/webp, image/heic, image/heif, .heic, .heif"
                         multiple={allowMultiple}
                         onChange={(e) => {
                             if (e.target.files && e.target.files.length > 0) {

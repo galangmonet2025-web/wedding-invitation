@@ -20,10 +20,14 @@ import {
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/Button';
 import { IconButton } from '@/shared/components/IconButton';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 
 export function PaymentPage() {
     const { t } = useTranslation();
     const { user } = useAuthStore();
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    const isAdminLayout = useBasePath() === '/admin';
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [pendingFeatures, setPendingFeatures] = useState<TenantActiveFeature[]>([]);
     const [planTypes, setPlanTypes] = useState<any[]>([]);
@@ -95,6 +99,24 @@ export function PaymentPage() {
     }, []);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
+
+    // Pada layout /admin, tombol refresh dipindah ke gold header (sebelah "Buka
+    // Undangan"). Di /private lama tetap inline.
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={() => fetchAll(true)}
+                disabled={loading}
+                title={t('common.refresh', 'Refresh') as string}
+                aria-label={t('common.refresh', 'Refresh') as string}
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [loading, isAdminLayout, fetchAll]);
 
     // Data Paket Tenant Saat Ini
     const currentPlanDetails = planTypes.find(p => String(p.plan_type).toLowerCase() === String(user?.plan_type).toLowerCase());
@@ -314,16 +336,22 @@ export function PaymentPage() {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('payments.subtitle', 'Kelola transaksi dan tagihan Anda')}</p>
+            <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                    <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">
+                        {t('payments.page_title', 'Pembayaran')}
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t('payments.subtitle', 'Kelola transaksi dan tagihan Anda')}</p>
                 </div>
-                <IconButton
-                    onClick={() => fetchAll(false)}
-                    title={t('common.refresh', 'Refresh')}
-                    icon={<HiOutlineRefresh className="w-5 h-5" />}
-                    spinning={loading}
-                />
+                {/* Layout /admin: refresh dipindah ke gold header. Inline hanya untuk /private. */}
+                {!isAdminLayout && (
+                    <IconButton
+                        onClick={() => fetchAll(false)}
+                        title={t('common.refresh', 'Refresh')}
+                        icon={<HiOutlineRefresh className="w-5 h-5" />}
+                        spinning={loading}
+                    />
+                )}
             </div>
 
             {/* Pending Payments Alert */}
@@ -505,80 +533,83 @@ export function PaymentPage() {
                             const badge = getStatusBadge(tx.status, t);
                             return (
                                 <div key={tx.id}
-                                    className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600 transition-all">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                        tx.status === 'settlement' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
-                                        tx.status === 'pending' ? 'bg-amber-100 dark:bg-amber-900/30' :
-                                        'bg-gray-100 dark:bg-gray-800'
-                                    }`}>
-                                        {tx.status === 'settlement' ? (
-                                            <HiOutlineCheckCircle className="w-5 h-5 text-emerald-500" />
-                                        ) : tx.status === 'pending' ? (
-                                            <HiOutlineClock className="w-5 h-5 text-amber-500" />
-                                        ) : (
-                                            <HiOutlineExclamationCircle className="w-5 h-5 text-gray-400" />
-                                        )}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">{tx.item_description}</p>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${badge.color}`}>
-                                                {badge.label}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400 flex-wrap">
-                                            <span className="font-mono">{tx.id}</span>
-                                            <span>•</span>
-                                            <span>{formatDate(tx.created_at)}</span>
-                                            {tx.payment_method && (
-                                                <>
-                                                    <span>•</span>
-                                                    <span className="capitalize">{tx.payment_method.replace(/_/g, ' ')}</span>
-                                                </>
+                                    className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600 transition-all">
+                                    {/* Top row: icon + title/meta + amount */}
+                                    <div className="flex items-start gap-3 min-w-0">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                            tx.status === 'settlement' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                                            tx.status === 'pending' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                                            'bg-gray-100 dark:bg-gray-800'
+                                        }`}>
+                                            {tx.status === 'settlement' ? (
+                                                <HiOutlineCheckCircle className="w-5 h-5 text-emerald-500" />
+                                            ) : tx.status === 'pending' ? (
+                                                <HiOutlineClock className="w-5 h-5 text-amber-500" />
+                                            ) : (
+                                                <HiOutlineExclamationCircle className="w-5 h-5 text-gray-400" />
                                             )}
                                         </div>
-                                    </div>
 
-                                    <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                                        <p className="font-bold text-gray-800 dark:text-white">{formatCurrency(Number(tx.amount))}</p>
-                                        {tx.status === 'pending' && (
-                                            <div className="flex items-center gap-2">
-                                                <button 
-                                                    onClick={() => handleRefreshStatus(tx.id)}
-                                                    disabled={refreshingId === tx.id}
-                                                    className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 transition-colors text-[10px] font-bold disabled:opacity-50"
-                                                >
-                                                    <HiOutlineRefresh className={`w-3 h-3 ${refreshingId === tx.id ? 'animate-spin' : ''}`} />
-                                                    {t('payments.check_status', 'Cek Status')}
-                                                </button>
-                                                
-                                                <button 
-                                                    onClick={() => setTransactionToCancel(tx)}
-                                                    disabled={cancelingId === tx.id}
-                                                    className="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-655 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-[10px] font-bold disabled:opacity-50"
-                                                >
-                                                    {cancelingId === tx.id ? (
-                                                        <div className="w-3 h-3 border border-red-500/30 border-t-red-500 rounded-full animate-spin" />
-                                                    ) : (
-                                                        <HiOutlineX className="w-3 h-3" />
-                                                    )}
-                                                    {t('payments.cancel_btn', 'Batalkan')}
-                                                </button>
-
-                                                {tx.snap_token && (
-                                                    <button
-                                                        onClick={() => handleContinuePayment(tx)}
-                                                        disabled={!!payingId}
-                                                        className="text-[10px] text-gold-600 hover:text-gold-700 font-bold flex items-center gap-1 bg-gold-50 dark:bg-gold-900/20 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
-                                                    >
-                                                        {payingId === tx.id ? <div className="w-3 h-3 border border-gold-500/30 border-t-gold-500 rounded-full animate-spin" /> : <HiOutlineCreditCard className="w-3 h-3" />}
-                                                        {t('payments.continue_btn', 'Lanjutkan')}
-                                                    </button>
+                                        <div className="flex-1 min-w-0">
+                                            {/* Title clamped to 2 lines — never pushes width */}
+                                            <p className="font-semibold text-gray-800 dark:text-white text-sm leading-snug break-words line-clamp-2">{tx.item_description}</p>
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${badge.color}`}>
+                                                    {badge.label}
+                                                </span>
+                                                <span className="font-mono text-[11px] text-gray-400 truncate">{tx.id}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-400 min-w-0">
+                                                <span className="shrink-0">{formatDate(tx.created_at)}</span>
+                                                {tx.payment_method && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span className="capitalize truncate">{tx.payment_method.replace(/_/g, ' ')}</span>
+                                                    </>
                                                 )}
                                             </div>
-                                        )}
+                                        </div>
+
+                                        <p className="font-bold text-gray-800 dark:text-white text-sm shrink-0 whitespace-nowrap">{formatCurrency(Number(tx.amount))}</p>
                                     </div>
+
+                                    {/* Action row: wraps, full-width buttons on mobile */}
+                                    {tx.status === 'pending' && (
+                                        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                            <button
+                                                onClick={() => handleRefreshStatus(tx.id)}
+                                                disabled={refreshingId === tx.id}
+                                                className="flex items-center justify-center gap-1 flex-1 min-w-[96px] px-2 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 transition-colors text-[11px] font-bold disabled:opacity-50"
+                                            >
+                                                <HiOutlineRefresh className={`w-3.5 h-3.5 ${refreshingId === tx.id ? 'animate-spin' : ''}`} />
+                                                {t('payments.check_status', 'Cek Status')}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setTransactionToCancel(tx)}
+                                                disabled={cancelingId === tx.id}
+                                                className="flex items-center justify-center gap-1 flex-1 min-w-[96px] px-2 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-[11px] font-bold disabled:opacity-50"
+                                            >
+                                                {cancelingId === tx.id ? (
+                                                    <div className="w-3.5 h-3.5 border border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+                                                ) : (
+                                                    <HiOutlineX className="w-3.5 h-3.5" />
+                                                )}
+                                                {t('payments.cancel_btn', 'Batalkan')}
+                                            </button>
+
+                                            {tx.snap_token && (
+                                                <button
+                                                    onClick={() => handleContinuePayment(tx)}
+                                                    disabled={!!payingId}
+                                                    className="flex items-center justify-center gap-1 flex-1 min-w-[96px] text-[11px] text-gold-600 hover:text-gold-700 font-bold bg-gold-50 dark:bg-gold-900/20 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                                >
+                                                    {payingId === tx.id ? <div className="w-3.5 h-3.5 border border-gold-500/30 border-t-gold-500 rounded-full animate-spin" /> : <HiOutlineCreditCard className="w-3.5 h-3.5" />}
+                                                    {t('payments.continue_btn', 'Lanjutkan')}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
