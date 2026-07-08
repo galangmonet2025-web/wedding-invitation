@@ -277,6 +277,11 @@
   .admin-icon-btn {
     @apply w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/15 hover:bg-white/25 transition-all active:scale-90;
   }
+  /* Fullscreen button while ACTIVE → arrow + border go darker so its toggled-on
+     state reads at a glance, without a jarring accent color. */
+  .admin-icon-btn.is-fs-active {
+    @apply text-black/70 ring-1 ring-black/40;
+  }
 
   /* Mobile bottom-nav tab */
   .admin-tab {

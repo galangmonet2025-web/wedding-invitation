@@ -40,6 +40,7 @@ import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
 import { useEnterFullscreenOnLogin } from '@/shared/hooks/useEnterFullscreenOnLogin';
+import { FullscreenButton } from '@/shared/components/FullscreenButton';
 
 export interface AdminNavItem {
     to: string;
@@ -336,6 +337,9 @@ export function AdminLayout() {
                                 {/* Page-injected header action (e.g. the refresh
                                     button on Kelola Undangan), sits next to Buka Undangan. */}
                                 {headerAction}
+                                {/* Tombol fullscreen manual, di sebelah KIRI ikon
+                                    Buka Undangan (untuk HP yang tak fullscreen otomatis). */}
+                                <FullscreenButton />
                                 {invitationUrl && showTenantMenu && (
                                     <a href={invitationUrl} target="_blank" rel="noopener noreferrer" className="admin-icon-btn" title={t('topbar.open_invitation', 'Buka Undangan')}>
                                         <HiOutlineExternalLink className="w-5 h-5" />

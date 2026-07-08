@@ -2409,22 +2409,28 @@
       });
       // Tenant only sees themes for their plan or lower. Public sees all non-drafts.
       if (!auth || auth.role !== 'superadmin') {
+        var priorities = { basic: 1, pro: 2, premium: 3 };
+        // Normalize plan strings before lookup: Sheet values can carry stray
+        // casing/whitespace (e.g. "Premium", "premium ", "PREMIUM"). Without this,
+        // priorities[plan] is undefined and falls back to basic (1), so a real
+        // PREMIUM tenant gets treated as BASIC and every pro/premium theme —
+        // including the playable game themes — is wrongly filtered out.
+        var normPlan = function(p) { return String(p == null ? '' : p).trim().toLowerCase(); };
+
         var tenantPriority = 3; // Default to highest for public/superadmin, but for non-admin we filter.
-        
+
         if (auth && auth.role !== 'superadmin') {
           var tenantId = PermissionService.getTenantId(auth);
           var tenant = DB.findOne('Tenants', 'id', tenantId);
           if (tenant) {
-            var priorities = { basic: 1, pro: 2, premium: 3 };
-            tenantPriority = priorities[tenant.plan_type] || 1;
+            tenantPriority = priorities[normPlan(tenant.plan_type)] || 1;
           }
         }
 
-        var priorities = { basic: 1, pro: 2, premium: 3 };
         themes = themes.filter(function(t) {
-          var themePriority = priorities[t.plan_type] || 1;
+          var themePriority = priorities[normPlan(t.plan_type)] || 1;
           var isDraft = (t.flag_draft === true || t.flag_draft === 'true' || t.flag_draft === 'TRUE');
-          // For public view (auth is null), show all non-drafts. 
+          // For public view (auth is null), show all non-drafts.
           // For tenant_admin, show based on plan priority.
           return (!auth ? !isDraft : (themePriority <= tenantPriority && !isDraft));
         });

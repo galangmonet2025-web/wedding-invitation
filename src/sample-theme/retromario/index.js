@@ -33,7 +33,38 @@
         window.__rmCleanup = function () { cleanupFns.forEach(function (f) { try { f(); } catch (e) {} }); cleanupFns = []; };
 
         // Theme/game version — shown bottom-center of the stage (like metalslug-wedding).
-        var RM_VERSION = 'v1.3.2';   // v1.3.2: fix BLACK game area on the LIVE invitation (esp. after LANJUTKAN/MULAI BARU)
+        var RM_VERSION = 'v1.3.6';   // v1.3.6: CONSOLIDATE all button wiring onto the ONE delegated document listener and
+                                     //         DELETE the fragile MutationObserver/rewireToolbar/data-rm-wired machinery that
+                                     //         v1.3.3–v1.3.5 added. That machinery mixed per-element + delegated + observer
+                                     //         wiring and broke buttons that used to work (VIEW INVITATION, stage-select OK/
+                                     //         TUTUP): the observer fired on the theme's OWN DOM writes and rebuilt state, and
+                                     //         the data-rm-wired guard either blocked a needed re-bind or double-bound. Now
+                                     //         EVERY control (toolbar ★/🔇/stage-select/view/settings, stage-select OK/TUTUP,
+                                     //         reset OK/BATAL, close/back/replay, modal ✕, dialog backdrops) is a single entry
+                                     //         in RM_DELEGATED_BTNS / rmDelegated — delegation survives host re-injection for
+                                     //         free. Handlers re-query their node live. Only the JS-populated inventory rail
+                                     //         still needs healing after re-inject; that's done cheaply from loop() (like the
+                                     //         canvas self-heal), not a broad subtree observer.
+        // ---- older ----
+        // var RM_VERSION = 'v1.3.5'; // v1.3.5: fix RESET GAME dialog buttons (YA RESET / BATAL / tap-backdrop) doing nothing
+                                     //         on the LIVE invitation / after fullscreen — per-element listeners died on re-inject.
+        // ---- older ----
+        // var RM_VERSION = 'v1.3.4'; // v1.3.4: ★ CHEAT now instantly OPENS (enables) every top-right inventory icon the
+                                     //         moment it's turned on — previously toggling cheat only unlocked the view/
+                                     //         stage-select shortcuts, leaving the icon boxes locked until you hit "?" blocks.
+                                     //         The cheat unlock is a temporary VIEW override (not persisted), so turning cheat
+                                     //         OFF re-locks the pieces you never actually collected. Also re-applied after a
+                                     //         fullscreen/host re-inject rebuild so the icons don't silently re-lock.
+        // ---- older ----
+        // var RM_VERSION = 'v1.3.3'; // v1.3.3: fix top-RIGHT inventory rail going EMPTY + top-LEFT toolbar buttons (★ cheat,
+                                     //         🔇 sound, stage-select, view-invitation, settings) going DEAD on the LIVE
+                                     //         invitation. Host re-injects the theme HTML on guest-state change without
+                                     //         re-running this JS, so JS-populated #rm-inv reverts to empty markup and the
+                                     //         toolbar's per-element listeners die (only QR survived, host re-wires it).
+                                     //         Fix: a MutationObserver on the host's persistent container re-queries those
+                                     //         nodes, re-binds named handlers, and rebuilds the inventory after re-injection.
+        // ---- older ----
+        // var RM_VERSION = 'v1.3.2'; // v1.3.2: fix BLACK game area on the LIVE invitation (esp. after LANJUTKAN/MULAI BARU)
                                      //         — the host re-injects the theme HTML and REPLACES the <canvas> node, but our
                                      //         JS isn't re-run, so we kept drawing into the OLD detached canvas while the new
                                      //         one stayed blank (HUD/buttons are separate DOM, so they still showed). Now the
@@ -153,7 +184,7 @@
                 sky:        { sky: ['#7fb0ff', '#cfe6ff'], ground: '#dfe8ff', groundTop: '#ffffff', groundDark: '#a8b8e0', hills: '#cdddff', clouds: '#ffffff', underground: false },
                 desert:     { sky: ['#f0c060', '#ffe8a8'], ground: '#d2a24a', groundTop: '#f0c878', groundDark: '#9a6a22', hills: '#e0b85a', clouds: '#fff4d8', underground: false },
                 forest:     { sky: ['#2a7a4a', '#7ac070'], ground: '#5a3a1a', groundTop: '#7a5028', groundDark: '#3a2410', hills: '#1f6a3a', clouds: '#dfeede', underground: false },
-                castle:     { sky: ['#2a1020', '#5a2030'], ground: '#555', groundTop: '#777', groundDark: '#333', hills: '#3a2030', clouds: '#7a4050', underground: false, lava: true },
+                castle:     { sky: ['#2a1020', '#fbdfe7'], ground: '#555', groundTop: '#777', groundDark: '#333', hills: '#3a2030', clouds: '#7a4050', underground: false, lava: true },
                 finalcastle:{ sky: ['#1a0818', '#3a1028'], ground: '#444', groundTop: '#666', groundDark: '#222', hills: '#2a1028', clouds: '#5a2040', underground: false, lava: true, boss: true }
             };
             // World index (1..8) → biome key + difficulty label + display name.
@@ -1103,10 +1134,9 @@
                 modalRoot.classList.add('show');
                 playSfx('modal');
             }
-            function closeModal() { if (modalRoot) modalRoot.classList.remove('show'); }
-            var mc = document.getElementById('rm-modal-close');
-            if (mc) mc.addEventListener('click', closeModal);
-            if (modalRoot) modalRoot.addEventListener('click', function (e) { if (e.target === modalRoot) closeModal(); });
+            function closeModal() { var m = document.getElementById('rm-modal-root'); if (m) m.classList.remove('show'); }
+            // rm-modal-close (✕) and the rm-modal-root backdrop are routed through the
+            // delegated document listener below, so they survive host re-injection.
 
             // ============================================================
             // LIGHTBOX — fullscreen gallery photo viewer with prev/next.
@@ -3618,6 +3648,9 @@
                 // so the moment the live invitation re-injects the DOM we re-grab the
                 // new canvas and re-size it — no more permanent black game area.
                 if (!isLive(canvas)) { if (reacquire()) resize(); }
+                // Heal the JS-populated inventory rail if the host swapped in the
+                // empty source markup (cheap: early-returns unless actually stale).
+                if (window.__rmHealInventory) { try { window.__rmHealInventory(); } catch (e) {} }
                 if (!running) return;
                 // If the stage wasn't laid out when we started (0×0 → black screen),
                 // keep retrying every frame until it measures a real size, then do
@@ -3835,9 +3868,10 @@
             // info-block was collected manually, OR cheat is on.
             function viewUnlocked() { return !!(completed || allInfoUnlocked() || (player && player.cheat)); }
             function updateViewBtn() {
-                if (!viewBtn) return;
-                if (viewUnlocked()) viewBtn.classList.remove('is-locked');
-                else viewBtn.classList.add('is-locked');
+                var vb = document.getElementById('rm-view-btn');
+                if (!vb) return;
+                if (viewUnlocked()) vb.classList.remove('is-locked');
+                else vb.classList.add('is-locked');
             }
             function openInvitation() {
                 // When opening via the shortcut, make sure every piece is unlocked
@@ -3943,10 +3977,11 @@
             // Pause the host's auto-started tenant music (keeps everything silent).
             function pauseHostMusic() { setMusicWanted(false); }
 
-            if (viewBtn) viewBtn.addEventListener('click', function () {
+            // Routed via the delegated document listener only (survives re-inject).
+            function onViewClick() {
                 if (!viewUnlocked()) { toast('Selesaikan permainan dulu<br><span style="font-size:8px">atau aktifkan ★ cheat</span>', 1800); return; }
                 openInvitation();
-            });
+            }
 
             // ============================================================
             // SETTINGS / RESET
@@ -3955,14 +3990,24 @@
             var confirmRoot = document.getElementById('rm-confirm-root');
             var confirmOk = document.getElementById('rm-confirm-ok');
             var confirmCancel = document.getElementById('rm-confirm-cancel');
-            if (settingsBtn) settingsBtn.addEventListener('click', function () {
-                if (confirmRoot) confirmRoot.classList.add('show');
-            });
-            if (confirmCancel) confirmCancel.addEventListener('click', function () { if (confirmRoot) confirmRoot.classList.remove('show'); });
-            if (confirmRoot) confirmRoot.addEventListener('click', function (e) { if (e.target === confirmRoot) confirmRoot.classList.remove('show'); });
-            if (confirmOk) confirmOk.addEventListener('click', function () {
+            function onSettingsClick() {
+                // Re-query live: the cached ref may point at a host-replaced node.
+                var root = document.getElementById('rm-confirm-root');
+                if (root) root.classList.add('show');
+            }
+            // Reset dialog handlers are NAMED so the delegated document listener can
+            // route to them. Direct per-element listeners on rm-confirm-ok/-cancel die
+            // when the host re-injects the DOM (e.g. after fullscreen on the preview
+            // route) — that was the "tombol RESET diklik tapi tidak terjadi apa-apa"
+            // bug. Delegation on `document` survives every re-injection.
+            function doResetCancel() {
+                var root = document.getElementById('rm-confirm-root');
+                if (root) root.classList.remove('show');
+            }
+            function doResetConfirm() {
                 resetSave();
-                if (confirmRoot) confirmRoot.classList.remove('show');
+                var root = document.getElementById('rm-confirm-root');
+                if (root) root.classList.remove('show');
                 if (invitation) invitation.classList.remove('show');
                 if (fab) fab.classList.remove('show');
                 closeModal();
@@ -3970,13 +4015,16 @@
                 if (starBtn) starBtn.classList.remove('is-on');
                 score = 0; coinGot = 0; lives = 3;
                 buildInventory();      // rebuild icons (all locked again)
+                applyCheatInventory(); // cheat is now off → re-lock uncollected icons
                 updateViewBtn();       // re-lock the view button
                 startGame(1);          // back to World 1-1 (clears cheat on new player)
                 updateStageSelBtn();   // hide stage-select (cheat off)
                 running = false;
                 showOverlay('rm-intro');
                 toast('Game di-reset', 1400);
-            });
+            }
+            // (Settings/reset buttons + backdrops are all routed through the delegated
+            // document listener below — no per-element listeners.)
 
             // ============================================================
             // WIRE UP UI
@@ -4147,9 +4195,15 @@
 
             // Close: hide the invitation and RESUME the current game at the same
             // stage (no reset). If no run is in progress yet, fall back to intro.
-            if (btnCloseInv) btnCloseInv.addEventListener('click', function () {
-                if (invitation) invitation.classList.remove('show');
-                if (fab) fab.classList.remove('show');
+            // (All three are routed via the delegated document listener below.)
+            function hideInvitationUI() {
+                var inv = document.getElementById('rm-invitation');
+                var f = document.getElementById('rm-fab');
+                if (inv) inv.classList.remove('show');
+                if (f) f.classList.remove('show');
+            }
+            function doCloseInv() {
+                hideInvitationUI();
                 closeModal();
                 // Leaving the invitation back to the game → silence the tenant song.
                 pauseHostMusic();
@@ -4159,56 +4213,85 @@
                 } else {
                     running = false; showOverlay('rm-intro');
                 }
-            });
-
+            }
             // Back to game: restart the whole run from World 1-1.
-            if (btnBackGame) btnBackGame.addEventListener('click', function () {
-                if (invitation) invitation.classList.remove('show');
-                if (fab) fab.classList.remove('show');
+            function doBackGame() {
+                hideInvitationUI();
                 pauseHostMusic();   // back to the game → silence the music
                 startGame(1); running = false; showOverlay('rm-intro');
-            });
-
-            if (btnReplay) btnReplay.addEventListener('click', function () {
-                if (invitation) invitation.classList.remove('show');
-                if (fab) fab.classList.remove('show');
+            }
+            function doReplay() {
+                hideInvitationUI();
                 pauseHostMusic();   // replaying the game → silence the music
                 startGame(1); running = false; showOverlay('rm-intro');
-            });
+            }
 
             // Show/hide the cheat-only stage-select button to match cheat state.
             function updateStageSelBtn() {
-                if (stageSelBtn) stageSelBtn.style.display = (player && player.cheat) ? 'flex' : 'none';
+                var b = document.getElementById('rm-stagesel-btn');
+                if (b) b.style.display = (player && player.cheat) ? 'flex' : 'none';
             }
 
-            if (starBtn) starBtn.addEventListener('click', function () {
+            // CHEAT ⇒ light up ALL inventory icons immediately (item: "button
+            // bintang ketika aktif ga langsung buka kotak2 icon di kanan atas").
+            // Enabling cheat should instantly enable every top-right icon so the
+            // guest can open any invitation piece without hunting "?" blocks. We do
+            // NOT persist unlocked=true here — cheat is a temporary view override —
+            // so turning cheat OFF restores only the genuinely-collected pieces.
+            function applyCheatInventory() {
+                var on = !!(player && player.cheat);
+                INFOS.forEach(function (info) {
+                    var btn = invButtons[info.key];
+                    if (!btn) return;
+                    var reallyUnlocked = !!unlocked[info.key];
+                    if (on || reallyUnlocked) {
+                        var wasEnabled = btn.classList.contains('is-enabled');
+                        btn.classList.add('is-enabled');
+                        // pop the newly-lit icons so the guest sees them open up
+                        if (on && !wasEnabled) {
+                            btn.classList.add('just-unlocked');
+                            (function (b) { setTimeout(function () { b.classList.remove('just-unlocked'); }, 520); })(btn);
+                        }
+                    } else {
+                        // cheat OFF and never collected → re-lock (and clear badge)
+                        btn.classList.remove('is-enabled', 'has-new', 'just-unlocked');
+                    }
+                });
+            }
+
+            // Toolbar handlers are named + re-query their node live, so the single
+            // delegated document listener (below) drives them and they survive the
+            // host re-injecting the DOM. NO per-element addEventListener here.
+            function onStarClick() {
                 if (!player) return;
                 player.cheat = !player.cheat;
-                starBtn.classList.toggle('is-on', player.cheat);
+                var sb = document.getElementById('rm-star-btn');
+                if (sb) sb.classList.toggle('is-on', player.cheat);
                 updateViewBtn();      // cheat unlocks the view shortcut
                 updateStageSelBtn();  // cheat reveals the stage-select shortcut
-                toast(player.cheat ? 'CHEAT MODE ON<br><span style="font-size:8px">Skor dinonaktifkan · pilih stage aktif</span>' : 'CHEAT MODE OFF', 1700);
-            });
+                applyCheatInventory(); // cheat instantly lights up ALL top-right icons
+                if (player.cheat) playSfx('unlock');
+                toast(player.cheat ? 'CHEAT MODE ON<br><span style="font-size:8px">Semua ikon undangan terbuka · skor nonaktif</span>' : 'CHEAT MODE OFF', 1700);
+            }
 
             // ---- Sound on/off (item 5) — mutes game SFX + chiptune ----
             function syncSoundBtn() {
-                if (!soundBtn) return;
-                var on = soundBtn.querySelector('.rm-snd-on'), off = soundBtn.querySelector('.rm-snd-off');
+                var sb = document.getElementById('rm-sound-btn');
+                if (!sb) return;
+                var on = sb.querySelector('.rm-snd-on'), off = sb.querySelector('.rm-snd-off');
                 if (on) on.style.display = muted ? 'none' : 'block';
                 if (off) off.style.display = muted ? 'block' : 'none';
-                soundBtn.classList.toggle('is-muted', muted);
+                sb.classList.toggle('is-muted', muted);
             }
-            if (soundBtn) {
-                soundBtn.addEventListener('click', function () {
-                    muted = !muted;
-                    if (muted) { stopBgm(); }                  // silence the chiptune immediately
-                    else { audioCtx(); if (running && started && player && !player.win) startBgm(); playSfx('coin'); }
-                    persist();
-                    syncSoundBtn();
-                    toast(muted ? '🔇 Suara dimatikan' : '🔊 Suara dinyalakan', 1200);
-                });
+            function onSoundClick() {
+                muted = !muted;
+                if (muted) { stopBgm(); }                  // silence the chiptune immediately
+                else { audioCtx(); if (running && started && player && !player.win) startBgm(); playSfx('coin'); }
+                persist();
                 syncSoundBtn();
+                toast(muted ? '🔇 Suara dimatikan' : '🔊 Suara dinyalakan', 1200);
             }
+            syncSoundBtn();
 
             // ---- Stage select (cheat) ----
             // The dialog now STAGES the player's choices instead of applying them on
@@ -4238,6 +4321,8 @@
             }
 
             function buildStageSelect() {
+                // Re-point at the live grid (the host may have replaced the node).
+                stageSelGrid = document.getElementById('rm-stagesel-grid');
                 if (!stageSelGrid) return;
                 // Start each open from the live state so re-opening reflects reality.
                 selDiff = gameDiff; selStage = stageNum;
@@ -4290,21 +4375,28 @@
 
                 renderStageSelHint();
             }
-            if (stageSelBtn) stageSelBtn.addEventListener('click', function () {
+            function onStageSelClick() {
                 if (!player || !player.cheat) return;
                 buildStageSelect();
-                if (stageSelRoot) stageSelRoot.classList.add('show');
-            });
-            // TUTUP: close without changing anything in the game.
-            if (stageSelCancel) stageSelCancel.addEventListener('click', function () { if (stageSelRoot) stageSelRoot.classList.remove('show'); });
+                var root = document.getElementById('rm-stagesel-root');
+                if (root) root.classList.add('show');
+            }
+            // TUTUP: close the stage-select dialog without changing anything.
+            function doStageSelCancel() {
+                var root = document.getElementById('rm-stagesel-root');
+                if (root) root.classList.remove('show');
+            }
             // OK: apply the pending mode + stage to the live game.
-            if (stageSelOk) stageSelOk.addEventListener('click', function () {
+            function doStageSelOk() {
                 if (selDiff !== gameDiff) { gameDiff = selDiff; persist(); syncDiffUI(); }
-                if (stageSelRoot) stageSelRoot.classList.remove('show');
+                var root = document.getElementById('rm-stagesel-root');
+                if (root) root.classList.remove('show');
                 playSfx('stageclear');
                 goToStage(selStage);                 // rebuild at chosen stage + difficulty
-            });
-            if (stageSelRoot) stageSelRoot.addEventListener('click', function (e) { if (e.target === stageSelRoot) stageSelRoot.classList.remove('show'); });
+            }
+            // (All stage-select buttons + backdrop are routed through the delegated
+            // document listener below — no per-element listeners, so they survive
+            // the host re-injecting the DOM on the live invitation.)
 
             // Touch controls: analog joystick + action buttons
             bindJoystick();
@@ -4344,7 +4436,24 @@
                 'rm-stage-go':      function () { doStageGo(); },
                 'rm-win-go':        function () { doWinGo(); },
                 'rm-rescue-go':     function () { doRescueGo(); },
-                'rm-rescue-skip':   function () { doRescueSkip(); }
+                'rm-rescue-skip':   function () { doRescueSkip(); },
+                // RESET dialog (settings) — must survive host re-injection too.
+                'rm-confirm-ok':     function () { doResetConfirm(); },
+                'rm-confirm-cancel': function () { doResetCancel(); },
+                // LEFT TOOLBAR — ★ cheat / 🔇 sound / stage-select / view / settings.
+                'rm-star-btn':       function () { onStarClick(); },
+                'rm-sound-btn':      function () { onSoundClick(); },
+                'rm-stagesel-btn':   function () { onStageSelClick(); },
+                'rm-view-btn':       function () { onViewClick(); },
+                'rm-settings-btn':   function () { onSettingsClick(); },
+                // STAGE-SELECT dialog OK / TUTUP.
+                'rm-stagesel-ok':     function () { doStageSelOk(); },
+                'rm-stagesel-cancel': function () { doStageSelCancel(); },
+                // Inside-invitation nav (close / back-to-game / replay) + info modal ✕.
+                'rm-close-inv':      function () { doCloseInv(); },
+                'rm-back-game':      function () { doBackGame(); },
+                'rm-replay':         function () { doReplay(); },
+                'rm-modal-close':    function () { closeModal(); }
             };
             var rmDelegated = function (e) {
                 var t = e.target;
@@ -4354,11 +4463,17 @@
                 if (diffBtn) { pickDiff(diffBtn.getAttribute('data-diff')); return; }
                 // PRESS START (cover).
                 if (t.closest('#rm-start-btn')) { pressStart(); return; }
-                // Overlay buttons (continue / intro / stage-clear / win / rescue) —
-                // survive host DOM re-injection because this listener lives on document.
+                // Overlay buttons (continue / intro / stage-clear / win / rescue /
+                // reset) — survive host DOM re-injection because this listener lives
+                // on document.
                 for (var id in RM_DELEGATED_BTNS) {
                     if (t.closest('#' + id)) { RM_DELEGATED_BTNS[id](); return; }
                 }
+                // Tap the dark backdrop (not the dialog) to dismiss a dialog. Compare
+                // the exact target so a click INSIDE the dialog panel is ignored.
+                if (t === document.getElementById('rm-confirm-root'))  { doResetCancel();    return; }
+                if (t === document.getElementById('rm-stagesel-root')) { doStageSelCancel(); return; }
+                if (t === document.getElementById('rm-modal-root'))    { closeModal();       return; }
             };
             if (window.__rmDelegated) { try { document.removeEventListener('click', window.__rmDelegated, true); } catch (e) {} }
             window.__rmDelegated = rmDelegated;
@@ -4370,6 +4485,33 @@
             // Global fallback so the game can be started even if delegation is
             // somehow blocked by an exotic host wrapper (callable from console).
             window.__rmStart = function () { try { pressStart(); } catch (e) {} };
+
+            // ================================================================
+            // INVENTORY RAIL SELF-HEAL (host re-injection)
+            // ----------------------------------------------------------------
+            // EVERY button now runs through the ONE delegated `document` listener
+            // above, so no button needs re-binding after the host re-injects the
+            // theme DOM — delegation survives it for free (no MutationObserver, no
+            // per-element listeners, no double-bind hazard).
+            //
+            // The ONLY thing that still breaks on re-injection is the top-right
+            // INVENTORY RAIL (#rm-inv): it is populated by JS (buildInventory), so
+            // when the host swaps in the empty source markup it goes blank. We heal
+            // it the same cheap way the canvas is healed — a check driven from the
+            // render loop() — instead of a broad subtree observer that fired on our
+            // own DOM writes and rebuilt state at the wrong moments.
+            function healInventory() {
+                var fresh = document.getElementById('rm-inv');
+                if (fresh && (fresh !== invHost || !fresh.children.length)) {
+                    invHost = fresh;
+                    buildInventory();      // re-applies unlocked/badge state
+                    applyCheatInventory(); // re-apply the cheat override if cheat is on
+                    updateViewBtn();
+                    updateStageSelBtn();
+                    syncSoundBtn();
+                }
+            }
+            window.__rmHealInventory = healInventory;   // called from loop()
 
             // ============================================================
             // COUNTDOWN + CALENDAR (invitation)

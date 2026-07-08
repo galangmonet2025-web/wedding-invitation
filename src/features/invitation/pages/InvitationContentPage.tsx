@@ -273,7 +273,11 @@ export function InvitationContentPage() {
     const [showTutorialModal, setShowTutorialModal] = useState(false);
 
     useEffect(() => {
-        fetchThemes();
+        // Force a fresh fetch: the theme picker must reflect the CURRENT published
+        // themes. The store caches via `hasLoaded`, so without force a session that
+        // loaded the list before a theme was published (e.g. the playable game
+        // themes) would keep showing the stale list until a hard reload.
+        fetchThemes(true);
         fetchContent(false, tenant);
         fetchImages();
 
@@ -1417,11 +1421,17 @@ export function InvitationContentPage() {
                                                 const isDraft = typeof theme.flag_draft === 'boolean' ? theme.flag_draft : String(theme.flag_draft).toLowerCase() === 'true';
                                                 if (isDraft) return false;
 
-                                                // Filter based on plan type
+                                                // Filter based on plan type. Normalize both sides (trim + lowercase):
+                                                // Sheet-sourced plan strings can carry stray casing/whitespace
+                                                // (e.g. "Premium"), which would make a real premium tenant fall
+                                                // through to the basic branch and hide every pro/premium theme —
+                                                // including the playable game themes.
                                                 if (!tenant) return false;
-                                                if (tenant.plan_type === 'premium') return true;
-                                                if (tenant.plan_type === 'pro') return theme.plan_type === 'basic' || theme.plan_type === 'pro';
-                                                return theme.plan_type === 'basic';
+                                                const tenantPlan = String(tenant.plan_type ?? '').trim().toLowerCase();
+                                                const themePlan = String(theme.plan_type ?? '').trim().toLowerCase();
+                                                if (tenantPlan === 'premium') return true;
+                                                if (tenantPlan === 'pro') return themePlan === 'basic' || themePlan === 'pro';
+                                                return themePlan === 'basic';
                                             });
 
                                             if (filteredThemes.length === 0) {
@@ -1505,7 +1515,7 @@ export function InvitationContentPage() {
                                                 value={selectedQuotesId}
                                                 onChange={(e) => { setSelectedQuotesId(e.target.value); setIsDirty(true); }}
                                                 disabled={customQuotesEnabled}
-                                                className="input-field disabled:opacity-60"
+                                                className="select-field disabled:opacity-60"
                                             >
                                                 {activeQuotes.length === 0 && <option value="">{t('invitation_content.quotes_empty', 'Belum ada quotes tersedia')}</option>}
                                                 {activeQuotes.map((q) => (

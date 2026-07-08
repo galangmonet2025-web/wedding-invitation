@@ -8,7 +8,7 @@ import { HiOutlineMail, HiOutlineLockClosed, HiOutlineExclamationCircle, HiOutli
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
 import { RetroAuthAside, RetroAuthStyle } from '../components/RetroAuthChrome';
-import { requestFullscreenAfterLogin } from '@/shared/hooks/useEnterFullscreenOnLogin';
+import { requestFullscreenAfterLogin, isMobileDevice } from '@/shared/hooks/useEnterFullscreenOnLogin';
 
 export function LoginPage() {
     const [username, setUsername] = useState('');
@@ -118,9 +118,14 @@ export function LoginPage() {
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success(t('auth.welcome_back_toast'));
+                // Tenant admin yang login dari HP diarahkan ke UI "Versi Mobile"
+                // (/admin/*), bukan dashboard klasik (/private/*). Superadmin & staff
+                // tetap ke route klasik. Guest bisa pindah kapan saja lewat tombol
+                // Versi Klasik/Versi Mobile (ViewSwitchButton).
+                const tenantDashboard = isMobileDevice() ? '/#/admin/dashboard' : '/#/private/dashboard';
                 const targetPath = response.data.user.role === 'superadmin'
                     ? '/#/private/global-dashboard'
-                    : (response.data.user.role === 'staff' ? '/#/private/scanner' : '/#/private/dashboard');
+                    : (response.data.user.role === 'staff' ? '/#/private/scanner' : tenantDashboard);
 
                 // On mobile, enter fullscreen on the first tap after the reload lands.
                 requestFullscreenAfterLogin();

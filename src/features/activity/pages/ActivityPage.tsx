@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { activityApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
 import { IconButton } from '@/shared/components/IconButton';
 import type { ActivityLog } from '@/types';
-import toast from 'react-hot-toast';
 import { useActivityStore } from '../store/activityStore';
+import { useAdminHeaderActionStore } from '@/shared/store/adminHeaderActionStore';
+import { useBasePath } from '@/shared/hooks/useBasePath';
 import {
     HiOutlineLogin,
     HiOutlineUserAdd,
@@ -32,8 +32,10 @@ const actionColors: Record<string, string> = {
 };
 
 export function ActivityPage() {
-    const { logs, fetchLogs: fetchStoreLogs, isLoading: storeLoading } = useActivityStore();
+    const { logs, fetchLogs: fetchStoreLogs } = useActivityStore();
     const [loading, setLoading] = useState(logs.length === 0);
+    const setHeaderAction = useAdminHeaderActionStore(s => s.setAction);
+    const isAdminLayout = useBasePath() === '/admin';
 
     useEffect(() => {
         const load = async () => {
@@ -49,6 +51,25 @@ export function ActivityPage() {
         await fetchStoreLogs(force);
         setLoading(false);
     };
+
+    // Pada layout /admin, tombol refresh dipindah ke gold header (sebelah "Buka
+    // Undangan") — konsisten dengan Ucapan, Daftar Tamu, dll. Di /private lama
+    // tetap inline pada sub-header di bawah.
+    useEffect(() => {
+        if (!isAdminLayout) return;
+        setHeaderAction(
+            <button
+                onClick={() => fetchLogs()}
+                disabled={loading}
+                title="Refresh Data"
+                aria-label="Refresh Data"
+                className="admin-icon-btn"
+            >
+                <HiOutlineRefresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+        );
+        return () => setHeaderAction(null);
+    }, [loading, isAdminLayout]);
 
     const formatAction = (action: string) => {
         return action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -85,12 +106,15 @@ export function ActivityPage() {
                 <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Track all actions performed in the system</p>
                 </div>
-                <IconButton
-                    onClick={() => fetchLogs()}
-                    icon={<HiOutlineRefresh className="w-5 h-5" />}
-                    spinning={loading}
-                    title="Refresh Data"
-                />
+                {/* Layout /admin: refresh dipindah ke gold header. Inline hanya untuk /private. */}
+                {!isAdminLayout && (
+                    <IconButton
+                        onClick={() => fetchLogs()}
+                        icon={<HiOutlineRefresh className="w-5 h-5" />}
+                        spinning={loading}
+                        title="Refresh Data"
+                    />
+                )}
             </div>
 
             <div className="space-y-8">

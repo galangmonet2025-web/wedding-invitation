@@ -32,6 +32,13 @@ function dbg(...args: unknown[]) {
     console.log('[fullscreen]', ...args);
     // Juga tampilkan di layar (toast kecil) agar bisa didiagnosa langsung di HP
     // tanpa chrome://inspect.
+    // Saat fullscreen sedang AKTIF, jangan tampilkan kotak debug — ia menutupi
+    // bagian bawah layar. (Log ke console tetap jalan.)
+    if (document.fullscreenElement) {
+        const existing = document.getElementById('fs-debug-box');
+        if (existing) existing.remove();
+        return;
+    }
     try {
         let box = document.getElementById('fs-debug-box');
         if (!box) {
@@ -61,10 +68,22 @@ export function requestFullscreenAfterLogin() {
     }
 }
 
-const isMobile = () =>
+/**
+ * Deteksi perangkat mobile. Selain lebar viewport (yang bisa MELESET di HP
+ * beresolusi tinggi / DPR besar — mis. 2800×1260 melapor innerWidth besar dan
+ * dikira desktop), kita juga cek user-agent DAN kemampuan sentuh + tidak ada
+ * pointer halus (mouse). Jadi tenant yang login dari HP layar lebar tetap
+ * dikenali sebagai mobile. Diekspor agar redirect pasca-login memakai logika
+ * deteksi yang sama.
+ */
+export const isMobileDevice = () =>
     typeof window !== 'undefined' &&
-    (window.matchMedia?.('(max-width: 1023px)').matches ||
-        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
+    (/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent) ||
+        window.matchMedia?.('(max-width: 1023px)').matches ||
+        window.matchMedia?.('(pointer: coarse) and (hover: none)').matches ||
+        navigator.maxTouchPoints > 1);
+
+const isMobile = isMobileDevice;
 
 type FsElement = HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void> | void;
@@ -76,37 +95,52 @@ type FsElement = HTMLElement & {
  * Coba masuk fullscreen. Mengembalikan Promise<boolean> — true bila permintaan
  * diterima (atau kita sudah fullscreen), false bila ditolak/tak didukung.
  */
-function goFullscreen(): Promise<boolean> {
-    if (document.fullscreenElement) return Promise.resolve(true);
-
-    // Prefer <html>, tapi sebagian WebView Android hanya mengizinkan <body>.
-    const el = document.documentElement as FsElement;
+function requestOn(el: FsElement): Promise<boolean> | null {
     const req =
         el.requestFullscreen ||
         el.webkitRequestFullscreen ||
         el.mozRequestFullScreen ||
         el.msRequestFullscreen;
-
-    if (!req) {
-        dbg('Fullscreen API tidak tersedia di browser ini');
-        return Promise.resolve(false);
-    }
-
+    if (!req) return null;
     try {
         const ret = req.call(el);
         return Promise.resolve(ret as Promise<void> | undefined)
-            .then(() => {
-                dbg('requestFullscreen OK');
-                return true;
-            })
+            .then(() => true)
             .catch((err) => {
-                dbg('requestFullscreen DITOLAK:', err?.message || err);
+                dbg('requestFullscreen DITOLAK:', (err && err.message) || err);
                 return false;
             });
     } catch (err) {
         dbg('requestFullscreen throw:', err);
         return Promise.resolve(false);
     }
+}
+
+function goFullscreen(): Promise<boolean> {
+    if (document.fullscreenElement) return Promise.resolve(true);
+
+    // Kalau browser secara eksplisit menonaktifkan fullscreen (Permissions-Policy,
+    // dijalankan di dalam iframe tanpa allow="fullscreen", dsb.), requestFullscreen
+    // akan selalu ditolak — catat supaya alasannya jelas saat debug.
+    if (document.fullscreenEnabled === false) {
+        dbg('document.fullscreenEnabled = false → fullscreen diblokir oleh browser/kebijakan');
+    }
+
+    // Prefer <html>, tapi sebagian WebView/Android hanya mengizinkan <body>.
+    const html = requestOn(document.documentElement as FsElement);
+    if (html === null) {
+        dbg('Fullscreen API tidak tersedia di <html> — coba <body>');
+        const body = requestOn(document.body as FsElement);
+        if (body === null) { dbg('Fullscreen API tidak tersedia di browser ini'); return Promise.resolve(false); }
+        return body.then((ok) => { dbg(ok ? 'fullscreen OK (body)' : 'fullscreen gagal (body)'); return ok; });
+    }
+    return html.then((ok) => {
+        if (ok) { dbg('requestFullscreen OK (html)'); return true; }
+        // <html> ditolak → coba <body> sekali sebagai fallback.
+        const body = requestOn(document.body as FsElement);
+        if (body === null) return false;
+        return body.then((ok2) => { dbg(ok2 ? 'fullscreen OK (body-fallback)' : 'fullscreen gagal (body-fallback)'); return ok2; });
+    });
 }
 
 export function useEnterFullscreenOnLogin() {
@@ -118,12 +152,13 @@ export function useEnterFullscreenOnLogin() {
             pending = false;
         }
 
-        dbg('mount', { pending, mobile: isMobile(), ua: navigator.userAgent });
+        dbg('mount', { pending, mobile: isMobile(), fsEnabled: document.fullscreenEnabled, ua: navigator.userAgent });
 
         if (!pending) return;
 
         // Di desktop kita tidak mau fullscreen — buang flag & selesai.
         if (!isMobile()) {
+            dbg('dianggap desktop → batal fullscreen');
             try { sessionStorage.removeItem(FULLSCREEN_ON_LOGIN_KEY); } catch { /* ignore */ }
             return;
         }
@@ -149,19 +184,26 @@ export function useEnterFullscreenOnLogin() {
 
         // Pakai touchstart (paling awal & andal di Android) + pointerdown + click.
         // TIDAK pakai { once:true } supaya bisa retry bila tap pertama ditolak.
-        const opts: AddEventListenerOptions = { passive: true };
+        // capture:true → kita menerima gesture LEBIH DULU, sebelum handler lain
+        // (mis. tombol/menu) yang bisa memanggil stopPropagation dan menelan tap.
+        const opts: AddEventListenerOptions = { passive: true, capture: true };
         const addListeners = () => {
             window.addEventListener('touchstart', onGesture, opts);
             window.addEventListener('pointerdown', onGesture, opts);
+            window.addEventListener('pointerup', onGesture, opts);
             window.addEventListener('click', onGesture, opts);
+            window.addEventListener('keydown', onGesture, opts);
         };
         const removeListeners = () => {
             window.removeEventListener('touchstart', onGesture, opts);
             window.removeEventListener('pointerdown', onGesture, opts);
+            window.removeEventListener('pointerup', onGesture, opts);
             window.removeEventListener('click', onGesture, opts);
+            window.removeEventListener('keydown', onGesture, opts);
         };
 
         addListeners();
+        dbg('listener gesture terpasang — menunggu tap pertama');
         return removeListeners;
     }, []);
 }
