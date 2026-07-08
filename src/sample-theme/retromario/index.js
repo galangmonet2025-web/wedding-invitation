@@ -33,7 +33,12 @@
         window.__rmCleanup = function () { cleanupFns.forEach(function (f) { try { f(); } catch (e) {} }); cleanupFns = []; };
 
         // Theme/game version — shown bottom-center of the stage (like metalslug-wedding).
-        var RM_VERSION = 'v1.3.6';   // v1.3.6: CONSOLIDATE all button wiring onto the ONE delegated document listener and
+        var RM_VERSION = 'v1.3.7';   // v1.3.7: fix desktop sidebar showing ONLY the sky (no Mario+bride tableau) on the
+                                     //         LIVE invitation. The side canvas was captured ONCE and never healed, so after
+                                     //         host re-injection it kept painting the detached node while the on-screen
+                                     //         canvas stayed blank (CSS sky gradient showed through). Added sideReacquire()
+                                     //         self-heal to sideLoop(), mirroring the game-canvas reacquire().
+        // var RM_VERSION = 'v1.3.6'; // v1.3.6: CONSOLIDATE all button wiring onto the ONE delegated document listener and
                                      //         DELETE the fragile MutationObserver/rewireToolbar/data-rm-wired machinery that
                                      //         v1.3.3–v1.3.5 added. That machinery mixed per-element + delegated + observer
                                      //         wiring and broke buttons that used to work (VIEW INVITATION, stage-select OK/
@@ -4643,6 +4648,23 @@
                 sideResize(); window.addEventListener('resize', sideResize);
                 onCleanup(function () { window.removeEventListener('resize', sideResize); });
 
+                // STALE-CANVAS SELF-HEAL (same bug as the game canvas — see
+                // reacquire() above). On the LIVE invitation the host re-injects the
+                // theme HTML and REPLACES <canvas id="rm-side-canvas"> with a fresh
+                // node, but our JS is NOT re-run — so sideLoop keeps painting the OLD,
+                // now-detached canvas while the on-screen one stays blank and only the
+                // CSS sky gradient shows through ("kok sidebar-nya langit doang").
+                // Re-grab the live node + context + re-size when that happens.
+                function sideReacquire() {
+                    var live = ('isConnected' in sideCanvas) ? sideCanvas.isConnected
+                             : document.documentElement.contains(sideCanvas);
+                    if (live) return;                               // still attached → nothing to do
+                    var c = document.getElementById('rm-side-canvas');
+                    if (!c || c === sideCanvas) return;             // new DOM not ready yet
+                    sideCanvas = c; sctx = sideCanvas.getContext('2d');
+                    sideResize();                                   // fresh backing store + DPR transform
+                }
+
                 // pixel-rect helper (art units) — `U` is set per-frame from canvas size
                 var sU = 4;
                 function spx(ox, oy, x, y, w, h, col) {
@@ -4747,6 +4769,7 @@
 
                 function sideLoop() {
                     sideRaf = requestAnimationFrame(sideLoop);
+                    sideReacquire();                               // heal a stale/detached canvas first
                     var w = sideCanvas.clientWidth, h = sideCanvas.clientHeight; if (!w) return;
                     sT += 1;
 
