@@ -1661,21 +1661,53 @@ export function ThemeEditorPage() {
                     successMsg = '✓ Info tema berhasil disimpan. (Kode HTML, CSS & JS tidak diubah, jadi tidak perlu disimpan ulang.)';
                 }
                 toast.success(successMsg, { id: loadingToast, duration: 5000 });
-                updateTheme(id!, { ...metaPayload, html_template: htmlCode, css_template: cssCode, js_template: jsCode }); // Update local cache
                 setFlagDraft(isDraft);
-
-                // Refresh the change-detection baseline so an immediate re-save is a no-op.
-                setInitialHtmlCode(htmlCode);
-                setInitialCssCode(cssCode);
-                setInitialJsCode(jsCode);
-
-                // Update initial state to new URL
-                setInitialPreviewImage(finalPreviewUrl);
 
                 // Clear pending states after successful save
                 setPendingPreviewFile(null);
                 setPendingPreviewBase64(null);
                 setPreviewImage(finalPreviewUrl);
+                setInitialPreviewImage(finalPreviewUrl);
+
+                // PATCH THE EDITOR FROM THE DB (source of truth). Re-fetch the theme
+                // fresh from the backend and re-hydrate the editor with EXACTLY what was
+                // stored — not the in-memory code we just typed. This surfaces any
+                // server-side transformation of the saved templates (e.g. the Sheet
+                // reassembly of the chunked js_template), so what the editor shows is
+                // what will actually be served. Falls back to the local values if the
+                // refetch fails, so a network hiccup never blanks the editor.
+                try {
+                    await fetchThemes(true);
+                    const saved = useThemeStore.getState().themes.find(t => t.id === id);
+                    if (saved) {
+                        const savedHtml = saved.html_template || '';
+                        const savedCss = saved.css_template || '';
+                        const savedJs = saved.js_template || '';
+                        setHtmlCode(savedHtml);
+                        setCssCode(savedCss);
+                        setJsCode(savedJs);
+                        // Reset the change-detection baseline to the DB copy so an
+                        // immediate re-save is a no-op (and a real diff is detected
+                        // against what's actually stored).
+                        setInitialHtmlCode(savedHtml);
+                        setInitialCssCode(savedCss);
+                        setInitialJsCode(savedJs);
+                        // Keep the local cache consistent with the DB copy too.
+                        updateTheme(id!, { ...metaPayload, html_template: savedHtml, css_template: savedCss, js_template: savedJs });
+                    } else {
+                        // Refetch didn't return the row — keep the just-typed code as the baseline.
+                        updateTheme(id!, { ...metaPayload, html_template: htmlCode, css_template: cssCode, js_template: jsCode });
+                        setInitialHtmlCode(htmlCode);
+                        setInitialCssCode(cssCode);
+                        setInitialJsCode(jsCode);
+                    }
+                } catch (e) {
+                    // Network/parse hiccup on refetch — fall back to the local values.
+                    updateTheme(id!, { ...metaPayload, html_template: htmlCode, css_template: cssCode, js_template: jsCode });
+                    setInitialHtmlCode(htmlCode);
+                    setInitialCssCode(cssCode);
+                    setInitialJsCode(jsCode);
+                }
             }
         } catch (error: any) {
             console.error('Error saving theme:', error);

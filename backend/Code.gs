@@ -550,7 +550,14 @@
         var v = rowData[h];
         return (v === undefined || v === null) ? '' : v;
       });
-      sheet.appendRow(row);
+      // Force plain-text on the new row BEFORE writing (same reason as update(): a
+      // theme's ~50K template chunk can start with '=' / '+' / '-' / '@' and would
+      // otherwise be coerced into a formula → "#ERROR!" corrupting the code).
+      var newRow = sheet.getLastRow() + 1;
+      var insRange = sheet.getRange(newRow, 1, 1, headers.length);
+      insRange.setNumberFormat('@');
+      SpreadsheetApp.flush();   // commit the text format BEFORE writing values (see update())
+      insRange.setValues([row]);
       return rowData;
     },
 
@@ -579,7 +586,23 @@
             }
           }
           if (changed) {
-            sheet.getRange(i + 1, 1, 1, headers.length).setValues([row]);
+            var writeRange = sheet.getRange(i + 1, 1, 1, headers.length);
+            // FORCE PLAIN-TEXT before writing. Theme templates are split into ~50K
+            // chunks; a chunk can start with '=', '+', '-' or '@' (extremely common in
+            // JS: "= x", "+ 50000", "- 1", "@media"). Google Sheets then COERCES that
+            // cell into a formula and stores "#ERROR!" instead of the code — which the
+            // reassembled js_template later injects as a broken <script> → the
+            // "Uncaught SyntaxError: Unexpected token '}'" that killed the metal-slug
+            // game. Setting the number format to '@' (text) makes Sheets store every
+            // value verbatim, so no chunk is ever mis-read as a formula.
+            // Apply the text format and COMMIT it (flush) BEFORE writing the values.
+            // setNumberFormat + setValues in the same un-flushed batch can be applied in an
+            // order where Sheets still parses a "=…/+…/-…/@…" string as a formula (→ "#ERROR!")
+            // before the '@' format takes hold. Flushing forces the format to land first, so the
+            // subsequent setValues stores every chunk verbatim as text.
+            writeRange.setNumberFormat('@');
+            SpreadsheetApp.flush();
+            writeRange.setValues([row]);
           }
           return true;
         }
