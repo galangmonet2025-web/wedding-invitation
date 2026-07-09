@@ -650,18 +650,18 @@
                     <div class="rm-card">
                         <div class="rm-card-pixel-top"></div>
                         <div data-unless="is_sudah_isi_ucapan">
-                            {{#unless is_sudah_isi_ucapan}}
-                            <form id="rm-wish-form">
+                            {{#hidden is_sudah_isi_ucapan}}
+                            <form id="wish-form">
                                 <input class="rm-input" type="text" id="wish-name" placeholder="Nama kamu">
                                 <textarea class="rm-input" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa..."></textarea>
                                 <button type="button" id="btn-submit-ucapan" class="rm-pixbtn green" style="width:100%;">KIRIM UCAPAN</button>
                             </form>
-                            {{/unless}}
+                            {{/hidden}}
                         </div>
                         <div data-if="is_sudah_isi_ucapan">
-                            {{#if is_sudah_isi_ucapan}}
-                            <div class="rm-thanks">⭐ Terima kasih atas ucapan &amp; doanya!</div>
-                            {{/if}}
+                            {{^hidden is_sudah_isi_ucapan}}
+                            <div class="rm-thanks" id="alert-submit-ucapan">⭐ Terima kasih atas ucapan &amp; doanya!</div>
+                            {{/hidden}}
                         </div>
                     </div>
                     <div class="rm-wish-list" data-loop="wishes">

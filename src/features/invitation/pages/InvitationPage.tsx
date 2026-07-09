@@ -563,15 +563,15 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     }
                 }
 
-                // Update local guest status
-                if (data) {
-                    setData({
-                        ...data,
-                        guest: data.guest
-                            ? { ...data.guest, status: normalizedStatus, number_of_guests: guests }
-                            : res.data
-                    });
-                }
+                // NOTE: we intentionally do NOT setData({ guest.status }) here.
+                // Flipping the guest status would change `is_sudah_isi_konfirmasi_kehadiran`
+                // in templateData, which recomputes `htmlBase` and forces the custom theme
+                // to be re-injected on every submit (expensive; detaches game canvases).
+                // The theme already renders both the form and the thank-you card up front
+                // via {{#hidden}}/{{^hidden}}, and ThemeWrapper reveals the card by toggling
+                // display on submit success — no re-render needed.
+                // (The native React invitation UI uses rsvpResult/wishes state, not this flag,
+                // and the server persists the real status for the next page load.)
             }
 
             const result = { success: res.success, message: res.message, calendarUrl };
@@ -616,12 +616,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 setWishes((prev) => [newWish, ...prev]);
                 setWishName('');
                 setWishMessage('');
-                if (data && data.guest) {
-                    setData({
-                        ...data,
-                        guest: { ...data.guest, flag_sudah_isi_ucapan: true }
-                    });
-                }
+                // NOTE: we intentionally do NOT setData({ guest.flag_sudah_isi_ucapan }) here.
+                // It would flip `is_sudah_isi_ucapan` in templateData → recompute `htmlBase`
+                // → re-inject the whole custom theme just to show the thank-you card.
+                // The theme has both the form and card in the DOM ({{#hidden}}/{{^hidden}});
+                // ThemeWrapper reveals the card via a DOM display toggle on submit success.
                 toast.success(t('invitation.wish_success'), { duration: 4000 });
                 return { success: true, message: t('invitation.wish_success'), data: newWish };
             }

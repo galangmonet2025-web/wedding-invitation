@@ -1,5 +1,64 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+/**
+ * Reveal a "thank you" card and hide its form after a successful submit,
+ * WITHOUT triggering a full theme re-render.
+ *
+ * Themes gate these with the {{#hidden}}/{{^hidden}} template syntax, so both
+ * the form and the card are already present in the DOM on first render — the
+ * card just sits inside a `<div style="display:none" data-hidden-by="...">`
+ * wrapper. Revealing it is a pure DOM flip: clear the wrapper's (and the card's)
+ * display, and set the form's display to none.
+ *
+ * Returns the card element (if found) so callers can further tweak its content
+ * (e.g. the RSVP hadir/tidak-hadir branch) before it becomes visible.
+ */
+function revealThankYou(
+    container: HTMLElement | null | undefined,
+    formSelector: string,
+    cardSelector: string,
+): HTMLElement | null {
+    if (!container) return null;
+
+    const formEl = container.querySelector<HTMLElement>(formSelector);
+    if (formEl) {
+        formEl.style.display = 'none';
+        // Also neutralize the {{#hidden}} wrapper if the form happens to sit in
+        // one (it normally does not, since the form is shown when the flag is false).
+        const formWrap = formEl.closest<HTMLElement>('[data-hidden-by]');
+        if (formWrap && formWrap !== container) formWrap.style.display = 'none';
+    }
+
+    const cardEl = container.querySelector<HTMLElement>(cardSelector);
+    if (cardEl) {
+        cardEl.style.display = '';
+        cardEl.style.removeProperty('display');
+        // Un-hide the {{^hidden}} wrapper that currently keeps the card collapsed.
+        const cardWrap = cardEl.closest<HTMLElement>('[data-hidden-by]');
+        if (cardWrap && cardWrap !== container) cardWrap.style.removeProperty('display');
+        // Legacy class-based gating support (older themes).
+        cardEl.classList.remove('hidden', 'uk-hidden');
+    }
+
+    return cardEl;
+}
+
+/**
+ * Within a revealed RSVP card, show only the branch matching the guest's actual
+ * attendance. Both branches (`data-rsvp-branch="hadir"` / `"tidak"`) are always
+ * in the DOM, each wrapped in a {{#hidden}} <div data-hidden-by>; we toggle the
+ * wrapper that carries the display state.
+ */
+function syncRsvpBranch(cardEl: HTMLElement | null | undefined, hadir: boolean): void {
+    if (!cardEl) return;
+    cardEl.querySelectorAll<HTMLElement>('[data-rsvp-branch]').forEach((el) => {
+        const show = (el.getAttribute('data-rsvp-branch') === 'hadir') === hadir;
+        const wrap = el.closest<HTMLElement>('[data-hidden-by]');
+        const toggleEl = (wrap && cardEl.contains(wrap)) ? wrap : el;
+        toggleEl.style.display = show ? '' : 'none';
+    });
+}
+
 interface ThemeWrapperProps {
     htmlBase: string;
     cssBase?: string;
@@ -39,6 +98,15 @@ export function ThemeWrapper({
 }: ThemeWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [showScrollUp, setShowScrollUp] = useState(false);
+
+    // Once the guest submits a wish/RSVP in this session, the thank-you card must
+    // STAY revealed (and the form hidden) even if htmlBase re-injects for an
+    // unrelated reason — e.g. a new wish is appended to {{#each wishes}}, or the
+    // language changes. We do not flip the guest flag in templateData (that would
+    // itself re-inject on every submit), so the re-parsed HTML would otherwise show
+    // the form again. These refs let us re-assert the reveal after each injection.
+    const submittedWishRef = useRef(false);
+    const submittedRSVPRef = useRef<{ hadir: boolean } | null>(null);
 
     // Remember the last scroll position of whatever element actually scrolls
     // (the phone container on desktop, the window on mobile). When htmlBase
@@ -147,6 +215,21 @@ export function ThemeWrapper({
         if (isReinjection) {
             container.querySelectorAll('.reveal-item:not(.is-visible)')
                 .forEach((el) => el.classList.add('is-visible'));
+        }
+
+        // 6. Re-assert the thank-you reveal after a re-injection.
+        //    We deliberately don't flip the guest flag in templateData on submit
+        //    (that would re-inject the whole theme every time). So if htmlBase
+        //    re-parses for ANY other reason afterwards — a new wish appended to
+        //    {{#each wishes}}, a language switch — the fresh HTML shows the FORM
+        //    again. Re-apply the DOM toggle so the card the guest already earned
+        //    stays visible.
+        if (submittedWishRef.current) {
+            revealThankYou(container, '#wish-form', '#alert-submit-ucapan');
+        }
+        if (submittedRSVPRef.current) {
+            const cardEl = revealThankYou(container, '#rsvp-form', '#alert-submit-kehadiran');
+            syncRsvpBranch(cardEl, submittedRSVPRef.current.hadir);
         }
     }, [isOpened, htmlBase]);
 
@@ -500,10 +583,15 @@ export function ThemeWrapper({
             if (res.success) {
                 btn.disabled = true;
 
-                const thanksEl = container?.querySelector('#rsvp-thanks, .rsvp-thanks, #rsvp-success');
-                const formEl = container?.querySelector('#rsvp-form, .rsvp-form');
-                if (thanksEl) thanksEl.classList.remove('hidden', 'uk-hidden');
-                if (formEl) formEl.classList.add('hidden', 'uk-hidden');
+                // Reveal the RSVP "thank you" card and hide the form without re-rendering
+                // the theme (both already in the DOM via {{#hidden}}/{{^hidden}}).
+                const hadir = String(status).toLowerCase() === 'confirmed'
+                    || String(status).toLowerCase() === 'hadir';
+                submittedRSVPRef.current = { hadir };
+                const cardEl = revealThankYou(container, '#rsvp-form', '#alert-submit-kehadiran');
+                // The card's hadir/tidak-hadir branches were rendered from the guest's
+                // status AT LOAD (before this submit), so re-sync them to what was picked.
+                syncRsvpBranch(cardEl, hadir);
             } else {
                 btn.disabled = false;
             }
@@ -542,6 +630,13 @@ export function ThemeWrapper({
                 const activeMsg = container?.querySelector('#wish-message') as HTMLTextAreaElement;
                 if (activeName) activeName.value = '';
                 if (activeMsg) activeMsg.value = '';
+
+                // Reveal the "thank you" card and hide the form WITHOUT re-rendering
+                // the whole theme. Themes gate these with {{#hidden}}/{{^hidden}}, so
+                // both the form and the card are already present in the DOM (the card
+                // wrapped in a display:none <div data-hidden-by>). We just flip display.
+                submittedWishRef.current = true;
+                revealThankYou(container, '#wish-form', '#alert-submit-ucapan');
             } else {
                 btn.disabled = false;
             }

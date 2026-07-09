@@ -4578,8 +4578,10 @@
                 var nm = (document.getElementById('wish-name') || {}).value || '';
                 var msg = (document.getElementById('wish-message') || {}).value || '';
                 if (!msg.trim()) { toast('Tulis ucapanmu dulu'); return; }
-                var form = document.getElementById('rm-wish-form');
-                if (form) form.innerHTML = '<div class="rm-thanks">⭐ Terima kasih atas ucapan &amp; doanya!</div>';
+                var form = document.getElementById('wish-form');
+                if (form) form.style.display = 'none';
+                var thanks = document.getElementById('alert-submit-ucapan');
+                if (thanks) thanks.style.display = '';
                 var list = document.querySelector('.rm-wish-list');
                 if (list) {
                     var item = document.createElement('div'); item.className = 'rm-wish-item';

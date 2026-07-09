@@ -39,23 +39,11 @@
     };
 
     var BUILD = 'spacewar-wedding';
-    var VERSION = 'v1.2.3';   // CINEMATIC STAGE CLEAR (gameplay setelah stage selesai lebih dekat ke game asli): on sector clear the scene NO LONGER pauses + shows a "▶ LANJUT" button. Instead a camera-fixed "STAGE CLEAR" banner pops, the world stops (scroll/spawn off, incoming danger cleared, ship made invulnerable), then the ship AUTO-FLIES straight up and off the top of the screen; only after it leaves does the next sector load — where the new ship slides IN from below the bottom edge (arcade re-entry). Driven by clearSeq (banner→fly→done) in update() + ship.autoFly gate + a fly-in tween in buildSector. PREV (v1.2.2) CHANGE "asset sprite cukup 1 slot": the unified adjuster sheet (data-asset="sprite_sheet") now reads from ASSET SLOT 1 ({{asset_image_1}}) instead of slot 6. The unused placeholder slots 2–6 (player/enemy/environment/object/piece) were removed from the HTML — one exported sheet covers every sprite, so the guest/admin only uploads ONE image (slot 1). Engine logic unchanged (still assetUrl('sprite_sheet') → sliceSpriteSheet()); only the slot binding + user-facing copy moved to slot 1. PREV (v1.2.1) FIX "BUTTON START GAME gabisa dibuka lagi": window.__swStarted survives a host RE-INJECTION and init()'s auto-resume fired UNCONDITIONALLY — even when the fresh HTML re-shows #sw-cover (PRESS START). It yanked the player off the cover into startRun() (loading curtain) and, if the engine was mid-teardown, nothing came back → cover gone, START dead. Auto-resume now only fires when the cover is NOT showing (genuine in-progress run); a re-injection that re-shows the cover keeps it up with a working START, while a real mid-game re-inject (RSVP/wish submit) still auto-resumes with no lost progress. PREV (v1.2.0) ASSET ADJUSTER: the Sprite Tuner panel now has an "Export Sprite
-    // Sheet (PNG)" button → composes the game's CURRENT textures into ONE PNG (layout = SHEET_MAP
-    // via sheetLayout()), each cell wrapped in a PURPLE guide-border + key label. Replace the art
-    // inside each border, upload to the theme asset slot 1 ({{asset_image_1}}, data-asset=
-    // "sprite_sheet") → the scene preload+sliceSpriteSheet() slices at the IDENTICAL rects, KEYS
-    // OUT the purple border, downscales to native size, and bakes each cell into its texture key
-    // (create/scale/anim use the new art unchanged). Fully playable with NO upload (procedural
-    // fallback via usingSheetAsset flag). PREV (v1.1.0) Ported 4 metalslug fixes: (1) sidebar SFX-mute button (🔊/🔇,
-    // persisted, gates blip(); host music button kept but HIDDEN so setMusic() can still auto-play
-    // the backsound). (2) "KEMBALI" reveal button is now a FLOATING arcade pill at the bottom-right
-    // (was a sticky top bar) + closeReveal() revives the game on return (re-boot if torn down by the
-    // music re-injection, else resume). (3) STAGE-SWITCH CRASH/BLANK fix: startRun() HOT-LOADS the
-    // new sector into the already-live scene (resume → sync score/cheat → showBriefing → loadSector)
-    // instead of GAME.destroy(true)+new P.Game on the same #gw-stage (Phaser's deferred destroy
-    // raced the new canvas → blank). (4) SPRITE TUNER ("ATUR POSISI SPRITE"): hidden ✦ in the side
-    // badge opens a PC-only live offset panel (per-sprite Y slider, persisted, "Salin nilai") via a
-    // per-sector tunable registry (regTune/applyLiveTune) — game keeps running.
+    var VERSION = 'v1.3.0';   // ART OVERHAUL: render SMOOTH (pixelArt:false, antialias ON); all
+    // procedural sprites rewritten semi-realistic via draw helpers (vgrad/glow/poly/metalBody) —
+    // gradient metal bodies, soft glows, rim light. Distinct projectiles, detailed enemies/boss,
+    // richer nebula/planet/wreck/station backdrop. Some sprites enlarged (SHEET_MAP ew/eh updated in
+    // lockstep). Gameplay, hitboxes, host contract, tuner UNCHANGED. (See git history for v1.0–v1.2.)
     try { console.log('%c[' + BUILD + '] ' + VERSION, 'background:#4fd6ff;color:#0a0c1a;padding:2px 6px;border-radius:3px'); } catch (e) {}
 
     /* =================================================================
@@ -166,7 +154,7 @@
         { key: 't_ship0', ew: 36, eh: 50 }, { key: 't_ship1', ew: 36, eh: 50 }, { key: 't_ship2', ew: 36, eh: 50 },
         { key: 't_ship', ew: 36, eh: 50 }, { key: 't_ship_hurt', ew: 36, eh: 50 },
         // enemies
-        { key: 't_e_drone', ew: 24, eh: 30 }, { key: 't_e_turret', ew: 28, eh: 34 }, { key: 't_e_korvet', ew: 30, eh: 44 },
+        { key: 't_e_drone', ew: 26, eh: 34 }, { key: 't_e_turret', ew: 28, eh: 34 }, { key: 't_e_korvet', ew: 30, eh: 44 },
         { key: 't_e_flyer', ew: 22, eh: 30 }, { key: 't_e_carrier', ew: 44, eh: 64 }, { key: 't_e_mech', ew: 40, eh: 56 },
         { key: 't_e_mine', ew: 22, eh: 22 },
         // boss + reward couple
@@ -175,8 +163,8 @@
         { key: 't_asteroid', ew: 40, eh: 38 }, { key: 't_asteroid_s', ew: 22, eh: 20 }, { key: 't_barel', ew: 26, eh: 30 },
         { key: 't_lasergate', ew: 200, eh: 16 }, { key: 't_capsule_blue', ew: 22, eh: 16 }, { key: 't_amplop', ew: 30, eh: 24 },
         // projectiles + fx
-        { key: 't_pbullet', ew: 6, eh: 14 }, { key: 't_laser', ew: 5, eh: 26 }, { key: 't_pmissile', ew: 8, eh: 14 },
-        { key: 't_ebullet', ew: 9, eh: 9 }, { key: 't_erocket', ew: 9, eh: 18 }, { key: 't_spark', ew: 7, eh: 7 }, { key: 't_heart', ew: 11, eh: 11 },
+        { key: 't_pbullet', ew: 8, eh: 18 }, { key: 't_laser', ew: 7, eh: 30 }, { key: 't_pmissile', ew: 10, eh: 18 },
+        { key: 't_ebullet', ew: 11, eh: 11 }, { key: 't_erocket', ew: 10, eh: 20 }, { key: 't_spark', ew: 8, eh: 8 }, { key: 't_heart', ew: 12, eh: 12 },
         // parallax structures
         { key: 't_planet', ew: 200, eh: 200 }, { key: 't_wreck', ew: 160, eh: 90 }, { key: 't_station', ew: 180, eh: 200 }
     ];
@@ -1142,191 +1130,373 @@
             g.destroy();
         }
         function buildTextures(scene) {
-            function box(g, x, y, w, h, base, hi, sh) {
-                g.fillStyle(base, 1); g.fillRect(x, y, w, h);
-                if (hi != null) { g.fillStyle(hi, 1); g.fillRect(x, y, w, Math.max(1, h * 0.22 | 0)); }
-                if (sh != null) { g.fillStyle(sh, 1); g.fillRect(x, y + h - Math.max(1, h * 0.22 | 0), w, Math.max(1, h * 0.22 | 0)); }
+            /* ---- SMOOTH DRAW HELPERS (semi-realistic look; antialias is ON) ---- */
+            // vertical gradient panel (top→bottom). Two-stop; rounded via poly fallback.
+            function vgrad(g, x, y, w, h, top, bot) {
+                g.fillStyle(top, 1); g.fillGradientStyle(top, top, bot, bot, 1); g.fillRect(x, y, w, h);
             }
-            function outline(g, x, y, w, h, col) { g.lineStyle(2, col != null ? col : 0x0a0e1a, 1); g.strokeRect(x, y, w, h); }
+            // radial-ish soft glow: stacked translucent circles (fake radial gradient, ADD-friendly)
+            function glow(g, cx, cy, r, col, a) {
+                a = a == null ? 0.5 : a;
+                for (var i = 6; i >= 1; i--) { g.fillStyle(col, a * (i / 6) * 0.5); g.fillCircle(cx, cy, r * (i / 6)); }
+            }
+            // filled smooth polygon from [[x,y],...]
+            function poly(g, pts, col, alpha) {
+                g.fillStyle(col, alpha == null ? 1 : alpha);
+                g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+                for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+                g.closePath(); g.fillPath();
+            }
+            function strokePoly(g, pts, wdt, col, alpha, close) {
+                g.lineStyle(wdt, col, alpha == null ? 1 : alpha);
+                g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+                for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+                if (close !== false) g.closePath();
+                g.strokePath();
+            }
+            // metallic rounded body: gradient fill + top sheen + bottom shade + rim light
+            function metalBody(g, x, y, w, h, r, top, mid, bot, rim) {
+                g.fillStyle(mid, 1); g.fillGradientStyle(top, top, bot, bot, 1); g.fillRoundedRect(x, y, w, h, r);
+                // vertical sheen streak (glass/metal reflection)
+                g.fillStyle(0xffffff, 0.14); g.fillRoundedRect(x + w * 0.16, y + 2, Math.max(2, w * 0.16), h - 4, Math.min(r, 3));
+                if (rim != null) { g.lineStyle(1.5, rim, 0.85); g.strokeRoundedRect(x + 0.5, y + 0.5, w - 1, h - 1, r); }
+            }
+            function box(g, x, y, w, h, base, hi, sh) {   // kept for back-compat; now gradient-shaded
+                vgrad(g, x, y, w, h, hi != null ? hi : base, sh != null ? sh : base);
+            }
+            function outline(g, x, y, w, h, col) { g.lineStyle(1.5, col != null ? col : 0x0a0e1a, 0.9); g.strokeRect(x, y, w, h); }
 
-            // ---- PLAYER SHIP (faces UP) — cyan hull, glass cockpit, exhaust below ----
+            // ---- PLAYER SHIP (faces UP) — sleek cyan interceptor, glass canopy, ion exhaust ----
             function drawShip(g, opt) {
                 opt = opt || {}; var ex = opt.ex || 0;   // exhaust length 0..3 (below)
-                // exhaust flame (behind, bottom)
+                var cx = 18;
+                // ion exhaust plume (behind, bottom) — layered glow
                 if (ex > 0) {
-                    g.fillStyle(0xff8a3d, 0.9); g.fillTriangle(12, 34, 24, 34, 18, 34 + ex * 4);
-                    g.fillStyle(0xffd447, 0.95); g.fillTriangle(13, 32, 23, 32, 18, 32 + ex * 3);
+                    glow(g, cx, 40, 5 + ex * 2, 0x4fd6ff, 0.5);
+                    poly(g, [[13, 34], [23, 34], [20, 40 + ex * 4], [cx, 44 + ex * 5], [16, 40 + ex * 4]], 0xff8a3d, 0.9);
+                    poly(g, [[15, 33], [21, 33], [19, 38 + ex * 3], [cx, 41 + ex * 3.4], [17, 38 + ex * 3]], 0xffe08a, 0.95);
+                    poly(g, [[16.5, 32], [19.5, 32], [cx, 38 + ex * 2.4]], 0xffffff, 0.9);
                 }
-                // hull (vertical body)
-                box(g, 12, 6, 12, 30, 0x3a7dff, 0x7fb0ff, 0x1c3c8a);
-                g.fillStyle(0x9bd0ff, 1); g.fillTriangle(12, 6, 24, 6, 18, -6 + 6);   // nose up
-                g.fillStyle(0x9bd0ff, 1); g.fillTriangle(12, 6, 24, 6, 18, 0);
-                // wings (left/right)
-                g.fillStyle(0x2a5cc0, 1); g.fillTriangle(12, 8, 2, 18, 12, 24); g.fillTriangle(24, 8, 34, 18, 24, 24);
-                g.fillStyle(0x6a90e0, 1); g.fillTriangle(12, 10, 5, 17, 12, 21); g.fillTriangle(24, 10, 31, 17, 24, 21);
-                // cockpit glass
-                g.fillStyle(0x4fd6ff, 1); g.fillCircle(18, 16, 5);
-                g.fillStyle(0xeaffff, 1); g.fillCircle(16, 14, 2);
-                outline(g, 12, 6, 12, 30);
+                // engine nacelles (twin, dark) at the tail
+                metalBody(g, 10, 30, 6, 10, 2, 0x3a4a6a, 0x24304a, 0x141a2a, 0x6a90e0);
+                metalBody(g, 20, 30, 6, 10, 2, 0x3a4a6a, 0x24304a, 0x141a2a, 0x6a90e0);
+                // swept wings (smooth polygons w/ gradient-ish two-tone)
+                poly(g, [[12, 12], [1, 30], [6, 34], [14, 22]], 0x2a5cc0);
+                poly(g, [[24, 12], [35, 30], [30, 34], [22, 22]], 0x2a5cc0);
+                poly(g, [[12, 14], [6, 28], [10, 30], [14, 22]], 0x6a9af0, 0.9);
+                poly(g, [[24, 14], [30, 28], [26, 30], [22, 22]], 0x6a9af0, 0.9);
+                // wing-tip lights
+                glow(g, 3, 31, 3, 0xff5a7a, 0.7); glow(g, 33, 31, 3, 0x5affa0, 0.7);
+                // fuselage — smooth arrowhead with metallic gradient
+                poly(g, [[cx, 0], [26, 14], [24, 36], [12, 36], [10, 14]], 0x2a5cc0);
+                var fg = g;
+                fg.fillStyle(0x3a7dff, 1); fg.fillGradientStyle(0x9bd0ff, 0x9bd0ff, 0x1c3c8a, 0x1c3c8a, 1);
+                fg.beginPath(); fg.moveTo(cx, 2); fg.lineTo(24, 14); fg.lineTo(22, 34); fg.lineTo(14, 34); fg.lineTo(12, 14); fg.closePath(); fg.fillPath();
+                // nose highlight
+                poly(g, [[cx, 2], [21, 12], [15, 12]], 0xcfeaff, 0.9);
+                // hull panel lines
+                strokePoly(g, [[15, 12], [15, 34]], 1, 0x14306a, 0.6, false);
+                strokePoly(g, [[21, 12], [21, 34]], 1, 0x14306a, 0.6, false);
+                // glass canopy (teardrop) with specular
+                poly(g, [[cx, 10], [22, 17], [cx, 26], [14, 17]], 0x0a2a5a);
+                glow(g, cx, 18, 6, 0x4fd6ff, 0.6);
+                g.fillStyle(0x8fe6ff, 1); g.fillCircle(cx, 18, 4.2);
+                g.fillStyle(0xeaffff, 0.95); g.fillCircle(17, 16, 1.8);
+                // outline for read
+                strokePoly(g, [[cx, 0], [26, 14], [24, 36], [12, 36], [10, 14]], 1.4, 0x081226, 0.85);
             }
             tex(scene, 't_ship', 36, 50, function (g) { drawShip(g, { ex: 1 }); });
             tex(scene, 't_ship0', 36, 50, function (g) { drawShip(g, { ex: 1 }); });
             tex(scene, 't_ship1', 36, 50, function (g) { drawShip(g, { ex: 2 }); });
             tex(scene, 't_ship2', 36, 50, function (g) { drawShip(g, { ex: 3 }); });
             tex(scene, 't_ship_hurt', 36, 50, function (g) {
-                g.fillStyle(0xff6a6a, 1); g.fillRect(12, 6, 12, 30);
-                g.fillStyle(0xffcaca, 1); g.fillTriangle(12, 6, 24, 6, 18, 0);
-                g.lineStyle(2, 0x0a0e1a, 1); g.strokeRect(12, 6, 12, 30);
+                // same silhouette, flashed red-white with damage sparks
+                poly(g, [[18, 0], [26, 14], [24, 36], [12, 36], [10, 14]], 0xff4d4d);
+                g.fillStyle(0xff8a8a, 1); g.fillGradientStyle(0xffd0d0, 0xffd0d0, 0xc02020, 0xc02020, 1);
+                g.beginPath(); g.moveTo(18, 2); g.lineTo(24, 14); g.lineTo(22, 34); g.lineTo(14, 34); g.lineTo(12, 14); g.closePath(); g.fillPath();
+                glow(g, 18, 18, 6, 0xffffff, 0.7);
+                g.fillStyle(0xfff2a0, 1); g.fillCircle(14, 22, 1.4); g.fillCircle(23, 28, 1.2); g.fillCircle(19, 12, 1.1);
+                strokePoly(g, [[18, 0], [26, 14], [24, 36], [12, 36], [10, 14]], 1.4, 0x3a0808, 0.9);
             });
 
-            // ---- PROJECTILES (vertical) ----
-            tex(scene, 't_pbullet', 6, 14, function (g) { g.fillStyle(0xeaffff, 1); g.fillRect(0, 0, 6, 14); g.fillStyle(0x4fd6ff, 1); g.fillRect(1, 0, 4, 14); g.fillStyle(0xffffff, 1); g.fillRect(1, 0, 4, 5); });
-            tex(scene, 't_laser', 5, 26, function (g) { g.fillStyle(0xeaffff, 1); g.fillRect(0, 0, 5, 26); g.fillStyle(0x9bffd0, 1); g.fillRect(1, 0, 3, 26); });
-            tex(scene, 't_pmissile', 8, 14, function (g) { g.fillStyle(0xd0d8ff, 1); g.fillRect(1, 3, 6, 11); g.fillStyle(0x4fd6ff, 1); g.fillTriangle(0, 3, 4, 0, 8, 3); g.fillStyle(0xff8a3d, 1); g.fillRect(3, 11, 2, 3); });
-            tex(scene, 't_ebullet', 9, 9, function (g) { g.fillStyle(0xffb627, 1); g.fillCircle(4.5, 4.5, 4.5); g.fillStyle(0xff5a4d, 1); g.fillCircle(4.5, 4.5, 3); g.fillStyle(0xfff, 0.85); g.fillCircle(3, 3, 1.3); });
-            tex(scene, 't_erocket', 9, 18, function (g) { g.fillStyle(0xc0c0c8, 1); g.fillRect(1, 4, 7, 14); g.fillStyle(0xff4d4d, 1); g.fillTriangle(0, 4, 4, 0, 9, 4); g.fillStyle(0xffd447, 1); g.fillRect(3, 14, 3, 4); });
-            tex(scene, 't_spark', 7, 7, function (g) { g.fillStyle(0xffffff, 1); g.fillCircle(3.5, 3.5, 3.5); g.fillStyle(0xffd447, 1); g.fillCircle(3.5, 3.5, 2); });
-            tex(scene, 't_heart', 11, 11, function (g) { g.fillStyle(0xff8ab0, 1); g.fillCircle(3.2, 4, 3.2); g.fillCircle(7.8, 4, 3.2); g.fillTriangle(0.5, 5, 10.5, 5, 5.5, 11); });
+            // ---- PROJECTILES (vertical) — each weapon reads DISTINCTLY ----
+            // BLASTER: cyan plasma bolt, bright core + soft halo
+            tex(scene, 't_pbullet', 8, 18, function (g) {
+                glow(g, 4, 9, 4, 0x4fd6ff, 0.8);
+                g.fillStyle(0x2aa0ff, 1); g.fillRoundedRect(2, 1, 4, 16, 2);
+                g.fillStyle(0xbdf2ff, 1); g.fillRoundedRect(3, 1, 2, 13, 1);
+                g.fillStyle(0xffffff, 1); g.fillCircle(4, 3, 1.4);
+            });
+            // LASER: continuous emerald beam, white-hot centre, flared cap
+            tex(scene, 't_laser', 7, 30, function (g) {
+                glow(g, 3.5, 15, 4, 0x5affb0, 0.7);
+                g.fillStyle(0x2ad07a, 0.9); g.fillRoundedRect(1, 0, 5, 30, 2);
+                g.fillStyle(0x9bffd0, 1); g.fillRoundedRect(2, 0, 3, 30, 1);
+                g.fillStyle(0xffffff, 1); g.fillRect(3, 0, 1, 30);
+                g.fillStyle(0xeaffff, 0.9); g.fillCircle(3.5, 2, 2.4);   // hot muzzle cap
+            });
+            // MISSILE: metal body, nose cone, fins, orange flame tail
+            tex(scene, 't_pmissile', 10, 18, function (g) {
+                poly(g, [[5, 0], [8, 5], [2, 5]], 0xdfe6ff);                 // nose cone
+                metalBody(g, 3, 4, 4, 9, 1.5, 0xeef2ff, 0xb8c4e6, 0x6a78a8, 0x9bb0ff);
+                poly(g, [[3, 9], [0, 13], [3, 13]], 0x8a96c0); poly(g, [[7, 9], [10, 13], [7, 13]], 0x8a96c0);  // fins
+                glow(g, 5, 15, 3, 0xff8a3d, 0.8);
+                poly(g, [[3.5, 13], [6.5, 13], [5, 18]], 0xffe08a);          // flame
+            });
+            // ENEMY BULLET: hostile red plasma orb
+            tex(scene, 't_ebullet', 11, 11, function (g) {
+                glow(g, 5.5, 5.5, 5, 0xff3a2a, 0.8);
+                g.fillStyle(0xff6a4a, 1); g.fillCircle(5.5, 5.5, 3.6);
+                g.fillStyle(0xffd08a, 1); g.fillCircle(5.5, 5.5, 2);
+                g.fillStyle(0xffffff, 0.95); g.fillCircle(4.2, 4.2, 1);
+            });
+            // ENEMY ROCKET: dark warhead, red tip, exhaust
+            tex(scene, 't_erocket', 10, 20, function (g) {
+                poly(g, [[5, 0], [8, 5], [2, 5]], 0xff4d4d);                 // red warhead tip
+                metalBody(g, 2, 4, 6, 12, 2, 0x9aa0ac, 0x6a707c, 0x3a3e48, 0xc0c6d2);
+                poly(g, [[2, 12], [0, 17], [2, 16]], 0x4a4e58); poly(g, [[8, 12], [10, 17], [8, 16]], 0x4a4e58);
+                glow(g, 5, 18, 3, 0xffb020, 0.85);
+                poly(g, [[3.5, 16], [6.5, 16], [5, 20]], 0xffe36a);
+            });
+            tex(scene, 't_spark', 8, 8, function (g) {
+                glow(g, 4, 4, 4, 0xffd447, 0.9);
+                g.fillStyle(0xffffff, 1); g.fillCircle(4, 4, 2.4);
+                g.fillStyle(0xffe98a, 1); g.fillCircle(4, 4, 1.2);
+            });
+            tex(scene, 't_heart', 12, 12, function (g) {
+                glow(g, 6, 6, 5, 0xff8ab0, 0.5);
+                g.fillStyle(0xff5a8a, 1); g.fillCircle(3.5, 4.4, 3.4); g.fillCircle(8.5, 4.4, 3.4); poly(g, [[0.6, 5.4], [11.4, 5.4], [6, 12]], 0xff5a8a);
+                g.fillStyle(0xffb0cc, 0.9); g.fillCircle(4.4, 3.4, 1.2);
+            });
 
             // ---- ENEMIES (face DOWN, toward player below) ----
-            tex(scene, 't_e_drone', 24, 30, function (g) {
-                box(g, 6, 4, 12, 22, 0xc04a4a, 0xe06a6a, 0x802424);
-                g.fillStyle(0x9bd0ff, 1); g.fillCircle(12, 10, 3);       // sensor eye (cyan)
-                g.fillStyle(0xff5a4d, 1); g.fillCircle(12, 10, 1.5);
-                g.fillStyle(0x802424, 1); g.fillTriangle(6, 26, 18, 26, 12, 30);   // point down
-                g.fillStyle(0xff8a3d, 0.8); g.fillCircle(12, 4, 2);      // thruster (top)
-                outline(g, 6, 4, 12, 22);
+            // DRONE: sleek crimson interceptor, glowing red sensor, twin thrusters
+            tex(scene, 't_e_drone', 26, 34, function (g) {
+                var cx = 13;
+                poly(g, [[cx, 34], [21, 22], [19, 6], [7, 6], [5, 22]], 0x7a1e1e);            // dark underbody
+                g.fillStyle(0xc04a4a, 1); g.fillGradientStyle(0xf07a6a, 0xf07a6a, 0x801e1e, 0x801e1e, 1);
+                g.beginPath(); g.moveTo(cx, 32); g.lineTo(19, 22); g.lineTo(18, 8); g.lineTo(8, 8); g.lineTo(7, 22); g.closePath(); g.fillPath();
+                poly(g, [[7, 8], [1, 16], [7, 18]], 0x9a2828); poly(g, [[19, 8], [25, 16], [19, 18]], 0x9a2828);  // wings
+                glow(g, cx, 14, 4, 0xff5a4d, 0.8);
+                g.fillStyle(0xffd0c0, 1); g.fillCircle(cx, 13, 2.4); g.fillStyle(0xff2a1a, 1); g.fillCircle(cx, 14, 1.3);  // sensor
+                glow(g, 9, 6, 2.5, 0x4fd6ff, 0.7); glow(g, 17, 6, 2.5, 0x4fd6ff, 0.7);   // thrusters top
+                strokePoly(g, [[cx, 32], [19, 22], [18, 8], [8, 8], [7, 22]], 1.2, 0x2a0808, 0.8);
             });
+            // TURRET: armoured violet gun platform, ringed core, muzzle glow
             tex(scene, 't_e_turret', 28, 34, function (g) {
-                box(g, 8, 4, 18, 26, 0x6a4a9c, 0x8a6abc, 0x402a6a);
-                g.fillStyle(0x2a1a4a, 1); g.fillRect(12, 0, 6, 8);       // barrel (faces down)
-                g.fillStyle(0xff4d4d, 1); g.fillRect(14, 0, 2, 4);
-                g.fillStyle(0xffd447, 1); g.fillCircle(16, 20, 3);       // core light
-                outline(g, 8, 4, 18, 26);
+                metalBody(g, 6, 6, 16, 24, 4, 0xa77edc, 0x6a4a9c, 0x36225e, 0xb99ce0);
+                g.fillStyle(0x241238, 1); g.fillRoundedRect(11, 0, 6, 9, 1);   // barrel (down toward player)
+                glow(g, 14, 2, 2.5, 0xff4d4d, 0.8);
+                g.lineStyle(1.5, 0xffd447, 0.7); g.strokeCircle(14, 19, 6);     // core ring
+                glow(g, 14, 19, 4, 0xffd447, 0.7); g.fillStyle(0xfff2a0, 1); g.fillCircle(14, 19, 2.4);
+                g.fillStyle(0x1a0e2e, 0.8); g.fillRect(8, 24, 12, 2);           // armour seam
             });
+            // KORVET: orange armoured cruiser, side pods, engine glow, bridge window
             tex(scene, 't_e_korvet', 30, 44, function (g) {
-                box(g, 8, 8, 16, 32, 0xd06a2a, 0xf08a4a, 0x8a4418);
-                g.fillStyle(0x8a4418, 1); g.fillTriangle(8, 8, 22, 8, 15, 0);   // nose-down? draw point down
-                g.fillStyle(0x8a4418, 1); g.fillTriangle(8, 40, 22, 40, 15, 44);
-                g.fillStyle(0x4a2a6a, 1); g.fillRect(4, 20, 5, 12);
-                g.fillStyle(0x9bd0ff, 1); g.fillCircle(16, 26, 4);
-                g.fillStyle(0xff8a3d, 0.8); g.fillCircle(16, 8, 2);
-                outline(g, 8, 8, 16, 32);
+                poly(g, [[15, 0], [24, 10], [22, 40], [15, 44], [8, 40], [6, 10]], 0x8a4418);   // hull silhouette
+                g.fillStyle(0xd06a2a, 1); g.fillGradientStyle(0xf6a05a, 0xf6a05a, 0x8a4418, 0x8a4418, 1);
+                g.beginPath(); g.moveTo(15, 2); g.lineTo(22, 11); g.lineTo(20, 38); g.lineTo(15, 42); g.lineTo(10, 38); g.lineTo(8, 11); g.closePath(); g.fillPath();
+                metalBody(g, 2, 18, 5, 14, 2, 0x8a6adc, 0x4a2a6a, 0x281540, 0x9a7aec);          // side pods
+                metalBody(g, 23, 18, 5, 14, 2, 0x8a6adc, 0x4a2a6a, 0x281540, 0x9a7aec);
+                glow(g, 15, 26, 5, 0x4fd6ff, 0.6); g.fillStyle(0xbdf2ff, 1); g.fillCircle(15, 26, 3.4);  // bridge window
+                strokePoly(g, [[15, 12], [15, 40]], 1, 0x5a2c10, 0.6, false);
+                glow(g, 12, 6, 2, 0xff8a3d, 0.8); glow(g, 18, 6, 2, 0xff8a3d, 0.8);              // twin engines top
             });
+            // FLYER: fast magenta dart with translucent swept wings
             tex(scene, 't_e_flyer', 22, 30, function (g) {
-                g.fillStyle(0xb03a8a, 1); g.fillTriangle(11, 30, 2, 4, 20, 4);   // point DOWN
-                g.fillStyle(0xd05aaa, 1); g.fillTriangle(11, 22, 5, 6, 17, 6);
-                g.fillStyle(0xff5a4d, 1); g.fillCircle(11, 8, 2);
-                outline(g, 2, 4, 18, 26);
+                poly(g, [[11, 30], [3, 6], [19, 6]], 0x7a1e5a);
+                g.fillStyle(0xc44a9a, 1); g.fillGradientStyle(0xf07acc, 0xf07acc, 0x7a1e5a, 0x7a1e5a, 1);
+                g.beginPath(); g.moveTo(11, 28); g.lineTo(4, 7); g.lineTo(18, 7); g.closePath(); g.fillPath();
+                poly(g, [[4, 7], [0, 4], [8, 8]], 0xd05aaa, 0.5); poly(g, [[18, 7], [22, 4], [14, 8]], 0xd05aaa, 0.5);  // glass wings
+                glow(g, 11, 10, 3, 0xff5a4d, 0.8); g.fillStyle(0xffd0c0, 1); g.fillCircle(11, 9, 1.8);
+                glow(g, 11, 26, 3, 0xff8ad0, 0.7);   // engine trail
             });
+            // CARRIER: heavy grey mothership, hull plating, hangar bay, running lights
             tex(scene, 't_e_carrier', 44, 64, function (g) {
-                box(g, 8, 6, 28, 54, 0x4a4a6a, 0x6a6a8a, 0x2a2a4a);
-                g.fillStyle(0x2a2a4a, 1); g.fillTriangle(8, 60, 36, 60, 22, 64);   // bow down
-                g.fillStyle(0x1a1a2a, 1); g.fillRect(14, 44, 16, 8);     // drone bay (bottom)
-                g.fillStyle(0xff4d4d, 1); g.fillCircle(22, 24, 4);
-                g.fillStyle(0xffd447, 1); g.fillCircle(22, 24, 2);
-                outline(g, 8, 6, 28, 54);
+                poly(g, [[8, 6], [36, 6], [34, 58], [22, 64], [10, 58]], 0x24243a);
+                g.fillStyle(0x4a4a6a, 1); g.fillGradientStyle(0x7a7a9a, 0x7a7a9a, 0x2a2a4a, 0x2a2a4a, 1);
+                g.beginPath(); g.moveTo(9, 8); g.lineTo(35, 8); g.lineTo(33, 56); g.lineTo(22, 61); g.lineTo(11, 56); g.closePath(); g.fillPath();
+                // plating seams
+                g.lineStyle(1, 0x1c1c30, 0.7); g.strokeRect(12, 14, 20, 12); g.strokeRect(12, 30, 20, 12);
+                g.fillStyle(0x12121e, 1); g.fillRoundedRect(15, 46, 14, 9, 2);   // hangar bay (bottom)
+                glow(g, 22, 51, 3, 0xff8a3d, 0.6);
+                glow(g, 22, 22, 5, 0xff4d4d, 0.7); g.fillStyle(0xffd447, 1); g.fillCircle(22, 22, 2.4);  // command core
+                // running lights
+                for (var i = 0; i < 4; i++) { glow(g, 11, 16 + i * 11, 1.6, 0x5affa0, 0.8); glow(g, 33, 16 + i * 11, 1.6, 0x5affa0, 0.8); }
+                strokePoly(g, [[9, 8], [35, 8], [33, 56], [22, 61], [11, 56]], 1.3, 0x0c0c16, 0.85);
             });
+            // MECH: olive walker-gunship, shoulder cannon, twin rotors, optic
             tex(scene, 't_e_mech', 40, 56, function (g) {
-                box(g, 8, 6, 24, 44, 0x5a6a3a, 0x7a8a5a, 0x3a4a22);
-                g.fillStyle(0x2a2a2a, 1); g.fillRect(16, 50, 6, 6);      // cannon-down
-                g.fillStyle(0xff4d4d, 1); g.fillRect(18, 52, 2, 4);
-                g.fillStyle(0x9bd0ff, 1); g.fillCircle(20, 22, 4);
-                g.fillStyle(0x111, 1); g.fillCircle(8, 18, 5); g.fillCircle(8, 40, 5);
-                g.fillStyle(0x555, 1); g.fillCircle(8, 18, 2); g.fillCircle(8, 40, 2);
-                outline(g, 8, 6, 24, 44);
+                metalBody(g, 8, 6, 24, 44, 5, 0x8a9a5a, 0x5a6a3a, 0x323e1e, 0x9aaa6a);
+                g.fillStyle(0x2a2a2a, 1); g.fillRoundedRect(15, 48, 8, 8, 1);    // chin cannon (down)
+                glow(g, 19, 54, 2.5, 0xff4d4d, 0.85);
+                // rotor housings (sides)
+                g.fillStyle(0x14140e, 1); g.fillCircle(8, 18, 6); g.fillCircle(8, 40, 6); g.fillCircle(32, 18, 6); g.fillCircle(32, 40, 6);
+                g.fillStyle(0x5a5a4a, 1); g.fillCircle(8, 18, 2.4); g.fillCircle(8, 40, 2.4); g.fillCircle(32, 18, 2.4); g.fillCircle(32, 40, 2.4);
+                // optic visor
+                glow(g, 20, 22, 5, 0x4fd6ff, 0.7); g.fillStyle(0xbdf2ff, 1); g.fillRoundedRect(14, 20, 12, 5, 2);
+                g.fillStyle(0x2a3218, 0.8); g.fillRect(11, 34, 18, 2);           // armour seam
             });
+            // MINE: spiked hazard orb, warning red pulse
             tex(scene, 't_e_mine', 22, 22, function (g) {
-                g.fillStyle(0x8a8a3a, 1); g.fillCircle(11, 11, 9);
-                g.fillStyle(0xaaaa5a, 1); g.fillCircle(9, 9, 4);
-                for (var i = 0; i < 8; i++) { var a = i / 8 * 6.28; g.fillStyle(0x5a5a2a, 1); g.fillRect(11 + Math.cos(a) * 9 - 1, 11 + Math.sin(a) * 9 - 1, 3, 3); }
-                g.fillStyle(0xff4d4d, 1); g.fillCircle(11, 11, 2);
+                for (var i = 0; i < 10; i++) { var a = i / 10 * 6.283; poly(g, [[11 + Math.cos(a) * 8, 11 + Math.sin(a) * 8], [11 + Math.cos(a + 0.16) * 11, 11 + Math.sin(a + 0.16) * 11], [11 + Math.cos(a - 0.16) * 11, 11 + Math.sin(a - 0.16) * 11]], 0x6a6a2a); }
+                g.fillStyle(0x8a8a3a, 1); g.fillCircle(11, 11, 8);
+                g.fillStyle(0xaaaa5a, 1); g.fillGradientStyle(0xd0d07a, 0xd0d07a, 0x5a5a2a, 0x5a5a2a, 1); g.fillCircle(11, 11, 8);
+                g.fillStyle(0xcaca7a, 0.9); g.fillCircle(8, 8, 3);
+                glow(g, 11, 11, 4, 0xff4d4d, 0.85); g.fillStyle(0xff2a2a, 1); g.fillCircle(11, 11, 2);
+                g.lineStyle(1, 0x3a3a18, 0.8); g.strokeCircle(11, 11, 8);
             });
 
             // ---- HAZARDS ----
+            // irregular cratered rock via jagged polygon + shaded facets
+            function rock(g, cx, cy, r, seed) {
+                var pts = [], n = 11;
+                for (var i = 0; i < n; i++) { var a = i / n * 6.283; var rr = r * (0.78 + ((Math.sin(seed + i * 2.3) * 0.5 + 0.5)) * 0.28); pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]); }
+                poly(g, pts, 0x4a3a2a);   // dark base
+                g.fillStyle(0x6a5a4a, 1); g.fillGradientStyle(0x9a8a76, 0x9a8a76, 0x3a2c1e, 0x3a2c1e, 1);
+                g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (var j = 1; j < pts.length; j++) g.lineTo(pts[j][0], pts[j][1]); g.closePath(); g.fillPath();
+                strokePoly(g, pts, 1.2, 0x241a10, 0.85);
+                return pts;
+            }
             tex(scene, 't_asteroid', 40, 38, function (g) {
-                g.fillStyle(0x6a5a4a, 1); g.fillCircle(20, 19, 18);
-                g.fillStyle(0x8a7a6a, 1); g.fillCircle(14, 13, 7);
-                g.fillStyle(0x4a3a2a, 1); g.fillCircle(26, 24, 5); g.fillCircle(12, 26, 3);
-                g.lineStyle(2, 0x2a1e14, 1); g.strokeCircle(20, 19, 18);
+                rock(g, 20, 19, 18, 1.3);
+                g.fillStyle(0x8a7a6a, 0.9); g.fillCircle(14, 13, 5);   // sunlit facet
+                g.fillStyle(0x2e2216, 1); g.fillCircle(26, 24, 4); g.fillCircle(12, 27, 2.6); g.fillCircle(24, 12, 2);  // craters
             });
             tex(scene, 't_asteroid_s', 22, 20, function (g) {
-                g.fillStyle(0x6a5a4a, 1); g.fillCircle(11, 10, 9);
-                g.fillStyle(0x8a7a6a, 1); g.fillCircle(8, 7, 3);
-                g.lineStyle(1, 0x2a1e14, 1); g.strokeCircle(11, 10, 9);
+                rock(g, 11, 10, 9, 2.7);
+                g.fillStyle(0x8a7a6a, 0.9); g.fillCircle(8, 7, 2.6);
+                g.fillStyle(0x2e2216, 1); g.fillCircle(14, 13, 2);
             });
+            // explosive barrel: teal canister, hazard stripe, warning light, seams
             tex(scene, 't_barel', 26, 30, function (g) {
-                box(g, 3, 2, 20, 26, 0x4a8a8a, 0x6aaaaa, 0x2a5a5a);
-                g.fillStyle(0x2a4a4a, 1); g.fillRect(3, 8, 20, 3); g.fillRect(3, 20, 20, 3);
-                g.fillStyle(0xff4d4d, 1); g.fillCircle(13, 15, 4); g.fillStyle(0xffd447, 1); g.fillCircle(13, 15, 2);
-                outline(g, 3, 2, 20, 26, 0x1a3a3a);
+                metalBody(g, 3, 2, 20, 26, 4, 0x7ad0d0, 0x4a8a8a, 0x244a4a, 0x8ae0e0);
+                g.fillStyle(0x1a3838, 0.9); g.fillRect(3, 8, 20, 2.5); g.fillRect(3, 20, 20, 2.5);   // banding
+                g.fillStyle(0xffd447, 0.9); for (var s = 0; s < 5; s++) g.fillRect(4 + s * 4, 12, 2, 6);  // hazard stripes
+                glow(g, 13, 15, 4, 0xff4d4d, 0.85); g.fillStyle(0xffe08a, 1); g.fillCircle(13, 15, 2);
             });
-            tex(scene, 't_lasergate', 200, 16, function (g) {   // HORIZONTAL beam (spans width)
-                g.fillStyle(0xff4d4d, 0.9); g.fillRect(0, 4, 200, 8);
-                g.fillStyle(0xffcaca, 0.9); g.fillRect(0, 6, 200, 4);
+            tex(scene, 't_lasergate', 200, 16, function (g) {   // HORIZONTAL energy beam (spans width)
+                g.fillStyle(0xff4d4d, 0.35); g.fillRect(0, 1, 200, 14);   // outer haze
+                g.fillStyle(0xff4d4d, 0.85); g.fillRect(0, 4, 200, 8);
+                g.fillStyle(0xffcaca, 0.95); g.fillRect(0, 6, 200, 4);
+                g.fillStyle(0xffffff, 1); g.fillRect(0, 7.5, 200, 1);      // white-hot core line
             });
+            // BLUE POWER CAPSULE: glassy energy pod with '↑' spark
             tex(scene, 't_capsule_blue', 22, 16, function (g) {
-                box(g, 0, 0, 22, 16, 0x2a6aff, 0x6a9aff, 0x1a3a8a);
-                g.fillStyle(0xeaffff, 1); g.fillRect(8, 4, 6, 8);
-                outline(g, 0, 0, 22, 16, 0x102a6a);
+                glow(g, 11, 8, 8, 0x4fa0ff, 0.6);
+                metalBody(g, 1, 1, 20, 14, 6, 0x8ac0ff, 0x2a6aff, 0x143a8a, 0xbde0ff);
+                g.fillStyle(0xeaffff, 1); poly(g, [[11, 4], [14, 8], [12, 8], [12, 12], [10, 12], [10, 8], [8, 8]], 0xeaffff);  // up-arrow
             });
 
-            // ---- INVITATION CAPSULE (gold 💌) ----
+            // ---- INVITATION CAPSULE (gold 💌) — glowing sealed love-letter ----
             tex(scene, 't_amplop', 30, 24, function (g) {
-                box(g, 0, 0, 30, 24, 0xffd447, 0xfff0a0, 0xc79410);
-                g.lineStyle(2, 0xc04a2a, 1); g.beginPath(); g.moveTo(1, 1); g.lineTo(15, 13); g.lineTo(29, 1); g.strokePath();
-                g.fillStyle(0xff4d6a, 1); g.fillCircle(15, 14, 4);
-                g.fillStyle(0xff4d6a, 1); g.fillCircle(13, 13, 2.2); g.fillCircle(17, 13, 2.2);
-                outline(g, 0, 0, 30, 24, 0xa07410);
+                glow(g, 15, 12, 12, 0xffd447, 0.5);
+                metalBody(g, 0, 0, 30, 24, 3, 0xfff0a0, 0xffd447, 0xc79410, 0xfff4c0);
+                g.lineStyle(2, 0xc79410, 0.9); g.beginPath(); g.moveTo(1, 2); g.lineTo(15, 13); g.lineTo(29, 2); g.strokePath();   // flap crease
+                g.fillStyle(0xfff8d0, 0.5); poly(g, [[1, 2], [15, 13], [29, 2], [29, 1], [1, 1]], 0xfff8d0, 0.5);
+                glow(g, 15, 13, 5, 0xff4d6a, 0.6);                              // heart wax seal
+                g.fillStyle(0xff4d6a, 1); g.fillCircle(12.5, 13, 2.6); g.fillCircle(17.5, 13, 2.6); poly(g, [[9.5, 14], [20.5, 14], [15, 20]], 0xff4d6a);
+                g.fillStyle(0xffb0c0, 0.9); g.fillCircle(13.5, 12, 1);
             });
 
             // ---- BOSS — Wedding Station fortress (faces DOWN; core weak-point at bottom) ----
             tex(scene, 't_boss', 220, 170, function (g) {
-                box(g, 35, 10, 150, 110, 0x5a3a8a, 0x7a5aaa, 0x3a1a6a);     // body (wide, top)
-                box(g, 55, 120, 110, 30, 0x6a4a9a, 0x8a6aba, 0x4a2a7a);     // lower turret deck
-                g.fillStyle(0x1a0a3a, 1); g.fillRect(70, 150, 8, 14); g.fillRect(142, 150, 8, 14);   // muzzles (down)
-                g.fillStyle(0xff4d4d, 1); g.fillRect(72, 158, 4, 6); g.fillRect(144, 158, 4, 6);
-                // ring decoration (station)
-                g.lineStyle(4, 0xffd447, 0.7); g.strokeCircle(110, 80, 70);
-                g.fillStyle(0x10140d, 1); g.fillRect(55, 50, 12, 14); g.fillRect(153, 50, 12, 14);  // ports
-                // weak-point core (glowing, bottom-center toward player)
-                g.fillStyle(0xffd447, 1); g.fillCircle(110, 120, 22);
-                g.fillStyle(0xfff4b0, 1); g.fillCircle(110, 120, 12);
-                g.fillStyle(0xffffff, 1); g.fillCircle(106, 116, 4);
-                g.lineStyle(3, 0x0a0e1a, 1); g.strokeRect(35, 10, 150, 110);
+                // outer halo
+                glow(g, 110, 80, 90, 0x6a4aaa, 0.35);
+                // hull — beveled fortress plate with gradient
+                metalBody(g, 30, 8, 160, 116, 12, 0x9a7ada, 0x5a3a8a, 0x2e1858, 0xb99ce0);
+                // armour plating grid
+                g.lineStyle(1.2, 0x2a1a52, 0.6);
+                for (var gx = 50; gx < 190; gx += 30) g.strokeLineShape(new P.Geom.Line(gx, 14, gx, 118));
+                for (var gy = 30; gy < 124; gy += 26) g.strokeLineShape(new P.Geom.Line(34, gy, 186, gy));
+                // shoulder pods
+                metalBody(g, 14, 40, 26, 54, 8, 0x8a6aca, 0x4a2a7a, 0x281550, 0x9a7ada);
+                metalBody(g, 180, 40, 26, 54, 8, 0x8a6aca, 0x4a2a7a, 0x281550, 0x9a7ada);
+                // lower turret deck
+                metalBody(g, 52, 118, 116, 34, 8, 0x8a6aba, 0x6a4a9a, 0x3e2478, 0xa886d8);
+                // muzzles (down toward player) + glow
+                g.fillStyle(0x140828, 1); g.fillRoundedRect(68, 148, 10, 16, 2); g.fillRoundedRect(142, 148, 10, 16, 2);
+                glow(g, 73, 162, 3, 0xff4d4d, 0.8); glow(g, 147, 162, 3, 0xff4d4d, 0.8);
+                // decorative station ring (gold)
+                g.lineStyle(5, 0xffd447, 0.6); g.strokeCircle(110, 78, 74);
+                g.lineStyle(2, 0xfff0a0, 0.35); g.strokeCircle(110, 78, 82);
+                // view ports (lit windows)
+                for (var w2 = 0; w2 < 5; w2++) { glow(g, 60 + w2 * 25, 46, 3, 0x8fe6ff, 0.7); }
+                // WEAK-POINT CORE (glowing reactor, bottom-center)
+                glow(g, 110, 120, 26, 0xffd447, 0.9);
+                g.fillStyle(0xffd447, 1); g.fillGradientStyle(0xfff4c0, 0xfff4c0, 0xd89410, 0xd89410, 1); g.fillCircle(110, 120, 20);
+                g.fillStyle(0xfff8d0, 1); g.fillCircle(110, 120, 11);
+                g.fillStyle(0xffffff, 1); g.fillCircle(105, 115, 4);
+                strokePoly(g, [[30, 8], [190, 8], [190, 124], [30, 124]], 2, 0x0e0824, 0.7);
             });
-            // united couple (boss reward sprite)
+            // united couple (boss reward sprite) — softly rendered bride & groom
             tex(scene, 't_couple', 60, 80, function (g) {
-                box(g, 6, 28, 16, 48, 0x23264a, 0x3a3e6a, 0x14163a);   // groom suit
-                g.fillStyle(0xfff, 1); g.fillRect(11, 30, 6, 24);
-                g.fillStyle(0x4fd6ff, 1); g.fillRect(13, 30, 2, 14);
-                box(g, 9, 14, 10, 12, 0xf3d2a0, 0xffe6c0, 0xd0a878); g.fillStyle(0x2a2218, 1); g.fillRect(9, 12, 10, 5);
-                box(g, 34, 30, 18, 46, 0xf3ead2, 0xfff8e4, 0xd8caa8);   // bride gown
-                g.fillStyle(0xffffff, 0.7); g.fillRect(33, 16, 20, 20);
-                box(g, 38, 14, 10, 12, 0xf3d2a0, 0xffe6c0, 0xd0a878); g.fillStyle(0x6a4a2a, 1); g.fillRect(37, 12, 12, 5);
-                g.fillStyle(0xff8ab0, 1); g.fillCircle(43, 40, 3);
+                glow(g, 30, 40, 30, 0xff8ab0, 0.25);
+                // GROOM (left): tux, shirt, tie, head
+                metalBody(g, 6, 30, 17, 46, 4, 0x3a3e6a, 0x23264a, 0x14163a, 0x4a4e7a);
+                g.fillStyle(0xffffff, 1); g.fillRoundedRect(11, 31, 7, 26, 1);
+                g.fillStyle(0x4fd6ff, 1); poly(g, [[14.5, 31], [16, 34], [14.5, 44], [13, 34]], 0x4fd6ff);   // tie
+                g.fillStyle(0xf3d2a0, 1); g.fillGradientStyle(0xffe6c0, 0xffe6c0, 0xd0a878, 0xd0a878, 1); g.fillCircle(14.5, 20, 6.5);
+                g.fillStyle(0x2a2218, 1); g.fillEllipse ? g.fillEllipse(14.5, 14, 15, 7) : g.fillRect(7, 12, 15, 5);
+                // BRIDE (right): gown, veil, bouquet, head
+                poly(g, [[42, 30], [52, 76], [34, 76], [40, 30]], 0xd8caa8);
+                g.fillStyle(0xf3ead2, 1); g.fillGradientStyle(0xfff8e4, 0xfff8e4, 0xd8caa8, 0xd8caa8, 1);
+                g.beginPath(); g.moveTo(42, 31); g.lineTo(51, 75); g.lineTo(35, 75); g.lineTo(40, 31); g.closePath(); g.fillPath();
+                g.fillStyle(0xffffff, 0.5); poly(g, [[35, 16], [51, 16], [55, 52], [31, 52]], 0xffffff, 0.45);   // veil
+                g.fillStyle(0xf3d2a0, 1); g.fillGradientStyle(0xffe6c0, 0xffe6c0, 0xd0a878, 0xd0a878, 1); g.fillCircle(43, 20, 6.5);
+                g.fillStyle(0x6a4a2a, 1); g.fillCircle(43, 14, 7);   // hair
+                g.fillStyle(0xf3d2a0, 1); g.fillCircle(43, 20, 6);
+                glow(g, 43, 44, 4, 0xff8ab0, 0.7); g.fillStyle(0xff8ab0, 1); g.fillCircle(43, 44, 3);   // bouquet
+                // joining heart
+                glow(g, 29, 38, 5, 0xff4d6a, 0.6); g.fillStyle(0xff4d6a, 1); g.fillCircle(27, 37, 2.4); g.fillCircle(31, 37, 2.4); poly(g, [[24, 38], [34, 38], [29, 44]], 0xff4d6a);
             });
 
             // ---- BACKDROP PROPS ----
-            tex(scene, 't_star', 3, 3, function (g) { g.fillStyle(0xffffff, 1); g.fillRect(0, 0, 3, 3); });
+            tex(scene, 't_star', 4, 4, function (g) { glow(g, 2, 2, 2, 0xffffff, 0.9); g.fillStyle(0xffffff, 1); g.fillCircle(2, 2, 1); });
+            // gas giant: radial-shaded sphere, banded clouds, terminator shadow, ring
             tex(scene, 't_planet', 200, 200, function (g) {
-                g.fillStyle(0x3a2c7a, 1); g.fillCircle(100, 100, 90);
-                g.fillStyle(0x5a4caa, 1); g.fillCircle(78, 78, 40);
-                g.fillStyle(0x2a1c5a, 1); g.fillCircle(130, 120, 28);
-                g.lineStyle(6, 0xffd447, 0.4); g.strokeCircle(100, 100, 90);
+                glow(g, 100, 100, 96, 0x5a4caa, 0.3);
+                g.fillStyle(0x5a4caa, 1); g.fillGradientStyle(0x8a7ae0, 0x6a5aba, 0x2a1c5a, 0x1a1040, 1); g.fillCircle(100, 100, 90);
+                // cloud bands (translucent ellipses)
+                g.fillStyle(0x9a8af0, 0.28); g.fillEllipse(100, 76, 168, 22);
+                g.fillStyle(0x3a2c7a, 0.30); g.fillEllipse(100, 108, 176, 26);
+                g.fillStyle(0x9a8af0, 0.20); g.fillEllipse(100, 132, 150, 18);
+                // sunlit highlight + terminator shadow
+                g.fillStyle(0xbdb0ff, 0.4); g.fillCircle(72, 72, 34);
+                g.fillStyle(0x120a30, 0.4); g.fillCircle(126, 122, 46);
+                // ring
+                g.lineStyle(7, 0xffd447, 0.35); g.beginPath(); g.arc(100, 100, 110, 0, 6.283); g.strokePath();
+                g.lineStyle(3, 0xfff0a0, 0.25); g.strokeCircle(100, 100, 120);
             });
+            // derelict wreck: broken hull, torn plating, ember glow
             tex(scene, 't_wreck', 160, 90, function (g) {
-                box(g, 10, 30, 130, 36, 0x3a4a5a, 0x5a6a7a, 0x222e3a);
-                g.fillStyle(0x222e3a, 1); g.fillTriangle(140, 30, 160, 48, 140, 66);
-                g.fillStyle(0x6a7a8a, 1); g.fillRect(30, 36, 80, 6);
-                g.fillStyle(0xff8a3d, 0.5); g.fillCircle(50, 48, 8);   // smouldering
-                g.lineStyle(2, 0x10140d, 1); g.strokeRect(10, 30, 130, 36);
+                poly(g, [[8, 30], [120, 26], [148, 46], [118, 68], [12, 64]], 0x1c2632);
+                g.fillStyle(0x3a4a5a, 1); g.fillGradientStyle(0x6a7a8a, 0x6a7a8a, 0x222e3a, 0x222e3a, 1);
+                g.beginPath(); g.moveTo(12, 32); g.lineTo(116, 28); g.lineTo(140, 46); g.lineTo(114, 64); g.lineTo(16, 60); g.closePath(); g.fillPath();
+                // torn broken nose
+                poly(g, [[140, 30], [160, 48], [138, 66], [132, 48]], 0x1a222c);
+                // hull plating + dark gashes
+                g.lineStyle(1.4, 0x0e141c, 0.7); g.strokeLineShape(new P.Geom.Line(40, 34, 44, 60)); g.strokeLineShape(new P.Geom.Line(74, 32, 70, 62)); g.strokeLineShape(new P.Geom.Line(100, 30, 104, 62));
+                g.fillStyle(0x8a9aaa, 0.8); g.fillRect(30, 40, 70, 4);
+                // smouldering embers
+                glow(g, 52, 48, 9, 0xff8a3d, 0.55); glow(g, 96, 52, 6, 0xffb020, 0.4);
+                strokePoly(g, [[12, 32], [116, 28], [140, 46], [114, 64], [16, 60]], 1.4, 0x0a0e14, 0.7);
             });
+            // wedding station: ringed orbital with hub, spokes, dock lights
             tex(scene, 't_station', 180, 200, function (g) {
-                g.lineStyle(8, 0x6a5a9a, 1); g.strokeCircle(90, 100, 80);
-                g.fillStyle(0x4a3a7a, 1); g.fillRect(60, 70, 60, 60);
-                g.fillStyle(0xffd447, 0.6); g.fillCircle(90, 100, 16);
-                for (var i = 0; i < 8; i++) { var a = i / 8 * 6.28; g.fillStyle(0x9bd0ff, 0.7); g.fillCircle(90 + Math.cos(a) * 80, 100 + Math.sin(a) * 80, 4); }
+                glow(g, 90, 100, 60, 0x8a6ad0, 0.3);
+                // outer torus ring
+                g.lineStyle(12, 0x6a5a9a, 1); g.strokeCircle(90, 100, 78);
+                g.lineStyle(4, 0x9a8ad0, 0.8); g.strokeCircle(90, 100, 84);
+                g.lineStyle(2, 0x3a2c6a, 0.9); g.strokeCircle(90, 100, 72);
+                // spokes
+                g.lineStyle(4, 0x5a4a8a, 1);
+                for (var i = 0; i < 6; i++) { var a = i / 6 * 6.283; g.strokeLineShape(new P.Geom.Line(90, 100, 90 + Math.cos(a) * 78, 100 + Math.sin(a) * 78)); }
+                // central hub
+                metalBody(g, 62, 72, 56, 56, 10, 0x7a6aba, 0x4a3a7a, 0x281a52, 0x9a8ad0);
+                glow(g, 90, 100, 16, 0xffd447, 0.7); g.fillStyle(0xfff4c0, 1); g.fillCircle(90, 100, 10);
+                // dock running lights around the ring
+                for (var k = 0; k < 12; k++) { var a2 = k / 12 * 6.283; glow(g, 90 + Math.cos(a2) * 78, 100 + Math.sin(a2) * 78, 2.2, k % 2 ? 0x8fe6ff : 0xffd447, 0.85); }
             });
         }
 
@@ -1349,7 +1519,8 @@
         var config = {
             type: P.AUTO, parent: 'gw-stage', width: BW, height: BH,
             backgroundColor: '#05060f',
-            render: { pixelArt: true, antialias: false, roundPixels: true },
+            // SMOOTH/semi-realistic art: antialiasing ON, no pixel snapping, high-res textures.
+            render: { pixelArt: false, antialias: true, antialiasGL: true, roundPixels: false, mipmapFilter: 'LINEAR' },
             scale: { mode: P.Scale.FIT, autoCenter: P.Scale.CENTER_BOTH },
             physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },   // SHMUP: no gravity
             scene: [GameScene]
@@ -1519,10 +1690,25 @@
             sky.fillGradientStyle(pal.top, pal.top, pal.bot, pal.bot, 1);
             sky.fillRect(0, 0, BW, BH);
 
-            // far stars (scrollFactor 0.15) — spread along the TALL world (Y axis)
-            for (var s = 0; s < Math.ceil(worldH / 60); s++) {
-                var sx = (s * 73) % BW, sy = s * 60 + (s * 37) % 60;
-                self.regTune(reg(this.add.image(sx, tuneY('star', sy), 't_star').setScrollFactor(0.15).setDepth(-55).setAlpha(0.4 + (s % 5) * 0.12).setScale(1 + (s % 3))), 'star');
+            // soft NEBULA CLOUDS — stacked translucent blobs that DRIFT with the world (Y axis),
+            // building the semi-realistic deep-space look. Accent hue derived from the sector palette.
+            var accent = [0x4a6aff, 0x8a7a6a, 0xff4d8a, 0xffb020, 0xff6a2a, 0xffd447][idx] || 0x6a5aff;
+            var neb = reg(this.add.graphics().setScrollFactor(0.25).setDepth(-58));
+            for (var nb = 0; nb * 900 < worldH; nb++) {
+                var ncx = 40 + ((nb * 197) % (BW - 80)), ncy = 120 + nb * 900 + ((nb * 71) % 300), nr = 90 + ((nb * 53) % 120);
+                for (var ri = 5; ri >= 1; ri--) { neb.fillStyle(accent, 0.05 * (ri / 5)); neb.fillCircle(ncx, ncy, nr * (ri / 5)); }
+                neb.fillStyle(0xffffff, 0.03); neb.fillCircle(ncx - nr * 0.2, ncy - nr * 0.2, nr * 0.4);
+            }
+
+            // far stars (scrollFactor 0.15) — spread along the TALL world (Y axis), varied colour/size
+            var STAR_COLS = [0xffffff, 0xbdd6ff, 0xffe6c0, 0x9bffe0, 0xffc0e0];
+            for (var s = 0; s < Math.ceil(worldH / 40); s++) {
+                var sx = (s * 73) % BW, sy = s * 40 + (s * 37) % 40;
+                var st = reg(this.add.image(sx, tuneY('star', sy), 't_star').setScrollFactor(0.15).setDepth(-55)
+                    .setAlpha(0.35 + (s % 6) * 0.11).setScale(0.6 + (s % 4) * 0.55).setTint(STAR_COLS[s % STAR_COLS.length]));
+                self.regTune(st, 'star');
+                // occasional twinkle
+                if (s % 9 === 0) self.tweens.add({ targets: st, alpha: 0.15, duration: 900 + (s % 5) * 220, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
             }
             // mid: planet / wreck / station landmark per sector (scrollFactor 0.4), along Y
             var landmarkTex = idx === 5 ? 't_station' : idx === 4 ? 't_wreck' : 't_planet';

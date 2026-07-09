@@ -3,6 +3,8 @@
  * Supports:
  * - Simple variable replacement: {{variable}}, {{this.prop}}, {{@index}}
  * - Conditional blocks: {{#if condition}}...{{else}}...{{/if}}
+ * - CSS-hidden blocks: {{#hidden condition}}...{{/hidden}} (element stays in DOM,
+ *   wrapped in display:none when condition is TRUE; rendered normally when FALSE)
  * - Array looping: {{#each array_name}}...{{/each}}
  * - Conditional operators: ==, !=
  * - Loop metadata: @index, @index_plus_1, @first, @last
@@ -45,8 +47,8 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
 
     let output = html;
 
-    // Process blocks (if, each, unless)
-    const blockRegex = /\{\{\s*([#\^])(if|each|unless)\s+([^}]+)\}\}/g;
+    // Process blocks (if, each, unless, hidden)
+    const blockRegex = /\{\{\s*([#\^])(if|each|unless|hidden)\s+([^}]+)\}\}/g;
     let match;
     
     while ((match = blockRegex.exec(output)) !== null) {
@@ -106,6 +108,15 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
                 } else {
                     replacement = finalCondition ? parseTemplate(content, data) : '';
                 }
+            } else if (command === 'hidden') {
+                // Element ALWAYS stays in the DOM (unlike #if which removes it).
+                // When the condition is TRUE, wrap the (data-bound) content in a
+                // display:none container so theme JS can still query & later reveal it.
+                const shouldHide = type === '^' ? !evaluate(expression) : evaluate(expression);
+                const rendered = parseTemplate(content, data);
+                replacement = shouldHide
+                    ? `<div style="display:none" data-hidden-by="${expression.replace(/"/g, '&quot;')}">${rendered}</div>`
+                    : rendered;
             } else if (command === 'each') {
                 const arr = data[expression];
                 if (Array.isArray(arr)) {

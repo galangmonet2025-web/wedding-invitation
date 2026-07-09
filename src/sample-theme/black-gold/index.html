@@ -355,7 +355,7 @@
                 </div>
 
                 <div class="rsvp-form-container reveal-item" id="rsvp-container">
-                    {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                    {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
                     <div>
                         <div class="glass-form" id="rsvp-form">
                             <div class="uk-margin-small">
@@ -384,30 +384,30 @@
                                 style="margin-top: 10px; width: 100%;">Konfirmasi</button>
                         </div>
                     </div>
-                    {{/unless}}
+                    {{/hidden}}
 
-                    {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                    {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
                     <div>
                         <div id="alert-submit-kehadiran" style="padding: 20px;"
                             class="thank-you-message glass-card">
-                            {{#if is_hadir}}
-                            <div>
+                            {{^hidden is_hadir}}
+                            <div data-rsvp-branch="hadir">
                                 <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
                                 Terima kasih <strong>{{guest_name}}</strong>!<br>
                                 Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
                             </div>
-                            {{/if}}
+                            {{/hidden}}
 
-                            {{#unless is_hadir}}
-                            <div>
+                            {{#hidden is_hadir}}
+                            <div data-rsvp-branch="tidak">
                                 <div style="font-size: 24px; margin-bottom: 10px;">🙏</div>
                                 Terima kasih <strong>{{guest_name}}</strong>.<br>
                                 Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
                             </div>
-                            {{/unless}}
+                            {{/hidden}}
                         </div>
                     </div>
-                    {{/if}}
+                    {{/hidden}}
                 </div>
             </section>
             {{/unless}}
@@ -598,7 +598,7 @@
 
                 <div class="wishes-container">
                     <div class="wishes-form-wrapper reveal-item" id="wish-container">
-                        {{#unless is_sudah_isi_ucapan}}
+                        {{#hidden is_sudah_isi_ucapan}}
                         <div>
                             <form class="glass-form" id="wish-form">
                                 <div class="uk-margin-small">
@@ -614,9 +614,9 @@
                                     style="width: 100%; margin-top: 5px;">KIRIM UCAPAN</button>
                             </form>
                         </div>
-                        {{/unless}}
+                        {{/hidden}}
 
-                        {{#if is_sudah_isi_ucapan}}
+                        {{^hidden is_sudah_isi_ucapan}}
                         <div>
                             <div id="alert-submit-ucapan" class="thank-you-message glass-card uk-margin-top uk-padding">
                                 <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
@@ -624,7 +624,7 @@
                                 Semoga doa baik Anda kembali kepada Anda.
                             </div>
                         </div>
-                        {{/if}}
+                        {{/hidden}}
                     </div>
 
                     <div class="wishes-list-wrapper">

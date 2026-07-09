@@ -297,7 +297,7 @@
                     <h3 class="sec-title">Konfirmasi Kehadiran</h3>
                 </div>
 
-                {{#unless is_sudah_isi_konfirmasi_kehadiran}}
+                {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
                 <div class="rsvp-card reveal-item" id="rsvp-form">
                     <div class="rsvp-field">
                         <label>Kode Undangan</label>
@@ -329,20 +329,24 @@
                     </div>
                     <button class="spwr-cta" id="btn-submit-kehadiran" type="button">＋ Simpan ke Library</button>
                 </div>
-                {{/unless}}
+                {{/hidden}}
 
-                {{#if is_sudah_isi_konfirmasi_kehadiran}}
+                {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
                 <div class="rsvp-thanks reveal-item" id="alert-submit-kehadiran">
-                    {{#if is_hadir}}
-                    <div class="rsvp-thanks-emoji">🎉</div>
-                    <div class="rsvp-thanks-text">Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>!<br>Kami senang kamu bisa hadir. Sampai jumpa di lokasi!</div>
-                    {{/if}}
-                    {{#unless is_hadir}}
-                    <div class="rsvp-thanks-emoji">🙏</div>
-                    <div class="rsvp-thanks-text">Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>.<br>Kami mengerti kamu belum bisa hadir. Terima kasih atas doa restunya!</div>
-                    {{/unless}}
+                    {{#hidden is_hadir}}
+                    <div data-rsvp-branch="tidak">
+                        <div class="rsvp-thanks-emoji">🙏</div>
+                        <div class="rsvp-thanks-text">Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>.<br>Kami mengerti kamu belum bisa hadir. Terima kasih atas doa restunya!</div>
+                    </div>
+                    {{/hidden}}
+                    {{^hidden is_hadir}}
+                    <div data-rsvp-branch="hadir">
+                        <div class="rsvp-thanks-emoji">🎉</div>
+                        <div class="rsvp-thanks-text">Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>!<br>Kami senang kamu bisa hadir. Sampai jumpa di lokasi!</div>
+                    </div>
+                    {{/hidden}}
                 </div>
-                {{/if}}
+                {{/hidden}}
             </section>
 
 
@@ -439,20 +443,20 @@
                     <h3 class="sec-title">Ucapan &amp; Doa</h3>
                 </div>
 
-                {{#unless is_sudah_isi_ucapan}}
+                {{#hidden is_sudah_isi_ucapan}}
                 <div class="wish-form reveal-item" id="wish-form">
                     <input class="spwr-input" type="text" id="wish-name" placeholder="Nama kamu" value="{{guest_name}}">
                     <textarea class="spwr-input" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa terbaik..."></textarea>
                     <button type="button" id="btn-submit-ucapan" class="spwr-cta">Kirim Review ★</button>
                 </div>
-                {{/unless}}
+                {{/hidden}}
 
-                {{#if is_sudah_isi_ucapan}}
+                {{^hidden is_sudah_isi_ucapan}}
                 <div class="wish-thanks reveal-item" id="alert-submit-ucapan">
                     <div class="rsvp-thanks-emoji">⭐</div>
                     <div class="rsvp-thanks-text">Terima kasih atas ucapan &amp; doanya!<br>Semoga kebaikanmu kembali berlipat.</div>
                 </div>
-                {{/if}}
+                {{/hidden}}
 
                 <div class="wish-list">
                     {{#each wishes}}

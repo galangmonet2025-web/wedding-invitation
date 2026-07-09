@@ -427,6 +427,39 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant, imageTypes = [
 
                         <section className="space-y-4">
                             <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span className="text-purple-500">1b.</span> Sembunyikan Elemen (Hidden vs If)
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                                <p>
+                                    Ada dua cara "menyembunyikan" elemen, dan efeknya <strong>berbeda</strong>:
+                                </p>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>
+                                        <strong>{`{{#if}}`}</strong> saat kondisi FALSE &rarr; elemen <strong>DIHAPUS TOTAL</strong> dari HTML. Tidak ada di DOM, tidak bisa dilihat via Inspect Element, dan JS tema <strong>tidak akan menemukannya</strong> (<code>getElementById</code> = null). Aman untuk data sensitif (mis. nomor rekening).
+                                    </li>
+                                    <li>
+                                        <strong>{`{{#hidden}}`}</strong> saat kondisi TRUE &rarr; elemen <strong>TETAP ADA</strong> di DOM tapi dibungkus <code>display:none</code>. Masih terlihat di Inspect Element, dan JS tema <strong>bisa</strong> menemukannya lalu memunculkannya nanti (animasi/toggle). <strong>Jangan</strong> dipakai untuk data sensitif.
+                                    </li>
+                                </ul>
+                                <p className="text-xs italic text-gray-500 dark:text-gray-400">
+                                    Ingat: <code>{`{{#hidden kondisi}}`}</code> = "sembunyikan bila kondisi ini TRUE". Kalau kondisi FALSE, elemen tampil normal. Mendukung <code>{`{{else}}`}</code> dan nesting seperti <code>{`{{#if}}`}</code>.
+                                </p>
+                            </div>
+
+                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-[11px] overflow-x-auto text-gray-300">
+                                <span className="text-gray-500">{"<!-- Elemen selalu terkirim, JS tema bisa reveal -->"}</span><br />
+                                <span className="text-purple-400">{"{{#hidden flag_pakai_qris_rekening_2}}"}</span><br />
+                                &nbsp;&nbsp;{"<div id=\"qris-2\">...</div>"}<br />
+                                <span className="text-purple-400">{"{{/hidden}}"}</span><br />
+                                <span className="text-gray-500">{"// flag = true  → <div style=\"display:none\">...</div>"}</span><br />
+                                <span className="text-gray-500">{"// flag = false → <div id=\"qris-2\">...</div> (tampil)"}</span>
+                            </div>
+                        </section>
+
+                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                        <section className="space-y-4">
+                            <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
                                 <span className="text-blue-500">2.</span> Variabel Khusus Loop (@index, @first, @last)
                             </h4>
                             <p className="text-sm">Dalam blok <code>{`{{#each}}`}</code>, Anda dapat mengakses metadata perulangan:</p>
