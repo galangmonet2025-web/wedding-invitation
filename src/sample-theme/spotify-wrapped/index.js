@@ -319,19 +319,25 @@ function fallbackCopy(text, cb) {
                 if (minutesEl) minutesEl.textContent = String(m).padStart(2, '0');
                 if (secondsEl) secondsEl.textContent = String(s).padStart(2, '0');
 
-                const done = Math.min(1, Math.max(0, (now - startRef) / totalSpan));
-                if (barFill) barFill.style.width = (done * 100).toFixed(2) + '%';
-                if (elapsedEl) {
-                    const mins = Math.floor(done * 233);
-                    elapsedEl.textContent = Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0');
+                // The Now-Playing scrubber (#np-bar-fill/#np-elapsed) is driven by
+                // real YouTube playback when a valid backsound YouTube link exists
+                // (see module 8). Only fall back to the countdown-proxy bar when
+                // YouTube is NOT steering it, so the two never fight over the DOM.
+                if (!window.__spwrYtDrivesScrubber) {
+                    const done = Math.min(1, Math.max(0, (now - startRef) / totalSpan));
+                    if (barFill) barFill.style.width = (done * 100).toFixed(2) + '%';
+                    if (elapsedEl) {
+                        const mins = Math.floor(done * 233);
+                        elapsedEl.textContent = Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0');
+                    }
                 }
             } else if (now <= recEnd.getTime()) {
                 // Wedding day, still within (or before end of) the reception.
-                if (barFill) barFill.style.width = '100%';
+                if (barFill && !window.__spwrYtDrivesScrubber) barFill.style.width = '100%';
                 showStatus('💚', 'Hari yang kami nantikan telah tiba.<br>Acara sedang berlangsung 🎶', 'Hari bahagia kami');
             } else {
                 // After the reception has ended.
-                if (barFill) barFill.style.width = '100%';
+                if (barFill && !window.__spwrYtDrivesScrubber) barFill.style.width = '100%';
                 showStatus('🙏', 'Acara kami sudah selesai.<br>Terima kasih atas support &amp; doa terbaiknya 💚', 'Sudah menikah');
                 clearInterval(countInterval);
             }
@@ -370,6 +376,25 @@ function fallbackCopy(text, cb) {
     const btnMusic = document.getElementById('btn-toggle-music');
     const bgMusic = document.getElementById('bg-music');
 
+    // ---- Player-bar "alive" indicator (play-button halo + equalizer freeze) ----
+    // A single `.is-playing` class on #theme-fab-container drives the animated
+    // bits via CSS (page equalizers, play-button pulse). Both playback sources
+    // (local <audio> and the YouTube iframe) funnel their state through this.
+    const fabContainer = document.getElementById('theme-fab-container');
+    function setPlayerBarPlaying(playing) {
+        if (fabContainer) fabContainer.classList.toggle('is-playing', !!playing);
+        // Freeze EVERY equalizer on the page (hero cover, sidebar, outro) when
+        // music is paused. A body-level class lets CSS reach equalizers that live
+        // far from the player bar in the DOM.
+        document.body.classList.toggle('spwr-music-paused', !playing);
+        // Keep the player-bar video clip in lockstep with the music (it's a
+        // separate muted iframe, so it won't pause on its own).
+        if (typeof window.__spwrSyncPbVideo === 'function') window.__spwrSyncPbVideo(!!playing);
+    }
+    // The pause class lives on <body> (outside the theme container), so drop it
+    // explicitly on teardown to avoid a stale frozen state after a re-exec.
+    cleanupFns.push(function () { document.body.classList.remove('spwr-music-paused'); });
+
     function updateMusicUI() {
         const playIcon = document.getElementById('play-icon');
         const pauseIcon = document.getElementById('pause-icon');
@@ -378,6 +403,11 @@ function fallbackCopy(text, cb) {
         if (btnMusic) btnMusic.classList.toggle('music-playing', playing);
         if (playIcon) playIcon.style.display = playing ? 'block' : 'none';
         if (pauseIcon) pauseIcon.style.display = playing ? 'none' : 'block';
+        // When the local <audio> is the source, mirror its state. (The YouTube
+        // path in module 8 calls this helper itself.)
+        if (!window.__spwrYtDrivesScrubber) {
+            setPlayerBarPlaying(playing);
+        }
     }
     if (bgMusic) {
         on(bgMusic, 'play', updateMusicUI);
@@ -390,6 +420,332 @@ function fallbackCopy(text, cb) {
         on(btnMusic, 'click', function () {
             if (bgMusic.paused) bgMusic.play().catch(() => { });
             else bgMusic.pause();
+        });
+    }
+
+    // ---- 8. Now-Playing YouTube scrubber (real duration + progress) ----
+    // If the tenant's backsound is a VALID YouTube link, the host renders a hidden
+    // <iframe title="YouTube Background Music"> (enablejsapi=1) INSIDE this same
+    // wrapper (ThemeWrapper renders it as a child of the theme container). We can't
+    // reach the host's React refs, but we CAN talk to that iframe directly with the
+    // YouTube IFrame API postMessage protocol:
+    //   • send {"event":"listening"} + getDuration/getCurrentTime commands
+    //   • the iframe posts back {"event":"infoDelivery", info:{ currentTime, duration,
+    //     playerState }} which we use to drive #np-bar-fill / #np-elapsed / #np-total.
+    // The host owns real playback; we ONLY read state here (never play/seek), so the
+    // theme still honours the "theme can't drive audio" contract.
+    (function initYtScrubber() {
+        // Reset per run: the host re-executes this script on input changes, and the
+        // tenant may have switched away from a YouTube backsound. Re-decide below.
+        window.__spwrYtDrivesScrubber = false;
+
+        function findYtIframe() {
+            return document.querySelector('iframe[title="YouTube Background Music"]');
+        }
+
+        // No YouTube backsound → leave the countdown-proxy scrubber alone.
+        let iframe = findYtIframe();
+        if (!iframe) {
+            // The host mounts the iframe only after "opened"; watch for it briefly.
+            const mo = new MutationObserver(function () {
+                const f = findYtIframe();
+                if (f) { mo.disconnect(); startYt(f); }
+            });
+            mo.observe(document.body, { childList: true, subtree: true });
+            cleanupFns.push(function () { mo.disconnect(); });
+            // Safety: stop watching after 20s if a YouTube iframe never appears.
+            const moStop = setTimeout(function () { mo.disconnect(); }, 20000);
+            cleanupFns.push(function () { clearTimeout(moStop); });
+            return;
+        }
+        startYt(iframe);
+
+        function fmt(sec) {
+            sec = Math.max(0, Math.floor(sec || 0));
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return m + ':' + String(s).padStart(2, '0');
+        }
+
+        function startYt(frame) {
+            iframe = frame;
+            window.__spwrYtDrivesScrubber = true;
+
+            // Mark that we have real track info so the player-bar strip may show
+            // (CSS gates the reveal on this + .is-playing). Only for YouTube.
+            const fab = document.getElementById('theme-fab-container');
+            if (fab) fab.classList.add('pb-has-info');
+            cleanupFns.push(function () { if (fab) fab.classList.remove('pb-has-info'); });
+
+            const barFillEl = document.getElementById('np-bar-fill');
+            const elapsedElY = document.getElementById('np-elapsed');
+            const totalEl = document.getElementById('np-total');       // hero marquee viewport
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            const btnMusicY = document.getElementById('btn-toggle-music');
+            // Floating player-bar info strip (mirrors the hero scrubber).
+            const pbFillEl = document.getElementById('pb-np-fill');
+            const pbKnobEl = document.getElementById('pb-np-knob');
+            const pbTimeEl = document.getElementById('pb-np-time');
+            const pbTitleEl = document.getElementById('pb-np-title');   // player-bar marquee
+            const pbChannelEl = document.getElementById('pb-np-channel');
+            // Closing-section music-source credit (YouTube title + channel).
+            const creditBox = document.getElementById('music-credit');
+            const creditTitleEl = document.getElementById('music-credit-title');
+            const creditChannelEl = document.getElementById('music-credit-channel');
+            // Reveal the credit box now that we know the backsound is YouTube.
+            if (creditBox) {
+                creditBox.hidden = false;
+                cleanupFns.push(function () { creditBox.hidden = true; });
+            }
+
+            // Every `.np-marquee` element that should scroll its title: hero
+            // (#np-total), player-bar strip (#pb-np-title), and closing credit.
+            const marquees = [totalEl, pbTitleEl, creditTitleEl].filter(Boolean);
+
+            let duration = 0;
+            let current = 0;
+            let playing = false;
+            let title = '';
+            let titleShown = '';   // last title written, to avoid redundant re-measure
+            let channel = '';
+            let channelShown = '';
+
+            // Write the YouTube channel name into the player-bar strip + closing
+            // credit (both optional). Called from render() once we learn it.
+            function setChannel(name) {
+                if (!name || name === channelShown) return;
+                channelShown = name;
+                if (pbChannelEl) pbChannelEl.textContent = name;
+                if (creditChannelEl) creditChannelEl.textContent = name;
+            }
+
+            // Measure ONE title vs its viewport and turn the marquee on/off. If it
+            // overflows, scroll the inner track exactly the overflow distance, with
+            // a duration proportional to it so long titles aren't frantic.
+            function measureOne(el) {
+                const inner = el.querySelector('.np-marquee-inner');
+                if (!inner) return;
+                el.classList.remove('is-marquee');
+                el.style.removeProperty('--np-scroll');
+                el.style.removeProperty('--np-scroll-dur');
+                const overflow = inner.scrollWidth - el.clientWidth;
+                if (overflow > 6) {
+                    el.style.setProperty('--np-scroll', (-overflow) + 'px');
+                    const dur = Math.min(18, Math.max(6, overflow * 0.055));
+                    el.style.setProperty('--np-scroll-dur', dur.toFixed(1) + 's');
+                    el.classList.add('is-marquee');
+                }
+            }
+            function measureMarquee() { marquees.forEach(measureOne); }
+            // Write the track title into EVERY marquee slot, then (re)measure.
+            function setTitle(text) {
+                if (!text || text === titleShown) return;
+                titleShown = text;
+                marquees.forEach(function (el) {
+                    const inner = el.querySelector('.np-marquee-inner');
+                    if (inner) inner.textContent = text;
+                });
+                requestAnimationFrame(measureMarquee);
+            }
+            // Re-evaluate on viewport width changes (rotation, desktop↔mobile).
+            let rzT;
+            on(window, 'resize', function () {
+                clearTimeout(rzT);
+                rzT = setTimeout(measureMarquee, 200);
+            });
+            cleanupFns.push(function () { clearTimeout(rzT); });
+
+            function post(func) {
+                try {
+                    iframe.contentWindow.postMessage(
+                        JSON.stringify({ event: 'command', func: func, args: [] }), '*');
+                } catch (e) { /* noop */ }
+            }
+            // Register as a listener so the player pushes infoDelivery updates.
+            function subscribe() {
+                try {
+                    iframe.contentWindow.postMessage(
+                        JSON.stringify({ event: 'listening', id: 'spwr-np' }), '*');
+                } catch (e) { /* noop */ }
+            }
+
+            function render() {
+                if (duration > 0) {
+                    const pct = Math.min(100, Math.max(0, (current / duration) * 100));
+                    if (barFillEl) barFillEl.style.width = pct.toFixed(2) + '%';
+                    if (pbFillEl) pbFillEl.style.width = pct.toFixed(2) + '%';
+                    if (pbKnobEl) pbKnobEl.style.left = pct.toFixed(2) + '%';
+                    // Time REMAINING, counts down as "-M:SS" toward 0 (both places).
+                    const remainTxt = '-' + fmt(Math.max(0, duration - current));
+                    if (elapsedElY) elapsedElY.textContent = remainTxt;   // hero LEFT
+                    if (pbTimeEl) pbTimeEl.textContent = remainTxt;       // player bar
+                } else {
+                    // No duration yet — show elapsed so it isn't stuck blank.
+                    if (elapsedElY) elapsedElY.textContent = fmt(current);
+                    if (pbTimeEl) pbTimeEl.textContent = fmt(current);
+                }
+                // The music TITLE (set once we learn it from YouTube; falls back to
+                // the wedding date the template rendered until then). setTitle()
+                // fills every marquee (hero #np-total + player-bar #pb-np-title) and
+                // turns on the scrolling marquee where the title overflows.
+                if (title) setTitle(title);
+                if (channel) setChannel(channel);
+            }
+
+            function reflectPlayState() {
+                if (btnMusicY) btnMusicY.classList.toggle('music-playing', playing);
+                if (playIcon) playIcon.style.display = playing ? 'none' : 'block';
+                if (pauseIcon) pauseIcon.style.display = playing ? 'block' : 'none';
+                // Drive the player-bar equalizer / pulse / label from real YT state.
+                setPlayerBarPlaying(playing);
+            }
+
+            function onMessage(e) {
+                // YT posts from youtube.com / youtube-nocookie.com origins.
+                if (typeof e.data !== 'string') return;
+                if (e.origin.indexOf('youtube') === -1) return;
+                let msg;
+                try { msg = JSON.parse(e.data); } catch (_) { return; }
+                if (!msg || msg.event !== 'infoDelivery' || !msg.info) return;
+                const info = msg.info;
+                if (typeof info.duration === 'number' && info.duration > 0) duration = info.duration;
+                if (typeof info.currentTime === 'number') current = info.currentTime;
+                // YouTube pushes the track's title + channel inside videoData.
+                if (info.videoData && info.videoData.title) title = info.videoData.title;
+                if (info.videoData && info.videoData.author) channel = info.videoData.author;
+                if (typeof info.playerState === 'number') {
+                    // 1 = playing, others (0 ended / 2 paused / 3 buffering) = not playing.
+                    playing = info.playerState === 1;
+                    reflectPlayState();
+                }
+                render();
+            }
+            on(window, 'message', onMessage);
+
+            // The iframe may not be ready the instant it mounts; subscribe a few
+            // times and then poll current time/duration so the bar advances even if
+            // infoDelivery pushes are sparse.
+            subscribe();
+            const kick = [200, 600, 1200, 2500].map(function (d) {
+                return setTimeout(subscribe, d);
+            });
+            kick.forEach(function (t) { cleanupFns.push(function () { clearTimeout(t); }); });
+
+            const poll = setInterval(function () {
+                subscribe();          // keeps the listener alive across YT re-inits
+                post('getDuration');
+                post('getCurrentTime');
+                // Advance the clock optimistically between pushes when playing, so
+                // the seconds tick smoothly at 1s cadence.
+                if (playing && duration > 0) {
+                    current = Math.min(duration, current + 1);
+                    render();
+                }
+            }, 1000);
+            cleanupFns.push(function () { clearInterval(poll); });
+
+            // The host auto-plays YouTube on open (see nudgeYouTubeMusic), so start
+            // the bar in the "playing" look right away; the first real playerState
+            // push from YT will correct it if it's actually paused.
+            playing = true;
+            reflectPlayState();
+            render();
+
+            // Drop the same YouTube clip into the player bar as a MUTED, looping
+            // visual background (audio still comes from the host's own player).
+            mountPlayerBarVideo(frame);
+        }
+
+        // ---- Player-bar YouTube clip background ----
+        function extractVideoId(src) {
+            if (!src) return '';
+            const m = src.match(/\/embed\/([^?&/]+)/);
+            return m ? m[1] : '';
+        }
+        // The background clip is a SEPARATE (muted) iframe, so it doesn't follow the
+        // host's pause on its own. We keep a handle to it and mirror the music's
+        // play/pause via the YT postMessage API (needs enablejsapi=1 below).
+        function pbVideoCmd(func) {
+            const bgFrame = window.__spwrPbVideo;
+            if (!bgFrame || !bgFrame.contentWindow) return;
+            try {
+                bgFrame.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: func, args: [] }), '*');
+            } catch (e) { /* noop */ }
+        }
+        // Called from setPlayerBarPlaying so the clip pauses/resumes WITH the music.
+        window.__spwrSyncPbVideo = function (playing) {
+            pbVideoCmd(playing ? 'playVideo' : 'pauseVideo');
+        };
+        function mountPlayerBarVideo(frame) {
+            const holder = document.getElementById('pb-video');
+            const bar = holder ? holder.closest('.spwr-playerbar') : null;
+            if (!holder || !bar) return;
+            const vid = extractVideoId(frame.getAttribute('src') || '');
+            if (!vid) return;
+            // Already mounted for this video? Don't rebuild.
+            if (holder.dataset.vid === vid) { holder.classList.add('is-ready'); return; }
+            holder.dataset.vid = vid;
+            holder.innerHTML = '';
+            const bgFrame = document.createElement('iframe');
+            // Muted + autoplay + loop → decorative visual only; controls & focus
+            // disabled so it never steals interaction from the buttons on top.
+            // enablejsapi=1 lets us pause/resume it in lockstep with the music.
+            bgFrame.src = 'https://www.youtube.com/embed/' + vid +
+                '?autoplay=1&mute=1&controls=0&loop=1&playlist=' + vid +
+                '&enablejsapi=1&modestbranding=1&playsinline=1&disablekb=1&fs=0&rel=0&iv_load_policy=3';
+            bgFrame.setAttribute('title', 'Music clip background');
+            bgFrame.setAttribute('frameborder', '0');
+            bgFrame.setAttribute('tabindex', '-1');
+            bgFrame.setAttribute('aria-hidden', 'true');
+            bgFrame.allow = 'autoplay; encrypted-media';
+            holder.appendChild(bgFrame);
+            window.__spwrPbVideo = bgFrame;
+            bar.classList.add('pb-has-video');
+            // Fade in once the frame has had a moment to start rendering.
+            const rdy = setTimeout(function () { holder.classList.add('is-ready'); }, 400);
+            // Apply the current play/pause state as soon as the clip is live, so a
+            // clip mounted while the music is already paused starts paused too.
+            const syncAtStart = setTimeout(function () {
+                window.__spwrSyncPbVideo(!document.body.classList.contains('spwr-music-paused'));
+            }, 900);
+            cleanupFns.push(function () {
+                clearTimeout(rdy);
+                clearTimeout(syncAtStart);
+                // Tear the clip down on re-exec so a stale iframe doesn't linger.
+                holder.innerHTML = '';
+                holder.removeAttribute('data-vid');
+                holder.classList.remove('is-ready');
+                bar.classList.remove('pb-has-video');
+                window.__spwrPbVideo = null;
+            });
+        }
+    })();
+
+    // ---- Direct YouTube autoplay nudge (desktop autoplay-policy workaround) ----
+    // On the invitation the host flips isOpened/isPlaying, then a React effect
+    // mounts the YouTube <iframe autoplay=1> / calls .play() — but that runs
+    // DETACHED from the open click's user-gesture stack, so DESKTOP Chrome blocks
+    // it (mobile is lenient once the page was tapped). We can't reach the host's
+    // refs, but the iframe uses enablejsapi=1, so we post `playVideo` straight to
+    // it on a short retry ramp starting from the real click. Harmless when the
+    // backsound is a plain audio file (no such iframe exists → nudges are no-ops).
+    function nudgeYouTubeMusic() {
+        function play() {
+            const frame = document.querySelector('iframe[title="YouTube Background Music"], iframe[src*="youtube.com/embed"]');
+            if (!frame || !frame.contentWindow) return false;
+            try {
+                frame.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                return true;
+            } catch (e) { return false; }
+        }
+        play();
+        // The iframe may mount a beat after the click; retry on a ramp.
+        [150, 400, 800, 1500, 2500].forEach(function (d) {
+            const t = setTimeout(play, d);
+            cleanupFns.push(function () { clearTimeout(t); });
         });
     }
 
@@ -431,6 +787,8 @@ function fallbackCopy(text, cb) {
             bgMusic.play().catch(() => { /* host will handle autoplay activation */ });
             updateMusicUI();
         }
+        // Kick the host's hidden YouTube player directly (desktop autoplay fix).
+        nudgeYouTubeMusic();
     }
 
     const INTRO_HOLD_MS = 2600;   // reveal behind the intro
@@ -475,6 +833,10 @@ function fallbackCopy(text, cb) {
     if (btnOpen) {
         on(btnOpen, 'click', function () {
             btnOpen.disabled = true;
+            // Fire the YouTube autoplay nudge from INSIDE the real click gesture,
+            // BEFORE the intro's 2.6s hold — desktop needs the play() request to
+            // originate on the user gesture, not from a later timer.
+            nudgeYouTubeMusic();
             runIntro();
         });
     }

@@ -553,7 +553,6 @@
 
 
 
-            {{#unless is_link_umum_and_not_for_spesific_guest}}
             <section id="wishes" class="section-wishes" data-menu-label="Doa &amp; Ucapan"
                 style="background-image: linear-gradient(rgba(38, 46, 35, 0.25), rgba(38, 46, 35, 0.25)), url('../asset-img/D &amp; G-67.jpg');"
                 uk-scrollspy="cls: uk-animation-slide-bottom-small; target: .wish-item; delay: 150; repeat: true">
@@ -568,6 +567,7 @@
                 </div>
 
                 <div class="wishes-container">
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
                     <div class="wishes-form-wrapper" id="wish-container">
 
                         {{#hidden is_sudah_isi_ucapan}}
@@ -601,6 +601,7 @@
                         {{/hidden}}
 
                     </div>
+                    {{/unless}}
 
                     <div class="wishes-list-wrapper">
                         <div class="wishes-scroll-box">
@@ -617,7 +618,6 @@
                     </div>
                 </div>
             </section>
-            {{/unless}}
 
 
             {{#if tampilkan_amplop_online}}
@@ -869,9 +869,7 @@
                             <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Waktu &amp; Tempat</a>
                             </li>
                             <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Gallery</a></li>
-                            {{#unless is_link_umum_and_not_for_spesific_guest}}
                             <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Ucapan &amp; Doa</a></li>
-                            {{/unless}}
                             <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Amplop &amp; Gift</a></li>
                         </ul>
                     </div>

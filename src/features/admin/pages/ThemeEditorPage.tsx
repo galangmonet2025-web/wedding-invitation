@@ -19,6 +19,8 @@ import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage, fetchProxyImageBase64, setCachedImage, getCachedImage } from '@/shared/components/ProxyImage';
 import html2canvas from 'html2canvas';
 import { useThemeStore } from '../store/themeStore';
+import { useSaveProgressStore } from '@/shared/store/saveProgressStore';
+import { useApiStore } from '@/core/api/apiStore';
 import { useTenantStore } from '../store/tenantStore';
 import { usePreviewStore } from '../store/previewStore';
 import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
@@ -1492,9 +1494,22 @@ export function ThemeEditorPage() {
         }
 
         setSaving(true);
-        const loadingToast = toast.loading('Menyimpan tema...');
+
+        // Inline step-by-step progress (floating card, bottom-right) instead of the
+        // full-screen blocking overlay — so the user can watch each phase of the save.
+        const progress = useSaveProgressStore.getState();
+        const { beginSuppressLoader, endSuppressLoader } = useApiStore.getState();
+        beginSuppressLoader();
+        progress.start('Menyimpan tema', [
+            { key: 'verify', label: 'Verifikasi perubahan', detail: 'Mengecek bagian mana yang berubah…' },
+            { key: 'save', label: 'Simpan data yang berubah' },
+            { key: 'refresh', label: 'Refresh sumber kode dari server' },
+        ]);
+        // The active step that should be flagged as failed if the flow throws.
+        let activeStepKey = 'verify';
 
         try {
+            progress.update('verify', { status: 'active' });
             let finalPreviewUrl = previewImage;
 
             // Handle pending upload if any
@@ -1548,12 +1563,17 @@ export function ThemeEditorPage() {
             };
             const templates = { html: htmlCode, css: cssCode, js: jsCode };
             const onChunkProgress = (done: number, totalChunks: number) =>
-                toast.loading(`Menyimpan tema... (${done}/${totalChunks})`, { id: loadingToast });
+                progress.update('save', { detail: `Mengirim potongan ${done}/${totalChunks}…` });
 
             if (isNew) {
+                // A brand-new theme: everything is "changed".
+                progress.update('verify', { status: 'done', detail: 'Tema baru — semua bagian akan disimpan' });
+
                 // Create a lightweight theme row first (metadata + empty templates),
                 // then chunk-save the real templates onto it. createTheme's own body
                 // stays tiny because the big templates are sent separately.
+                activeStepKey = 'save';
+                progress.update('save', { status: 'active', detail: 'Membuat tema baru…' });
                 const createRes = await themeApi.createTheme({
                     ...metaPayload,
                     html_template: '',
@@ -1561,19 +1581,26 @@ export function ThemeEditorPage() {
                     js_template: ''
                 });
                 if (!createRes.success) {
-                    toast.error(createRes.message, { id: loadingToast });
+                    progress.update('save', { status: 'error', detail: createRes.message });
+                    progress.finish('error');
+                    toast.error(createRes.message);
                     return;
                 }
                 const newId = createRes.data.id;
                 await chunkedSaveTheme(newId, {}, templates, onChunkProgress);
-                toast.success('Theme created successfully', { id: loadingToast });
+                progress.update('save', { status: 'done', detail: 'Tema baru berhasil dibuat' });
                 addTheme({ ...createRes.data, ...metaPayload, ...templates }); // Update local cache (optimistic)
                 setFlagDraft(isDraft);
                 setInitialPreviewImage(finalPreviewUrl);
                 // Force a fresh re-fetch so the list reflects exactly what the backend
                 // persisted (e.g. flag_use_system_action_button and other setup flags),
                 // not just the optimistic addTheme copy.
+                activeStepKey = 'refresh';
+                progress.update('refresh', { status: 'active', detail: 'Mengambil data terbaru…' });
                 await fetchThemes(true);
+                progress.update('refresh', { status: 'done' });
+                progress.finish('success');
+                toast.success('Theme created successfully');
                 // Redirect back to theme management list on new theme creation
                 navigate(`${base}/themes`);
             } else {
@@ -1611,7 +1638,11 @@ export function ThemeEditorPage() {
 
                 // Nothing changed at all → skip the save entirely and tell the user why.
                 if (!htmlChanged && !cssChanged && !jsChanged && !metaChanged) {
-                    toast.success('Tidak ada perubahan — tidak ada yang disimpan. (Kode HTML/CSS/JS & info tema sama persis dengan yang tersimpan.)', { id: loadingToast, duration: 5000 });
+                    progress.update('verify', { status: 'done', detail: 'Tidak ada perubahan' });
+                    progress.update('save', { status: 'skipped', detail: 'Dilewati — tak ada yang berubah' });
+                    progress.update('refresh', { status: 'skipped', detail: 'Dilewati' });
+                    progress.finish('success');
+                    toast.success('Tidak ada perubahan — tidak ada yang disimpan. (Kode HTML/CSS/JS & info tema sama persis dengan yang tersimpan.)', { duration: 5000 });
                     return;
                 }
 
@@ -1633,9 +1664,29 @@ export function ThemeEditorPage() {
                     !jsChanged ? 'JS' : null,
                 ].filter(Boolean) as string[];
 
+                // STEP 1 done — report exactly which parts changed.
+                const changedSummary = [
+                    ...changedList,
+                    metaChanged ? 'Info tema' : null,
+                ].filter(Boolean) as string[];
+                progress.update('verify', {
+                    status: 'done',
+                    detail: changedSummary.length ? `Berubah: ${changedSummary.join(', ')}` : 'Perubahan terdeteksi',
+                });
+
+                // STEP 2 — persist the changed data (chunked).
+                activeStepKey = 'save';
+                progress.update('save', {
+                    status: 'active',
+                    detail: changedList.length ? `Menyimpan ${changedList.join(' & ')}…` : 'Menyimpan info tema…',
+                });
                 // chunkedSaveTheme throws on any failed chunk → handled by catch below.
                 // (metaPayload always rides along on the first request; it's small.)
                 await chunkedSaveTheme(id!, metaPayload, changedTemplates, onChunkProgress);
+                progress.update('save', {
+                    status: 'done',
+                    detail: changedList.length ? `${changedList.join(' & ')} tersimpan` : 'Info tema tersimpan',
+                });
 
                 // Check if we need to delete old image
                 if (initialPreviewImage && initialPreviewImage !== finalPreviewUrl) {
@@ -1660,7 +1711,7 @@ export function ThemeEditorPage() {
                     // only metadata changed
                     successMsg = '✓ Info tema berhasil disimpan. (Kode HTML, CSS & JS tidak diubah, jadi tidak perlu disimpan ulang.)';
                 }
-                toast.success(successMsg, { id: loadingToast, duration: 5000 });
+                toast.success(successMsg, { duration: 5000 });
                 setFlagDraft(isDraft);
 
                 // Clear pending states after successful save
@@ -1676,6 +1727,8 @@ export function ThemeEditorPage() {
                 // reassembly of the chunked js_template), so what the editor shows is
                 // what will actually be served. Falls back to the local values if the
                 // refetch fails, so a network hiccup never blanks the editor.
+                activeStepKey = 'refresh';
+                progress.update('refresh', { status: 'active', detail: 'Mengambil ulang kode dari server…' });
                 try {
                     await fetchThemes(true);
                     const saved = useThemeStore.getState().themes.find(t => t.id === id);
@@ -1708,6 +1761,10 @@ export function ThemeEditorPage() {
                     setInitialCssCode(cssCode);
                     setInitialJsCode(jsCode);
                 }
+                // The data is already persisted at this point; a refetch hiccup is a
+                // soft failure (we fell back to local values), so the run still succeeds.
+                progress.update('refresh', { status: 'done', detail: 'Sumber kode diperbarui' });
+                progress.finish('success');
             }
         } catch (error: any) {
             console.error('Error saving theme:', error);
@@ -1743,9 +1800,13 @@ export function ThemeEditorPage() {
                 }
             }
             
-            toast.error(errMsg, { id: loadingToast, duration: 10000 });
+            // Mark whichever step was in-flight as failed, then settle the card.
+            progress.update(activeStepKey, { status: 'error', detail: 'Gagal — lihat notifikasi' });
+            progress.finish('error');
+            toast.error(errMsg, { duration: 10000 });
         } finally {
             setSaving(false);
+            endSuppressLoader();
         }
     };
 

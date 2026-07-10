@@ -587,7 +587,6 @@
 
 
             <!-- ===== WISHES ===== -->
-            {{#unless is_link_umum_and_not_for_spesific_guest}}
             <section id="wishes" class="section-wishes scroll-scene" data-menu-label="Doa &amp; Ucapan">
                 <div class="container-section-header reveal-group">
                     <div class="groom-bride-name reveal-item">Ucapan &amp; Doa</div>
@@ -597,6 +596,7 @@
                 </div>
 
                 <div class="wishes-container">
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
                     <div class="wishes-form-wrapper reveal-item" id="wish-container">
                         {{#hidden is_sudah_isi_ucapan}}
                         <div>
@@ -626,6 +626,7 @@
                         </div>
                         {{/hidden}}
                     </div>
+                    {{/unless}}
 
                     <div class="wishes-list-wrapper">
                         <div class="wishes-scroll-box">
@@ -642,7 +643,6 @@
                     </div>
                 </div>
             </section>
-            {{/unless}}
 
 
             {{#if tampilkan_amplop_online}}
@@ -867,9 +867,7 @@
                             <li><a href="#couples" uk-scroll="" uk-toggle="target: #menu-modal">Mempelai</a></li>
                             <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Waktu &amp; Tempat</a></li>
                             <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Gallery</a></li>
-                            {{#unless is_link_umum_and_not_for_spesific_guest}}
                             <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Ucapan &amp; Doa</a></li>
-                            {{/unless}}
                             <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Amplop &amp; Gift</a></li>
                         </ul>
                     </div>

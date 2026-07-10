@@ -248,6 +248,58 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         };
     }, []);
 
+    // Auto-restart the YouTube backsound when it finishes.
+    // The iframe URL already carries loop=1&playlist=<id>, but YouTube's built-in
+    // loop is unreliable for a single video (it often just stops at the end). So we
+    // listen to the IFrame API's onStateChange and, on ENDED (state 0), seek back to
+    // 0 and play again — guaranteeing the song replays from the beginning.
+    useEffect(() => {
+        if (!youtubeId) return;
+
+        const getFrame = () => ytIframeRef.current;
+
+        // Tell YouTube to start emitting events to us (required for enablejsapi frames).
+        const startListening = () => {
+            const win = getFrame()?.contentWindow;
+            if (win) win.postMessage('{"event":"listening","id":1,"channel":"widget"}', '*');
+        };
+        // Ask a couple of times because the iframe may not be ready on the first tick.
+        startListening();
+        const t1 = setTimeout(startListening, 800);
+        const t2 = setTimeout(startListening, 2000);
+
+        const onMessage = (e: MessageEvent) => {
+            // Only trust messages coming from YouTube.
+            if (typeof e.origin === 'string' && !e.origin.includes('youtube.com')) return;
+            let payload: any;
+            try {
+                payload = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+            } catch {
+                return;
+            }
+            // Player state arrives as onStateChange or inside infoDelivery.playerState.
+            // 0 === ENDED.
+            const state =
+                payload?.event === 'onStateChange'
+                    ? payload.info
+                    : payload?.info?.playerState;
+            if (state === 0) {
+                const win = getFrame()?.contentWindow;
+                if (win) {
+                    win.postMessage('{"event":"command","func":"seekTo","args":[0, true]}', '*');
+                    win.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                }
+            }
+        };
+
+        window.addEventListener('message', onMessage);
+        return () => {
+            window.removeEventListener('message', onMessage);
+            clearTimeout(t1);
+            clearTimeout(t2);
+        };
+    }, [youtubeId, isOpened]);
+
     // RSVP State
     const [rsvpCode, setRsvpCode] = useState('');
     const [rsvpStatus, setRsvpStatus] = useState<'confirmed' | 'declined'>('confirmed');
@@ -347,21 +399,6 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         if (slug && !previewData) fetchInvitation();
     }, [slug, previewData, themeCode]);
 
-    // Track fullscreen state so the preview button can flip its icon.
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    useEffect(() => {
-        if (!themeCode) return;
-        const onChange = () => {
-            const doc = document as Document & { webkitFullscreenElement?: Element | null };
-            setIsFullscreen(!!(doc.fullscreenElement || doc.webkitFullscreenElement));
-        };
-        document.addEventListener('fullscreenchange', onChange);
-        document.addEventListener('webkitfullscreenchange', onChange);
-        return () => {
-            document.removeEventListener('fullscreenchange', onChange);
-            document.removeEventListener('webkitfullscreenchange', onChange);
-        };
-    }, [themeCode]);
 
     // Fetch Global Website Config for Favicon
     useEffect(() => {
@@ -1333,66 +1370,6 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         </div>
     ) : null;
 
-    // Fullscreen button — only on THEME PREVIEW pages (/#/preview/<themeCode>/<slug>).
-    // Browsers require fullscreen to be triggered by a user gesture, so this is a
-    // click target rather than an auto-request. The real public invitation never
-    // shows it (themeCode is only set on the preview route).
-    const fullscreenOverlay = themeCode ? (
-        <button
-            type="button"
-            aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
-            onClick={() => {
-                const el = document.documentElement as HTMLElement & {
-                    webkitRequestFullscreen?: () => Promise<void>;
-                };
-                const doc = document as Document & {
-                    webkitFullscreenElement?: Element | null;
-                    webkitExitFullscreen?: () => Promise<void>;
-                };
-                if (doc.fullscreenElement || doc.webkitFullscreenElement) {
-                    (doc.exitFullscreen || doc.webkitExitFullscreen)?.call(doc);
-                } else {
-                    (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
-                }
-            }}
-            style={{
-                position: 'fixed',
-                top: '0.75rem',
-                right: '0.75rem',
-                zIndex: 100000,
-                width: '2.5rem',
-                height: '2.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(15, 23, 42, 0.6)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: '0.6rem',
-                color: '#ffffff',
-                cursor: 'pointer',
-                lineHeight: 0,
-            }}
-        >
-            {isFullscreen ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                    <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                    <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                    <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-                </svg>
-            ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                    <path d="M16 3h3a2 2 0 0 1 2 2v3" />
-                    <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
-                    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                </svg>
-            )}
-        </button>
-    ) : null;
-
     if (activeTheme?.html_template) {
         return (
             <>
@@ -1575,7 +1552,6 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     />
                 </ThemeWrapper>
                 {unpaidOverlay}
-                {fullscreenOverlay}
             </>
         );
     }
@@ -1632,7 +1608,6 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 {guestQrModal}
                 {uninvitedGuestFormModal}
                 {unpaidOverlay}
-                {fullscreenOverlay}
             </>
         );
     }
@@ -1974,6 +1949,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             {/* HIDDEN YOUTUBE PLAYER */}
             {youtubeId && isPlaying && (
                 <iframe
+                    ref={ytIframeRef}
                     width="0"
                     height="0"
                     src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
@@ -2053,7 +2029,6 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 data={rsvpModalData}
             />
             {unpaidOverlay}
-            {fullscreenOverlay}
         </div>
     );
 }

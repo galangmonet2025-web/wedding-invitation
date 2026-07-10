@@ -400,6 +400,7 @@
         <div class="sw-cd-cell"><span id="tm-countdown-minutes">{{countdown_menit}}</span><small>MNT</small></div>
         <div class="sw-cd-cell"><span id="tm-countdown-seconds">{{countdown_detik}}</span><small>DTK</small></div>
       </div>
+      {{#unless is_link_umum_and_not_for_spesific_guest}}
       <h3 class="sw-sub-title">KONFIRMASI KEHADIRAN</h3>
       <div class="sw-form" id="sw-rsvp-form">
         <select class="sw-input" id="rsvp-status">
@@ -412,6 +413,7 @@
         <button class="sw-btn" id="btn-submit-kehadiran" type="button">KIRIM RSVP</button>
         <div class="sw-alert" id="alert-submit-kehadiran"></div>
       </div>
+      {{/unless}}
     </section>
 
     <!-- 4 · SCHEDULE (always) -->
@@ -501,12 +503,14 @@
     <!-- 9 · WISHES (always) -->
     <section class="sw-sec" data-info="wishes">
       <h2 class="sw-sec-title">UCAPAN &amp; DOA</h2>
+      {{#unless is_link_umum_and_not_for_spesific_guest}}
       <div class="sw-form" id="sw-wish-form">
         <input class="sw-input" id="wish-name" type="text" placeholder="Nama kamu" />
         <textarea class="sw-input" id="wish-message" rows="3" placeholder="Tulis ucapan & doa..."></textarea>
         <button class="sw-btn" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
         <div class="sw-alert" id="alert-submit-ucapan"></div>
       </div>
+      {{/unless}}
       <div class="sw-wish-list" id="sw-wish-list">
         {{#each wishes}}
         <div class="sw-wish-item">

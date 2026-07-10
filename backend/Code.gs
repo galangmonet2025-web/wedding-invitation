@@ -1847,12 +1847,18 @@
         content.groom_nickname = tenant.groom_nickname;
         content.religion = tenant.religion;
         content.wedding_date = tenant.wedding_date;
+        // FRESH from the Tenants sheet: the theme/quotes the tenant ACTUALLY has.
+        // The frontend auth store's tenant can be stale (esp. under impersonation
+        // or after a save in a prior session), so the theme picker seeds its
+        // selected-theme from THIS value instead of the possibly-stale auth store.
+        content.theme_id = tenant.theme_id || '';
+        content.quotes_id = tenant.quotes_id || '';
         // Only set tanggal_akad from tenant if not already set in InvitationContent
         if (!content.tanggal_akad) {
           content.tanggal_akad = tenant.wedding_date;
         }
       }
-      
+
       return ResponseHelper.success(content, 'Invitation content retrieved');
     },
 
@@ -2450,6 +2456,12 @@
           }
         }
 
+        // A theme ABOVE the tenant's plan (e.g. a premium theme on a pro tenant)
+        // must NOT appear in the picker — even if it's the tenant's currently
+        // assigned theme. The public invitation still renders it (getInvitation
+        // resolves by theme_id with no plan filter), so nothing breaks there; it
+        // simply isn't offered as a choice here. Consequently such a tenant sees
+        // NO selected card, which is the intended behaviour.
         themes = themes.filter(function(t) {
           var themePriority = priorities[normPlan(t.plan_type)] || 1;
           var isDraft = (t.flag_draft === true || t.flag_draft === 'true' || t.flag_draft === 'TRUE');

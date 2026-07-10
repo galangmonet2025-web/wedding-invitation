@@ -2,9 +2,11 @@ import { useApiStore } from '@/core/api/apiStore';
 import { HiOutlineRefresh } from 'react-icons/hi';
 
 export function ApiLoader() {
-    const { loadingCount } = useApiStore();
+    const { loadingCount, suppressGlobalLoader } = useApiStore();
 
-    if (loadingCount === 0) return null;
+    // A flow with its own inline progress UI (e.g. the theme-save floating card)
+    // can suppress this blocking overlay while it runs.
+    if (loadingCount === 0 || suppressGlobalLoader > 0) return null;
 
     return (
         <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center pointer-events-auto">

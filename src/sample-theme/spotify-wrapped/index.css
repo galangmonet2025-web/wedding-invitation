@@ -112,7 +112,9 @@ body {
     opacity: 1;
 }
 
-/* ============ SPOTIFY LOGO DOT (the little green ● as a wink to the logo) ============ */
+/* ============ SPOTIFY LOGO (the little green ● — a faithful nod to the mark) ==
+   Green circle + the three stacked "sound-wave" arcs, drawn as an inline SVG so
+   they scale crisply from the tiny inline badge up to the .big variant. ======= */
 .spwr-logo-dot {
     display: inline-block;
     width: 14px;
@@ -121,22 +123,13 @@ body {
     background: var(--spwr-green-2);
     position: relative;
     vertical-align: middle;
+    /* Three black arcs (top → bottom, shrinking) centred in the disc. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 168 168'%3E%3Cg fill='none' stroke='%23000' stroke-linecap='round'%3E%3Cpath stroke-width='17' d='M37 66c33-10 73-7 102 9'/%3E%3Cpath stroke-width='14' d='M43 90c28-8 60-5 84 9'/%3E%3Cpath stroke-width='11' d='M49 112c22-6 47-4 66 7'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
 }
-.spwr-logo-dot::before,
-.spwr-logo-dot::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    border: 2px solid #000;
-    border-radius: 50%;
-}
-.spwr-logo-dot::before { width: 8px; height: 8px; }
-.spwr-logo-dot::after { width: 3px; height: 3px; background: #000; border: 0; }
 .spwr-logo-dot.big { width: 44px; height: 44px; }
-.spwr-logo-dot.big::before { width: 26px; height: 26px; border-width: 4px; }
-.spwr-logo-dot.big::after { width: 9px; height: 9px; }
 
 /* ============ INTRO (Wrapped card flash) ============ */
 .spwr-intro {
@@ -214,16 +207,26 @@ body {
     inset: -8%;
     background-size: cover;
     background-position: center;
-    opacity: 0.28;
-    filter: saturate(1.2);
+    /* Full-strength photo: this IS the cover background now (the green section
+       gradient behind it only peeks through if the photo is missing/broken). */
+    opacity: 1;
+    filter: saturate(1.05);
     animation: coverZoom 16s ease-in-out infinite alternate;
     z-index: 0;
 }
 @keyframes coverZoom { from { transform: scale(1.05); } to { transform: scale(1.2); } }
+/* Transparent → black overlay: photo shows at the top, fades to black at the
+   bottom so the couple name / buttons stay readable — matches the old look. */
 .cover-scrim {
     position: absolute;
     inset: 0;
-    background: radial-gradient(120% 90% at 50% 20%, transparent 0%, rgba(0,0,0,0.55) 100%);
+    background:
+        linear-gradient(180deg,
+            rgba(0, 0, 0, 0.25) 0%,
+            rgba(0, 0, 0, 0.15) 30%,
+            rgba(0, 0, 0, 0.65) 72%,
+            #121212 100%),
+        radial-gradient(120% 80% at 50% 18%, transparent 0%, rgba(0, 0, 0, 0.45) 100%);
     z-index: 1;
 }
 .cover-topbar {
@@ -268,9 +271,6 @@ body {
     width: 220px;
     height: 220px;
     border-radius: 12px;
-    /* Base gradient is ALWAYS present, so an empty/broken {{photo_cover}} still
-       looks like an intentional Wrapped poster instead of a blank green box. */
-    background: linear-gradient(150deg, #1ed760 0%, #0b8b41 45%, #0a3b1e 100%);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
     position: relative;
     display: flex;
@@ -278,8 +278,12 @@ body {
     justify-content: center;
     overflow: hidden;
     animation: floaty 5s ease-in-out infinite;
+    /* Green gradient is the ALWAYS-present base (fallback if the photo is
+       missing/broken). The photo <img> layers on top of it. */
+    background: linear-gradient(150deg, #1ed760 0%, #0b8b41 45%, #0a3b1e 100%);
 }
-/* Photo layer sits on top of the gradient; hides itself if the src is empty/broken. */
+/* Photo layer sits ON TOP of the gradient. No onerror handler: if it fails to
+   load, it simply shows nothing and the gradient behind it remains. */
 .cover-album-img {
     position: absolute;
     inset: 0;
@@ -428,6 +432,15 @@ body {
 .np-eq span:nth-child(4) { animation-delay: 0.15s; height: 100%; }
 @keyframes eqBar { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
 
+/* When music is paused, freeze every equalizer in place (JS toggles
+   `spwr-music-paused` on <body>). animation-play-state keeps the bars where they
+   stopped instead of snapping to a rest height — reads as a real "paused" state. */
+body.spwr-music-paused .np-eq span,
+body.spwr-music-paused .spwr-side-eq span,
+body.spwr-music-paused .outro-eq span {
+    animation-play-state: paused;
+}
+
 .np-info { margin-top: 22px; }
 .np-title { font-size: 26px; font-weight: 900; }
 .np-artist { color: var(--spwr-mut); font-weight: 600; margin-top: 3px; }
@@ -451,10 +464,57 @@ body {
 .np-times {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
     font-size: 11px;
     color: var(--spwr-mut);
     margin-top: 7px;
 }
+/* Remaining-time readout: fixed, tabular so "-2:55" doesn't jitter as it ticks. */
+#np-elapsed {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    color: var(--spwr-green-2);
+    font-weight: 600;
+}
+/* Marquee: a fixed-width viewport that clips its text; when the title is longer
+   than the viewport, JS adds `.is-marquee` and the inner track scrolls back and
+   forth so all of it is seen. Reused by the hero (#np-total) and the player-bar
+   strip (#pb-np-title). */
+.np-marquee {
+    overflow: hidden;
+    display: block;
+    white-space: nowrap;
+    /* fade the leading edge so text scrolls in/out softly */
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 100%);
+}
+.np-marquee-inner {
+    display: inline-block;
+    white-space: nowrap;
+}
+/* When it fits, no mask needed. */
+.np-marquee:not(.is-marquee) {
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+/* Scroll only when JS confirms overflow. The distance is set inline by JS via
+   the --np-scroll custom property (how far the text must travel). */
+.np-marquee.is-marquee .np-marquee-inner {
+    animation: npMarquee var(--np-scroll-dur, 8s) linear infinite alternate;
+}
+@keyframes npMarquee {
+    0%, 12%   { transform: translateX(0); }
+    88%, 100% { transform: translateX(var(--np-scroll, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .np-marquee.is-marquee .np-marquee-inner { animation: none; }
+}
+
+/* Hero title sits on the RIGHT of the scrubber (static right-aligned when short,
+   left-aligned while scrolling). */
+#np-total.np-marquee { flex: 1 1 auto; min-width: 0; text-align: right; }
+#np-total.np-marquee.is-marquee { text-align: left; }
 
 .np-intro {
     margin: 26px auto 0;
@@ -1100,13 +1160,16 @@ textarea.spwr-input { resize: vertical; }
 .section-closing {
     position: relative;
     z-index: 5;
-    min-height: 90vh;
+    /* Full viewport so that when the story is scrolled to the very bottom, the
+       section above is completely out of view. */
+    min-height: 100vh;
     background-size: cover;
     background-position: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 60px 30px 30px;
+    /* Extra bottom padding clears the floating player bar (~120px). */
+    padding: 60px 30px 130px;
     text-align: center;
 }
 .closing-inner { display: flex; flex-direction: column; align-items: center; }
@@ -1142,6 +1205,47 @@ textarea.spwr-input { resize: vertical; }
 .outro-txt small { display: block; font-size: 10px; color: var(--spwr-mut); letter-spacing: 1px; }
 .outro-txt b { font-size: 15px; }
 
+/* Music-source credit under the "Putar Ulang" card (YouTube backsound only). */
+.music-credit {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+    margin: 14px auto 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+}
+.music-credit[hidden] { display: none; }
+.music-credit-yt { flex: 0 0 auto; color: #ff0000; }
+.music-credit-txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.music-credit-txt small {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--spwr-mut);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+.music-credit-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 2px;
+}
+.music-credit-channel {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--spwr-mut);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.music-credit-channel:empty { display: none; }
+
 .footer { margin-top: 40px; }
 .footer-name { font-weight: 800; }
 .footer-tag { font-size: 12px; color: var(--spwr-mut); margin-top: 4px; }
@@ -1170,27 +1274,218 @@ textarea.spwr-input { resize: vertical; }
     .spwr-playerbar-wrap { left: auto; right: 0; width: 480px; }
 }
 .spwr-playerbar {
+    position: relative;              /* anchor for the video/scrim layers */
     pointer-events: auto;
     box-sizing: border-box;
-    display: inline-flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 4px;
-    width: calc(100% - 32px);
-    max-width: 380px;
+    display: flex;                   /* block-level flex column */
+    flex-direction: column;          /* strip on top, control row below */
+    align-items: stretch;
+    /* Match the page gutters: section content sits 26px from each edge of the
+       480px phone column, so the bar spans the same width and its left/right
+       line up with e.g. the gallery grid. */
+    width: calc(100% - 52px);
+    max-width: 428px;                /* 480 − 2×26 */
+    margin: 0 auto;                  /* center within the (text-aligned) wrap */
     padding: 8px 14px;
-    border-radius: 999px;
+    /* Rounded-rect capsule; morphs toward a pure pill (radius 999) when the strip
+       is collapsed (controls-only) — see the override below. */
+    border-radius: 26px;
     background: rgba(24, 24, 24, 0.92);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
-    vertical-align: bottom;
+    overflow: hidden;                /* clip the video clip to the pill shape */
+    transition: border-radius 0.3s ease;
 }
-/* Every button stays its natural size — never grows to fill the row. */
-.spwr-playerbar > button { flex: 0 0 auto; margin: 0; }
+/* Controls-only (no strip visible) → full pill. */
+#theme-fab-container:not(.pb-has-info) .spwr-playerbar,
+#theme-fab-container:not(.is-playing) .spwr-playerbar { border-radius: 999px; }
+
+/* Control row (the 5 buttons) — full width, evenly spread, above the video. */
+.pb-controls {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+}
+.pb-controls > button { flex: 0 0 auto; margin: 0; position: relative; z-index: 2; }
+
+/* --- YouTube clip background inside the player bar --- */
+/* Empty until JS injects an <iframe>. Sized bigger than the pill and centered so
+   the 16:9 video always covers the short/wide pill with no letterboxing. */
+.pb-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* Cover a 380px-wide / ~70px-tall pill with 16:9: width dominates. Scaled a
+       touch larger so the blur's soft edges never reveal the pill background. */
+    width: 190%;
+    aspect-ratio: 16 / 9;
+    transform: translate(-50%, -50%) scale(1.08);
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    /* Soft blur so the clip reads as a dreamy backdrop, not a tiny TV. */
+    filter: blur(3px) saturate(1.1);
+}
+.pb-video.is-ready { opacity: 1; }
+.pb-video iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    pointer-events: none;
+}
+/* Dark transparent layer so the control icons stay legible over the clip. */
+.pb-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(10, 10, 10, 0.62), rgba(10, 10, 10, 0.78));
+}
+/* Only show the scrim once a video is actually behind it (else it just doubles
+   up on the solid pill background — harmless, but this keeps it clean). */
+.spwr-playerbar:not(.pb-has-video) .pb-scrim { display: none; }
+
+/* ---- Now-playing strip: the TOP part of the same integrated pill ---- */
+/* No own background/border — it lives inside .spwr-playerbar. Collapses to zero
+   height when music is paused / non-YouTube, so the pill becomes controls-only. */
+.pb-nowplaying {
+    position: relative;
+    z-index: 2;
+    box-sizing: border-box;
+    text-align: left;
+    padding: 2px 4px 0;
+    /* collapsed state */
+    opacity: 0;
+    transform: translateY(6px);
+    max-height: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease,
+                margin 0.3s ease;
+}
+/* Reveal only when music is PLAYING *and* we have real track info (YouTube). */
+#theme-fab-container.pb-has-info.is-playing .pb-nowplaying {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 64px;
+    margin-bottom: 8px;
+    pointer-events: auto;
+}
+.pb-np-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 7px;
+}
+/* Title (top) + channel (below), stacked on the left. */
+.pb-np-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 1px;
+}
+.pb-np-title.np-marquee {
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+}
+.pb-np-channel {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pb-np-channel:empty { display: none; }
+.pb-np-time {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    margin-top: 1px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--spwr-green-2);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Progress track with an animated WAVE on the played (green) portion --- */
+.pb-np-bar {
+    position: relative;
+    height: 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.18);
+    overflow: hidden;
+}
+/* The green played portion is a viewport that clips a moving wave texture. */
+.pb-np-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    border-radius: 4px;
+    background: var(--spwr-green);
+    overflow: hidden;
+    transition: width 0.4s linear;
+}
+/* Wave layer: a repeating sine-ish gradient band that scrolls horizontally +
+   bobs vertically, giving the fill a liquid "wave" feel while playing. */
+.pb-np-wave {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    width: 300%;
+    background:
+        radial-gradient(circle at 10% 40%, rgba(255,255,255,0.55) 0 2px, transparent 3px),
+        linear-gradient(90deg,
+            var(--spwr-green-2) 0%, #6ff7a3 25%, var(--spwr-green-2) 50%,
+            #6ff7a3 75%, var(--spwr-green-2) 100%);
+    background-size: 22px 100%, 50% 100%;
+    opacity: 0.9;
+}
+/* A little glow knob at the play-head so the wave reads as "current position". */
+.pb-np-knob {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 8px;
+    height: 8px;
+    margin-left: -4px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 8px 2px rgba(30, 215, 96, 0.9);
+    transform: translateY(-50%);
+    transition: left 0.4s linear;
+    opacity: 0;
+}
+#theme-fab-container.pb-has-info.is-playing .pb-np-knob { opacity: 1; }
+/* Animate the wave only while playing; freeze when paused. */
+#theme-fab-container.is-playing .pb-np-wave {
+    animation: pbWaveScroll 1.1s linear infinite, pbWaveBob 1.6s ease-in-out infinite;
+}
+@keyframes pbWaveScroll {
+    to { transform: translateX(-33.333%); }
+}
+@keyframes pbWaveBob {
+    0%, 100% { margin-top: 0; }
+    50%      { margin-top: -1px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #theme-fab-container.is-playing .pb-np-wave { animation: none; }
+    .pb-np-fill { background: var(--spwr-green-2); }
+}
 .pb-btn {
     background: none;
     border: 0;
@@ -1220,8 +1515,37 @@ textarea.spwr-input { resize: vertical; }
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 .pb-play:hover { transform: scale(1.07); background: var(--spwr-green-2); }
-#music-icon-container { display: inline-flex; align-items: center; justify-content: center; }
+#music-icon-container { display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
 #music-icon-container svg { display: block; }
+
+/* --- Play button: pulsing green halo while music is on --- */
+.pb-play { position: relative; overflow: visible; }
+.pb-play-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(30, 215, 96, 0.55);
+    transition: opacity 0.25s ease;
+}
+#theme-fab-container.is-playing .pb-play {
+    background: var(--spwr-green-2);
+    color: #05230f;
+}
+#theme-fab-container.is-playing .pb-play-ring {
+    opacity: 1;
+    animation: pbPulse 1.8s ease-out infinite;
+}
+@keyframes pbPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(30, 215, 96, 0.55); }
+    70%  { box-shadow: 0 0 0 14px rgba(30, 215, 96, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(30, 215, 96, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #theme-fab-container.is-playing .pb-play-ring { animation: none; }
+}
 
 /* ============ MENU MODAL ============ */
 .spwr-menu-bg { background: linear-gradient(160deg, #1db954 0%, #0d3d1e 40%, #121212 100%) !important; }

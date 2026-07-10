@@ -11,7 +11,10 @@ interface AuthState {
     setAuth: (token: string, user: User, tenant: Tenant) => void;
     setUser: (user: User) => void;
     logout: () => void;
-    updateTenant: (tenant: Tenant) => void;
+    // Accepts a full tenant OR a partial patch. A patch is MERGED onto the current
+    // tenant so consecutive calls (e.g. save theme then save quotes in the same
+    // flow) don't clobber each other via stale `{...tenant}` snapshots.
+    updateTenant: (patch: Partial<Tenant>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -40,7 +43,13 @@ export const useAuthStore = create<AuthState>()(
                     isAuthenticated: false,
                 }),
 
-            updateTenant: (tenant: Tenant) => set({ tenant }),
+            // Merge the patch onto the CURRENT tenant (from the latest state), so a
+            // caller passing only { theme_id } can't wipe quotes_id (and vice-versa),
+            // and two updates in the same tick don't overwrite each other's fields.
+            updateTenant: (patch: Partial<Tenant>) =>
+                set((state) => ({
+                    tenant: state.tenant ? ({ ...state.tenant, ...patch } as Tenant) : (patch as Tenant),
+                })),
         }),
         {
             name: 'wedding-saas-auth',

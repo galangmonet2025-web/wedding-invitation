@@ -683,8 +683,6 @@
 
 
             <!-- ===== WISHES ("Reviews") ===== -->
-            <div data-unless="is_link_umum_and_not_for_spesific_guest">
-                {{#unless is_link_umum_and_not_for_spesific_guest}}
                 <section id="wishes" class="section-wishes scroll-scene" data-menu-label="Doa &amp; Ucapan">
                     <div class="container-section-header reveal-group">
                         <div class="the-wedding-of reveal-item">RATINGS &amp; REVIEWS</div>
@@ -695,6 +693,7 @@
                     </div>
 
                     <div class="wishes-container">
+                        {{#unless is_link_umum_and_not_for_spesific_guest}}
                         <div class="wishes-form-wrapper reveal-item" id="wish-container">
                             <div data-unless="is_sudah_isi_ucapan">
                                 {{#hidden is_sudah_isi_ucapan}}
@@ -724,6 +723,7 @@
                                 {{/hidden}}
                             </div>
                         </div>
+                        {{/unless}}
 
                         <div class="wishes-list-wrapper">
                             <div class="wishes-scroll-box" data-loop="wishes">
@@ -741,8 +741,6 @@
                         </div>
                     </div>
                 </section>
-                {{/unless}}
-            </div>
 
 
             <!-- ===== GIFT / AMPLOP ONLINE ("Support the Creators") ===== -->

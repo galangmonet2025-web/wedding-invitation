@@ -3,6 +3,7 @@ export * from './Modal';
 export * from './Loading';
 export * from './Lightbox';
 export * from './ApiLoader';
+export * from './SaveProgressCard';
 export * from './Button';
 export * from './IconButton';
 export * from './Badge';

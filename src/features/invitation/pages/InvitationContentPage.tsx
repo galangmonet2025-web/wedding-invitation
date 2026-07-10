@@ -102,8 +102,15 @@ export const AccordionItem = ({ id, icon, iconBg, iconColor, title, children, is
     );
 };
 
+// Robust ID equality. The Sheets backend can return IDs as numbers or with stray
+// whitespace, so a strict `===` between tenant.theme_id and theme.id fails even
+// when they're "the same" — which is why an already-selected theme showed no
+// indicator on return to this page. Compare as trimmed strings.
+const sameId = (a: any, b: any) =>
+    a != null && b != null && String(a).trim() === String(b).trim();
+
 export function InvitationContentPage() {
-    const { 
+    const {
         content, 
         images, 
         loading, 
@@ -272,6 +279,21 @@ export function InvitationContentPage() {
     // Map Picker State
     const [showTutorialModal, setShowTutorialModal] = useState(false);
 
+    // Force a fresh content fetch ONCE on mount so content.theme_id reflects the
+    // Tenants sheet RIGHT NOW (the picker seeds its selection from it). Without the
+    // force, a cached content from an earlier session — predating a theme change or
+    // the backend adding theme_id — would leave the picker seeded from the stale
+    // auth-store value. Mount-only so it can't clobber unsaved edits mid-session.
+    useEffect(() => {
+        fetchContent(true, tenant);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Tracks whether the selected theme has been seeded from the authoritative
+    // fresh source (content.theme_id) OR a user click. Once true, the stale
+    // auth-store seed below must NOT override it.
+    const seededThemeRef = useRef(false);
+
     useEffect(() => {
         // Force a fresh fetch: the theme picker must reflect the CURRENT published
         // themes. The store caches via `hasLoaded`, so without force a session that
@@ -281,8 +303,23 @@ export function InvitationContentPage() {
         fetchContent(false, tenant);
         fetchImages();
 
-        if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
+        // Provisional seed from the auth store (may be stale). Only until the fresh
+        // content.theme_id lands (effect below) or the user picks a card.
+        if (!seededThemeRef.current && tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
     }, [tenant]);
+
+    // Authoritative seed: content.theme_id is read straight from the Tenants sheet
+    // by getInvitationContent, so it's always current. The auth store's
+    // tenant.theme_id can be stale (impersonation, or a save in a prior session),
+    // which is what left the picker pointing at the OLD theme (no checkmark).
+    useEffect(() => {
+        if (seededThemeRef.current) return;
+        const freshThemeId = (content as any)?.theme_id;
+        if (freshThemeId) {
+            seededThemeRef.current = true;
+            setSelectedThemeId(String(freshThemeId));
+        }
+    }, [content]);
 
     // Load active quotes (master + tenant own) and initialize selection
     useEffect(() => {
@@ -330,7 +367,7 @@ export function InvitationContentPage() {
 
         const syncPreview = () => {
             if (iframeRef.current?.contentWindow) {
-                const selectedThemeObj = themes.find(t => t.id === selectedThemeId);
+                const selectedThemeObj = themes.find(t => sameId(t.id, selectedThemeId));
                 iframeRef.current.contentWindow.postMessage({
                     type: 'invitation-preview-update',
                     content: content,
@@ -367,13 +404,18 @@ export function InvitationContentPage() {
         if (!content || !tenant) return false;
         const success = await updateContent(content);
 
-        // Save theme selection if changed
-        if (selectedThemeId !== tenant.theme_id) {
+        // Save theme selection if changed. Compare against the FRESH content.theme_id
+        // (from the Tenants sheet) first, falling back to the auth-store value — the
+        // auth store can be stale, which would otherwise report a phantom change.
+        const currentThemeId = (content as any)?.theme_id ?? tenant.theme_id;
+        if (!sameId(selectedThemeId, currentThemeId)) {
             await tenantApi.updateTenant({
                 id: tenant.id,
                 theme_id: selectedThemeId || undefined
             });
-            updateAuthTenant({ ...tenant, theme_id: selectedThemeId || undefined });
+            // Patch-merge (NOT {...tenant}): a later updateAuthTenant in this same
+            // flow (e.g. quotes below) must not clobber the theme_id we just set.
+            updateAuthTenant({ theme_id: selectedThemeId || undefined });
         }
 
         // Save quotes selection (custom upsert or master pick)
@@ -384,7 +426,7 @@ export function InvitationContentPage() {
                     ...customQuotes,
                 } as any, { skipLoader: true } as any);
                 if (res.success && res.data?.quotes_id) {
-                    updateAuthTenant({ ...tenant, quotes_id: res.data.quotes_id });
+                    updateAuthTenant({ quotes_id: res.data.quotes_id });
                 }
             } else if (selectedQuotesId && selectedQuotesId !== tenant.quotes_id) {
                 const res = await quotesApi.saveTenantQuotes({
@@ -392,7 +434,7 @@ export function InvitationContentPage() {
                     quotes_id: selectedQuotesId,
                 } as any, { skipLoader: true } as any);
                 if (res.success) {
-                    updateAuthTenant({ ...tenant, quotes_id: selectedQuotesId });
+                    updateAuthTenant({ quotes_id: selectedQuotesId });
                 }
             }
         } catch (e) {
@@ -428,6 +470,40 @@ export function InvitationContentPage() {
 
     // Keep the ref pointing at the latest closure for the nav-blocker effect.
     autoSaveInBackgroundRef.current = autoSaveInBackground;
+
+    // Explicit "Selesai/Simpan" on the last step. Unlike the silent auto-save it
+    // ALWAYS persists (even when isDirty is false but the selected theme differs
+    // from what's stored) and gives the user visible loading/success feedback —
+    // so clicking Save never looks like a no-op.
+    const [finishing, setFinishing] = useState(false);
+    const handleFinish = async () => {
+        if (finishing || !content || !tenant) return;
+        const themeChanged = !sameId(selectedThemeId, (content as any)?.theme_id ?? tenant.theme_id);
+        // Nothing to write and theme unchanged → still confirm so it doesn't feel dead.
+        if (!isDirty && !themeChanged) {
+            toast.success(t('invitation_content.autosave_saved', 'Semua perubahan tersimpan'));
+            return;
+        }
+        setFinishing(true);
+        setIsDirty(false);
+        toast.loading(t('invitation_content.saving', 'Menyimpan...'), { id: 'inv-save' });
+        try {
+            const success = await persistAll();
+            if (success) {
+                setIframeKey(prev => prev + 1);
+                toast.success(t('invitation_content.save_success', 'Pengaturan berhasil disimpan'), { id: 'inv-save' });
+            } else {
+                setIsDirty(true);
+                toast.error(t('invitation_content.save_error', 'Gagal menyimpan perubahan'), { id: 'inv-save' });
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            setIsDirty(true);
+            toast.error(t('invitation_content.save_error', 'Gagal menyimpan perubahan'), { id: 'inv-save' });
+        } finally {
+            setFinishing(false);
+        }
+    };
 
     // Move between wizard steps, auto-saving any edits made on the current step
     // before switching. This replaces the old manual "Save settings" button.
@@ -1201,7 +1277,7 @@ export function InvitationContentPage() {
                                     <p className="text-sm text-gray-500 mb-6">{t('invitation_content.gallery_description')}</p>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {(() => {
-                                            const activeTheme = themes.find(t => t.id === selectedThemeId);
+                                            const activeTheme = themes.find(t => sameId(t.id, selectedThemeId));
                                             const typesList = (activeTheme?.image_types && activeTheme.image_types.length > 0)
                                                 ? activeTheme.image_types
                                                 : ['hero_cover', 'groom_photo', 'bride_photo', 'gallery', 'story_photo', 'cover', 'closing'];
@@ -1417,6 +1493,12 @@ export function InvitationContentPage() {
                                     <div className="flex flex-col gap-8 w-full">
                                         {(() => {
                                             const filteredThemes = themes.filter(theme => {
+                                                // NOTE: a theme ABOVE the tenant's plan (e.g. premium theme on a
+                                                // pro tenant) is intentionally NOT shown here, even if it's the
+                                                // tenant's currently-assigned theme. The public invitation still
+                                                // renders it (backend resolves by theme_id, no plan filter); it just
+                                                // isn't offered as a choice — so such a tenant sees no selected card.
+
                                                 // Filter out drafts
                                                 const isDraft = typeof theme.flag_draft === 'boolean' ? theme.flag_draft : String(theme.flag_draft).toLowerCase() === 'true';
                                                 if (isDraft) return false;
@@ -1455,9 +1537,20 @@ export function InvitationContentPage() {
                                                         {catThemes.map(theme => (
                                                             <div
                                                                 key={theme.id}
-                                                                onClick={() => setSelectedThemeId(theme.id)}
-                                                                className={`cursor-pointer rounded-xl border-2 transition-all duration-200 overflow-hidden group 
-                                                                        ${selectedThemeId === theme.id ? 'border-gold-500 shadow-lg shadow-gold-500/20 transform -translate-y-1' : 'border-gray-200 dark:border-gray-700 hover:border-gold-300 dark:hover:border-gold-700'}`}
+                                                                onClick={() => {
+                                                                    if (sameId(theme.id, selectedThemeId)) return;
+                                                                    // Lock the seed so a later content refetch can't
+                                                                    // override the user's fresh choice.
+                                                                    seededThemeRef.current = true;
+                                                                    setSelectedThemeId(theme.id);
+                                                                    // Mark dirty so the theme change is actually
+                                                                    // persisted (autoSaveInBackground/persistAll are
+                                                                    // gated on isDirty; without this the Save/Selesai
+                                                                    // button no-ops on a theme-only change).
+                                                                    setIsDirty(true);
+                                                                }}
+                                                                className={`cursor-pointer rounded-xl border-2 transition-all duration-200 overflow-hidden group
+                                                                        ${sameId(selectedThemeId, theme.id) ? 'border-gold-500 shadow-lg shadow-gold-500/20 transform -translate-y-1' : 'border-gray-200 dark:border-gray-700 hover:border-gold-300 dark:hover:border-gold-700'}`}
                                                             >
                                                                 <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-800 relative">
                                                                     {theme.preview_image ? (
@@ -1471,7 +1564,7 @@ export function InvitationContentPage() {
                                                                             <HiOutlineColorSwatch className="w-12 h-12 opacity-50" />
                                                                         </div>
                                                                     )}
-                                                                    {selectedThemeId === theme.id && (
+                                                                    {sameId(selectedThemeId, theme.id) && (
                                                                         <div className="absolute inset-0 bg-gold-500/10 flex items-center justify-center">
                                                                             <div className="bg-gold-500 text-white p-2 rounded-full shadow-lg">
                                                                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1644,16 +1737,22 @@ export function InvitationContentPage() {
                         </button>
                         <button
                             type="button"
+                            disabled={finishing}
                             onClick={() => {
                                 if (currentStep < 4) goToStep(currentStep + 1);
-                                else autoSaveInBackground();
+                                else handleFinish();
                             }}
-                            className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-gold-400 to-gold-600 shadow-lg shadow-gold-500/25 hover:shadow-gold-500/40 hover:brightness-105 transition-all active:scale-95"
+                            className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-gold-400 to-gold-600 shadow-lg shadow-gold-500/25 hover:shadow-gold-500/40 hover:brightness-105 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {currentStep < 4 ? (
                                 <>
                                     {t('common.next')}
                                     <HiOutlineChevronRight className="w-5 h-5" />
+                                </>
+                            ) : finishing ? (
+                                <>
+                                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    {t('invitation_content.saving', 'Menyimpan...')}
                                 </>
                             ) : (
                                 <>

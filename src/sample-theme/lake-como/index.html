@@ -572,9 +572,7 @@
 
 
             <!-- ===== WISHES ===== -->
-            <div data-unless="is_link_umum_and_not_for_spesific_guest">
-                {{#unless is_link_umum_and_not_for_spesific_guest}}
-                <section id="wishes" class="section-wishes scroll-scene" data-menu-label="Doa &amp; Ucapan">
+            <section id="wishes" class="section-wishes scroll-scene" data-menu-label="Doa &amp; Ucapan">
                     <div class="container-section-header reveal-group">
                         <div class="groom-bride-name reveal-item">Ucapan &amp; Doa</div>
                         <div class="quotes reveal-item" style="padding: 0 30px; font-size: 13px; margin-top: 10px;">
@@ -583,6 +581,8 @@
                     </div>
 
                     <div class="wishes-container">
+                        <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                        {{#unless is_link_umum_and_not_for_spesific_guest}}
                         <div class="wishes-form-wrapper reveal-item" id="wish-container">
                             <div data-unless="is_sudah_isi_ucapan">
                                 {{#hidden is_sudah_isi_ucapan}}
@@ -612,6 +612,8 @@
                                 {{/hidden}}
                             </div>
                         </div>
+                        {{/unless}}
+                        </div>
 
                         <div class="wishes-list-wrapper">
                             <div class="wishes-scroll-box" data-loop="wishes">
@@ -628,8 +630,6 @@
                         </div>
                     </div>
                 </section>
-                {{/unless}}
-            </div>
 
 
             <!-- ===== GIFT / AMPLOP ONLINE ===== -->

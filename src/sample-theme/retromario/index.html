@@ -639,15 +639,17 @@
             </div>
 
             <!-- WISHES -->
-            <div data-unless="is_link_umum_and_not_for_spesific_guest">
-                {{#unless is_link_umum_and_not_for_spesific_guest}}
-                <section class="rm-sec" data-info="wishes">
-                    <div class="rm-sec-head">
-                        <div class="rm-sec-eyebrow">HIGH SCORES</div>
-                        <h2 class="rm-sec-title">Ucapan &amp; Doa</h2>
-                        <p class="rm-sec-quote">Tinggalkan pesan untuk kedua mempelai.</p>
-                    </div>
-                    <div class="rm-card">
+            <section class="rm-sec" data-info="wishes">
+                <div class="rm-sec-head">
+                    <div class="rm-sec-eyebrow">HIGH SCORES</div>
+                    <h2 class="rm-sec-title">Ucapan &amp; Doa</h2>
+                    <p class="rm-sec-quote">Tinggalkan pesan untuk kedua mempelai.</p>
+                </div>
+                <!-- Wish INPUT form only shows for a resolved specific guest.
+                     The wishes LIST + header below always render. -->
+                <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <div class="rm-card" id="wish-container">
                         <div class="rm-card-pixel-top"></div>
                         <div data-unless="is_sudah_isi_ucapan">
                             {{#hidden is_sudah_isi_ucapan}}
@@ -664,20 +666,20 @@
                             {{/hidden}}
                         </div>
                     </div>
-                    <div class="rm-wish-list" data-loop="wishes">
-                        {{#each wishes}}
-                        <div class="rm-wish-item">
-                            <div class="rm-wish-head">
-                                <span class="rm-wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
-                                <span class="rm-wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
-                            </div>
-                            <div class="rm-wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                    {{/unless}}
+                </div>
+                <div class="rm-wish-list" data-loop="wishes">
+                    {{#each wishes}}
+                    <div class="rm-wish-item">
+                        <div class="rm-wish-head">
+                            <span class="rm-wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
+                            <span class="rm-wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
                         </div>
-                        {{/each}}
+                        <div class="rm-wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
                     </div>
-                </section>
-                {{/unless}}
-            </div>
+                    {{/each}}
+                </div>
+            </section>
 
             <!-- CLOSING -->
             <section class="rm-sec" data-info="closing">
