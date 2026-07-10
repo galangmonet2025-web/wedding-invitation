@@ -39,7 +39,12 @@
     };
 
     var BUILD = 'spacewar-wedding';
-    var VERSION = 'v1.3.0';   // ART OVERHAUL: render SMOOTH (pixelArt:false, antialias ON); all
+    var VERSION = 'v1.4.0';   // FIXES: stage-1 instant-clear guard (_sectorReady); boss approach
+    // enemies spread across the whole climb (no ~20s empty gap); boss core auto-opens after
+    // activation so HP actually drops (phase 1→2 was unreachable); capsule beacon 💌→★ (was
+    // mistaken for the collectible); side-menu re-paint on host re-injection (MutationObserver).
+    // ---
+    // v1.3.0 ART OVERHAUL: render SMOOTH (pixelArt:false, antialias ON); all
     // procedural sprites rewritten semi-realistic via draw helpers (vgrad/glow/poly/metalBody) —
     // gradient metal bodies, soft glows, rim light. Distinct projectiles, detailed enemies/boss,
     // richer nebula/planet/wreck/station backdrop. Some sprites enlarged (SHEET_MAP ew/eh updated in
@@ -65,9 +70,9 @@
             w: 16, h: 12              /* small, fair hitbox */
         },
         diff: {
-            easy:   { scroll: 90,  minEnemies: 3, ebulletSpd: 180, invulnMs: 1100, tellAdd: 0.2, capFreq: 1.3, bossTTK: 22 },
-            normal: { scroll: 110, minEnemies: 4, ebulletSpd: 220, invulnMs: 900,  tellAdd: 0.0, capFreq: 1.0, bossTTK: 30 },
-            hard:   { scroll: 135, minEnemies: 6, ebulletSpd: 270, invulnMs: 700,  tellAdd: -0.1, capFreq: 0.7, bossTTK: 38 }
+            easy:   { scroll: 90,  minEnemies: 3, ebulletSpd: 180, invulnMs: 1100, tellAdd: 0.2, capFreq: 1.3, bossTTK: 11 },
+            normal: { scroll: 110, minEnemies: 4, ebulletSpd: 220, invulnMs: 900,  tellAdd: 0.0, capFreq: 1.0, bossTTK: 15 },
+            hard:   { scroll: 135, minEnemies: 6, ebulletSpd: 270, invulnMs: 700,  tellAdd: -0.1, capFreq: 0.7, bossTTK: 19 }
         },
         /* Power Meter ladder (Gradius) — highlight shifts per blue capsule, Z = apply.
            dmg/rate/kind drive the weapon; OPTION/SHIELD are non-weapon states. */
@@ -520,7 +525,11 @@
     }
     function bossFinale() {
         unlockAll(true);
-        if (STORE.completed) { revealFullInvitation(); return; }
+        // ALWAYS play the celebration + show the #sw-win dialog after a beat — NEVER open the
+        // invitation immediately. (Previously, once STORE.completed was true from a prior win,
+        // this early-returned into revealFullInvitation() with no delay, so every replay skipped
+        // straight to the invitation — "boss mati langsung buka undangan". The delayed dialog is
+        // the ONLY path now; the guest still chooses buka/tutup.)
         STORE.completed = true; saveStore();
         var sc = scene(); if (sc && sc.celebrate) sc.celebrate('boss');
         setTimeout(function () {
@@ -530,7 +539,7 @@
                 'kini berlayar bersama menembus galaksi. Terima kasih sudah menuntaskan misinya. ' +
                 'Buka undangannya sekarang, atau tutup dialog ini dulu.';
             showOverlay('sw-win');
-        }, 5000);
+        }, 4000);   // jeda 4 detik: biar efek meriah (couple naik + confetti + banner) tampil dulu, baru dialog buka/tutup
     }
 
     /* =================================================================
@@ -651,6 +660,76 @@
         });
     }
 
+    /* Re-paint the one-shot side-menu visuals (right-panel couple canvas, side
+       background photo, invitation-chip badges, version, progress). These are drawn
+       once at init() and are wiped whenever the HOST re-injects the theme HTML
+       (every guest RSVP/wish submit, new wish appended to the list, language switch),
+       because the host does NOT re-run theme JS on an htmlBase change. Idempotent —
+       safe to call any number of times. */
+    function repaintSideMenu() {
+        try { buildIndicators(); } catch (e) {}
+        try { drawCoupleCanvas(); } catch (e) {}
+        try { paintSideBg(); } catch (e) {}
+        try { var v = $('sw-version'); if (v) v.textContent = VERSION; } catch (e) {}
+        try { updateProgress(); } catch (e) {}
+        // restore toggle-button states wiped by the fresh HTML
+        try {
+            var sb = $('sw-star-btn'); if (sb) sb.classList.toggle('is-on', !!(cheat && cheat.on));
+            var ss = $('sw-stagesel-btn'); if (ss) ss.style.display = (cheat && cheat.on) ? '' : 'none';
+        } catch (e) {}
+        try { if (typeof reflectSfxIcon === 'function') reflectSfxIcon(); } catch (e) {}
+    }
+
+    /* HOST RE-INJECTION RECOVERY (see memories retromario-reinject-toolbar /
+       metalslug-reinject-detached-canvas). The host replaces the theme DOM in place
+       on every htmlBase change but never re-runs this JS, so the freshly-injected
+       side-menu comes back BLANK: an empty #sw-couple-canvas, an empty #sw-inv, a
+       photo-less #sw-side-bg. That's the "sprites appear, blink once, then vanish"
+       bug. We observe a stable host ancestor (the parent of .sw-shell, which persists
+       while its children are swapped) and re-paint when our nodes are replaced. */
+    function wireReinjectRecovery() {
+        if (typeof MutationObserver !== 'function') return;
+        var shell = document.querySelector('.sw-shell');
+        // Observe the persistent host container ABOVE .sw-shell (that div stays; only
+        // its innerHTML is replaced). Fall back to body if we can't find it.
+        var host = (shell && shell.parentNode) || document.body;
+        if (!host) return;
+        // Guard against stacking observers across JS re-executions.
+        if (window.__swReinjectObs) { try { window.__swReinjectObs.disconnect(); } catch (e) {} window.__swReinjectObs = null; }
+        var pending = null;
+        var obs = new MutationObserver(function (muts) {
+            // Only react when a .sw-shell (or our side-menu nodes) was added/replaced.
+            var relevant = false;
+            for (var i = 0; i < muts.length; i++) {
+                var added = muts[i].addedNodes;
+                for (var j = 0; j < added.length; j++) {
+                    var n = added[j];
+                    if (n.nodeType !== 1) continue;
+                    if ((n.classList && n.classList.contains('sw-shell'))
+                        || (n.querySelector && n.querySelector('#sw-couple-canvas, #sw-inv, .sw-shell'))) {
+                        relevant = true; break;
+                    }
+                }
+                if (relevant) break;
+            }
+            if (!relevant) return;
+            // A blank re-injected canvas has no drawn pixels; #sw-inv comes back empty.
+            // Debounce (the host may mutate in several batches) then re-paint once.
+            if (pending) return;
+            pending = setTimeout(function () {
+                pending = null;
+                repaintSideMenu();
+            }, 80);
+        });
+        obs.observe(host, { childList: true, subtree: true });
+        window.__swReinjectObs = obs;
+        onCleanup(function () {
+            if (pending) { clearTimeout(pending); pending = null; }
+            try { obs.disconnect(); } catch (e) {}
+            if (window.__swReinjectObs === obs) window.__swReinjectObs = null;
+        });
+    }
+
     /* ===== KICKOFF ===== */
     function init() {
         try { wireUI(); } catch (e) { try { console.error('[sww] wireUI', e); } catch (e2) {} }
@@ -661,6 +740,7 @@
         try { buildTuner(); } catch (e) {}
         try { var v = $('sw-version'); if (v) v.textContent = VERSION; } catch (e) {}
         try { updateProgress(); } catch (e) {}
+        try { wireReinjectRecovery(); } catch (e) {}
         // AUTO-RESUME after a host RE-INJECTION.
         // FIX "START gabisa dibuka lagi": window.__swStarted survives a re-injection, and this
         // auto-resume used to fire UNCONDITIONALLY — even when the fresh HTML re-shows #sw-cover
@@ -1400,34 +1480,71 @@
             });
 
             // ---- BOSS — Wedding Station fortress (faces DOWN; core weak-point at bottom) ----
+            // BOSS — "Stasiun Pelaminan" dreadnought. Redesigned for a stronger, more
+            // menacing silhouette: a symmetric arrowhead battleship with swept wings, twin
+            // heavy cannon pods, a raised command bridge crowned by a gold wedding arch, and a
+            // big glowing reactor CORE at the bottom-center (weak-point, coreDY:40). Faces DOWN
+            // toward the player. Size 220×170 and the core anchor are UNCHANGED (hitbox/wiring).
             tex(scene, 't_boss', 220, 170, function (g) {
-                // outer halo
-                glow(g, 110, 80, 90, 0x6a4aaa, 0.35);
-                // hull — beveled fortress plate with gradient
-                metalBody(g, 30, 8, 160, 116, 12, 0x9a7ada, 0x5a3a8a, 0x2e1858, 0xb99ce0);
-                // armour plating grid
-                g.lineStyle(1.2, 0x2a1a52, 0.6);
-                for (var gx = 50; gx < 190; gx += 30) g.strokeLineShape(new P.Geom.Line(gx, 14, gx, 118));
-                for (var gy = 30; gy < 124; gy += 26) g.strokeLineShape(new P.Geom.Line(34, gy, 186, gy));
-                // shoulder pods
-                metalBody(g, 14, 40, 26, 54, 8, 0x8a6aca, 0x4a2a7a, 0x281550, 0x9a7ada);
-                metalBody(g, 180, 40, 26, 54, 8, 0x8a6aca, 0x4a2a7a, 0x281550, 0x9a7ada);
-                // lower turret deck
-                metalBody(g, 52, 118, 116, 34, 8, 0x8a6aba, 0x6a4a9a, 0x3e2478, 0xa886d8);
-                // muzzles (down toward player) + glow
-                g.fillStyle(0x140828, 1); g.fillRoundedRect(68, 148, 10, 16, 2); g.fillRoundedRect(142, 148, 10, 16, 2);
-                glow(g, 73, 162, 3, 0xff4d4d, 0.8); glow(g, 147, 162, 3, 0xff4d4d, 0.8);
-                // decorative station ring (gold)
-                g.lineStyle(5, 0xffd447, 0.6); g.strokeCircle(110, 78, 74);
-                g.lineStyle(2, 0xfff0a0, 0.35); g.strokeCircle(110, 78, 82);
-                // view ports (lit windows)
-                for (var w2 = 0; w2 < 5; w2++) { glow(g, 60 + w2 * 25, 46, 3, 0x8fe6ff, 0.7); }
-                // WEAK-POINT CORE (glowing reactor, bottom-center)
-                glow(g, 110, 120, 26, 0xffd447, 0.9);
-                g.fillStyle(0xffd447, 1); g.fillGradientStyle(0xfff4c0, 0xfff4c0, 0xd89410, 0xd89410, 1); g.fillCircle(110, 120, 20);
-                g.fillStyle(0xfff8d0, 1); g.fillCircle(110, 120, 11);
-                g.fillStyle(0xffffff, 1); g.fillCircle(105, 115, 4);
-                strokePoly(g, [[30, 8], [190, 8], [190, 124], [30, 124]], 2, 0x0e0824, 0.7);
+                var cx = 110;
+                // outer menace halo
+                glow(g, cx, 84, 96, 0x7a3aaa, 0.35);
+                glow(g, cx, 120, 44, 0xff4d4d, 0.18);   // reddish underglow near the guns
+
+                // ---- swept WINGS (dark, angular — read as a warship, not a box) ----
+                poly(g, [[cx, 26], [8, 96], [30, 118], [64, 96], [58, 40]], 0x2a1a52);
+                poly(g, [[cx, 26], [212, 96], [190, 118], [156, 96], [162, 40]], 0x2a1a52);
+                poly(g, [[cx, 34], [26, 92], [42, 104], [66, 88], [62, 46]], 0x5a3a8a, 0.95);   // wing sheen L
+                poly(g, [[cx, 34], [194, 92], [178, 104], [154, 88], [158, 46]], 0x5a3a8a, 0.95); // wing sheen R
+                // wing-tip cannon glows
+                glow(g, 24, 106, 4, 0xff4d4d, 0.85); glow(g, 196, 106, 4, 0xff4d4d, 0.85);
+
+                // ---- main HULL: pointed arrowhead prow (down) + broad body ----
+                poly(g, [[cx, 18], [176, 60], [166, 132], [54, 132], [44, 60]], 0x1e1040);      // silhouette
+                // gradient plate body
+                g.fillStyle(0x5a3a8a, 1); g.fillGradientStyle(0xb99ce0, 0xb99ce0, 0x2e1858, 0x2e1858, 1);
+                g.beginPath(); g.moveTo(cx, 22); g.lineTo(170, 62); g.lineTo(160, 128); g.lineTo(60, 128); g.lineTo(50, 62); g.closePath(); g.fillPath();
+                // prow spine highlight
+                poly(g, [[cx, 22], [128, 60], [92, 60]], 0xcdb2f0, 0.9);
+                // armour panel seams (follow the hull, not a flat grid)
+                g.lineStyle(1.2, 0x1a0e3a, 0.6);
+                g.strokeLineShape(new P.Geom.Line(72, 60, 78, 126));
+                g.strokeLineShape(new P.Geom.Line(148, 60, 142, 126));
+                g.strokeLineShape(new P.Geom.Line(54, 92, 166, 92));
+                g.strokeLineShape(new P.Geom.Line(cx, 24, cx, 128));
+
+                // ---- shoulder cannon PODS (heavy, angled) ----
+                metalBody(g, 30, 54, 24, 52, 7, 0x8a6aca, 0x4a2a7a, 0x281550, 0x9a7ada);
+                metalBody(g, 166, 54, 24, 52, 7, 0x8a6aca, 0x4a2a7a, 0x281550, 0x9a7ada);
+                g.fillStyle(0x140828, 1); g.fillRoundedRect(38, 100, 8, 18, 2); g.fillRoundedRect(174, 100, 8, 18, 2);  // barrels down
+                glow(g, 42, 116, 3, 0xff4d4d, 0.8); glow(g, 178, 116, 3, 0xff4d4d, 0.8);
+
+                // ---- raised COMMAND BRIDGE with gold wedding arch (the "pelaminan" motif) ----
+                metalBody(g, 82, 30, 56, 40, 8, 0x9a7ada, 0x6a4aaa, 0x3a2470, 0xc0a4ec);
+                // gold arch over the bridge
+                g.lineStyle(4, 0xffd447, 0.85); g.beginPath(); g.arc(cx, 52, 22, Math.PI, 2 * Math.PI); g.strokePath();
+                g.lineStyle(2, 0xfff0a0, 0.5); g.beginPath(); g.arc(cx, 52, 27, Math.PI, 2 * Math.PI); g.strokePath();
+                // lit bridge windows (cyan viewports)
+                for (var w2 = 0; w2 < 4; w2++) { glow(g, 92 + w2 * 12, 46, 2.6, 0x8fe6ff, 0.8); g.fillStyle(0xbdf2ff, 1); g.fillCircle(92 + w2 * 12, 46, 1.6); }
+
+                // ---- lower turret DECK (bridges into the core housing) ----
+                metalBody(g, 60, 116, 100, 26, 8, 0x8a6aba, 0x6a4a9a, 0x3e2478, 0xa886d8);
+                g.fillStyle(0x140828, 1); g.fillRoundedRect(74, 138, 9, 15, 2); g.fillRoundedRect(137, 138, 9, 15, 2);   // deck muzzles
+                glow(g, 78, 152, 3, 0xff4d4d, 0.8); glow(g, 141, 152, 3, 0xff4d4d, 0.8);
+
+                // ---- WEAK-POINT CORE (glowing reactor, bottom-center @ y=120 → coreDY 40) ----
+                // housing collar so the core reads as a deliberate exposed reactor
+                g.lineStyle(3, 0x2a1a52, 0.9); g.strokeCircle(cx, 120, 24);
+                glow(g, cx, 120, 30, 0xffd447, 0.95);
+                g.fillStyle(0xffd447, 1); g.fillGradientStyle(0xfff4c0, 0xfff4c0, 0xd89410, 0xd89410, 1); g.fillCircle(cx, 120, 21);
+                g.fillStyle(0xfff8d0, 1); g.fillCircle(cx, 120, 12);
+                g.fillStyle(0xffffff, 1); g.fillCircle(cx - 5, 115, 4);
+                // energy filaments radiating from the core
+                g.lineStyle(1.5, 0xffe98a, 0.5);
+                for (var ci = 0; ci < 8; ci++) { var a = ci / 8 * 6.283; g.strokeLineShape(new P.Geom.Line(cx + Math.cos(a) * 21, 120 + Math.sin(a) * 21, cx + Math.cos(a) * 27, 120 + Math.sin(a) * 27)); }
+
+                // crisp outline for read against the nebula
+                strokePoly(g, [[cx, 18], [176, 60], [166, 132], [54, 132], [44, 60]], 2, 0x0c0620, 0.75);
             });
             // united couple (boss reward sprite) — softly rendered bride & groom
             tex(scene, 't_couple', 60, 80, function (g) {
@@ -1727,7 +1844,14 @@
         /* ---------- per-sector ---------- */
         GameScene.prototype.showBriefing = function (idx) {
             var self = this;
-            this.time.delayedCall(0, function () { self.scene.pause(); });
+            // Pause is DEFERRED (delayedCall) because pausing synchronously inside create()
+            // — where this is first called — is unreliable while the scene isn't fully
+            // running yet. But that defer opens a race: if the player clicks "MAJU" before
+            // this fires, loadSector() resumes a not-yet-paused scene (no-op), THEN this
+            // pause fires and freezes the game with no dialog visible ("seperti ter-pause").
+            // Keep a handle so loadSector() can cancel a still-pending pause.
+            if (this._pausePending) { try { this._pausePending.remove(false); } catch (e) {} }
+            this._pausePending = this.time.delayedCall(0, function () { self._pausePending = null; self.scene.pause(); });
             $('sw-briefing-title').textContent = 'SEKTOR ' + (idx + 1) + ' — ' + (SECTOR_NAMES[idx] || '');
             var pieces = infosForSector(idx).filter(function (i) { return !unlocked[i.key]; });
             var txt = pieces.length
@@ -1740,7 +1864,12 @@
         GameScene.prototype.loadSector = function (idx) {
             this.sectorIdx = idx; runState.sector = idx;
             this.buildSector(idx);
-            if (this.scene.isPaused()) this.scene.resume();
+            // Cancel a still-pending briefing pause (see showBriefing) so it can't fire AFTER
+            // we resume and silently re-freeze the game. Then resume UNCONDITIONALLY — resume()
+            // on an already-running scene is a harmless no-op, and this closes both race
+            // directions (pause-fires-before vs after the resume check).
+            if (this._pausePending) { try { this._pausePending.remove(false); } catch (e) {} this._pausePending = null; }
+            this.scene.resume();
             try {
                 window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { hideOverlays(); }); });
             } catch (e) { hideOverlays(); }
@@ -1748,16 +1877,18 @@
 
         /* ---------- build sector: spine + patterns + spawn records (Bible APPENDIX F) ---------- */
         GameScene.prototype.buildSector = function (idx) {
+            this._sectorReady = false;   // update() must not run until this sector is fully built
             this.enemies.clear(true, true); this.hazards.clear(true, true);
             this.capsules.clear(true, true); this.bullets.clear(true, true); this.ebullets.clear(true, true);
             if (this.boss) { try { this.boss.destroy(); } catch (e) {} this.boss = null; }
-            if (this.bossHpBg) { try { this.bossHpBg.destroy(); this.bossHpFill.destroy(); this.bossHpSmall.destroy(); } catch (e) {} this.bossHpBg = null; }
+            if (this.bossHpSmall) { try { this.bossHpSmall.destroy(); } catch (e) {} this.bossHpSmall = null; }
 
             this.arenaY = null; this.bossActive = false; this.bossDead = false; this.bossPhase = 1;
             this.tunables = [];   // reset the sprite-tuner registry for this sector
             var isBoss = (idx === C.sectors - 1);
             // VERTICAL: world is TALL. Camera starts at the BOTTOM and rises toward Y=0 (the goal/boss).
-            var len = isBoss ? 4800 : 7200;
+            // Stage length trimmed ~25% (was 7200 / 4800) so runs feel tighter.
+            var len = isBoss ? 3600 : 5400;
             this.worldH = len;
             this.physics.world.setBounds(0, 0, BW, len);
             this.cameras.main.setBounds(0, 0, BW, len);
@@ -1787,11 +1918,18 @@
             this.scrollSpeed = this.diff.scroll;
             this.sectorCleared = false;
 
-            if (isBoss) { this.buildBossArena(len); this.updateHUD(); return; }
+            if (isBoss) {
+                this.exitY = -999999;   // boss sector never "clears" via camera exit — win is boss-death
+                this.buildBossArena(len);
+                this.updateHUD();
+                this._sectorReady = true;
+                return;
+            }
 
             this.populateSector(idx, len);
             this.exitY = 260;   // camera reaching near the top (scrollY <= exitY) = sector clear
             this.updateHUD();
+            this._sectorReady = true;
         };
 
         /* TUNABLE REGISTRY — every sprite the tuner can nudge registers here at creation, tagged
@@ -2007,11 +2145,14 @@
             c.setData('kind', 'piece'); c.setData('key', key); c.setData('hp', 1);
             c.body.setAllowGravity(false); c.body.setVelocity(0, this.diff.scroll * 0.5);
             this.tweens.add({ targets: c, scaleX: 1.15, scaleY: 1.15, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-            // gold pulse + beacon ring + SOS so guests can't miss it (▲ points up toward it)
+            // gold pulse + beacon ring + star marker so guests can't miss it.
+            // NOTE: the marker glyph must NOT be an envelope — the capsule itself is the
+            // envelope (t_amplop); a second 💌 here made players think the marker was the
+            // collectible. A pulsing ★ reads as "location beacon", not "item".
             var ring = this.add.circle(x, y, 18, 0xffd447, 0).setStrokeStyle(2, 0xffd447, 0.9).setDepth(-1);
             this.tweens.add({ targets: ring, scale: 2.2, alpha: 0, duration: 1100, repeat: -1, ease: 'Sine.out', onRepeat: function () { ring.setScale(1); ring.alpha = 1; } });
             c.setData('ring', ring);
-            var sos = this.add.text(x, y + 26, '💌', { fontFamily: 'monospace', fontSize: '14px', color: '#ffd447', fontStyle: 'bold' }).setOrigin(0.5).setDepth(7);
+            var sos = this.add.text(x, y + 26, '★', { fontFamily: 'monospace', fontSize: '14px', color: '#ffd447', fontStyle: 'bold' }).setOrigin(0.5).setDepth(7);
             this.tweens.add({ targets: sos, alpha: 0.4, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
             c.setData('sos', sos);
             this.regTune(c, 'capsule');
@@ -2040,23 +2181,51 @@
         GameScene.prototype.buildBossArena = function (len) {
             var self = this, midX = BW / 2;
             this.bossActive = false; this.bossDead = false; this.bossPhase = 1;
+            // clear any couple/platform left from a previous boss-arena build (hot-reload safety)
+            ['couple', 'couplePad', 'couplePadTop'].forEach(function (k) { if (self[k]) { try { self[k].destroy(); } catch (e) {} self[k] = null; } });
             // VERTICAL: the boss sits near the TOP of the world. The camera rises; walk-in
             // triggers when cam.scrollY <= arenaY (camera's top reaches the arena).
             this.arenaY = Math.round(BH * 0.9);   // small Y near the top of the world
             this.exitY = -999999;
 
-            // approach guards (camera-relative records, born as the camera rises)
-            this.recordEnemy('drone', midX - 60, this.arenaY + 800);
-            this.recordEnemy('korvet', midX + 40, this.arenaY + 600);
-            this.recordEnemy('drone', midX, this.arenaY + 400);
+            // APPROACH WAVE — enemies must appear from the START of the climb, not only in
+            // the last stretch before the boss. The camera starts at scrollY = len - BH and
+            // rises (scrollY decreasing) to arenaY. Records spawn when cam.scrollY <= record.y,
+            // so to fill the whole climb we spread trigger-Ys across [camStart-ish .. arenaY].
+            // (Previously all 3 guards sat at arenaY+400..+800, ~2500px above the start, so the
+            // camera climbed ~20s through empty space before the first one appeared.)
+            var camStart = len - BH;                 // camera's initial scrollY (bottom of world)
+            var top = this.arenaY + 200;             // last guard just before the boss arena
+            var span = Math.max(1, camStart - 240 - top);
+            var guards = [
+                ['drone',  midX - 70],
+                ['korvet', midX + 50],
+                ['drone',  midX + 80],
+                ['korvet', midX - 90],
+                ['drone',  midX],
+                ['korvet', midX + 30],
+                ['drone',  midX - 40]
+            ];
+            for (var gi = 0; gi < guards.length; gi++) {
+                // evenly spaced from near the camera start (spawns almost immediately) down to `top`
+                var ty = Math.round(top + span * (1 - gi / (guards.length - 1)));
+                this.recordEnemy(guards[gi][0], guards[gi][1], ty);
+            }
             this.spawnList.sort(function (a, b) { return b.y - a.y; });   // descending y
 
-            // the united-couple reward, pinned at the very TOP (revealed on win)
-            this.couple = this.add.image(midX, tuneY('couple', 90), 't_couple').setScrollFactor(1).setDepth(-4).setAlpha(0.35);
+            // the united-couple reward — hidden until the boss dies, then it rises onto a
+            // "moon/station deck" platform (see defeatBoss). Base Y sits where the boss was so
+            // it reads as taking the station's place. Start fully hidden (alpha 0, low).
+            var coupleY = tuneY('couple', 200);
+            // platform the couple stands on (so it doesn't look like it floats in the void).
+            // fillAlpha stays 1; we hide via the GameObject alpha (0) and tween that on win.
+            this.couplePad = this.add.ellipse(midX, coupleY + 44, 150, 34, 0x2a2c52, 1).setDepth(-5).setAlpha(0);
+            this.couplePadTop = this.add.ellipse(midX, coupleY + 38, 128, 24, 0x3a3c6a, 1).setDepth(-5).setAlpha(0);
+            this.couple = this.add.image(midX, coupleY, 't_couple').setScrollFactor(1).setDepth(-4).setAlpha(0).setScale(0.6);
             this.regTune(this.couple, 'couple');
 
             // boss: INACTIVE via alpha (NOT setActive(false) — Bible §16/D.4). Sits near top.
-            var bx = midX, by = tuneY('boss', 200);
+            var bx = midX, by = tuneY('boss', 240);
             var b = this.physics.add.sprite(bx, by, 't_boss');
             b.body.setAllowGravity(false); b.body.setImmovable(true);
             b.body.setSize(150, 110); b.body.setOffset(35, 10);
@@ -2068,11 +2237,10 @@
             this.boss = b;
             this.physics.add.overlap(this.ship, b, function () { if (self.bossActive && !self.ship.cheat) self.shipHit(); });
 
-            // HP bar (big, top-center fixed) + small bar above boss (Bible D.3)
-            this.bossHpW = 240;
-            this.bossHpBg = this.add.rectangle(BW / 2, 36, this.bossHpW + 6, 12, 0x000000, 0.7).setScrollFactor(0).setDepth(40).setVisible(false).setStrokeStyle(1, 0xffd447);
-            this.bossHpFill = this.add.rectangle(BW / 2 - this.bossHpW / 2, 36, this.bossHpW, 8, 0xff4d4d).setOrigin(0, 0.5).setScrollFactor(0).setDepth(41).setVisible(false);
-            this.bossHpSmall = this.add.rectangle(bx - 45, by - 70, 90, 5, 0xff4d4d).setOrigin(0, 0.5).setDepth(41).setVisible(false);
+            // HP bar — ONLY the small bar floating above the boss (the big top-center bar near
+            // the SCORE was a confusing duplicate and has been removed). Bible D.3.
+            this.bossHpSmallW = 90;
+            this.bossHpSmall = this.add.rectangle(bx - 45, by - 70, this.bossHpSmallW, 5, 0xff4d4d).setOrigin(0, 0.5).setDepth(41).setVisible(false);
 
             toast('Tembus pertahanan menuju Stasiun Pelaminan ↑');
         };
@@ -2089,9 +2257,19 @@
             this.cameras.main.setBounds(0, 0, BW, BH);
             this.cameras.main.scrollY = 0;
             this.tweens.add({ targets: b, alpha: 1, duration: 400 });
-            this.bossHpBg.setVisible(true); this.bossHpFill.setVisible(true); this.bossHpSmall.setVisible(true);
+            this.bossHpSmall.setVisible(true);
             this.flash(0xffffff, 120); this.addTrauma(0.3); SFX.boss();
             toast('⚠ BOSS: Stasiun Pelaminan — satukan dua bintang!');
+            // OPEN THE CORE. The weak-point is only damageable at bossPhase >= 2, but the only
+            // place that advances the phase is hitBoss() — which itself needs the core already
+            // open. That was an unreachable state (phase stuck at 1 → boss unkillable). There is
+            // no separate shield-destruction mechanic, so after a short "shields up" telegraph
+            // we expose the core so the fight is winnable. Phase 2/3 HP thresholds still fire in
+            // hitBoss() as HP drops further.
+            this.time.delayedCall(1400, function () {
+                if (self.bossDead || !self.boss || !self.boss.active) return;
+                if (self.bossPhase < 2) { self.bossPhase = 2; self.bossPhaseBeat(); }
+            });
         };
         GameScene.prototype.manualBossHits = function () {
             var b = this.boss; if (!b || !b.active || !this.bossActive) return;
@@ -2111,9 +2289,12 @@
             if (dmg == null) dmg = this.ship.weaponDmg();
             var hp = boss.getData('hp') - dmg;
             boss.setData('hp', hp);
-            this.flash(0xffffff, 40); this.addTrauma(0.12); this.burst(boss.x + boss.getData('coreDX'), boss.y + boss.getData('coreDY'), 0xffd447, 6);
+            // BLINK: hit-feedback flashes the BOSS SPRITE ONLY (no full-screen camera flash —
+            // that lit up the whole play area on every bullet). Small trauma nudge + a spark
+            // burst at the core keep the punch without the screen-wide strobe.
+            this.addTrauma(0.08); this.burst(boss.x + boss.getData('coreDX'), boss.y + boss.getData('coreDY'), 0xffd447, 6);
             boss.setTintFill(0xffffff); var bb = boss;
-            this.time.delayedCall(50, function () { if (bb.active) bb.clearTint(); });
+            this.time.delayedCall(70, function () { if (bb.active) bb.clearTint(); });
             this.updateBossHp();
             var max = boss.getData('maxhp');
             if (this.bossPhase === 1 && hp <= max * 0.66) { this.bossPhase = 2; this.bossPhaseBeat(); }
@@ -2125,25 +2306,84 @@
             toast(this.bossPhase === 2 ? 'Inti terbuka! Tembak intinya!' : 'Stasiun mengamuk!');
         };
         GameScene.prototype.updateBossHp = function () {
-            if (!this.bossHpFill || !this.boss || !this.boss.active) return;
+            if (!this.bossHpSmall || !this.boss || !this.boss.active) return;
             var hp = Math.max(0, this.boss.getData('hp')), max = this.boss.getData('maxhp');
-            this.bossHpFill.width = this.bossHpW * (hp / max);
             this.bossHpSmall.setPosition(this.boss.x - 45, this.boss.y - 80);
-            this.bossHpSmall.width = 90 * (hp / max);
+            this.bossHpSmall.width = this.bossHpSmallW * (hp / max);
         };
         GameScene.prototype.defeatBoss = function (boss) {
             var self = this;
             this.bossDead = true; this.bossActive = false;
-            this.bossHpBg.setVisible(false); this.bossHpFill.setVisible(false); this.bossHpSmall.setVisible(false);
+            this.bossHpSmall.setVisible(false);
             this.burst(boss.x, boss.y, 0xffd447, 30); this.addTrauma(0.5); this.flash(0xffffff, 150); this.freeze(120);
             var bx = boss.x, by = boss.y;
             for (var i = 0; i < 6; i++) (function (i) {
                 self.time.delayedCall(120 + i * 130, function () { self.burst(bx + rnd(-60, 60), by + rnd(-50, 50), 0xff8a3d, 16); self.flash(0xffaa44, 60); });
             })(i);
-            if (this.couple) this.tweens.add({ targets: this.couple, alpha: 1, scale: 1.2, duration: 800 });
             try { boss.destroy(); } catch (e) {}
             SFX.win();
+
+            // --- REWARD REVEAL: the united couple rises onto its platform (not floating) ---
+            // Fade in the moon/station deck first, then the couple rises from below the pad,
+            // grows to full size, and settles into a gentle idle bob. Heart confetti + a soft
+            // beacon ring frame the moment so it reads as a celebration, not a stray sprite.
+            if (this.couplePad) this.tweens.add({ targets: [this.couplePad, this.couplePadTop], alpha: 1, duration: 700, delay: 500 });
+            var cp = this.couple;
+            if (cp) {
+                var restY = cp.y;
+                cp.setPosition(cp.x, restY + 40).setAlpha(0).setScale(0.6);
+                this.tweens.add({
+                    targets: cp, alpha: 1, scale: 1, y: restY, duration: 900, delay: 500, ease: 'Back.out',
+                    onComplete: function () {
+                        // gentle idle bob so the couple feels alive but grounded on the platform
+                        self.tweens.add({ targets: cp, y: restY - 8, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+                    }
+                });
+                // heart confetti bursts around the couple
+                for (var h = 0; h < 5; h++) (function (h) {
+                    self.time.delayedCall(700 + h * 260, function () {
+                        if (self.pHeart) self.pHeart.explode(8, cp.x + rnd(-50, 50), restY + rnd(-40, 30));
+                    });
+                })(h);
+                // glowing beacon ring pulsing out from the couple
+                var ring = this.add.circle(cp.x, restY, 30, 0xffd447, 0).setStrokeStyle(3, 0xffd447, 0.8).setDepth(-3);
+                this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 1400, delay: 700, repeat: 2, ease: 'Sine.out', onRepeat: function () { ring.setScale(1); ring.alpha = 0.8; } });
+            }
+
+            // --- IN-CANVAS "MISSION COMPLETE" banner (same arcade style as STAGE CLEAR) ---
+            this.showWinBanner();
+
+            // HTML win dialog (#sw-win, buka undangan) still follows — bossFinale() shows it after
+            // its own celebration beat, so the guest gets the instant in-canvas banner first, then
+            // the actionable dialog.
             bossFinale();
+        };
+
+        /* in-canvas "MISI SELESAI" banner — the victory counterpart of showStageClearBanner().
+           Pinned to the camera, pops in, and fades out on its own (the #sw-win dialog carries the
+           actual "buka undangan" action afterwards). */
+        GameScene.prototype.showWinBanner = function () {
+            if (this.winBanner) { try { this.winBanner.destroy(true); } catch (e) {} }
+            var g = this.add.container(BW / 2, BH * 0.34).setScrollFactor(0).setDepth(60);
+            var title = this.add.text(0, 0, 'MISI SELESAI', {
+                fontFamily: 'monospace', fontSize: '38px', color: '#ffd447', fontStyle: 'bold',
+                stroke: '#0a0e1a', strokeThickness: 6
+            }).setOrigin(0.5);
+            var sub = this.add.text(0, 42, '★ DUA BINTANG BERSATU ★', {
+                fontFamily: 'monospace', fontSize: '15px', color: '#ff8ab0', fontStyle: 'bold'
+            }).setOrigin(0.5);
+            var sc = this.add.text(0, 68, 'Undangan siap dibuka!', {
+                fontFamily: 'monospace', fontSize: '13px', color: '#4fd6ff'
+            }).setOrigin(0.5);
+            g.add([title, sub, sc]);
+            g.setScale(0.6).setAlpha(0);
+            this.tweens.add({ targets: g, scale: 1, alpha: 1, duration: 360, ease: 'Back.out' });
+            // fade the banner out after a beat so the couple + dialog take over
+            this.tweens.add({
+                targets: g, alpha: 0, duration: 600, delay: 3600,
+                onComplete: function () { try { g.destroy(true); } catch (e) {} }
+            });
+            this.winBanner = g;
         };
 
         /* ================= COMBAT ================= */
@@ -2313,6 +2553,14 @@
         /* ================= UPDATE ================= */
         GameScene.prototype.update = function (time, delta) {
             if (time < this.freezeUntil) return;
+            // GUARD: on a fresh boot, create() shows the briefing and pauses the scene
+            // via a delayedCall(0), so one update() tick can slip through BEFORE
+            // buildSector() has initialized the sector. At that point cam.scrollY is
+            // still 0 and this.exitY is undefined, which makes the safety stage-clear
+            // check below misfire (undefined !== -999999 && 0 <= 4) → instant "STAGE
+            // CLEAR" with an empty spawnList. buildSector() always sets _sectorReady
+            // last; bail out until then so no scroll/spawn/clear logic runs unbuilt.
+            if (!this._sectorReady) return;
             pollEdges();
             var dt = delta / 1000, cam = this.cameras.main;
 

@@ -1,0 +1,924 @@
+<!-- ======================================================================
+     KICAU MANIA WEDDING — Flappy-Bird wedding-invitation theme (Phaser 3.80.1)
+     ----------------------------------------------------------------------
+     Tap-to-flap: the guest flaps a kicau bird through gaps in bird-CAGES.
+     Gold CAGE 💌 pieces float in special gaps — collecting one flashes the
+     "KICAU KICAU KICAU MANIA" graffiti + the couple's nicknames, and unlocks
+     one invitation section. Pieces live in Stage 1–3; all collected → open.
+     Built from KICAU_MANIA_WEDDING_BIBLE.md. Cloned host-contract from
+     spacewar-wedding. Prefix km- ; global cleanup window.__gwCleanup.
+
+     Binding contract (host resolves BEFORE this JS runs — templateParser.ts):
+       {{var}} → plain text/url · {{#if flag}} wraps <section> · {{#each}}.
+     Each JS-read element carries BOTH data-var="key" AND {{key}} → val().
+     Host-contract IDs kept VERBATIM: btn-show-qr, btn-toggle-music, bg-music,
+       play-icon, pause-icon, btn-submit-ucapan, wish-name, wish-message,
+       btn-submit-kehadiran, rsvp-status, rsvp-guests, rsvp-code.
+     ====================================================================== -->
+
+<div class="km-shell">
+
+  <!-- ===== DESKTOP RIGHT SIDE: PURE invitation panel (canvas couple + info) —
+       hidden on mobile. NO game buttons here (PRESS START / difficulty / controls
+       live in the cover overlay INSIDE the game frame). Bible §Z.7. ===== -->
+  <aside class="km-side km-cover-side">
+    <div class="km-side-bg" id="km-side-bg"></div>
+    <div class="km-side-veil"></div>
+    <div class="km-side-deco" aria-hidden="true">
+      <div class="km-deco-sun"></div>
+      <div class="km-deco-bird db1">🕊</div>
+      <div class="km-deco-bird db2">🐦</div>
+      <div class="km-deco-note dn1">♪</div>
+      <div class="km-deco-note dn2">♫</div>
+    </div>
+    <div class="km-side-glow"></div>
+    <div class="km-side-panel">
+
+      <header class="km-side-head">
+        <div class="km-side-badge"><button class="km-tuner-btn" id="km-tuner-btn" type="button" title="Atur posisi sprite" aria-label="Atur posisi sprite">✦</button> UNDANGAN PERNIKAHAN ✦</div>
+        <div class="km-side-logo">KICAU&nbsp;MANIA<br><span class="km-side-logo-sub">WEDDING</span></div>
+        <div class="km-side-op">MISI: TERBANG MENUJU PELAMINAN</div>
+      </header>
+
+      <div class="km-side-grid">
+        <!-- LEFT column: hero canvas + couple identity -->
+        <div class="km-side-hero">
+          <div class="km-couple-stage">
+            <canvas id="km-couple-canvas" width="760" height="380"></canvas>
+          </div>
+
+          <div class="km-side-mission">
+            <div class="km-side-mission-title">🐦 MISI</div>
+            <p class="km-side-mission-text">Ketuk layar untuk mengepak — terbangkan burung kicau menembus celah SANGKAR,
+              kumpulkan kepingan undangan 💌 di Stage 1–3 untuk membuka undangan satu per satu.</p>
+          </div>
+
+          <div class="km-side-hint">Mainkan game di kiri &amp; kumpulkan kepingan 💌 untuk membuka undangan.</div>
+
+          <div class="km-side-ctrl">
+            <div class="km-side-ctrl-title">⌨ KONTROL</div>
+            <div class="km-side-keys">
+              <span class="km-key">TAP / KLIK</span><span class="km-key-desc">Kepak (flap) — terbang naik</span>
+              <span class="km-key">SPACE / ↑</span><span class="km-key-desc">Kepak (keyboard)</span>
+              <span class="km-key">lepas</span><span class="km-key-desc">Burung meluncur turun (gravitasi)</span>
+              <span class="km-key">★</span><span class="km-key-desc">Cheat: kebal + semua kepingan</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT column: wedding info + open button (PURE invitation, no game buttons) -->
+        <div class="km-side-info">
+          <div class="km-side-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="km-side-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </div>
+          <div class="km-side-date" data-var="wedding_date">{{wedding_date}}</div>
+          <div class="km-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+
+          <div class="km-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
+          <div class="km-side-event">
+            <div class="km-side-event-tag">AKAD NIKAH</div>
+            <div class="km-side-event-line">{{tanggal_akad}} · {{jam_akad}}</div>
+            <div class="km-side-event-place">{{nama_lokasi_akad}}</div>
+            <div class="km-side-event-addr">{{keterangan_lokasi_akad}}</div>
+            {{#if akad_map}}<a class="km-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+          </div>
+          {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+          <div class="km-side-event">
+            <div class="km-side-event-tag">RESEPSI</div>
+            <div class="km-side-event-line">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
+            <div class="km-side-event-place">{{nama_lokasi_resepsi}}</div>
+            <div class="km-side-event-addr">{{keterangan_lokasi_resepsi}}</div>
+            {{#if resepsi_map}}<a class="km-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+          </div>
+          {{/if}}
+
+          <button class="km-side-open" id="km-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== SPRITE TUNER (PC only) — opened by the hidden ✦ next to the side badge. ===== -->
+  <div class="km-tuner" id="km-tuner" aria-hidden="true">
+    <div class="km-tuner-head">
+      <span class="km-tuner-title">ATUR POSISI SPRITE</span>
+      <button class="km-tuner-x" id="km-tuner-close" type="button" aria-label="Tutup">✕</button>
+    </div>
+    <div class="km-tuner-hint">Geser slider untuk naik/turunkan sprite (− naik, + turun). Langsung ter-apply.</div>
+    <div class="km-tuner-list" id="km-tuner-list"></div>
+    <div class="km-tuner-export-row">
+      <button class="km-tuner-export" id="km-tuner-export" type="button" title="Unduh sprite sheet PNG (kotak ber-border ungu) untuk diganti art-nya lalu di-upload ke asset tema (slot 1)">⬇ Export Sprite Sheet (PNG)</button>
+    </div>
+    <div class="km-tuner-foot">
+      <button class="km-tuner-reset" id="km-tuner-reset" type="button">Reset semua</button>
+      <button class="km-tuner-copy" id="km-tuner-copy" type="button">Salin nilai</button>
+    </div>
+  </div>
+
+  <!-- ===== GAME FRAME (desktop: LEFT pinned; mobile: only this is shown) ===== -->
+  <div class="km-frame" id="km-frame">
+
+    <div class="km-stage" id="gw-stage">
+      <!-- Phaser injects its <canvas> here -->
+
+      <!-- ===== HUD (top — viewed, not tapped) ===== -->
+      <div class="km-hud" id="km-hud">
+        <div class="km-hud-col">
+          <span class="km-hud-label">SCORE</span>
+          <span class="km-hud-val" id="km-score">000000</span>
+        </div>
+        <div class="km-hud-col km-hud-mid">
+          <span class="km-hud-label">GACOR</span>
+          <div class="km-gacor" id="km-gacor" title="Gacor Meter — penuh = NGEPLONG (kebal + skor ×2)"><span class="km-gacor-fill" id="km-gacor-fill"></span></div>
+        </div>
+        <div class="km-hud-col km-hud-right">
+          <span class="km-hud-label">STAGE</span>
+          <span class="km-hud-area-row">
+            <span class="km-hud-val" id="km-area">1</span>
+            <span class="km-hud-diff" id="km-diff-badge" data-lvl="normal">NORMAL</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- power-up chip -->
+      <div class="km-power" id="km-power">
+        <span class="km-power-ico" id="km-power-ico">🐦</span>
+        <span id="km-power-name">SIAP</span>
+        <span class="km-power-extra" id="km-power-extra"></span>
+      </div>
+
+      <!-- pieces collected -->
+      <div class="km-progress" id="km-progress"><span id="km-progress-n">0</span>/<span id="km-progress-t">0</span> 💌</div>
+
+      <!-- left floating buttons -->
+      <div class="km-leftbtns" id="km-leftbtns">
+        <button class="km-iconbtn km-star-btn" id="km-star-btn" type="button" title="Mode kebal (cheat)" aria-label="Cheat">★</button>
+        <button class="km-iconbtn km-stagesel-btn" id="km-stagesel-btn" type="button" title="Pilih stage" aria-label="Pilih stage" style="display:none">▦</button>
+        <button class="km-iconbtn km-view-btn is-locked" id="km-view-btn" type="button" title="Buka undangan" aria-label="Buka undangan">💌</button>
+        <button class="km-iconbtn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran">▤</button>
+        <!-- SFX TOGGLE (game sound only — Web Audio internal; NOT tenant backsound) -->
+        <button class="km-iconbtn km-sfx-btn" id="km-sfx-btn" type="button" title="Suara efek game" aria-label="Nyalakan / matikan suara efek game">
+          <span id="km-sfx-on" class="km-music-ico is-on">🔊<span class="km-music-tag">SFX</span></span>
+          <span id="km-sfx-off" class="km-music-ico is-off" style="display:none">🔇<span class="km-music-tag">OFF</span></span>
+        </button>
+        <!-- HIDDEN host music button (verbatim so setMusic() can auto-play the backsound) -->
+        <button class="km-iconbtn km-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik" style="display:none">
+          <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
+        </button>
+        <button class="km-iconbtn km-reset-btn" id="km-reset-btn" type="button" title="Reset progres" aria-label="Reset">⟲</button>
+      </div>
+
+      <!-- piece indicators (N dynamic icons) -->
+      <div class="km-inv" id="km-inv"></div>
+
+      <!-- toast -->
+      <div class="km-toast" id="km-toast"></div>
+
+      <!-- version badge -->
+      <div class="km-version" id="km-version">v0.0.0</div>
+
+      <!-- ===== touch control (bottom) — one big FLAP button ===== -->
+      <div class="km-touch" id="km-touch">
+        <button class="km-flapbtn" id="km-flap" type="button" aria-label="Kepak / Flap">
+          <span class="km-flapbtn-ico">🐦</span>
+          <span class="km-flapbtn-txt">TAP</span>
+        </button>
+      </div>
+
+      <!-- ===== OVERLAYS ===== -->
+      <!-- cover -->
+      <div class="km-overlay show" id="km-cover">
+        <div class="km-overlay-card km-cover-card">
+          <div class="km-cover-badge">✦ KICAU MANIA WEDDING ✦</div>
+          <div class="km-cover-logo">KICAU MANIA</div>
+          <div class="km-cover-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="km-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </div>
+          <div class="km-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+          <div class="km-cover-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+          <div class="km-diff" id="km-diff">
+            <span class="km-diff-label">PILIH KESULITAN</span>
+            <div class="km-diff-opts">
+              <button class="km-diff-opt" data-diff="easy" type="button">EASY</button>
+              <button class="km-diff-opt is-sel" data-diff="normal" type="button">NORMAL</button>
+              <button class="km-diff-opt" data-diff="hard" type="button">HARD</button>
+            </div>
+          </div>
+          <button class="km-bigbtn" id="km-start" type="button">▶ PRESS START</button>
+          <button class="km-textbtn" id="km-cover-view" type="button">Lewati — buka undangan langsung 💌</button>
+          <div class="km-cover-hint">Ketuk layar untuk mengepak · kumpulkan 💌 di Stage 1–3</div>
+        </div>
+      </div>
+
+      <!-- boot/loading curtain -->
+      <div class="km-overlay" id="km-loading">
+        <div class="km-loading-inner">
+          <div class="km-loading-logo">KICAU MANIA WEDDING</div>
+          <div class="km-loading-bar"><span class="km-loading-fill"></span></div>
+          <div class="km-loading-text">MEMUAT<span class="km-loading-dots"></span></div>
+        </div>
+      </div>
+
+      <!-- stage briefing -->
+      <div class="km-overlay" id="km-briefing">
+        <div class="km-overlay-card km-briefing-card">
+          <div class="km-briefing-badge">✦ CARA BERMAIN ✦</div>
+          <div class="km-overlay-pixtitle" id="km-briefing-title">STAGE 1</div>
+          <div class="km-overlay-text" id="km-briefing-text"></div>
+
+          <!-- how-to-play cards (shown on first stage / tutorial) -->
+          <div class="km-howto" id="km-howto">
+            <div class="km-howto-step">
+              <div class="km-howto-ico">👆</div>
+              <div class="km-howto-body">
+                <div class="km-howto-title">Ketuk untuk mengepak</div>
+                <div class="km-howto-desc">Ketuk layar (atau <b>SPASI</b>) supaya burung <b>terbang naik</b>. Lepas → meluncur turun karena gravitasi.</div>
+              </div>
+            </div>
+            <div class="km-howto-step">
+              <div class="km-howto-ico">🕊️</div>
+              <div class="km-howto-body">
+                <div class="km-howto-title">Lewati celah sangkar</div>
+                <div class="km-howto-desc">Terbang menembus <b>celah jeruji sangkar</b> emas. Jangan menabrak sangkar, kucing, lebah, atau ranting.</div>
+              </div>
+            </div>
+            <div class="km-howto-step">
+              <div class="km-howto-ico">💌</div>
+              <div class="km-howto-body">
+                <div class="km-howto-title">Kumpulkan kepingan</div>
+                <div class="km-howto-desc">Ambil <b>sangkar emas 💌</b> yang melayang — tiap kepingan membuka satu bagian undangan (Stage 1–3).</div>
+              </div>
+            </div>
+            <div class="km-howto-step">
+              <div class="km-howto-ico">🔥</div>
+              <div class="km-howto-body">
+                <div class="km-howto-title">Power-up &amp; Gacor</div>
+                <div class="km-howto-desc">Ambil <b>Voer</b> (perisai), <b>Jangkrik</b> (melambat), <b>Masteran</b> (auto-terbang). Lewati sangkar isi <b>Gacor Meter</b> → penuh = <b>NGEPLONG</b> (kebal + skor ×2).</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="km-bigbtn" id="km-briefing-go" type="button">▶ MULAI</button>
+        </div>
+      </div>
+
+      <!-- stage clear -->
+      <div class="km-overlay" id="km-clear">
+        <div class="km-overlay-card">
+          <div class="km-overlay-pixtitle">STAGE CLEAR!</div>
+          <div class="km-overlay-text" id="km-clear-text"></div>
+          <button class="km-bigbtn" id="km-clear-next" type="button">▶ LANJUT</button>
+        </div>
+      </div>
+
+      <!-- all pieces collected (celebration trigger #1) -->
+      <div class="km-overlay" id="km-allpieces">
+        <div class="km-overlay-card">
+          <div class="km-overlay-pixtitle" style="color:#ff3d8b">SEMUA KEPINGAN TERKUMPUL!</div>
+          <div class="km-overlay-text" id="km-allpieces-text"></div>
+          <button class="km-bigbtn" id="km-allpieces-view" type="button">💌 BUKA UNDANGAN</button>
+          <button class="km-textbtn" id="km-allpieces-keep" type="button">Lanjut bermain</button>
+        </div>
+      </div>
+
+      <!-- finale / juara (celebration trigger #2) -->
+      <div class="km-overlay" id="km-win">
+        <div class="km-overlay-card">
+          <div class="km-overlay-pixtitle" style="color:#ffd447">JUARA KICAU MANIA!</div>
+          <div class="km-overlay-text" id="km-win-text"></div>
+          <button class="km-bigbtn" id="km-win-view" type="button">💌 BUKA UNDANGAN</button>
+          <button class="km-textbtn" id="km-win-close" type="button">Tutup</button>
+        </div>
+      </div>
+
+      <!-- stage select (cheat) -->
+      <div class="km-overlay" id="km-stagesel">
+        <div class="km-overlay-card">
+          <div class="km-overlay-pixtitle">PILIH STAGE &amp; KESULITAN</div>
+          <div class="km-diff" id="km-stagesel-diff">
+            <span class="km-diff-label">TINGKAT KESULITAN</span>
+            <div class="km-diff-opts">
+              <button class="km-diff-opt" data-diff="easy" type="button">EASY</button>
+              <button class="km-diff-opt is-sel" data-diff="normal" type="button">NORMAL</button>
+              <button class="km-diff-opt" data-diff="hard" type="button">HARD</button>
+            </div>
+          </div>
+          <div class="km-stagesel-label">PILIH STAGE</div>
+          <div class="km-stagesel-grid" id="km-stagesel-grid"></div>
+          <button class="km-bigbtn" id="km-stagesel-ok" type="button">▶ MULAI</button>
+          <button class="km-textbtn" id="km-stagesel-close" type="button">Batal</button>
+        </div>
+      </div>
+
+      <!-- reset confirm (own overlay, not native confirm) -->
+      <div class="km-overlay" id="km-resetconfirm">
+        <div class="km-overlay-card">
+          <div class="km-overlay-pixtitle" style="color:#ff6a6a">RESET PROGRES?</div>
+          <div class="km-overlay-text">Semua kepingan &amp; progres akan dihapus dari perangkat ini.</div>
+          <button class="km-bigbtn km-danger" id="km-reset-yes" type="button">YA, HAPUS</button>
+          <button class="km-textbtn" id="km-reset-no" type="button">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== INVITATION SCROLL (shown inside frame when opened) ===== -->
+    <div class="km-reveal" id="km-reveal">
+      <button class="km-reveal-close" id="km-reveal-close" type="button" aria-label="Kembali ke game" title="Kembali ke game"><span class="km-reveal-close-ico">🎮</span><span class="km-reveal-close-txt">KEMBALI</span></button>
+      <div class="km-reveal-scroll" id="km-reveal-scroll"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+     SPRITE SHEET ASSET (PNG) — hidden. Theme runs fully PROCEDURAL by default.
+     ONE unified adjuster sheet covers EVERY gameplay sprite → single slot.
+     Export via Sprite Tuner "Export Sprite Sheet" → replace art inside purple
+     borders → upload to ASSET SLOT 1 ({{asset_image_1}}) → engine slices at
+     identical coords + keys-out purple. Not uploaded → stays "{{...}}" →
+     procedural.
+     ====================================================================== -->
+  <div id="km-assets" aria-hidden="true" style="display:none">
+    <img data-asset="sprite_sheet" src="{{asset_image_1}}" alt=""><!-- unified adjuster sheet -->
+  </div>
+
+  <!-- ======================================================================
+     SINGLE BINDING SOURCE — #inv-source. All sections written ONCE with
+     {{vars}}. Modals/reveal CLONE from here. {{#if flag}} WRAPS the <section>.
+     ====================================================================== -->
+  <div class="km-invitation" id="inv-source" aria-hidden="true">
+    <!-- ============================================================
+         KICAU-MANIA × NETFLIX "ORIGINAL FILM" invitation sections.
+         Ported from src/sample-theme/netflix, recolored to the kicau
+         palette. Prefix: kmn- (kicau-mania-netflix). The two bg divs
+         keep km-hero-bg / km-closing-bg VERBATIM (host hydrateImages
+         reads .km-hero-bg[data-src] & .km-closing-bg[data-src]).
+         11 data-info sections in fixed order:
+         hero, couple, rsvp, schedule, streaming, story, gallery,
+         happiness, wishes, gift, closing. No JS reveal/parallax/
+         carousel — everything visible statically.
+         ============================================================ -->
+
+    <!-- 1 · HERO (always) — Netflix billboard "KM ORIGINAL FILM" -->
+    <section class="kmn-sec kmn-hero" data-info="hero">
+      <div class="km-hero-bg kmn-hero-bg" data-var="photo_hero_cover" data-src="{{photo_hero_cover}}"></div>
+      <div class="kmn-hero-scrim"></div>
+      <div class="kmn-hero-billboard">
+        <div class="kmn-hero-badge"><span class="kmn-n">KM</span> ORIGINAL FILM</div>
+        <h1 class="kmn-hero-title">
+          <span data-var="groom_nickname">{{groom_nickname}}</span>
+          <span class="kmn-amp-inline">&amp;</span>
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </h1>
+        <div class="kmn-hero-meta">
+          <span class="kmn-match">99% Match</span>
+          <span class="kmn-year" data-var="wedding_date">{{wedding_date}}</span>
+          <span class="kmn-rating">U/A</span>
+          <span class="kmn-runtime">2h 30m</span>
+          <span class="kmn-hd">Ultra HD</span>
+        </div>
+        <p class="kmn-hero-synopsis" data-var="quote">{{quote}}</p>
+        <div class="kmn-hero-by" data-var="quote_by">{{quote_by}}</div>
+        <div class="kmn-hero-actions">
+          <span class="kmn-hero-btn kmn-hero-btn-play">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+            Play
+          </span>
+          <span class="kmn-hero-btn kmn-hero-btn-info">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            More Info
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · COUPLE (always) — "THE MAIN CAST / Cast & Crew" posters -->
+    <section class="kmn-sec kmn-sec-couples" data-info="couple">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">THE MAIN CAST</div>
+        <div class="kmn-sec-name">Pemeran Utama</div>
+        <p class="kmn-quotes">Dengan segala puji bagi Tuhan yang telah menciptakan mahluk-Nya berpasang-pasangan,
+          izinkanlah kami merangkai cinta dalam ikatan pernikahan.</p>
+      </div>
+
+      <div class="kmn-couple-content">
+        <!-- GROOM poster -->
+        <div class="kmn-couple-poster">
+          <div class="kmn-couple-poster-bg" style="background-image:url('{{photo_groom_photo}}')"></div>
+          <div class="kmn-couple-poster-scrim"></div>
+          <span class="kmn-cast-tag">Lead Actor</span>
+          <div class="kmn-couple-poster-info">
+            <h3 class="kmn-couple-name" data-var="groom_name">{{groom_name}}</h3>
+            {{#if flag_tampilkan_nama_orang_tua}}
+            <p class="kmn-couple-parents">Putra dari<br><span>{{nama_bapak_laki_laki}}</span> &amp; <span>{{nama_ibu_laki_laki}}</span></p>
+            {{/if}}
+            {{#if flag_tampilkan_sosial_media_mempelai}}
+            <a class="kmn-couple-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+              @{{ig_laki_laki}}
+            </a>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="kmn-couple-amp">&amp;</div>
+
+        <!-- BRIDE poster -->
+        <div class="kmn-couple-poster">
+          <div class="kmn-couple-poster-bg" style="background-image:url('{{photo_bride_photo}}')"></div>
+          <div class="kmn-couple-poster-scrim"></div>
+          <span class="kmn-cast-tag">Lead Actress</span>
+          <div class="kmn-couple-poster-info">
+            <h3 class="kmn-couple-name" data-var="bride_name">{{bride_name}}</h3>
+            {{#if flag_tampilkan_nama_orang_tua}}
+            <p class="kmn-couple-parents">Putri dari<br><span>{{nama_bapak_perempuan}}</span> &amp; <span>{{nama_ibu_perempuan}}</span></p>
+            {{/if}}
+            {{#if flag_tampilkan_sosial_media_mempelai}}
+            <a class="kmn-couple-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+              @{{ig_perempuan}}
+            </a>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · COUNTDOWN + RSVP (always) — "COMING SOON / ADD TO MY LIST" -->
+    <section class="kmn-sec kmn-sec-rsvp" data-info="rsvp">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">COMING SOON</div>
+        <div class="kmn-sec-name">Tayang Dalam</div>
+      </div>
+
+      <div class="kmn-countdown">
+        <div class="kmn-cd-item">
+          <div class="kmn-cd-box"><span id="tm-countdown-days">{{countdown_hari}}</span></div>
+          <div class="kmn-cd-label">Hari</div>
+        </div>
+        <span class="kmn-cd-sep">:</span>
+        <div class="kmn-cd-item">
+          <div class="kmn-cd-box"><span id="tm-countdown-hours">{{countdown_jam}}</span></div>
+          <div class="kmn-cd-label">Jam</div>
+        </div>
+        <span class="kmn-cd-sep">:</span>
+        <div class="kmn-cd-item">
+          <div class="kmn-cd-box"><span id="tm-countdown-minutes">{{countdown_menit}}</span></div>
+          <div class="kmn-cd-label">Menit</div>
+        </div>
+        <span class="kmn-cd-sep">:</span>
+        <div class="kmn-cd-item">
+          <div class="kmn-cd-box"><span id="tm-countdown-seconds">{{countdown_detik}}</span></div>
+          <div class="kmn-cd-label">Detik</div>
+        </div>
+      </div>
+
+      <!-- Static date card (replaces JS calendar) -->
+      <div class="kmn-datecard">
+        <div class="kmn-datecard-label">Tanggal Tayang Perdana</div>
+        <div class="kmn-datecard-value" data-var="wedding_date">{{wedding_date}}</div>
+        <div class="kmn-datecard-heart">♥</div>
+      </div>
+
+      <div class="kmn-sec-head kmn-sec-head-sub">
+        <div class="kmn-eyebrow">ADD TO MY LIST</div>
+        <div class="kmn-sec-name">Konfirmasi Kehadiran</div>
+        <div class="kmn-ornament"><span></span><span>♥</span><span></span></div>
+      </div>
+
+      <div class="kmn-form-wrap">
+        <div class="kmn-glass-form">
+          <div class="kmn-field">
+            <select class="kmn-input" id="rsvp-status">
+              <option value="Hadir">Hadir</option>
+              <option value="Tidak Hadir">Tidak hadir</option>
+              <option value="Ragu">Masih ragu</option>
+            </select>
+          </div>
+          <div class="kmn-field">
+            <input class="kmn-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+          </div>
+          <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
+          <button class="kmn-btn kmn-btn-primary" id="btn-submit-kehadiran" type="button">▶ Konfirmasi</button>
+          <div class="kmn-alert" id="alert-submit-kehadiran"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · SCHEDULE (always) — "SEASON 1 / Episodes" venue cards -->
+    <section class="kmn-sec kmn-sec-schedule" data-info="schedule">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">SEASON 1 &middot; THE WEDDING</div>
+        <div class="kmn-sec-name">Episodes</div>
+        <div class="kmn-ornament"><span></span><span>♥</span><span></span></div>
+      </div>
+
+      <div class="kmn-schedule-content">
+        <!-- EPISODE 1 / AKAD -->
+        <div class="kmn-venue-card">
+          <div class="kmn-venue-photo" style="background-image:url('{{photo_hero_cover}}')">
+            <span class="kmn-episode-num">E1</span>
+            <span class="kmn-venue-play"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
+          </div>
+          <div class="kmn-venue-body">
+            <span class="kmn-venue-eyebrow">Episode 1 &middot; The Ceremony</span>
+            <h3 class="kmn-schedule-title">Akad Nikah</h3>
+            <div class="kmn-venue-datetime">
+              <div class="kmn-venue-dt-block">
+                <span class="kmn-venue-dt-value">{{tanggal_akad}}</span>
+                <span class="kmn-venue-dt-label">Tanggal</span>
+              </div>
+              <span class="kmn-venue-dt-sep"></span>
+              <div class="kmn-venue-dt-block">
+                <span class="kmn-venue-dt-value">{{jam_akad}}</span>
+                <span class="kmn-venue-dt-label">Waktu</span>
+              </div>
+            </div>
+            <div class="kmn-venue-place">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <div>
+                <div class="kmn-schedule-venue">{{nama_lokasi_akad}}</div>
+                <div class="kmn-schedule-address">{{keterangan_lokasi_akad}}</div>
+              </div>
+            </div>
+            {{#if akad_map}}<a href="{{akad_map}}" target="_blank" rel="noopener" class="kmn-btn kmn-btn-schedule">▶ Buka Google Maps</a>{{/if}}
+          </div>
+        </div>
+
+        <!-- EPISODE 2 / RESEPSI -->
+        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+        <div class="kmn-venue-card">
+          <div class="kmn-venue-photo" style="background-image:url('{{photo_hero_cover}}')">
+            <span class="kmn-episode-num">E2</span>
+            <span class="kmn-venue-play"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
+          </div>
+          <div class="kmn-venue-body">
+            <span class="kmn-venue-eyebrow">Episode 2 &middot; The Reception</span>
+            <h3 class="kmn-schedule-title">Resepsi</h3>
+            <div class="kmn-venue-datetime">
+              <div class="kmn-venue-dt-block">
+                <span class="kmn-venue-dt-value">{{tanggal_resepsi}}</span>
+                <span class="kmn-venue-dt-label">Tanggal</span>
+              </div>
+              <span class="kmn-venue-dt-sep"></span>
+              <div class="kmn-venue-dt-block">
+                <span class="kmn-venue-dt-value">{{jam_resepsi}}</span>
+                <span class="kmn-venue-dt-label">Waktu</span>
+              </div>
+            </div>
+            <div class="kmn-venue-place">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <div>
+                <div class="kmn-schedule-venue">{{nama_lokasi_resepsi}}</div>
+                <div class="kmn-schedule-address">{{keterangan_lokasi_resepsi}}</div>
+              </div>
+            </div>
+            {{#if resepsi_map}}<a href="{{resepsi_map}}" target="_blank" rel="noopener" class="kmn-btn kmn-btn-schedule">▶ Buka Google Maps</a>{{/if}}
+          </div>
+        </div>
+        {{/if}}
+      </div>
+    </section>
+
+    <!-- 5 · STREAMING (flag) — "NOW STREAMING / Live Event" -->
+    {{#if is_fitur_live_streaming}}
+    <section class="kmn-sec kmn-sec-streaming" data-info="streaming" style="background-image:linear-gradient(rgba(20,32,26,0.78),rgba(20,32,26,0.94)),url('{{photo_hero_cover}}')">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">NOW STREAMING</div>
+        <div class="kmn-sec-name">Live Event</div>
+        <p class="kmn-quotes">Bagi Bapak/Ibu/Saudara/i yang tidak dapat hadir secara langsung, kami mengundang Anda
+          untuk menyaksikan momen bahagia kami melalui siaran langsung.</p>
+      </div>
+
+      <div class="kmn-streaming-wrap">
+        <div class="kmn-streaming-card">
+          <div class="kmn-live-badge"><span class="kmn-live-dot"></span> LIVE</div>
+          <div class="kmn-streaming-icon">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
+          </div>
+          <p class="kmn-streaming-text">Saksikan rangkaian acara pernikahan kami secara live dari mana saja Anda berada.</p>
+          {{#if link_live_streaming}}<a href="{{link_live_streaming}}" target="_blank" rel="noopener" class="kmn-btn kmn-btn-schedule">▶ TONTON SEKARANG</a>{{/if}}
+        </div>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 6 · STORY (flag) — "PREVIOUSLY ON / Our Story" episode list -->
+    {{#if flag_pakai_timeline_kisah}}
+    <section class="kmn-sec kmn-sec-story" data-info="story">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">PREVIOUSLY ON</div>
+        <div class="kmn-sec-name">Our Story</div>
+        <p class="kmn-quotes">Perjalanan cinta kami dari awal bertemu hingga akhirnya memutuskan untuk bersatu.</p>
+      </div>
+
+      <div class="kmn-story-container">
+        <div class="kmn-story-eptab">
+          <span class="kmn-story-eptab-label">Episodes</span>
+          <span class="kmn-story-eptab-season">Season 1: Our Journey</span>
+        </div>
+        <div class="kmn-story-scroll-box">
+          <div class="kmn-story-timeline">
+            {{#each timeline_kisah}}
+            <div class="kmn-story-item">
+              <div class="kmn-story-epnum">{{@index_plus_1}}</div>
+              <div class="kmn-story-epbody">
+                <div class="kmn-story-ephead">
+                  <h4 class="kmn-story-title">{{this.judul}}</h4>
+                  <span class="kmn-story-date">{{this.tanggal}}</span>
+                </div>
+                <p class="kmn-story-text">{{this.deskripsi}}</p>
+                <div class="kmn-story-progress"><span></span></div>
+              </div>
+              <div class="kmn-story-epplay">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+              </div>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+        <div class="kmn-story-footer">
+          <div class="kmn-journey-text">To be continued...</div>
+        </div>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 7 · GALLERY (flag) — "TRAILERS & MORE / Top 10" grid -->
+    {{#if has_gallery}}
+    <section class="kmn-sec kmn-sec-gallery" data-info="gallery">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">TRAILERS &amp; MORE</div>
+        <div class="kmn-sec-name">Gallery</div>
+        <p class="kmn-quotes">Momen-momen indah yang kami abadikan dalam lensa kamera.</p>
+      </div>
+
+      <div class="kmn-gallery-row-label">
+        <span class="kmn-top10-badge">TOP<br>10</span>
+        <span class="kmn-gallery-row-title">Momen Terfavorit Hari Ini</span>
+      </div>
+
+      <div class="kmn-gallery-container">
+        <div class="kmn-gallery-grid">
+          {{#each galleries}}
+          <div class="kmn-gallery-item">
+            <span class="kmn-gallery-rank">{{@index_plus_1}}</span>
+            <div class="kmn-gallery-poster">
+              <img src="{{this.url}}" alt="" loading="lazy" class="kmn-gallery-img" />
+              <div class="kmn-gallery-overlay">
+                <span class="kmn-gallery-play"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
+              </div>
+              <div class="kmn-gallery-hoverbar">
+                <span class="kmn-gallery-act kmn-gallery-act-play"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
+                <span class="kmn-gallery-act-match">98% Match</span>
+              </div>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 8 · HAPPINESS / instagram (flag) — "SHARE THE MOMENT / N STORIES" -->
+    {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+    <section class="kmn-sec kmn-sec-happiness" data-info="happiness">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">SHARE THE MOMENT</div>
+        <div class="kmn-sec-name">Berbagi Kebahagiaan</div>
+        <p class="kmn-quotes">Kehangatan dan kebahagiaan kami yang terangkum dalam tumpukan memori indah.</p>
+      </div>
+
+      <div class="kmn-story-carousel">
+        <div class="kmn-story-slide">
+          <div class="kmn-card-inner">
+            <img src="{{sample_story_1}}" alt="Memory 1" class="kmn-card-photo" />
+            <img src="{{frame_balasan_instagram}}" alt="Frame" class="kmn-card-frame" />
+            <div class="kmn-card-progress"><span></span><span></span><span></span></div>
+            <div class="kmn-card-badge"><span class="kmn-n">KM</span> STORIES</div>
+            <div class="kmn-card-bottom">
+              <span class="kmn-card-caption">Tawa &amp; Ceria</span>
+              <span class="kmn-card-ep">Episode 1</span>
+            </div>
+          </div>
+        </div>
+        <div class="kmn-story-slide">
+          <div class="kmn-card-inner">
+            <img src="{{sample_story_2}}" alt="Memory 2" class="kmn-card-photo" />
+            <img src="{{frame_balasan_instagram}}" alt="Frame" class="kmn-card-frame" />
+            <div class="kmn-card-progress"><span></span><span></span><span></span></div>
+            <div class="kmn-card-badge"><span class="kmn-n">KM</span> STORIES</div>
+            <div class="kmn-card-bottom">
+              <span class="kmn-card-caption">Langkah Bersama</span>
+              <span class="kmn-card-ep">Episode 2</span>
+            </div>
+          </div>
+        </div>
+        <div class="kmn-story-slide">
+          <div class="kmn-card-inner">
+            <img src="{{sample_story_3}}" alt="Memory 3" class="kmn-card-photo" />
+            <img src="{{frame_balasan_instagram}}" alt="Frame" class="kmn-card-frame" />
+            <div class="kmn-card-progress"><span></span><span></span><span></span></div>
+            <div class="kmn-card-badge"><span class="kmn-n">KM</span> STORIES</div>
+            <div class="kmn-card-bottom">
+              <span class="kmn-card-caption">Janji Suci</span>
+              <span class="kmn-card-ep">Episode 3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kmn-happiness-cta">
+        {{#if link_balasan_instagram}}<a href="{{link_balasan_instagram}}" target="_blank" rel="noopener" class="kmn-btn kmn-btn-primary">📸 Bagikan Momen</a>{{/if}}
+        <p class="kmn-quotes kmn-happiness-note">Ambil tangkapan layar kartu kenangan di atas dan bagikan di Instagram Story Anda dengan
+          menandai akun kami <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong>! ✨</p>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 9 · WISHES (always) — "RATINGS & REVIEWS" -->
+    <section class="kmn-sec kmn-sec-wishes" data-info="wishes">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">RATINGS &amp; REVIEWS</div>
+        <div class="kmn-sec-name">Ucapan &amp; Doa</div>
+        <p class="kmn-quotes">Berikan ucapan manis dan doa restu Anda untuk kedua mempelai.</p>
+      </div>
+
+      <div class="kmn-form-wrap">
+        <div class="kmn-glass-form" id="km-wish-form">
+          <div class="kmn-field">
+            <input class="kmn-input" id="wish-name" type="text" placeholder="Nama Anda" />
+          </div>
+          <div class="kmn-field">
+            <textarea class="kmn-input kmn-textarea" id="wish-message" rows="3" placeholder="Tulis Ucapan &amp; Doa..."></textarea>
+          </div>
+          <button class="kmn-btn kmn-btn-primary" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
+          <div class="kmn-alert" id="alert-submit-ucapan"></div>
+        </div>
+
+        <div class="kmn-wishes-list" id="km-wish-list">
+          {{#each wishes}}
+          <div class="kmn-wish-item">
+            <div class="kmn-wish-head">
+              <span class="kmn-wish-author">{{this.guest_name}}</span>
+              <span class="kmn-wish-time">{{this.guest_comment_time}}</span>
+            </div>
+            <div class="kmn-wish-stars">★★★★★</div>
+            <div class="kmn-wish-text">{{this.guest_message}}</div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 · GIFT (flag) — "SUPPORT THE CREATORS / Gift Card" -->
+    {{#if tampilkan_amplop_online}}
+    <section class="kmn-sec kmn-sec-gift" data-info="gift">
+      <div class="kmn-sec-head">
+        <div class="kmn-eyebrow">SUPPORT THE CREATORS</div>
+        <div class="kmn-sec-name">Wedding Gift</div>
+        <p class="kmn-quotes">Doa restu Anda merupakan karunia yang sangat berarti bagi kami. Namun, apabila Anda
+          ingin memberi kado, kami sediakan fitur ini.</p>
+      </div>
+
+      <div class="kmn-gift-grid">
+        <div class="kmn-gift-card">
+          <div class="kmn-gift-banner">
+            <span class="kmn-n">KM</span>
+            <span class="kmn-gift-banner-label">Gift Card</span>
+          </div>
+          <div class="kmn-gift-bank-logo">{{bank_1}}</div>
+          {{#if flag_pakai_qris_rekening_1}}
+          <div class="kmn-gift-qris-wrapper">
+            <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="kmn-gift-qris-img" />
+          </div>
+          {{/if}}
+          <div class="kmn-gift-number-label">Nomor Rekening</div>
+          <div class="kmn-gift-number" id="km-rek-1">{{rek_1}}</div>
+          <div class="kmn-gift-name">a.n. {{nama_rek_1}}</div>
+          <button class="kmn-btn kmn-btn-copy" type="button" onclick="swCopy('km-rek-1', this)">📋 SALIN NO. REKENING</button>
+        </div>
+
+        {{#if flag_pakai_2_rekening}}
+        <div class="kmn-gift-card">
+          <div class="kmn-gift-banner">
+            <span class="kmn-n">KM</span>
+            <span class="kmn-gift-banner-label">Gift Card</span>
+          </div>
+          <div class="kmn-gift-bank-logo">{{bank_2}}</div>
+          {{#if flag_pakai_qris_rekening_2}}
+          <div class="kmn-gift-qris-wrapper">
+            <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="kmn-gift-qris-img" />
+          </div>
+          {{/if}}
+          <div class="kmn-gift-number-label">Nomor Rekening</div>
+          <div class="kmn-gift-number" id="km-rek-2">{{rek_2}}</div>
+          <div class="kmn-gift-name">a.n. {{nama_rek_2}}</div>
+          <button class="kmn-btn kmn-btn-copy" type="button" onclick="swCopy('km-rek-2', this)">📋 SALIN NO. REKENING</button>
+        </div>
+        {{/if}}
+
+        {{#if flag_kirim_hadiah_offline}}
+        <div class="kmn-gift-card kmn-gift-card-addr">
+          <div class="kmn-gift-banner">
+            <span class="kmn-n">KM</span>
+            <span class="kmn-gift-banner-label">Hadiah Fisik</span>
+          </div>
+          <div class="kmn-gift-icon">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div class="kmn-gift-place">{{nama_lokasi_kirim_hadiah_offline}}</div>
+          <div class="kmn-gift-addr-text" id="km-gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+          <button class="kmn-btn kmn-btn-copy" type="button" onclick="swCopy('km-gift-addr', this)">📋 SALIN ALAMAT</button>
+        </div>
+        {{/if}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 11 · CLOSING (always) — "THE END / Credits" -->
+    <section class="kmn-sec kmn-sec-closing" data-info="closing">
+      <div class="km-closing-bg kmn-closing-bg" data-src="{{photo_closing}}"></div>
+      <div class="kmn-closing-overlay"></div>
+
+      <div class="kmn-closing-card">
+        <div class="kmn-closing-theend">THE END</div>
+        <div class="kmn-eyebrow kmn-closing-eyebrow">With Love &amp; Gratitude</div>
+        <div class="kmn-closing-title">Terima Kasih</div>
+        <div class="kmn-closing-divider"><span></span><span>♥</span><span></span></div>
+        <p class="kmn-closing-message" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
+        <div class="kmn-closing-signature">
+          <span data-var="groom_nickname">{{groom_nickname}}</span>
+          <em>&amp;</em>
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+
+        <!-- "Next Episode" autoplay card (static) -->
+        <div class="kmn-nextep-card">
+          <div class="kmn-nextep-thumb" style="background-image:url('{{photo_hero_cover}}')">
+            <div class="kmn-nextep-ring">
+              <svg viewBox="0 0 44 44">
+                <circle class="kmn-nextep-ring-track" cx="22" cy="22" r="19"></circle>
+                <circle class="kmn-nextep-ring-bar" cx="22" cy="22" r="19"></circle>
+              </svg>
+              <span class="kmn-nextep-play"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
+            </div>
+          </div>
+          <div class="kmn-nextep-info">
+            <span class="kmn-nextep-eyebrow">Tonton Berikutnya</span>
+            <span class="kmn-nextep-title">Putar Ulang Undangan</span>
+            <span class="kmn-nextep-sub">Episode 1 &middot; The Wedding</span>
+          </div>
+        </div>
+
+        <div class="kmn-social">
+          {{#if flag_use_instagram_webconfig}}
+          <a class="kmn-social-btn" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_tiktok_webconfig}}
+          <a class="kmn-social-btn" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_youtube_webconfig}}
+          <a class="kmn-social-btn" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_whatsapp_webconfig}}
+          <a class="kmn-social-btn" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          </a>
+          {{/if}}
+        </div>
+
+        <div class="kmn-credit">
+          <a href="{{site_url}}" target="_blank" rel="noopener noreferrer" data-var="site_name">{{site_name}}</a>
+          <span> · dibuat dengan ♥ · © 2026</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Piece modal -->
+  <div class="km-modal-root" id="km-modal-root">
+    <div class="km-modal">
+      <button class="km-modal-close" id="km-modal-close" type="button">✕</button>
+      <div class="km-modal-title" id="km-modal-title"></div>
+      <div class="km-modal-body" id="km-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Own lightbox (own class so host universal lightbox doesn't hijack) -->
+  <div class="km-lightbox" id="km-lightbox">
+    <button class="km-lightbox-close" id="km-lightbox-close" type="button">✕</button>
+    <img class="km-lightbox-img" id="km-lightbox-img" src="" alt="" />
+  </div>
+
+  <!-- host music mirror target (NOT the real player; host dispatches play/pause here) -->
+  <audio id="bg-music"></audio>
+</div>
