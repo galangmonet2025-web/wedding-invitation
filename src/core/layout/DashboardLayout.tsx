@@ -37,12 +37,29 @@ import {
     HiOutlineChevronDoubleLeft,
     HiOutlineChevronDoubleRight,
     HiOutlineDeviceMobile,
+    HiOutlineBadgeCheck,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
 import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { ViewSwitchButton } from '@/shared/components/ViewSwitchButton';
+
+/**
+ * Warna pill untuk badge jenis paket (basic/pro/premium) tenant. Casing dari
+ * backend bisa bervariasi → di-lower dulu. Sejalan dengan konvensi warna plan
+ * (basic=biru, pro=amber, premium=gold).
+ */
+function planPillClass(plan?: string): string {
+    switch (String(plan || '').toLowerCase().trim()) {
+        case 'premium':
+            return 'bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-300';
+        case 'pro':
+            return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300';
+        default:
+            return 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300';
+    }
+}
 
 function MobileMenuOverlay({
     isOpen,
@@ -582,6 +599,14 @@ export function DashboardLayout() {
                                     )}
                                 </button>
                             </div>
+
+                            {/* Badge jenis paket tenant — di pojok kanan topbar, sebelah badge role. */}
+                            {tenant && showTenantMenu && (
+                                <div className={`hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${planPillClass(tenant.plan_type)}`} title={`Paket: ${String(tenant.plan_type || '').toUpperCase()}`}>
+                                    <HiOutlineBadgeCheck className="w-4 h-4" />
+                                    {tenant.plan_type}
+                                </div>
+                            )}
 
                             {/* User Badge */}
                             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gold-50 dark:bg-gold-900/20 rounded-full">

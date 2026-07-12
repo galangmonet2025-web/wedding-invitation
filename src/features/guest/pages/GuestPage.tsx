@@ -28,6 +28,8 @@ import {
     HiOutlineUsers,
     HiOutlineCheckCircle,
     HiOutlineClock,
+    HiOutlineCheck,
+    HiOutlineX,
 } from 'react-icons/hi';
 import { GoogleContactModal } from '../components/GoogleContactModal';
 import { GuestCard } from '../components/GuestCard';
@@ -77,6 +79,54 @@ export function GuestPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [toolsOpen, setToolsOpen] = useState(false);
     const toolsRef = useRef<HTMLDivElement>(null);
+
+    // ===== Inline edit (desktop table only). Mobile keeps the modal via GuestCard.
+    // editingId  = row currently being edited inline (null = none).
+    // editForm   = working copy of that row's editable fields.
+    // savingId   = row whose save is in-flight → disable the row + show spinner
+    //              (NO global block-screen; updateGuest is called with silent=true).
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState<CreateGuestRequest>({
+        name: '', phone: '', category: 'Friends', status: 'pending', number_of_guests: 1,
+    });
+    const [savingId, setSavingId] = useState<string | null>(null);
+
+    const startInlineEdit = (guest: Guest) => {
+        setEditingId(guest.id);
+        setEditForm({
+            name: guest.name,
+            phone: guest.phone,
+            category: guest.category,
+            status: guest.status,
+            number_of_guests: guest.number_of_guests,
+        });
+    };
+
+    const cancelInlineEdit = () => {
+        setEditingId(null);
+    };
+
+    // Enter = simpan, Esc = batal (kenyamanan keyboard saat edit inline).
+    const handleInlineKey = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') { e.preventDefault(); saveInlineEdit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); cancelInlineEdit(); }
+    };
+
+    const saveInlineEdit = async () => {
+        if (!editingId) return;
+        if (!editForm.name.trim()) {
+            toast.error(t('guests.name_required'));
+            return;
+        }
+        setSavingId(editingId);
+        // silent=true → skipLoader (no block-screen). Row shows its own spinner.
+        const ok = await updateGuest({ id: editingId, ...editForm }, true);
+        setSavingId(null);
+        if (ok) {
+            toast.success(t('guests.updated', 'Tamu diperbarui'));
+            setEditingId(null);
+        }
+    };
 
     useEffect(() => {
         setFilters({ limit: 1000, page: 1 });
@@ -254,29 +304,106 @@ export function GuestPage() {
         return <span className={classes[status] || 'badge-info'}>{t(`guests.status.${status}`)}</span>;
     };
 
+    // A row is "in edit mode" (inline) when its id matches editingId. Rows are
+    // rendered by these column render()s ONLY on the desktop table (mobile uses
+    // GuestCard). So an inline branch here is desktop-only by construction.
     const columns: Column<Guest>[] = [
         {
             key: 'name',
             header: t('common.name'),
-            render: (g: Guest) => (
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                        onKeyDown={handleInlineKey}
+                        disabled={savingId === g.id}
+                        autoFocus
+                        className="input-field !py-1.5 !text-sm w-full min-w-[130px]"
+                        placeholder={t('common.name') as string}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">{g.invitation_code}</p>
+                </div>
+            ) : (
                 <div>
                     <p className="font-medium text-gray-800 dark:text-white">{g.name}</p>
                     <p className="text-xs text-gray-400">{g.invitation_code}</p>
                 </div>
             ),
         },
-        { key: 'phone', header: t('common.phone') },
+        {
+            key: 'phone',
+            header: t('common.phone'),
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="text"
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                        onKeyDown={handleInlineKey}
+                        disabled={savingId === g.id}
+                        className="input-field !py-1.5 !text-sm w-full min-w-[120px]"
+                        placeholder="08xx-xxxx-xxxx"
+                    />
+                </div>
+            ) : (g.phone || '—'),
+        },
         {
             key: 'category',
             header: t('common.category'),
-            render: (g: Guest) => <span className="badge-gold">{g.category}</span>,
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <select
+                        value={editForm.category}
+                        onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                        disabled={savingId === g.id}
+                        className="select-field !py-1.5 !text-sm w-full min-w-[110px]"
+                    >
+                        <option value="Family">{t('guests.categories.family')}</option>
+                        <option value="Friends">{t('guests.categories.friends')}</option>
+                        <option value="Work">{t('guests.categories.work')}</option>
+                        <option value="VIP">{t('guests.categories.vip')}</option>
+                    </select>
+                </div>
+            ) : <span className="badge-gold">{g.category}</span>,
         },
         {
             key: 'status',
             header: t('common.status'),
-            render: (g: Guest) => statusBadge(g.status),
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <select
+                        value={editForm.status}
+                        onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as GuestStatus }))}
+                        disabled={savingId === g.id}
+                        className="select-field !py-1.5 !text-sm w-full min-w-[120px]"
+                    >
+                        <option value="pending">{t('guests.status.pending')}</option>
+                        <option value="confirmed">{t('guests.status.confirmed')}</option>
+                        <option value="declined">{t('guests.status.declined')}</option>
+                    </select>
+                </div>
+            ) : statusBadge(g.status),
         },
-        { key: 'number_of_guests', header: t('guests.num_guests') },
+        {
+            key: 'number_of_guests',
+            header: t('guests.num_guests'),
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={editForm.number_of_guests}
+                        onChange={(e) => setEditForm((f) => ({ ...f, number_of_guests: parseInt(e.target.value) || 1 }))}
+                        onKeyDown={handleInlineKey}
+                        disabled={savingId === g.id}
+                        className="input-field !py-1.5 !text-sm w-16"
+                    />
+                </div>
+            ) : g.number_of_guests,
+        },
         {
             key: 'flag_sudah_isi_ucapan',
             header: t('dashboard.wishes'),
@@ -298,38 +425,70 @@ export function GuestPage() {
         {
             key: 'actions',
             header: t('common.actions'),
-            render: (g: Guest) => (
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <button
-                        onClick={() => openQRModal(g)}
-                        className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors"
-                        title={t('guests.qr_code')}
-                    >
-                        <HiOutlineQrcode className="w-4 h-4" />
-                    </button>
-                    {!isStaff && (
-                        <>
+            render: (g: Guest) => {
+                // While THIS row is being edited inline → show Save / Cancel.
+                if (editingId === g.id) {
+                    const saving = savingId === g.id;
+                    return (
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
-                                onClick={() => openEditModal(g)}
-                                className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
-                                title={t('common.edit')}
+                                onClick={saveInlineEdit}
+                                disabled={saving}
+                                className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 transition-colors disabled:opacity-50"
+                                title={t('common.save') as string}
                             >
-                                <HiOutlinePencil className="w-4 h-4" />
+                                {saving ? (
+                                    <HiOutlineRefresh className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <HiOutlineCheck className="w-4 h-4" />
+                                )}
                             </button>
                             <button
-                                onClick={() => {
-                                    setDeleteTargetId(g.id);
-                                    setShowDeleteConfirm(true);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
-                                title={t('common.delete')}
+                                onClick={cancelInlineEdit}
+                                disabled={saving}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-50"
+                                title={t('common.cancel') as string}
                             >
-                                <HiOutlineTrash className="w-4 h-4" />
+                                <HiOutlineX className="w-4 h-4" />
                             </button>
-                        </>
-                    )}
-                </div>
-            ),
+                        </div>
+                    );
+                }
+                // Another row is being edited → dim this row's actions (still usable).
+                const otherEditing = editingId !== null;
+                return (
+                    <div className={`flex items-center gap-1 ${otherEditing ? 'opacity-40' : ''}`} onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => openQRModal(g)}
+                            className="p-1.5 rounded-lg hover:bg-gold-50 dark:hover:bg-gold-900/20 text-gold-600 transition-colors"
+                            title={t('guests.qr_code')}
+                        >
+                            <HiOutlineQrcode className="w-4 h-4" />
+                        </button>
+                        {!isStaff && (
+                            <>
+                                <button
+                                    onClick={() => startInlineEdit(g)}
+                                    className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
+                                    title={t('common.edit')}
+                                >
+                                    <HiOutlinePencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setDeleteTargetId(g.id);
+                                        setShowDeleteConfirm(true);
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
+                                    title={t('common.delete')}
+                                >
+                                    <HiOutlineTrash className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                );
+            },
         },
     ];
 

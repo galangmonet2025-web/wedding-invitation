@@ -618,13 +618,13 @@
    1 · HERO (billboard)
    ========================================================================== */
 .kmn-hero {
-  min-height: 78vh;
+  min-height: 62vh;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   align-items: stretch;
   text-align: left;
-  padding: 0 0 52px;
+  padding: 34vh 0 40px;   /* photo on top, billboard text guaranteed in view at the bottom */
 }
 .kmn-hero-bg {
   position: absolute;
@@ -638,8 +638,8 @@
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(180deg, rgba(20, 32, 26, 0.45) 0%, rgba(20, 32, 26, 0) 28%, rgba(20, 32, 26, 0) 48%, rgba(20, 32, 26, 0.7) 78%, var(--kmn-bg-deep) 100%),
-    linear-gradient(90deg, rgba(20, 32, 26, 0.4), rgba(20, 32, 26, 0) 60%);
+    linear-gradient(180deg, rgba(20, 32, 26, 0.5) 0%, rgba(20, 32, 26, 0) 24%, rgba(20, 32, 26, 0.15) 46%, rgba(20, 32, 26, 0.82) 70%, var(--kmn-bg-deep) 96%),
+    linear-gradient(90deg, rgba(20, 32, 26, 0.45), rgba(20, 32, 26, 0) 60%);
 }
 .kmn-hero-billboard {
   position: relative;

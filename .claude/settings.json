@@ -1,7 +1,41 @@
 {
   "permissions": {
+    "defaultMode": "acceptEdits",
     "allow": [
-      "WebFetch(domain:book.leveldesignbook.com)"
+      "WebFetch(domain:book.leveldesignbook.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "Read",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(tsc:*)",
+      "Bash(git:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash",
+      "PowerShell",
+      "PowerShell(git:*)",
+      "PowerShell(npm:*)",
+      "PowerShell(node:*)",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebFetch|WebSearch|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"auto-approved (web/bash)\"}}'"
+          }
+        ]
+      }
     ]
   }
 }

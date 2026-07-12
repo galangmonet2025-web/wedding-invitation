@@ -453,15 +453,18 @@ export function NewLandingPage() {
                         </div>
                     </div>
 
-                    {/* Mobile: horizontal snap-scroll row. sm+: regular grid. */}
-                    <div className="flex sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none -mx-5 px-5 sm:mx-0 sm:px-0 pb-4 sm:pb-0 no-scrollbar">
+                    {/* Mobile: ≤3 tema → 1 baris saja; >3 tema → 2 baris (grid-flow-col
+                        mengisi per kolom ke bawah, jadi tiap baris jumlahnya seimbang,
+                        selisih maksimal 1). Lebih dari muat layar → scroll horizontal.
+                        sm+: kembali ke grid biasa. */}
+                    <div className={`grid ${filteredThemes.length > 3 ? 'grid-rows-2' : 'grid-rows-1'} grid-flow-col auto-cols-[44vw] sm:grid-rows-none sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none -mx-5 px-5 sm:mx-0 sm:px-0 pb-4 sm:pb-0 no-scrollbar`}>
                         {filteredThemes.length > 0 ? filteredThemes.map((theme) => {
                             // Themes tagged "Playable" get the deluxe treatment: a
                             // glowing coin-gold frame, a 🎮 PLAYABLE ribbon, floating
                             // coins, and a "MAINKAN" preview button — the wow tier.
                             const isPlayable = (theme.style_category || '').trim().toLowerCase() === 'playable';
                             return (
-                            <div key={theme.id} className={`lp-theme group relative shrink-0 w-[44vw] max-w-[11rem] sm:w-auto sm:max-w-none snap-start ${isPlayable ? 'lp-theme-playable' : ''}`}>
+                            <div key={theme.id} className={`lp-theme group relative w-full sm:w-auto snap-start ${isPlayable ? 'lp-theme-playable' : ''}`}>
                                 <div className="aspect-[9/16] overflow-hidden relative" style={{ background: '#0e0e1a' }}>
                                     {isPlayable && <div className="lp-play-ribbon">🎮 PLAYABLE</div>}
                                     <ProxyImage
@@ -491,7 +494,7 @@ export function NewLandingPage() {
                                             </span>
                                         )}
                                     </div>
-                                    <div className="lp-theme-tag">{theme.plan_type}</div>
+                                    <div className={`lp-theme-tag is-${String(theme.plan_type || '').toLowerCase().trim() || 'basic'}`}>{theme.plan_type}</div>
                                 </div>
                                 <div className="p-3 sm:p-3.5">
                                     <h3 className="lp-pixel text-[9px] mb-2 text-white truncate">{theme.name}</h3>
@@ -504,7 +507,7 @@ export function NewLandingPage() {
                         }) : (
                             // Skeleton themes if empty
                             [1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="lp-theme shrink-0 w-[44vw] max-w-[11rem] sm:w-auto sm:max-w-none snap-start animate-pulse">
+                                <div key={i} className="lp-theme w-full sm:w-auto snap-start animate-pulse">
                                     <div className="aspect-[9/16] bg-black/40"></div>
                                     <div className="p-3 space-y-2">
                                         <div className="h-3 w-1/2 bg-white/10 rounded"></div>
@@ -1697,6 +1700,11 @@ function RetroStyles() {
     border: 2px solid #000; padding: 4px 7px; border-radius: 3px; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
     z-index: 3;
 }
+/* Warna badge dibedakan per jenis plan: basic=biru, pro=emas, premium=merah.
+   (default di atas = emas, jadi pro tak perlu override.) */
+.rm-lp .lp-theme-tag.is-basic   { background: var(--lp-sky); color: #fff; }
+.rm-lp .lp-theme-tag.is-pro     { background: var(--lp-coin); color: #000; }
+.rm-lp .lp-theme-tag.is-premium { background: var(--lp-red); color: #fff; }
 
 /* ---- PLAYABLE deluxe theme card (the "wow" tier) ----
    Highlight WITHOUT changing the card's box size, so the grid stays aligned:

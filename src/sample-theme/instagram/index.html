@@ -1,0 +1,1002 @@
+<!-- =========================================================================
+     INSTAGRAM — wedding theme (Instagram-Stories style pager)
+     Navigation model: full-screen "stories". A segmented progress bar at the
+     top shows one dash per section; tap the RIGHT half of the screen to go to
+     the next story, the LEFT half to go back (or use the ▲/▼ rail). Hero and
+     closing use their own photos as the section background; sections without a
+     dedicated photo borrow images from the gallery (or fall back to a gradient).
+     Host contract: this script is REMOVED + RE-EXECUTED on input change; state
+     persists on window.__trl so re-exec/re-inject is idempotent.
+     Music is owned by the HOST — the theme only mirrors state via #btn-toggle-music.
+     ========================================================================= -->
+<div class="trl-root" id="trl-root">
+
+    <!-- ============ DESKTOP AMBIENT SIDE PANEL (mouse-reactive, PC only) ============ -->
+    <div class="trl-sidebar uk-visible@m" id="trl-sidebar">
+        <div class="trl-side-layer trl-side-bg" id="trl-side-bg"
+            style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></div>
+        <div class="trl-side-scrim"></div>
+        <div class="trl-side-content" id="trl-side-content">
+            <div class="trl-side-badge">
+                <span class="trl-ig-glyph" aria-hidden="true"></span>
+                <span class="trl-side-eyebrow">Wedding&nbsp;&middot;&nbsp;Instagram</span>
+            </div>
+            <h1 class="trl-side-couple">
+                <span>{{groom_nickname}}</span>
+                <span class="trl-amp">&amp;</span>
+                <span>{{bride_nickname}}</span>
+            </h1>
+            <div class="trl-side-meta">
+                <span class="trl-pill">#WeddingDay</span>
+                <span class="trl-pill">{{wedding_date}}</span>
+            </div>
+            <p class="trl-side-desc">
+                Ketuk untuk membuka undangan kami di layar ponsel &rarr;<br>
+                Geser dari cerita ke cerita, seperti story favoritmu di Instagram.
+            </p>
+            <div class="trl-side-swipe">
+                <span class="trl-swipe-icon">&#128241;</span>
+                <span>Tonton di layar telepon</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ THE PHONE (full-screen story pager) ============ -->
+    <div class="phone-container is-locked" id="trl-phone">
+
+        <!-- The single story stage: all panels stack absolutely; JS shows one -->
+        <div class="reels-viewport" id="reels-viewport">
+
+            <!-- ==== SEGMENTED STORY PROGRESS BAR (one dash per story) ==== -->
+            <div class="reels-topbar" id="reels-topbar">
+                <div class="reels-progress" id="reels-progress" aria-hidden="true">
+                    <!-- dashes injected by index.js, one per active story -->
+                </div>
+                <div class="reels-topmeta">
+                    <div class="reels-topmeta-left">
+                        <span class="reels-avatar">
+                            <span class="reels-avatar-inner" style="background-image: url(&quot;{{photo_bride_photo}}&quot;);">{{groom_nickname}}</span>
+                        </span>
+                        <span class="reels-handle">
+                            <span class="reels-handle-name">{{groom_nickname}}_{{bride_nickname}}
+                                <svg class="reels-verified" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path fill="#3897f0" d="M12 1l2.9 2.1 3.5-.4 1.3 3.3 3.1 1.7-.9 3.4.9 3.4-3.1 1.7-1.3 3.3-3.5-.4L12 23l-2.9-2.1-3.5.4-1.3-3.3L1.2 16.3l.9-3.4-.9-3.4 3.1-1.7L5.6 2.7l3.5.4z"/><path fill="#fff" d="M10.6 15.2l-3-3 1.3-1.3 1.7 1.7 4-4 1.3 1.3z"/></svg>
+                            </span>
+                            <span class="reels-handle-sub">Undangan Pernikahan</span>
+                        </span>
+                    </div>
+                    <button class="reels-top-close" id="reels-top-menu" type="button"
+                        uk-toggle="target: #menu-modal" aria-label="Menu">
+                        <svg viewBox="0 0 24 24" width="6" height="22" fill="currentColor"><circle cx="12" cy="4" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="20" r="2"></circle></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==== TAP ZONES (prev / next) — sit under content, above bg ==== -->
+            <button class="reels-tap reels-tap-prev" id="reels-tap-prev" type="button" aria-label="Sebelumnya"></button>
+            <button class="reels-tap reels-tap-next" id="reels-tap-next" type="button" aria-label="Berikutnya"></button>
+
+            <!-- ==== STORY 1 — HERO (editorial full-bleed IG story) ==== -->
+            <section class="reels-story is-active" data-story="hero" data-menu-label="Pembuka">
+                <!-- Cinematic photo montage: a cross-fading Ken-Burns slideshow built by
+                     JS from hero + couple + gallery photos. The base bg is the hero photo
+                     (shown until the slides are wired, and as a fallback). -->
+                <div class="reels-bg reels-hero-bg" data-bg="photo_hero_cover"
+                    style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></div>
+                <div class="reels-hero-slides" id="reels-hero-slides" aria-hidden="true"></div>
+                <div class="reels-bg-grad reels-grad-hero"></div>
+                <!-- thin IG-gradient rule near the top -->
+                <div class="reels-hero-rule" aria-hidden="true"></div>
+
+                <div class="reels-content reels-content-center reels-hero-content">
+                    <div class="reels-hero-eyebrow anim-up">
+                        <span class="reels-hero-line" aria-hidden="true"></span>
+                        <span>The Wedding Of</span>
+                        <span class="reels-hero-line" aria-hidden="true"></span>
+                    </div>
+
+                    <h1 class="reels-hero-title anim-up">
+                        <span class="reels-hero-name">{{groom_nickname}}</span>
+                        <span class="reels-hero-amp">&amp;</span>
+                        <span class="reels-hero-name">{{bride_nickname}}</span>
+                    </h1>
+
+                    <div class="reels-hero-datechip anim-up">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <span>{{wedding_date}}</span>
+                    </div>
+
+                    <blockquote class="reels-hero-blockquote anim-up">
+                        <span class="reels-quote-mark" aria-hidden="true">&ldquo;</span>
+                        <p class="reels-quote-text">{{quote_2}}</p>
+                        <div data-if="quote_by_2">
+                            {{#if quote_by_2}}
+                            <cite class="reels-quote-by">{{quote_by_2}}</cite>
+                            {{/if}}
+                        </div>
+                    </blockquote>
+
+                    <button class="reels-scroll-hint anim-up" id="reels-hero-next" type="button">
+                        <span class="reels-tap-chip">Geser atau ketuk untuk lanjut</span>
+                        <span class="reels-chevrons"><i></i><i></i></span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ==== STORY 3 — COUPLES (Instagram post style) ==== -->
+            <section class="reels-story" data-story="couples" data-menu-label="Mempelai">
+                <!-- IG-tone background that follows the device (light/dark) theme -->
+                <div class="reels-bg reels-bg-plain"></div>
+
+                <div class="reels-content">
+                    <!-- Instagram app header (feed style): wordmark + action icons.
+                         In-flow + sticky so it NEVER overlaps content (pushes it down). -->
+                    <div class="ig-appbar">
+                        <span class="ig-appbar-logo">Instagram</span>
+                        <div class="ig-appbar-actions">
+                            <button class="ig-appbar-btn" type="button" data-goto-story="wishes" aria-label="Notifikasi">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+                            </button>
+                            <button class="ig-appbar-btn" type="button" data-goto-story="wishes" aria-label="Pesan">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Story navigation bubbles (like IG following-stories). Leftmost is
+                         "Cerita Anda"; index.js fills them & wires data-goto. -->
+                    <div class="ig-highlights ig-couple-nav anim-up" id="ig-couple-nav" aria-label="Navigasi Section"></div>
+                    <div class="ig-couple-navhint anim-up">
+                        <span class="ig-couple-navhint-title">Jelajahi Undangan</span>
+                        <span class="ig-couple-navhint-sub">Ketuk cerita di atas untuk pindah bagian &#8593;</span>
+                    </div>
+
+                    <!-- POST 1 — Mempelai Pria -->
+                    <article class="ig-post ig-couple-post anim-up">
+                        <header class="ig-post-head">
+                            <span class="ig-post-avatar" style="background-image: url(&quot;{{photo_groom_photo}}&quot;);"></span>
+                            <div class="ig-post-user">
+                                <span class="ig-post-handle">{{ig_laki_laki}}
+                                    <svg class="reels-verified" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="#3897f0" d="M12 1l2.9 2.1 3.5-.4 1.3 3.3 3.1 1.7-.9 3.4.9 3.4-3.1 1.7-1.3 3.3-3.5-.4L12 23l-2.9-2.1-3.5.4-1.3-3.3L1.2 16.3l.9-3.4-.9-3.4 3.1-1.7L5.6 2.7l3.5.4z"/><path fill="#fff" d="M10.6 15.2l-3-3 1.3-1.3 1.7 1.7 4-4 1.3 1.3z"/></svg>
+                                </span>
+                                <span class="ig-post-role">Mempelai Pria</span>
+                            </div>
+                            <span class="ig-post-more"><svg viewBox="0 0 24 24" width="5" height="18" fill="currentColor"><circle cx="12" cy="4" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="20" r="2"></circle></svg></span>
+                        </header>
+                        <div class="ig-postphoto">
+                            <img src="{{photo_groom_photo}}" data-img="photo_groom_photo" alt="Mempelai Pria" class="ig-postphoto-img">
+                        </div>
+                        <div class="ig-post-actions">
+                            <span class="ig-act-heart"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+                            <span class="ig-act"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.6-.8L3 21l1.9-5.4A8.4 8.4 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+                            <span class="ig-act"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+                        </div>
+                        <div class="ig-post-likes">Disukai <strong>{{bride_nickname}}</strong> dan banyak lainnya</div>
+                        <div class="ig-post-caption ig-caption-feed">
+                            <p class="ig-cap-line">
+                                <a class="ig-cap-user" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener noreferrer">{{ig_laki_laki}}</a>
+                                <strong>{{groom_name}}</strong>
+                            </p>
+                            <p class="ig-cap-line">Putra dari Bapak {{nama_bapak_laki_laki}} &amp; Ibu {{nama_ibu_laki_laki}}.</p>
+                            <p class="ig-cap-tags">#MempelaiPria #WeddingDay</p>
+                            <span class="ig-cap-time">{{wedding_date}}</span>
+                        </div>
+                    </article>
+
+                    <!-- POST 2 — Mempelai Wanita -->
+                    <article class="ig-post ig-couple-post anim-up">
+                        <header class="ig-post-head">
+                            <span class="ig-post-avatar" style="background-image: url(&quot;{{photo_bride_photo}}&quot;);"></span>
+                            <div class="ig-post-user">
+                                <span class="ig-post-handle">{{ig_perempuan}}
+                                    <svg class="reels-verified" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="#3897f0" d="M12 1l2.9 2.1 3.5-.4 1.3 3.3 3.1 1.7-.9 3.4.9 3.4-3.1 1.7-1.3 3.3-3.5-.4L12 23l-2.9-2.1-3.5.4-1.3-3.3L1.2 16.3l.9-3.4-.9-3.4 3.1-1.7L5.6 2.7l3.5.4z"/><path fill="#fff" d="M10.6 15.2l-3-3 1.3-1.3 1.7 1.7 4-4 1.3 1.3z"/></svg>
+                                </span>
+                                <span class="ig-post-role">Mempelai Wanita</span>
+                            </div>
+                            <span class="ig-post-more"><svg viewBox="0 0 24 24" width="5" height="18" fill="currentColor"><circle cx="12" cy="4" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="20" r="2"></circle></svg></span>
+                        </header>
+                        <div class="ig-postphoto">
+                            <img src="{{photo_bride_photo}}" data-img="photo_bride_photo" alt="Mempelai Wanita" class="ig-postphoto-img">
+                        </div>
+                        <div class="ig-post-actions">
+                            <span class="ig-act-heart"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+                            <span class="ig-act"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.6-.8L3 21l1.9-5.4A8.4 8.4 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></span>
+                            <span class="ig-act"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+                        </div>
+                        <div class="ig-post-likes">Disukai <strong>{{groom_nickname}}</strong> dan banyak lainnya</div>
+                        <div class="ig-post-caption ig-caption-feed">
+                            <p class="ig-cap-line">
+                                <a class="ig-cap-user" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener noreferrer">{{ig_perempuan}}</a>
+                                <strong>{{bride_name}}</strong>
+                            </p>
+                            <p class="ig-cap-line">Putri dari Bapak {{nama_bapak_perempuan}} &amp; Ibu {{nama_ibu_perempuan}}.</p>
+                            <p class="ig-cap-tags">#MempelaiWanita #WeddingDay</p>
+                            <span class="ig-cap-time">{{wedding_date}}</span>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ==== STORY 2 — COUNTDOWN + CALENDAR ==== -->
+            <section class="reels-story" data-story="countdown" data-menu-label="Hitung Mundur">
+                <div class="reels-bg reels-bg-gallery" data-gallery-bg="0"></div>
+                <div class="reels-bg-grad"></div>
+
+                <div class="reels-content reels-content-center">
+                    <!-- Instagram "countdown sticker" style -->
+                    <div class="cd-sticker anim-up">
+                        <div class="cd-sticker-head">
+                            <span class="cd-sticker-glyph" aria-hidden="true"></span>
+                            <span>Hitung Mundur</span>
+                        </div>
+                        <div class="cd-sticker-title">Menuju Hari Bahagia</div>
+
+                        <div class="countdown-container" id="countdown">
+                            <div class="countdown-item">
+                                <div class="countdown-box" id="days">00</div>
+                                <div class="countdown-label">Hari</div>
+                            </div>
+                            <div class="countdown-item">
+                                <div class="countdown-box" id="hours">00</div>
+                                <div class="countdown-label">Jam</div>
+                            </div>
+                            <div class="countdown-item">
+                                <div class="countdown-box" id="minutes">00</div>
+                                <div class="countdown-label">Menit</div>
+                            </div>
+                            <div class="countdown-item">
+                                <div class="countdown-box" id="seconds">00</div>
+                                <div class="countdown-label">Detik</div>
+                            </div>
+                        </div>
+                        <div class="countdown-status" id="countdown-status" style="display:none"></div>
+
+                        <div class="cd-date-badge">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                            <span>{{wedding_date}}</span>
+                        </div>
+                    </div>
+
+                    <div class="wedding-calendar anim-up" id="wedding-calendar"
+                        data-wedding-date="{{wedding_date_iso}}"></div>
+                </div>
+            </section>
+
+            
+
+            <!-- ==== STORY 4 — SCHEDULE ==== -->
+            <section class="reels-story" data-story="schedule" data-menu-label="Waktu & Tempat">
+                <div class="reels-bg reels-bg-gallery" data-gallery-bg="2"></div>
+                <div class="reels-bg-grad"></div>
+
+                <div class="reels-content">
+                    <div class="reels-kicker anim-up">Save The Date</div>
+                    <h2 class="reels-sec-title anim-up">Waktu &amp; Tempat</h2>
+
+                    <div class="ig-events">
+                        <!-- AKAD — IG "location post" card -->
+                        <article class="ig-event anim-up">
+                            <header class="ig-event-head">
+                                <span class="ig-event-icon">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                                </span>
+                                <div class="ig-event-headtext">
+                                    <span class="ig-event-kind">Akad Nikah</span>
+                                    <span class="ig-event-loc" id="ws-jam-akad-holder">{{nama_lokasi_akad}}</span>
+                                </div>
+                            </header>
+                            <div class="ig-event-when">
+                                <span class="ig-event-time" id="ws-jam-akad">{{jam_akad}}</span>
+                                <span class="ig-event-date">{{tanggal_akad}}</span>
+                            </div>
+                            <div class="ig-event-addr">{{keterangan_lokasi_akad}}</div>
+                            <!-- Simple embedded map (day/night follows the device theme via CSS).
+                                 JS fills the iframe src from the location query; hidden if empty. -->
+                            <div class="ig-event-mapbox" data-map-q="{{nama_lokasi_akad}}" data-map-addr="{{keterangan_lokasi_akad}}"></div>
+                            <a href="{{akad_map}}" target="_blank" class="ig-event-map">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                                Lihat Lokasi di Maps
+                            </a>
+                        </article>
+
+                        <!-- RESEPSI -->
+                        <div data-if="flag_lokasi_akad_dan_resepsi_berbeda">
+                            {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                            <article class="ig-event anim-up">
+                                <header class="ig-event-head">
+                                    <span class="ig-event-icon ig-event-icon-resepsi">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 21v-4M6 4h12l-1 7a5 5 0 0 1-10 0z"/><path d="M18 6h1a2 2 0 0 1 0 4h-1.2"/></svg>
+                                    </span>
+                                    <div class="ig-event-headtext">
+                                        <span class="ig-event-kind">Resepsi</span>
+                                        <span class="ig-event-loc">{{nama_lokasi_resepsi}}</span>
+                                    </div>
+                                </header>
+                                <div class="ig-event-when">
+                                    <span class="ig-event-time" id="ws-jam-resepsi">{{jam_resepsi}}</span>
+                                    <span class="ig-event-date">{{tanggal_resepsi}}</span>
+                                </div>
+                                <div class="ig-event-addr">{{keterangan_lokasi_resepsi}}</div>
+                                <div class="ig-event-mapbox" data-map-q="{{nama_lokasi_resepsi}}" data-map-addr="{{keterangan_lokasi_resepsi}}"></div>
+                                <a href="{{resepsi_map}}" target="_blank" class="ig-event-map">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                                    Lihat Lokasi di Maps
+                                </a>
+                            </article>
+                            {{/if}}
+                        </div>
+                        <!-- Fallback single "jam_resepsi" carrier when same venue (kept hidden;
+                             lets the countdown read the reception end time reliably) -->
+                        <div data-unless="flag_lokasi_akad_dan_resepsi_berbeda">
+                            {{#unless flag_lokasi_akad_dan_resepsi_berbeda}}
+                            <span id="ws-jam-resepsi" style="display:none">{{jam_resepsi}}</span>
+                            {{/unless}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==== STORY 5 — LIVE STREAMING ==== -->
+            <div data-if="is_fitur_live_streaming">
+                {{#if is_fitur_live_streaming}}
+                <section class="reels-story" data-story="streaming" data-menu-label="Live Streaming">
+                    <div class="reels-bg reels-bg-gallery" data-gallery-bg="3"></div>
+                    <div class="reels-bg-grad"></div>
+                    <div class="reels-content reels-content-center">
+                        <!-- Instagram LIVE broadcast card -->
+                        <article class="ig-live anim-up">
+                            <div class="ig-live-stage">
+                                <span class="ig-live-badge"><span class="live-dot"></span> LIVE</span>
+                                <span class="ig-live-viewers">
+                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    Menonton
+                                </span>
+                                <span class="ig-live-ring">
+                                    <span class="ig-live-play">
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="ig-live-body">
+                                <h2 class="ig-live-title">Live Streaming Pernikahan</h2>
+                                <p class="ig-live-desc">
+                                    Bagi yang tidak dapat hadir, saksikan momen bahagia kami secara langsung.
+                                </p>
+                                <a href="{{link_live_streaming}}" target="_blank" class="ig-live-btn">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                    Gabung Siaran Langsung
+                                </a>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- ==== STORY 6 — OUR STORY (timeline) ==== -->
+            <div data-if="flag_pakai_timeline_kisah">
+                {{#if flag_pakai_timeline_kisah}}
+                <section class="reels-story" data-story="story" data-menu-label="Kisah Kami">
+                    <div class="reels-bg reels-bg-gallery" data-gallery-bg="4"></div>
+                    <div class="reels-bg-grad"></div>
+                    <div class="reels-content">
+                        <div class="reels-kicker anim-up">Perjalanan Kami</div>
+                        <h2 class="reels-sec-title anim-up">Kisah Cinta</h2>
+                        <div class="story-scroll">
+                            {{#each timeline_kisah}}
+                            <div class="story-item reels-glass anim-up">
+                                <div class="story-dot"></div>
+                                <div class="story-body">
+                                    <div class="story-head">
+                                        <h4 class="story-title">{{this.judul}}</h4>
+                                        <span class="story-date">{{this.tanggal}}</span>
+                                    </div>
+                                    <p class="story-text">{{this.deskripsi}}</p>
+                                </div>
+                            </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- ==== STORY 7 — GALLERY ==== -->
+            <div data-if="is_fitur_gallery">
+                {{#if is_fitur_gallery}}
+                <section class="reels-story" data-story="gallery" data-menu-label="Galeri">
+                    <!-- IG-tone background that follows the device (light/dark) theme -->
+                    <div class="reels-bg reels-bg-plain"></div>
+
+                    <!-- Instagram app header (profile style): username bar + menu -->
+                    <div class="reels-content reels-content-profile">
+                        <!-- Instagram app header (profile style): username bar + menu.
+                             In-flow + sticky so it NEVER overlaps content. -->
+                        <div class="ig-appbar ig-appbar-profile">
+                            <span class="ig-appbar-user">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <strong>{{groom_nickname}}_{{bride_nickname}}</strong>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </span>
+                            <div class="ig-appbar-actions">
+                                <button class="ig-appbar-btn" type="button" data-goto-story="happiness" aria-label="Tambah">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                                </button>
+                                <button class="ig-appbar-btn" type="button" data-goto-story="rsvp" aria-label="Menu">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ==== Instagram PROFILE HEADER ==== -->
+                        <div class="ig-profile anim-up">
+                            <div class="ig-profile-top">
+                                <span class="ig-profile-avatar" style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></span>
+                                <div class="ig-profile-stats">
+                                    <div class="ig-profile-stat">
+                                        <strong id="ig-photo-count">0</strong><span>Kiriman</span>
+                                    </div>
+                                    <div class="ig-profile-stat"><strong>&#8734;</strong><span>Cinta</span></div>
+                                    <div class="ig-profile-stat"><strong>1</strong><span>Hari-H</span></div>
+                                </div>
+                            </div>
+                            <div class="ig-profile-meta">
+                                <div class="ig-profile-handle">
+                                    {{groom_nickname}}_{{bride_nickname}}
+                                    <svg class="reels-verified" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path fill="#3897f0" d="M12 1l2.9 2.1 3.5-.4 1.3 3.3 3.1 1.7-.9 3.4.9 3.4-3.1 1.7-1.3 3.3-3.5-.4L12 23l-2.9-2.1-3.5.4-1.3-3.3L1.2 16.3l.9-3.4-.9-3.4 3.1-1.7L5.6 2.7l3.5.4z"/><path fill="#fff" d="M10.6 15.2l-3-3 1.3-1.3 1.7 1.7 4-4 1.3 1.3z"/></svg>
+                                </div>
+                                <div class="ig-profile-name">{{groom_name}} &amp; {{bride_name}}</div>
+                                <div class="ig-profile-bio">&#128149; Menuju hari bahagia &middot; {{wedding_date}}<br>Galeri momen kami &#128248;</div>
+                            </div>
+                        </div>
+
+                        <!-- Story Highlights: one bubble per section (except Galeri).
+                             Bubbles injected by index.js; tap → jump to that section. -->
+                        <div class="ig-highlights anim-up" id="ig-highlights" aria-label="Sorotan"></div>
+
+                        <!-- profile tab bar (grid) -->
+                        <div class="ig-profile-tabs anim-up">
+                            <span class="ig-profile-tab is-active" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                            </span>
+                        </div>
+
+                        <div data-if="has_gallery">
+                            {{#if has_gallery}}
+                            <!-- #gallery wrapper lets the host's universal lightbox collect ALL
+                                 images in this section so next/prev works (see ThemeWrapper). -->
+                            <div id="gallery" class="gallery-container">
+                                <div class="gallery-grid anim-up">
+                                    {{#each galleries}}
+                                    <a class="gallery-item">
+                                        <img src="{{this.url}}" data-img="this.url" alt=""
+                                            class="gallery-img lightbox-injection">
+                                        <span class="gallery-play"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg></span>
+                                    </a>
+                                    {{/each}}
+                                </div>
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- ==== STORY 8 — HAPPINESS (IG story reply) ==== -->
+            <div data-if="flag_pakai_additional_feature_story_balasan_instagram">
+                {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+                <section class="reels-story" data-story="happiness" data-menu-label="Berbagi Momen">
+                    <div class="reels-bg reels-bg-gallery" data-gallery-bg="6"></div>
+                    <div class="reels-bg-grad"></div>
+                    <div class="reels-content reels-content-center">
+                        <div class="reels-kicker anim-up">Berbagi Kebahagiaan</div>
+                        <h2 class="reels-sec-title anim-up">Story Reply</h2>
+
+                        <!-- Coverflow carousel: 3 sample stories, horizontally scrollable.
+                             index.js adds .is-focus to whichever card is centered (largest). -->
+                        <div class="ig-story-carousel anim-up" id="ig-story-carousel">
+                            <div class="ig-story-track" id="ig-story-track">
+                                <div class="ig-card ig-story-slide">
+                                    <img src="{{sample_story_1}}" data-img="sample_story_1" alt="Memory 1" class="ig-photo">
+                                    <img src="{{frame_balasan_instagram}}" data-img="frame_balasan_instagram" alt="Frame" class="ig-frame">
+                                </div>
+                                <div class="ig-card ig-story-slide">
+                                    <img src="{{sample_story_2}}" data-img="sample_story_2" alt="Memory 2" class="ig-photo">
+                                    <img src="{{frame_balasan_instagram}}" data-img="frame_balasan_instagram" alt="Frame" class="ig-frame">
+                                </div>
+                                <div class="ig-card ig-story-slide">
+                                    <img src="{{sample_story_3}}" data-img="sample_story_3" alt="Memory 3" class="ig-photo">
+                                    <img src="{{frame_balasan_instagram}}" data-img="frame_balasan_instagram" alt="Frame" class="ig-frame">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ig-story-dots" id="ig-story-dots" aria-hidden="true"></div>
+
+                        <a href="{{link_balasan_instagram}}" target="_blank" class="btn-konfirm anim-up"
+                            id="btn-share-instagram"
+                            style="text-decoration:none; display:inline-block; margin-top:16px;">
+                            <span uk-icon="icon: instagram; ratio:1.05" style="margin-right:8px; vertical-align:middle;"></span>
+                            Bagikan Momen
+                        </a>
+                        <p class="reels-sec-quote anim-up" style="margin-top:12px; font-size:12px;">
+                            Tag kami di story Instagram-mu &#10024;
+                        </p>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- ==== STORY 9 — RSVP ==== -->
+            <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <section class="reels-story" data-story="rsvp" data-menu-label="Konfirmasi Kehadiran">
+                    <div class="reels-bg reels-bg-gallery" data-gallery-bg="7"></div>
+                    <div class="reels-bg-grad"></div>
+                    <div class="reels-content reels-content-center">
+                        <div class="reels-kicker anim-up">RSVP</div>
+                        <h2 class="reels-sec-title anim-up">Konfirmasi Kehadiran</h2>
+
+                        <div id="rsvp-container" class="reels-form-wrap anim-up">
+                            <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
+                                {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+                                <div class="ig-rsvp" id="rsvp-form">
+                                    <!-- Kode Undangan: terkunci (prefilled + readonly, tak bisa diedit) -->
+                                    <div class="ig-field">
+                                        <label class="ig-field-label">Kode Undangan</label>
+                                        <div class="ig-field-lock">
+                                            <input class="ig-field-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1">
+                                            <span class="ig-field-lockicon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="ig-field">
+                                        <label class="ig-field-label">Nama Tamu</label>
+                                        <div class="ig-field-lock">
+                                            <input class="ig-field-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
+                                            <span class="ig-field-lockicon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Jumlah kehadiran — IG-style dropdown (native select, host reads .value) -->
+                                    <div class="ig-field">
+                                        <label class="ig-field-label">Jumlah Kehadiran</label>
+                                        <div class="ig-select">
+                                            <select id="rsvp-guests">
+                                                <option value="" disabled selected>Pilih jumlah tamu</option>
+                                                <option value="1">1 Orang</option>
+                                                <option value="2">2 Orang</option>
+                                            </select>
+                                            <span class="ig-select-chev" aria-hidden="true"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Konfirmasi kehadiran — IG-style dropdown -->
+                                    <div class="ig-field">
+                                        <label class="ig-field-label">Konfirmasi Kehadiran</label>
+                                        <div class="ig-select">
+                                            <select id="rsvp-status">
+                                                <option value="" disabled selected>Pilih konfirmasi</option>
+                                                <option value="hadir">✓ Hadir</option>
+                                                <option value="declined">✕ Tidak Hadir</option>
+                                            </select>
+                                            <span class="ig-select-chev" aria-hidden="true"></span>
+                                        </div>
+                                    </div>
+
+                                    <button class="ig-rsvp-submit" id="btn-submit-kehadiran">Kirim Konfirmasi</button>
+                                </div>
+                                {{/hidden}}
+                            </div>
+                            <div data-if="is_sudah_isi_konfirmasi_kehadiran">
+                                {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+                                <div id="alert-submit-kehadiran" class="thank-you-message glass-card" style="padding:22px;">
+                                    <div data-if="is_hadir">
+                                        {{^hidden is_hadir}}
+                                        <div style="font-size:26px; margin-bottom:8px;">&#127881;</div>
+                                        Terima kasih <strong>{{guest_name}}</strong>!<br>Sampai jumpa di hari bahagia kami.
+                                        {{/hidden}}
+                                    </div>
+                                    <div data-unless="is_hadir">
+                                        {{#hidden is_hadir}}
+                                        <div style="font-size:26px; margin-bottom:8px;">&#128591;</div>
+                                        Terima kasih <strong>{{guest_name}}</strong>.<br>Terima kasih atas doa restunya.
+                                        {{/hidden}}
+                                    </div>
+                                </div>
+                                {{/hidden}}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                {{/unless}}
+            </div>
+
+            <!-- ==== STORY 10 — WISHES (Instagram comments page) ==== -->
+            <section class="reels-story" data-story="wishes" data-menu-label="Ucapan & Doa">
+                <div class="reels-bg reels-bg-gallery" data-gallery-bg="8"></div>
+                <div class="reels-bg-grad"></div>
+                <div class="reels-content reels-content-comments">
+                    <!-- IG comments sheet header -->
+                    <div class="ig-comments-head anim-up">
+                        <span class="ig-comments-grab" aria-hidden="true"></span>
+                        <h2 class="ig-comments-title">Komentar</h2>
+                        <span class="ig-comments-count" id="ig-comments-count"></span>
+                    </div>
+
+                    <!-- Comment list (scrolls) -->
+                    <div class="wishes-scroll ig-comments-list">
+                        {{#each wishes}}
+                        <div class="wish-item anim-up">
+                            <span class="wish-avatar">{{this.guest_name}}</span>
+                            <div class="wish-body">
+                                <div class="wish-line">
+                                    <span class="wish-author">{{this.guest_name}}</span>
+                                    <span class="wish-text">{{this.guest_message}}</span>
+                                </div>
+                                <div class="wish-meta">
+                                    <span class="wish-time">{{this.guest_comment_time}}</span>
+                                    <span class="wish-meta-likes">Suka</span>
+                                    <span class="wish-meta-reply">Balas</span>
+                                </div>
+                            </div>
+                            <span class="wish-like" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+                            </span>
+                        </div>
+                        {{/each}}
+                    </div>
+
+                    <!-- IG comment composer bar (only for a specific guest) -->
+                    <div data-unless="is_link_umum_and_not_for_spesific_guest">
+                        {{#unless is_link_umum_and_not_for_spesific_guest}}
+                        <div id="wish-container" class="ig-composer-wrap anim-up">
+                            <div data-unless="is_sudah_isi_ucapan">
+                                {{#hidden is_sudah_isi_ucapan}}
+                                <form class="ig-composer" id="wish-form">
+                                    <!-- Generic guest icon (not the tenant photo) -->
+                                    <span class="ig-composer-avatar ig-composer-avatar-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                                    </span>
+                                    <div class="ig-composer-fields">
+                                        <!-- Nama tamu terkunci: prefilled + readonly (tak bisa diedit), tanpa ikon kunci -->
+                                        <span class="ig-composer-nameline">
+                                            <input class="ig-composer-name" type="text" id="wish-name" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
+                                        </span>
+                                        <textarea class="ig-composer-input" rows="1" id="wish-message"
+                                            placeholder="Tambahkan komentar..."></textarea>
+                                    </div>
+                                    <button type="button" id="btn-submit-ucapan" class="ig-composer-send">Kirim</button>
+                                </form>
+                                {{/hidden}}
+                            </div>
+                            <div data-if="is_sudah_isi_ucapan">
+                                {{^hidden is_sudah_isi_ucapan}}
+                                <div id="alert-submit-ucapan" class="ig-composer-done">
+                                    <span class="ig-composer-done-tick" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </span>
+                                    Terima kasih atas ucapan &amp; doanya!
+                                </div>
+                                {{/hidden}}
+                            </div>
+                        </div>
+                        {{/unless}}
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==== STORY 11 — GIFT ==== -->
+            <div data-if="tampilkan_amplop_online">
+                {{#if tampilkan_amplop_online}}
+                <section class="reels-story" data-story="gift" data-menu-label="Kado">
+                    <div class="reels-bg reels-bg-gallery" data-gallery-bg="9"></div>
+                    <div class="reels-bg-grad"></div>
+                    <div class="reels-content reels-content-center">
+                        <div class="reels-kicker anim-up">Tanda Kasih</div>
+                        <h2 class="reels-sec-title anim-up">Wedding Gift</h2>
+                        <p class="reels-sec-quote anim-up">
+                            Doa restu Anda adalah karunia. Namun bila ingin memberi kado, kami sediakan fitur ini.
+                        </p>
+
+                        <!-- data-cards (only set when 2 rekening) → render side by side (see CSS) -->
+                        <div class="gift-cards anim-up"{{#if flag_pakai_2_rekening}} data-cards{{/if}}>
+                            <div class="gift-card reels-glass{{#if flag_pakai_2_rekening}} gift-card-compact{{/if}}">
+                                <div class="gift-bank">{{bank_1}}</div>
+                                <div data-if="flag_pakai_qris_rekening_1">
+                                    {{#if flag_pakai_qris_rekening_1}}
+                                    <div class="gift-qris"><img src="{{gambar_qris_rekening_1}}" data-img="gambar_qris_rekening_1" alt="QRIS"></div>
+                                    {{/if}}
+                                </div>
+                                <div class="gift-num-label">Nomor Rekening</div>
+                                <div class="gift-num" id="acc-1">{{rek_1}}</div>
+                                <div class="gift-name">a.n {{nama_rek_1}}</div>
+                                <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
+                                    <span uk-icon="copy" style="margin-right:5px;"></span> Salin Nomor
+                                </button>
+                            </div>
+
+                            <div data-if="flag_pakai_2_rekening">
+                                {{#if flag_pakai_2_rekening}}
+                                <div class="gift-card reels-glass gift-card-compact">
+                                    <div class="gift-bank">{{bank_2}}</div>
+                                    <div data-if="flag_pakai_qris_rekening_2">
+                                        {{#if flag_pakai_qris_rekening_2}}
+                                        <div class="gift-qris"><img src="{{gambar_qris_rekening_2}}" data-img="gambar_qris_rekening_2" alt="QRIS"></div>
+                                        {{/if}}
+                                    </div>
+                                    <div class="gift-num-label">Nomor Rekening</div>
+                                    <div class="gift-num" id="acc-2">{{rek_2}}</div>
+                                    <div class="gift-name">a.n {{nama_rek_2}}</div>
+                                    <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
+                                        <span uk-icon="copy" style="margin-right:5px;"></span> Salin Nomor
+                                    </button>
+                                </div>
+                                {{/if}}
+                            </div>
+                        </div>
+
+                        <div data-if="flag_kirim_hadiah_offline">
+                            {{#if flag_kirim_hadiah_offline}}
+                            <div class="gift-cards anim-up" style="margin-top:14px;">
+                                <div class="gift-card reels-glass">
+                                    <div class="gift-bank"><span uk-icon="icon: home; ratio:1.1"></span> Kirim Hadiah</div>
+                                    <div class="gift-name" style="font-weight:700; font-size:15px; margin:6px 0;">{{nama_lokasi_kirim_hadiah_offline}}</div>
+                                    <div class="gift-addr" id="gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                                    <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
+                                        <span uk-icon="copy" style="margin-right:5px;"></span> Salin Alamat
+                                    </button>
+                                </div>
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </section>
+                {{/if}}
+            </div>
+
+            <!-- ==== STORY 12 — CLOSING (own photo) ==== -->
+            <section class="reels-story" data-story="closing" data-menu-label="Penutup">
+                <div class="reels-bg" data-bg="photo_closing"
+                    style="background-image: url(&quot;{{photo_closing}}&quot;);"></div>
+                <div class="reels-bg-grad reels-grad-hero"></div>
+
+                <div class="reels-content reels-content-center reels-content-closing">
+                    <!-- IG "you're all caught up" style avatar ring + heart -->
+                    <div class="ig-closing-ring anim-up">
+                        <span class="ig-closing-photo" style="background-image: url(&quot;{{photo_closing}}&quot;);"></span>
+                        <span class="ig-closing-heart" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                        </span>
+                    </div>
+
+                    <div class="ig-closing-caughtup anim-up">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Kamu sudah selesai
+                    </div>
+
+                    <div class="reels-kicker anim-up">With Love</div>
+                    <h2 class="reels-hero-title anim-up" style="font-size:2.6rem;">Terima Kasih</h2>
+                    <p class="reels-hero-quote anim-up" style="max-width:340px;">
+                        {{kalimat_penutup}}
+                    </p>
+                    <div class="reels-closing-sign anim-up">
+                        <span>{{groom_nickname}}</span> <em>&amp;</em> <span>{{bride_nickname}}</span>
+                    </div>
+
+                    <!-- Horizontal social media row (Instagram-style icon pills, Netflix-theme pattern) -->
+                    <div class="ig-social anim-up">
+                        <div data-if="flag_use_instagram_webconfig">
+                            {{#if flag_use_instagram_webconfig}}
+                            <a class="ig-social-btn" aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_tiktok_webconfig">
+                            {{#if flag_use_tiktok_webconfig}}
+                            <a class="ig-social-btn" aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_youtube_webconfig">
+                            {{#if flag_use_youtube_webconfig}}
+                            <a class="ig-social-btn" aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                        <div data-if="flag_use_whatsapp_webconfig">
+                            {{#if flag_use_whatsapp_webconfig}}
+                            <a class="ig-social-btn" aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><path d="M8.5 9.3c0-.3.3-.5.5-.5h.8c.2 0 .4.1.5.4l.6 1.4c.1.2 0 .4-.1.5l-.5.6c.5 1 1.3 1.8 2.3 2.3l.6-.5c.1-.1.3-.2.5-.1l1.4.6c.3.1.4.3.4.5v.8c0 .3-.2.5-.5.5-3.4 0-6.6-2.8-6.6-6.5z"/></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    <footer class="reels-footer anim-up">
+                        <div class="footer-name">{{site_name}}</div>
+                        <div class="footer-info">
+                            <a href="{{site_url}}" target="_blank" style="color:inherit; text-decoration:none;">
+                                {{site_url}} <br><span>Digital wedding invitation &copy; 2026</span>
+                            </a>
+                        </div>
+                    </footer>
+                </div>
+            </section>
+
+            <!-- ==== BOTTOM-LEFT INFO + BOTTOM-RIGHT ACTION RAIL (Instagram Reels style) ====
+                 #theme-fab-container is the host-recognised FAB wrapper; the host
+                 force-sets it to display:block on open, so the flex layout lives on
+                 the inner .reels-hud element (block wrapper stays inert). -->
+            <div id="theme-fab-container" class="reels-hud-wrap" style="display:none;">
+              <div class="reels-hud">
+                <!-- bottom-left: couple + caption -->
+                <div class="reels-hud-left">
+                    <div class="reels-hud-couple">
+                        <span class="reels-hud-avatar" style="background-image: url(&quot;{{photo_bride_photo}}&quot;);">{{groom_nickname}}</span>
+                        <span class="reels-hud-name">{{groom_nickname}}_{{bride_nickname}}</span>
+                    </div>
+                    <div class="reels-hud-caption" id="reels-caption"
+                        data-tanggal-resepsi="{{tanggal_resepsi}}" data-tanggal-akad="{{tanggal_akad}}"></div>
+                    <!-- Music chip: JS fills the song label from the YouTube link's
+                         oEmbed (title · channel) and HIDES this chip + #btn-toggle-music
+                         when {{link_backsound_music}} is empty or not a valid YouTube URL. -->
+                    <div class="reels-hud-music" id="reels-music-chip"
+                        data-music-link="{{link_backsound_music}}">
+                        <span class="reels-eq"><i></i><i></i><i></i><i></i></span>
+                        <!-- Song label. If the title+channel is too long to fit, index.js
+                             adds .is-marquee and duplicates the text so it scrolls (Reels style). -->
+                        <span class="reels-hud-song" id="reels-hud-song">
+                            <span class="reels-hud-track" id="reels-hud-track">Memuat audio&hellip;</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- bottom-right: vertical action buttons (Reels style).
+                     Ucapan → wishes, Bagikan → happiness, RSVP → rsvp (via data-goto-story). -->
+                <div class="reels-hud-right">
+                    <!-- Ucapan (comment) -->
+                    <button class="reels-act" type="button" data-goto-story="wishes" aria-label="Ucapan">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.6-.8L3 21l1.9-5.4A8.4 8.4 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg>
+                        <span class="reels-act-label">Ucapan</span>
+                    </button>
+
+                    <!-- Bagikan (share → Berbagi Kebahagiaan) -->
+                    <button class="reels-act" type="button" data-goto-story="happiness" aria-label="Bagikan">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <span class="reels-act-label">Bagikan</span>
+                    </button>
+
+                    <!-- RSVP (was Menu icon → now navigates to Konfirmasi Kehadiran).
+                         Hidden by JS when the invitation has no ?guestid= (umum link). -->
+                    <button class="reels-act" id="reels-act-rsvp" type="button" data-goto-story="rsvp" aria-label="RSVP">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span class="reels-act-label">RSVP</span>
+                    </button>
+
+                    <button class="reels-act" id="btn-show-qr" type="button" uk-toggle="target: #qr-modal" aria-label="QR Code">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect>
+                            <rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path>
+                            <path d="M21 21v.01"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path><path d="M3 12h.01"></path>
+                            <path d="M12 3h.01"></path><path d="M12 16v.01"></path><path d="M16 12h1"></path><path d="M21 12v.01"></path><path d="M12 21v-1"></path>
+                        </svg>
+                        <span class="reels-act-label">QR</span>
+                    </button>
+
+                    <button class="reels-act reels-act-music" id="btn-toggle-music" type="button" aria-label="Musik">
+                        <span class="reels-disc">
+                            <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M8 5v14l11-7z"></path></svg>
+                            <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:block;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                        </span>
+                        <span class="reels-act-label">Musik</span>
+                    </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ==== OPEN GATE (cover — full-screen Instagram STORY pembuka) ====
+                 Layout mirrors a real IG story: full-bleed photo, thin segmented
+                 progress bar at the very top, a story header (avatar+username+time),
+                 centered couple text, and a swipe-up style "Buka Undangan" footer. -->
+            <div class="reels-gate reels-gate-story" id="reels-gate">
+                <div class="reels-gate-bg" style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></div>
+                <div class="reels-gate-scrim"></div>
+
+                <!-- segmented story progress bar (single filled segment) -->
+                <div class="reels-gate-progress" aria-hidden="true">
+                    <span class="reels-gate-seg"><i></i></span>
+                </div>
+
+                <!-- IG story header row: avatar + username + posted-time + close-ish menu -->
+                <div class="reels-gate-storyhead">
+                    <span class="reels-gate-head-avatar" style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></span>
+                    <span class="reels-gate-head-meta">
+                        <span class="reels-gate-head-user">{{groom_nickname}}_{{bride_nickname}}</span>
+                        <span class="reels-gate-head-time">Undangan Pernikahan</span>
+                    </span>
+                    <span class="reels-gate-head-dots" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+                    </span>
+                </div>
+
+                <!-- centered story content -->
+                <div class="reels-gate-inner">
+                    <div class="reels-gate-eyebrow-row">
+                        <span class="reels-gate-line" aria-hidden="true"></span>
+                        <span class="reels-gate-eyebrow">The Wedding Of</span>
+                        <span class="reels-gate-line" aria-hidden="true"></span>
+                    </div>
+
+                    <h1 class="reels-gate-couple">
+                        <span class="reels-gate-name">{{groom_nickname}}</span>
+                        <span class="reels-gate-amp">&amp;</span>
+                        <span class="reels-gate-name">{{bride_nickname}}</span>
+                    </h1>
+
+                    <div class="reels-gate-datechip">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <span>{{wedding_date}}</span>
+                    </div>
+
+                    <div class="reels-gate-guest">
+                        <span>Kepada Yth.</span>
+                        <strong>{{nama_tamu}}</strong>
+                    </div>
+                </div>
+
+                <!-- swipe-up style footer: primary open + QR (mirrors IG "swipe up") -->
+                <div class="reels-gate-footer">
+                    <button class="reels-gate-btn" id="btn-open-invitation" type="button">
+                        <span class="reels-gate-btn-chevron" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                        </span>
+                        <span>Buka Undangan</span>
+                    </button>
+                    <button class="reels-gate-qr" id="btn-show-qr" type="button" uk-toggle="target: #qr-modal">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect>
+                            <rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path>
+                        </svg>
+                        Tampilkan QR Code
+                    </button>
+                </div>
+            </div>
+
+        </div><!-- /reels-viewport -->
+
+        <!-- ==== MENU MODAL (jump to any story) ==== -->
+        <div id="menu-modal" class="uk-modal-full" uk-modal="">
+            <div class="uk-modal-dialog uk-flex uk-flex-center uk-flex-middle reels-modal-bg" uk-height-viewport="">
+                <button class="reels-modal-close" type="button" uk-toggle="target: #menu-modal" aria-label="Tutup">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div class="uk-width-1-1 uk-text-center reels-menu-content">
+                    <div class="reels-menu-head">
+                        <div class="reels-menu-avatar"><span class="reels-menu-avatar-glyph" aria-hidden="true"></span></div>
+                        <h2 class="reels-menu-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h2>
+                        <div class="reels-menu-date">{{wedding_date}}</div>
+                    </div>
+                    <ul class="reels-menu-list" id="reels-menu-list">
+                        <!-- items injected by index.js from the active stories -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <audio id="bg-music" loop="">
+            <source src="https://www.bensound.com/bensound-music/bensound-memories.mp3" type="audio/mpeg">
+        </audio>
+
+    </div><!-- /phone-container -->
+</div><!-- /trl-root -->
+
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
+<script src="index.js"></script>

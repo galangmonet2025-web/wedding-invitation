@@ -1,0 +1,635 @@
+<!-- ======================================================================
+     JUMPER WEDDING — Doodle-Jump-like vertical jumper wedding invitation
+     (Phaser 3.80.1). Built from JUMPER_WEDDING_BIBLE.md (Tahap 2).
+     ----------------------------------------------------------------------
+     The GROOM auto-bounces UP a tower of platforms, SEARCHING for his bride.
+     Guest only steers LEFT/RIGHT (keyboard / drag / tilt). Rings 💍 & hearts
+     ❤️ scattered on the way are CURRENCY; crossing a threshold unlocks one
+     invitation piece (hero → schedule → rsvp → … dynamic to real sections).
+     FINALE = Stage 3 altar where the bride waits (reunion → core invitation
+     reveals). Stage 4-5 = OPTIONAL bonus (gallery/story/higher score). ★ = cheat.
+
+     Binding contract (host resolves BEFORE this JS runs — templateParser.ts):
+       {{var}} → plain text/url · {{#if flag}} WRAPS <section> · {{#each}}.
+     JS-read elements carry BOTH data-var="key" AND {{key}} → val() helper.
+     Host IDs kept VERBATIM: btn-show-qr, btn-toggle-music, bg-music,
+       play-icon, pause-icon, btn-submit-ucapan, wish-name, wish-message,
+       btn-submit-kehadiran, rsvp-status, rsvp-guests, rsvp-code.
+     Prefix jw- ; global cleanup window.__gwCleanup.
+     ====================================================================== -->
+
+<div class="jw-shell">
+
+  <!-- ===== DESKTOP RIGHT SIDE: PURE invitation panel (canvas couple + info) —
+       hidden on mobile. NO game buttons here (PRESS START / difficulty / controls
+       live in the cover overlay INSIDE the game frame). Bible §9/§Z.7. ===== -->
+  <aside class="jw-side jw-cover-side">
+    <div class="jw-side-veil"></div>
+    <div class="jw-side-deco" aria-hidden="true">
+      <div class="jw-deco-cloud dc1"></div>
+      <div class="jw-deco-cloud dc2"></div>
+      <div class="jw-deco-balloon">🎈</div>
+      <div class="jw-deco-petal dp1">🌸</div>
+      <div class="jw-deco-petal dp2">🌸</div>
+      <div class="jw-deco-heart dh1">💗</div>
+    </div>
+    <div class="jw-side-panel">
+      <header class="jw-side-head">
+        <div class="jw-side-badge">✦ UNDANGAN PERNIKAHAN ✦</div>
+        <div class="jw-side-logo">JUMPER<br><span class="jw-side-logo-sub">WEDDING</span></div>
+        <div class="jw-side-op">MELOMPAT MENCARI SANG MEMPELAI</div>
+      </header>
+
+      <div class="jw-side-hero">
+        <div class="jw-couple-stage">
+          <canvas id="jw-couple-canvas" width="760" height="380"></canvas>
+        </div>
+
+        <div class="jw-side-names">
+          <span data-var="groom_nickname">{{groom_nickname}}</span>
+          <span class="jw-side-heart">♥</span>
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+        <div class="jw-side-date" data-var="wedding_date">{{wedding_date}}</div>
+        <div class="jw-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+
+        <div class="jw-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
+        <div class="jw-side-event">
+          <div class="jw-side-event-tag">AKAD NIKAH</div>
+          <div class="jw-side-event-line">{{tanggal_akad}} · {{jam_akad}}</div>
+          <div class="jw-side-event-place">{{nama_lokasi_akad}}</div>
+          <div class="jw-side-event-addr">{{keterangan_lokasi_akad}}</div>
+          {{#if akad_map}}<a class="jw-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+        </div>
+        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+        <div class="jw-side-event">
+          <div class="jw-side-event-tag">RESEPSI</div>
+          <div class="jw-side-event-line">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
+          <div class="jw-side-event-place">{{nama_lokasi_resepsi}}</div>
+          <div class="jw-side-event-addr">{{keterangan_lokasi_resepsi}}</div>
+          {{#if resepsi_map}}<a class="jw-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+        </div>
+        {{/if}}
+
+        <div class="jw-side-mission">
+          <div class="jw-side-mission-title">🕹️ CARA BERMAIN</div>
+          <p class="jw-side-mission-text">Sang mempelai pria memantul otomatis ke atas <b>mencari
+            calon istrinya</b> di puncak Stage 3. Geser <b>kiri / kanan</b> (atau miringkan HP)
+            untuk mengarahkan pendaratan. Kumpulkan 💍 &amp; ❤️ untuk membuka bagian undangan.</p>
+        </div>
+
+        <button class="jw-side-open" id="jw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== GAME FRAME (desktop: LEFT pinned; mobile: only this is shown) ===== -->
+  <div class="jw-frame" id="jw-frame">
+
+    <div class="jw-stage" id="gw-stage">
+      <!-- Phaser injects its <canvas> here -->
+
+      <!-- ===== HUD (top — viewed, not tapped) ===== -->
+      <div class="jw-hud" id="jw-hud">
+        <div class="jw-hud-col">
+          <span class="jw-hud-label">SKOR</span>
+          <span class="jw-hud-val" id="jw-score">000000</span>
+        </div>
+        <div class="jw-hud-col jw-hud-mid">
+          <span class="jw-hud-label">TINGGI</span>
+          <span class="jw-hud-val" id="jw-height">0m</span>
+        </div>
+        <div class="jw-hud-col jw-hud-right">
+          <span class="jw-hud-label">ZONA</span>
+          <span class="jw-hud-area-row">
+            <span class="jw-hud-val" id="jw-zone">1</span>
+            <span class="jw-hud-diff" id="jw-diff-badge" data-lvl="easy">EASY</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- currency chip -->
+      <div class="jw-power" id="jw-power">
+        <span class="jw-power-ico">💍</span>
+        <span id="jw-coins">0</span>
+        <span class="jw-power-extra" id="jw-power-extra"></span>
+      </div>
+
+      <!-- pieces collected -->
+      <div class="jw-progress" id="jw-progress"><span id="jw-progress-n">0</span>/<span id="jw-progress-t">0</span> 💌</div>
+
+      <!-- LEFT floating icon-buttons (Bible §9.3: icon-button KIRI-ATAS) -->
+      <div class="jw-leftbtns" id="jw-leftbtns">
+        <button class="jw-iconbtn jw-star-btn" id="jw-star-btn" type="button" title="Mode kebal (cheat)" aria-label="Cheat">★</button>
+        <button class="jw-iconbtn jw-zonesel-btn" id="jw-zonesel-btn" type="button" title="Pilih zona" aria-label="Pilih zona" style="display:none">▦</button>
+        <button class="jw-iconbtn jw-view-btn is-locked" id="jw-view-btn" type="button" title="Buka undangan" aria-label="Buka undangan">💌</button>
+        <button class="jw-iconbtn" id="btn-show-qr" type="button" title="QR Kehadiran" aria-label="QR Kehadiran">▤</button>
+        <!-- SFX toggle (game sound only — NOT tenant backsound) -->
+        <button class="jw-iconbtn jw-sfx-btn" id="jw-sfx-btn" type="button" title="Suara efek game" aria-label="Nyalakan / matikan suara efek game">
+          <span id="jw-sfx-on" class="jw-music-ico is-on">🔊</span>
+          <span id="jw-sfx-off" class="jw-music-ico is-off" style="display:none">🔇</span>
+        </button>
+        <!-- HIDDEN host music button (verbatim so host setMusic() can auto-play backsound) -->
+        <button class="jw-iconbtn jw-music-btn" id="btn-toggle-music" type="button" title="Musik" aria-label="Musik" style="display:none">
+          <span id="play-icon">▶</span><span id="pause-icon" style="display:none">❚❚</span>
+        </button>
+        <button class="jw-iconbtn jw-reset-btn" id="jw-reset-btn" type="button" title="Reset progres" aria-label="Reset">⟲</button>
+      </div>
+
+      <!-- piece indicators (N dynamic icons) — KANAN-ATAS -->
+      <div class="jw-inv" id="jw-inv"></div>
+
+      <!-- toast (top-center) -->
+      <div class="jw-toast" id="jw-toast"></div>
+
+      <!-- version badge -->
+      <div class="jw-version" id="jw-version">v1.0.0</div>
+
+      <!-- ===== touch control (bottom green zone): ◄ steer · ▲ shoot · ► steer ===== -->
+      <div class="jw-touch" id="jw-touch">
+        <button class="jw-steerbtn jw-steer-left" id="jw-steer-left" type="button" aria-label="Geser kiri">◄</button>
+        <button class="jw-firebtn" id="jw-fire" type="button" aria-label="Tembak cinta">▲</button>
+        <button class="jw-steerbtn jw-steer-right" id="jw-steer-right" type="button" aria-label="Geser kanan">►</button>
+      </div>
+
+      <!-- ===== OVERLAYS ===== -->
+      <!-- cover -->
+      <div class="jw-overlay show" id="jw-cover">
+        <div class="jw-overlay-card jw-cover-card">
+          <div class="jw-cover-badge">✦ JUMPER WEDDING ✦</div>
+          <div class="jw-cover-logo">JUMPER</div>
+          <div class="jw-cover-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="jw-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </div>
+          <div class="jw-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+          <div class="jw-cover-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+          <div class="jw-diff" id="jw-diff">
+            <span class="jw-diff-label">PILIH KESULITAN</span>
+            <div class="jw-diff-opts">
+              <button class="jw-diff-opt is-sel" data-diff="easy" type="button">EASY</button>
+              <button class="jw-diff-opt" data-diff="normal" type="button">NORMAL</button>
+              <button class="jw-diff-opt" data-diff="hard" type="button">HARD</button>
+            </div>
+          </div>
+          <button class="jw-bigbtn" id="jw-start" type="button">▶ PRESS START</button>
+          <button class="jw-tiltbtn" id="jw-tilt" type="button" style="display:none">📱 Aktifkan Kontrol Miring (Tilt)</button>
+          <button class="jw-textbtn" id="jw-cover-view" type="button">Lewati — buka undangan langsung 💌</button>
+          <div class="jw-cover-hint">Geser kiri/kanan · kumpulkan 💍 ❤️ · temukan sang mempelai di Stage 3</div>
+        </div>
+      </div>
+
+      <!-- boot/loading curtain -->
+      <div class="jw-overlay" id="jw-loading">
+        <div class="jw-loading-inner">
+          <div class="jw-loading-logo">JUMPER WEDDING</div>
+          <div class="jw-loading-bar"><span class="jw-loading-fill"></span></div>
+          <div class="jw-loading-text">MEMUAT<span class="jw-loading-dots"></span></div>
+        </div>
+      </div>
+
+      <!-- zone briefing -->
+      <div class="jw-overlay" id="jw-briefing">
+        <div class="jw-overlay-card jw-briefing-card">
+          <div class="jw-briefing-badge">✦ CARA BERMAIN ✦</div>
+          <div class="jw-overlay-pixtitle" id="jw-briefing-title">ZONA 1</div>
+          <div class="jw-overlay-text" id="jw-briefing-text"></div>
+
+          <div class="jw-howto" id="jw-howto">
+            <div class="jw-howto-step">
+              <div class="jw-howto-ico">↔️</div>
+              <div class="jw-howto-body">
+                <div class="jw-howto-title">Geser untuk mengarahkan</div>
+                <div class="jw-howto-desc">Sang mempelai pria <b>memantul sendiri</b> mencari calon istrinya. Kamu cukup geser <b>kiri / kanan</b> (atau miringkan HP) untuk memilih pijakan berikutnya. Keluar tepi kiri → muncul di kanan.</div>
+              </div>
+            </div>
+            <div class="jw-howto-step">
+              <div class="jw-howto-ico">💍</div>
+              <div class="jw-howto-body">
+                <div class="jw-howto-title">Kumpulkan cincin &amp; hati</div>
+                <div class="jw-howto-desc">Pungut <b>💍 (nilai 1)</b> dan <b>❤️ (nilai 3)</b>. Terkumpul cukup → membuka satu <b>bagian undangan 💌</b>.</div>
+              </div>
+            </div>
+            <div class="jw-howto-step">
+              <div class="jw-howto-ico">🚀</div>
+              <div class="jw-howto-body">
+                <div class="jw-howto-title">Power-up melompat</div>
+                <div class="jw-howto-desc"><b>Pegas</b> &amp; <b>trampolin</b> melempar tinggi; <b>baling-baling</b> &amp; <b>jetpack</b> membuat naik otomatis; <b>perisai</b> melindungi sekali.</div>
+              </div>
+            </div>
+            <div class="jw-howto-step">
+              <div class="jw-howto-ico">🐝</div>
+              <div class="jw-howto-body">
+                <div class="jw-howto-title">Musuh &amp; jebakan</div>
+                <div class="jw-howto-desc"><b>Injak dari atas</b> lebah/burung untuk melumpuhkannya. Hindari awan petir &amp; UFO. Kena musuh = terpelanting (tidak mati) — kamu selalu bisa lanjut naik.</div>
+              </div>
+            </div>
+            <div class="jw-howto-step">
+              <div class="jw-howto-ico">💍</div>
+              <div class="jw-howto-body">
+                <div class="jw-howto-title">Tujuan: temukan sang mempelai</div>
+                <div class="jw-howto-desc">Naik sampai <b>pelaminan di puncak Stage 3</b> — di sanalah calon istrimu menunggu. Bertemu = <b>undangan terbuka</b>! Stage 4-5 hanya <b>bonus</b> (galeri, kisah, skor tertinggi).</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="jw-bigbtn" id="jw-briefing-go" type="button">▶ MULAI MELOMPAT</button>
+        </div>
+      </div>
+
+      <!-- zone clear -->
+      <div class="jw-overlay" id="jw-clear">
+        <div class="jw-overlay-card">
+          <div class="jw-overlay-pixtitle">ZONA CLEAR!</div>
+          <div class="jw-overlay-text" id="jw-clear-text"></div>
+          <button class="jw-bigbtn" id="jw-clear-next" type="button">▶ LANJUT NAIK</button>
+        </div>
+      </div>
+
+      <!-- all pieces collected (celebration trigger #1) -->
+      <div class="jw-overlay" id="jw-allpieces">
+        <div class="jw-overlay-card">
+          <div class="jw-overlay-pixtitle" style="color:#ff3d8b">KEPINGAN INTI TERKUMPUL!</div>
+          <div class="jw-overlay-text" id="jw-allpieces-text"></div>
+          <button class="jw-bigbtn" id="jw-allpieces-view" type="button">💌 BUKA UNDANGAN</button>
+          <button class="jw-textbtn" id="jw-allpieces-keep" type="button">Lanjut bermain</button>
+        </div>
+      </div>
+
+      <!-- finale (celebration trigger #2 — the Stage 3 reunion) -->
+      <div class="jw-overlay" id="jw-win">
+        <div class="jw-overlay-card">
+          <div class="jw-overlay-pixtitle" style="color:#ffd447">BERTEMU SANG MEMPELAI! 💍</div>
+          <div class="jw-overlay-text" id="jw-win-text"></div>
+          <button class="jw-bigbtn" id="jw-win-view" type="button">💌 BUKA UNDANGAN</button>
+          <button class="jw-textbtn" id="jw-win-bonus" type="button" style="display:none">✨ Lanjut ke Stage Bonus</button>
+          <button class="jw-textbtn" id="jw-win-close" type="button">Tutup</button>
+        </div>
+      </div>
+
+      <!-- zone select (cheat) -->
+      <div class="jw-overlay" id="jw-zonesel">
+        <div class="jw-overlay-card">
+          <div class="jw-overlay-pixtitle">PILIH ZONA &amp; KESULITAN</div>
+          <div class="jw-diff" id="jw-zonesel-diff">
+            <span class="jw-diff-label">TINGKAT KESULITAN</span>
+            <div class="jw-diff-opts">
+              <button class="jw-diff-opt is-sel" data-diff="easy" type="button">EASY</button>
+              <button class="jw-diff-opt" data-diff="normal" type="button">NORMAL</button>
+              <button class="jw-diff-opt" data-diff="hard" type="button">HARD</button>
+            </div>
+          </div>
+          <div class="jw-zonesel-label">PILIH ZONA</div>
+          <div class="jw-zonesel-grid" id="jw-zonesel-grid"></div>
+          <button class="jw-bigbtn" id="jw-zonesel-ok" type="button">▶ MULAI</button>
+          <button class="jw-textbtn" id="jw-zonesel-close" type="button">Batal</button>
+        </div>
+      </div>
+
+      <!-- reset confirm (own overlay, not native confirm) -->
+      <div class="jw-overlay" id="jw-resetconfirm">
+        <div class="jw-overlay-card">
+          <div class="jw-overlay-pixtitle" style="color:#ff6a6a">RESET PROGRES?</div>
+          <div class="jw-overlay-text">Semua kepingan &amp; progres akan dihapus dari perangkat ini.</div>
+          <button class="jw-bigbtn jw-danger" id="jw-reset-yes" type="button">YA, HAPUS</button>
+          <button class="jw-textbtn" id="jw-reset-no" type="button">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== INVITATION SCROLL (shown inside frame when opened) ===== -->
+    <div class="jw-reveal" id="jw-reveal">
+      <button class="jw-reveal-close" id="jw-reveal-close" type="button" aria-label="Kembali ke game" title="Kembali ke game"><span class="jw-reveal-close-ico">🎮</span><span class="jw-reveal-close-txt">KEMBALI</span></button>
+      <div class="jw-reveal-scroll" id="jw-reveal-scroll"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+     SPRITE SHEET ASSETS (PNG) — hidden. Theme runs fully PROCEDURAL by default.
+     Upload order (Bible APPENDIX P.4): 1 player, 2 enemy, 3 environment,
+     4 game-object, 5 box-kepingan. Slot empty / still "{{...}}" → procedural.
+     ====================================================================== -->
+  <div id="jw-assets" aria-hidden="true" style="display:none">
+    <img data-asset="player_sheet"      src="{{asset_image_1}}" alt="">
+    <img data-asset="enemy_sheet"       src="{{asset_image_2}}" alt="">
+    <img data-asset="environment_sheet" src="{{asset_image_3}}" alt="">
+    <img data-asset="object_sheet"      src="{{asset_image_4}}" alt="">
+    <img data-asset="piece_sheet"       src="{{asset_image_5}}" alt="">
+  </div>
+
+  <!-- ======================================================================
+     SINGLE BINDING SOURCE — #inv-source. All sections written ONCE with
+     {{vars}}. Modals/reveal CLONE from here. {{#if flag}} WRAPS the <section>.
+     11 data-info sections in fixed order (host-contract).
+     ====================================================================== -->
+  <div class="jw-invitation" id="inv-source" aria-hidden="true">
+
+    <!-- 1 · HERO (always) -->
+    <section class="jw-sec jw-hero" data-info="hero">
+      <div class="jw-hero-bg" data-var="photo_hero_cover" data-src="{{photo_hero_cover}}" style="background-image:url('{{photo_hero_cover}}')"></div>
+      <div class="jw-hero-scrim"></div>
+      <div class="jw-hero-inner">
+        <div class="jw-hero-eyebrow">THE WEDDING OF</div>
+        <h1 class="jw-hero-title">
+          <span data-var="groom_nickname">{{groom_nickname}}</span>
+          <span class="jw-amp">&amp;</span>
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </h1>
+        <div class="jw-hero-date" data-var="wedding_date">{{wedding_date}}</div>
+        <p class="jw-hero-quote" data-var="quote">{{quote}}</p>
+        <div class="jw-hero-by" data-var="quote_by">{{quote_by}}</div>
+      </div>
+    </section>
+
+    <!-- 2 · COUPLE (always) -->
+    <section class="jw-sec jw-sec-couple" data-info="couple">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">THE COUPLE</div>
+        <div class="jw-sec-name">Kedua Mempelai</div>
+        <p class="jw-quotes">Dengan memohon rahmat dan ridho Tuhan Yang Maha Esa, kami bermaksud
+          menyelenggarakan pernikahan putra-putri kami.</p>
+      </div>
+      <div class="jw-couple-grid">
+        <div class="jw-couple-card">
+          <div class="jw-couple-photo" style="background-image:url('{{photo_groom_photo}}')"></div>
+          <h3 class="jw-couple-name" data-var="groom_name">{{groom_name}}</h3>
+          {{#if flag_tampilkan_nama_orang_tua}}
+          <p class="jw-couple-parents">Putra dari<br><span>{{nama_bapak_laki_laki}}</span> &amp; <span>{{nama_ibu_laki_laki}}</span></p>
+          {{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}
+          <a class="jw-couple-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener noreferrer">@{{ig_laki_laki}}</a>
+          {{/if}}
+        </div>
+        <div class="jw-couple-amp">♥</div>
+        <div class="jw-couple-card">
+          <div class="jw-couple-photo" style="background-image:url('{{photo_bride_photo}}')"></div>
+          <h3 class="jw-couple-name" data-var="bride_name">{{bride_name}}</h3>
+          {{#if flag_tampilkan_nama_orang_tua}}
+          <p class="jw-couple-parents">Putri dari<br><span>{{nama_bapak_perempuan}}</span> &amp; <span>{{nama_ibu_perempuan}}</span></p>
+          {{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}
+          <a class="jw-couple-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener noreferrer">@{{ig_perempuan}}</a>
+          {{/if}}
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · COUNTDOWN + RSVP (always) -->
+    <section class="jw-sec jw-sec-rsvp" data-info="rsvp">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">SAVE THE DATE</div>
+        <div class="jw-sec-name">Menuju Hari Bahagia</div>
+      </div>
+      <div class="jw-countdown">
+        <div class="jw-cd-item"><div class="jw-cd-box"><span id="tm-countdown-days">{{countdown_hari}}</span></div><div class="jw-cd-label">Hari</div></div>
+        <span class="jw-cd-sep">:</span>
+        <div class="jw-cd-item"><div class="jw-cd-box"><span id="tm-countdown-hours">{{countdown_jam}}</span></div><div class="jw-cd-label">Jam</div></div>
+        <span class="jw-cd-sep">:</span>
+        <div class="jw-cd-item"><div class="jw-cd-box"><span id="tm-countdown-minutes">{{countdown_menit}}</span></div><div class="jw-cd-label">Menit</div></div>
+        <span class="jw-cd-sep">:</span>
+        <div class="jw-cd-item"><div class="jw-cd-box"><span id="tm-countdown-seconds">{{countdown_detik}}</span></div><div class="jw-cd-label">Detik</div></div>
+      </div>
+      <div class="jw-datecard">
+        <div class="jw-datecard-label">Tanggal Pernikahan</div>
+        <div class="jw-datecard-value" data-var="wedding_date">{{wedding_date}}</div>
+        <div class="jw-datecard-heart">♥</div>
+      </div>
+
+      {{#unless is_link_umum_and_not_for_spesific_guest}}
+      <div class="jw-sec-head jw-sec-head-sub">
+        <div class="jw-eyebrow">RSVP</div>
+        <div class="jw-sec-name">Konfirmasi Kehadiran</div>
+      </div>
+      <div class="jw-form-wrap">
+        <div class="jw-glass-form">
+          <div class="jw-field">
+            <select class="jw-input" id="rsvp-status">
+              <option value="Hadir">Hadir</option>
+              <option value="Tidak Hadir">Tidak hadir</option>
+              <option value="Ragu">Masih ragu</option>
+            </select>
+          </div>
+          <div class="jw-field">
+            <input class="jw-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+          </div>
+          <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
+          <button class="jw-btn jw-btn-primary" id="btn-submit-kehadiran" type="button">▶ Konfirmasi</button>
+          <div class="jw-alert" id="alert-submit-kehadiran"></div>
+        </div>
+      </div>
+      {{/unless}}
+    </section>
+
+    <!-- 4 · SCHEDULE (always) -->
+    <section class="jw-sec jw-sec-schedule" data-info="schedule">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">THE EVENT</div>
+        <div class="jw-sec-name">Waktu &amp; Tempat</div>
+      </div>
+      <div class="jw-venue-grid">
+        <div class="jw-venue-card">
+          <div class="jw-venue-tag">AKAD NIKAH</div>
+          <div class="jw-venue-dt">{{tanggal_akad}} · {{jam_akad}}</div>
+          <div class="jw-venue-place">{{nama_lokasi_akad}}</div>
+          <div class="jw-venue-addr">{{keterangan_lokasi_akad}}</div>
+          {{#if akad_map}}<a href="{{akad_map}}" target="_blank" rel="noopener" class="jw-btn jw-btn-ghost">▶ Buka Peta</a>{{/if}}
+        </div>
+        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+        <div class="jw-venue-card">
+          <div class="jw-venue-tag">RESEPSI</div>
+          <div class="jw-venue-dt">{{tanggal_resepsi}} · {{jam_resepsi}}</div>
+          <div class="jw-venue-place">{{nama_lokasi_resepsi}}</div>
+          <div class="jw-venue-addr">{{keterangan_lokasi_resepsi}}</div>
+          {{#if resepsi_map}}<a href="{{resepsi_map}}" target="_blank" rel="noopener" class="jw-btn jw-btn-ghost">▶ Buka Peta</a>{{/if}}
+        </div>
+        {{/if}}
+      </div>
+    </section>
+
+    <!-- 5 · STREAMING (flag) -->
+    {{#if is_fitur_live_streaming}}
+    <section class="jw-sec jw-sec-streaming" data-info="streaming">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">LIVE STREAMING</div>
+        <div class="jw-sec-name">Saksikan Secara Langsung</div>
+        <p class="jw-quotes">Bagi keluarga &amp; sahabat yang tidak dapat hadir, saksikan momen bahagia kami melalui siaran langsung.</p>
+      </div>
+      <div class="jw-stream-card">
+        <div class="jw-stream-ico">📺</div>
+        {{#if link_live_streaming}}<a href="{{link_live_streaming}}" target="_blank" rel="noopener" class="jw-btn jw-btn-primary">▶ TONTON SEKARANG</a>{{/if}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 6 · STORY (flag) -->
+    {{#if flag_pakai_timeline_kisah}}
+    <section class="jw-sec jw-sec-story" data-info="story">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">OUR STORY</div>
+        <div class="jw-sec-name">Perjalanan Kisah Kami</div>
+      </div>
+      <div class="jw-timeline">
+        {{#each timeline_kisah}}
+        <div class="jw-timeline-item">
+          <div class="jw-timeline-dot">{{@index_plus_1}}</div>
+          <div class="jw-timeline-body">
+            <div class="jw-timeline-head">
+              <h4 class="jw-timeline-title">{{this.judul}}</h4>
+              <span class="jw-timeline-date">{{this.tanggal}}</span>
+            </div>
+            <p class="jw-timeline-text">{{this.deskripsi}}</p>
+          </div>
+        </div>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 7 · GALLERY (flag) -->
+    {{#if has_gallery}}
+    <section class="jw-sec jw-sec-gallery" data-info="gallery">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">GALLERY</div>
+        <div class="jw-sec-name">Galeri Momen</div>
+        <p class="jw-quotes">Momen-momen indah yang kami abadikan.</p>
+      </div>
+      <div class="jw-gallery-grid">
+        {{#each galleries}}
+        <div class="jw-gallery-item">
+          <img src="{{this.url}}" alt="" loading="lazy" class="jw-gallery-img" />
+        </div>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 8 · HAPPINESS / instagram (flag) -->
+    {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+    <section class="jw-sec jw-sec-happiness" data-info="happiness">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">SHARE THE MOMENT</div>
+        <div class="jw-sec-name">Berbagi Kebahagiaan</div>
+        <p class="jw-quotes">Bagikan kebahagiaan bersama kami di Instagram Story.</p>
+      </div>
+      <div class="jw-happiness-cards">
+        <div class="jw-happiness-card"><img src="{{sample_story_1}}" alt="" /><img class="jw-happiness-frame" src="{{frame_balasan_instagram}}" alt="" /></div>
+        <div class="jw-happiness-card"><img src="{{sample_story_2}}" alt="" /><img class="jw-happiness-frame" src="{{frame_balasan_instagram}}" alt="" /></div>
+        <div class="jw-happiness-card"><img src="{{sample_story_3}}" alt="" /><img class="jw-happiness-frame" src="{{frame_balasan_instagram}}" alt="" /></div>
+      </div>
+      <div class="jw-happiness-cta">
+        {{#if link_balasan_instagram}}<a href="{{link_balasan_instagram}}" target="_blank" rel="noopener" class="jw-btn jw-btn-primary">📸 Bagikan Momen</a>{{/if}}
+        <p class="jw-quotes">Tandai <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong> ✨</p>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 9 · WISHES (always) -->
+    <section class="jw-sec jw-sec-wishes" data-info="wishes">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">WISHES</div>
+        <div class="jw-sec-name">Ucapan &amp; Doa</div>
+        <p class="jw-quotes">Berikan ucapan &amp; doa restu untuk kedua mempelai.</p>
+      </div>
+      <div class="jw-form-wrap">
+        {{#unless is_link_umum_and_not_for_spesific_guest}}
+        <div class="jw-glass-form" id="jw-wish-form">
+          <div class="jw-field"><input class="jw-input" id="wish-name" type="text" placeholder="Nama Anda" /></div>
+          <div class="jw-field"><textarea class="jw-input jw-textarea" id="wish-message" rows="3" placeholder="Tulis Ucapan &amp; Doa..."></textarea></div>
+          <button class="jw-btn jw-btn-primary" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
+          <div class="jw-alert" id="alert-submit-ucapan"></div>
+        </div>
+        {{/unless}}
+        <div class="jw-wishes-list" id="jw-wish-list">
+          {{#each wishes}}
+          <div class="jw-wish-item">
+            <div class="jw-wish-head">
+              <span class="jw-wish-author">{{this.guest_name}}</span>
+              <span class="jw-wish-time">{{this.guest_comment_time}}</span>
+            </div>
+            <div class="jw-wish-text">{{this.guest_message}}</div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 · GIFT (flag) -->
+    {{#if tampilkan_amplop_online}}
+    <section class="jw-sec jw-sec-gift" data-info="gift">
+      <div class="jw-sec-head">
+        <div class="jw-eyebrow">WEDDING GIFT</div>
+        <div class="jw-sec-name">Kado Pernikahan</div>
+        <p class="jw-quotes">Doa restu Anda sangat berarti. Bila ingin memberi kado, kami sediakan fitur berikut.</p>
+      </div>
+      <div class="jw-gift-grid">
+        <div class="jw-gift-card">
+          <div class="jw-gift-bank">{{bank_1}}</div>
+          {{#if flag_pakai_qris_rekening_1}}<div class="jw-gift-qris"><img src="{{gambar_qris_rekening_1}}" alt="QRIS" /></div>{{/if}}
+          <div class="jw-gift-num-label">Nomor Rekening</div>
+          <div class="jw-gift-num" id="jw-rek-1">{{rek_1}}</div>
+          <div class="jw-gift-name">a.n. {{nama_rek_1}}</div>
+          <button class="jw-btn jw-btn-ghost" type="button" onclick="jwCopy('jw-rek-1', this)">📋 SALIN</button>
+        </div>
+        {{#if flag_pakai_2_rekening}}
+        <div class="jw-gift-card">
+          <div class="jw-gift-bank">{{bank_2}}</div>
+          {{#if flag_pakai_qris_rekening_2}}<div class="jw-gift-qris"><img src="{{gambar_qris_rekening_2}}" alt="QRIS" /></div>{{/if}}
+          <div class="jw-gift-num-label">Nomor Rekening</div>
+          <div class="jw-gift-num" id="jw-rek-2">{{rek_2}}</div>
+          <div class="jw-gift-name">a.n. {{nama_rek_2}}</div>
+          <button class="jw-btn jw-btn-ghost" type="button" onclick="jwCopy('jw-rek-2', this)">📋 SALIN</button>
+        </div>
+        {{/if}}
+        {{#if flag_kirim_hadiah_offline}}
+        <div class="jw-gift-card">
+          <div class="jw-gift-bank">🎁 Hadiah Fisik</div>
+          <div class="jw-gift-place">{{nama_lokasi_kirim_hadiah_offline}}</div>
+          <div class="jw-gift-addr" id="jw-gift-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+          <button class="jw-btn jw-btn-ghost" type="button" onclick="jwCopy('jw-gift-addr', this)">📋 SALIN ALAMAT</button>
+        </div>
+        {{/if}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 11 · CLOSING (always) -->
+    <section class="jw-sec jw-sec-closing" data-info="closing">
+      <div class="jw-closing-bg" data-src="{{photo_closing}}" style="background-image:url('{{photo_closing}}')"></div>
+      <div class="jw-closing-overlay"></div>
+      <div class="jw-closing-card">
+        <div class="jw-eyebrow jw-closing-eyebrow">With Love &amp; Gratitude</div>
+        <div class="jw-closing-title">Terima Kasih</div>
+        <div class="jw-closing-divider"><span></span><span>♥</span><span></span></div>
+        <p class="jw-closing-message" data-var="kalimat_penutup">{{kalimat_penutup}}</p>
+        <div class="jw-closing-signature">
+          <span data-var="groom_nickname">{{groom_nickname}}</span>
+          <em>&amp;</em>
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+        <div class="jw-credit">
+          <a href="{{site_url}}" target="_blank" rel="noopener noreferrer" data-var="site_name">{{site_name}}</a>
+          <span> · dibuat dengan ♥</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Piece modal -->
+  <div class="jw-modal-root" id="jw-modal-root">
+    <div class="jw-modal">
+      <button class="jw-modal-close" id="jw-modal-close" type="button">✕</button>
+      <div class="jw-modal-title" id="jw-modal-title"></div>
+      <div class="jw-modal-body" id="jw-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Own lightbox (own class so host universal lightbox doesn't hijack) -->
+  <div class="jw-lightbox" id="jw-lightbox">
+    <button class="jw-lightbox-close" id="jw-lightbox-close" type="button">✕</button>
+    <img class="jw-lightbox-img" id="jw-lightbox-img" src="" alt="" />
+  </div>
+
+  <!-- host music mirror target (NOT the real player; host dispatches play/pause here) -->
+  <audio id="bg-music"></audio>
+</div>

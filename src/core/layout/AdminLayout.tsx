@@ -32,6 +32,7 @@ import {
     HiOutlineArchive,
     HiOutlineViewGrid,
     HiOutlineDesktopComputer,
+    HiOutlineBadgeCheck,
 } from 'react-icons/hi';
 import type { IconType } from 'react-icons';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
@@ -79,6 +80,23 @@ const SERVICE_TINT: Record<string, string> = {
 
 export function serviceIconTint(color: string): string {
     return SERVICE_TINT[color] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300';
+}
+
+/**
+ * Warna TEKS untuk badge jenis paket (basic/pro/premium) di pojok kanan gold
+ * header — badge-nya berlatar putih, jadi cukup warnai teksnya. Casing dari
+ * backend bisa bervariasi → di-lower dulu. Konvensi warna plan mengikuti
+ * TenantPage (basic=biru, pro=amber, premium=gold).
+ */
+function planTextClass(plan?: string): string {
+    switch (String(plan || '').toLowerCase().trim()) {
+        case 'premium':
+            return 'text-gold-600';
+        case 'pro':
+            return 'text-amber-600';
+        default:
+            return 'text-sky-600';
+    }
 }
 
 /**
@@ -330,6 +348,16 @@ export function AdminLayout() {
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
+                                {/* Badge jenis paket tenant — di pojok kanan header, selalu terlihat. */}
+                                {tenant && showTenantMenu && (
+                                    <span
+                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white shadow-sm text-[11px] font-black uppercase tracking-wider ${planTextClass(tenant.plan_type)}`}
+                                        title={`Paket: ${String(tenant.plan_type || '').toUpperCase()}`}
+                                    >
+                                        <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
+                                        {tenant.plan_type}
+                                    </span>
+                                )}
                                 <button onClick={() => navigate(classicTarget)} className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider text-gold-700 bg-white shadow-sm active:scale-95 transition-transform" title={t('view_switch.to_classic', 'Versi Klasik') as string}>
                                     <HiOutlineDesktopComputer className="w-4 h-4" />
                                     <span className="hidden md:inline">{t('view_switch.to_classic', 'Versi Klasik')}</span>
