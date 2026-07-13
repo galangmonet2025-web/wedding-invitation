@@ -88,8 +88,14 @@ export function GuestPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<CreateGuestRequest>({
         name: '', phone: '', category: 'Friends', status: 'pending', number_of_guests: 1,
+        flag_sudah_isi_ucapan: false, flag_sudah_kirim_hadiah: false,
     });
     const [savingId, setSavingId] = useState<string | null>(null);
+
+    // Backend bisa kirim boolean atau string 'TRUE'/'FALSE' — normalkan ke boolean.
+    // (Perhatikan: string 'FALSE' bernilai truthy di JS, jadi jangan cek `!!flag`.)
+    const flagIsTrue = (v: boolean | string | undefined) =>
+        v === true || String(v).toUpperCase() === 'TRUE';
 
     const startInlineEdit = (guest: Guest) => {
         setEditingId(guest.id);
@@ -99,6 +105,8 @@ export function GuestPage() {
             category: guest.category,
             status: guest.status,
             number_of_guests: guest.number_of_guests,
+            flag_sudah_isi_ucapan: flagIsTrue(guest.flag_sudah_isi_ucapan),
+            flag_sudah_kirim_hadiah: flagIsTrue(guest.flag_sudah_kirim_hadiah),
         });
     };
 
@@ -227,7 +235,7 @@ export function GuestPage() {
     };
 
     const resetForm = () => {
-        setForm({ name: '', phone: '', category: 'Friends', status: 'pending', number_of_guests: 1 });
+        setForm({ name: '', phone: '', category: 'Friends', status: 'pending', number_of_guests: 1, flag_sudah_isi_ucapan: false, flag_sudah_kirim_hadiah: false });
     };
 
     const openEditModal = (guest: Guest) => {
@@ -238,6 +246,8 @@ export function GuestPage() {
             category: guest.category,
             status: guest.status,
             number_of_guests: guest.number_of_guests,
+            flag_sudah_isi_ucapan: flagIsTrue(guest.flag_sudah_isi_ucapan),
+            flag_sudah_kirim_hadiah: flagIsTrue(guest.flag_sudah_kirim_hadiah),
         });
         setShowEditModal(true);
     };
@@ -407,7 +417,20 @@ export function GuestPage() {
         {
             key: 'flag_sudah_isi_ucapan',
             header: t('dashboard.wishes'),
-            render: (g: Guest) => g.flag_sudah_isi_ucapan ? (
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <select
+                        value={flagIsTrue(editForm.flag_sudah_isi_ucapan) ? 'true' : 'false'}
+                        onChange={(e) => setEditForm((f) => ({ ...f, flag_sudah_isi_ucapan: e.target.value === 'true' }))}
+                        onKeyDown={handleInlineKey}
+                        disabled={savingId === g.id}
+                        className="select-field !py-1.5 !text-sm w-full min-w-[100px]"
+                    >
+                        <option value="true">✅ {t('guests.status_yes')}</option>
+                        <option value="false">⏳ {t('guests.status_no')}</option>
+                    </select>
+                </div>
+            ) : flagIsTrue(g.flag_sudah_isi_ucapan) ? (
                 <span className="badge-success text-[10px]">✅ {t('guests.status_yes')}</span>
             ) : (
                 <span className="badge-secondary text-[10px]">⏳ {t('guests.status_no')}</span>
@@ -416,7 +439,20 @@ export function GuestPage() {
         {
             key: 'flag_sudah_kirim_hadiah',
             header: t('dashboard.gifts'),
-            render: (g: Guest) => g.flag_sudah_kirim_hadiah ? (
+            render: (g: Guest) => editingId === g.id ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <select
+                        value={flagIsTrue(editForm.flag_sudah_kirim_hadiah) ? 'true' : 'false'}
+                        onChange={(e) => setEditForm((f) => ({ ...f, flag_sudah_kirim_hadiah: e.target.value === 'true' }))}
+                        onKeyDown={handleInlineKey}
+                        disabled={savingId === g.id}
+                        className="select-field !py-1.5 !text-sm w-full min-w-[100px]"
+                    >
+                        <option value="true">✅ {t('guests.status_yes')}</option>
+                        <option value="false">⏳ {t('guests.status_no')}</option>
+                    </select>
+                </div>
+            ) : flagIsTrue(g.flag_sudah_kirim_hadiah) ? (
                 <span className="badge-success text-[10px]">✅ {t('guests.status_yes')}</span>
             ) : (
                 <span className="badge-secondary text-[10px]">⏳ {t('guests.status_no')}</span>
@@ -552,6 +588,33 @@ export function GuestPage() {
                     className="input-field"
                 />
             </div>
+            {/* Status ucapan & hadiah hanya bisa diubah saat edit tamu yang sudah ada. */}
+            {showEditModal && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="label-field">{t('dashboard.wishes')}</label>
+                        <select
+                            value={flagIsTrue(form.flag_sudah_isi_ucapan) ? 'true' : 'false'}
+                            onChange={(e) => setForm((f) => ({ ...f, flag_sudah_isi_ucapan: e.target.value === 'true' }))}
+                            className="select-field"
+                        >
+                            <option value="true">✅ {t('guests.status_yes')}</option>
+                            <option value="false">⏳ {t('guests.status_no')}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="label-field">{t('dashboard.gifts')}</label>
+                        <select
+                            value={flagIsTrue(form.flag_sudah_kirim_hadiah) ? 'true' : 'false'}
+                            onChange={(e) => setForm((f) => ({ ...f, flag_sudah_kirim_hadiah: e.target.value === 'true' }))}
+                            className="select-field"
+                        >
+                            <option value="true">✅ {t('guests.status_yes')}</option>
+                            <option value="false">⏳ {t('guests.status_no')}</option>
+                        </select>
+                    </div>
+                </div>
+            )}
         </div>
     );
 

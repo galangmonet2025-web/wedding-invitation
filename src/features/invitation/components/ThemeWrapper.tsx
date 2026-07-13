@@ -1,6 +1,29 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
+ * Query an element by selector, preferring a VISIBLE match when duplicates exist.
+ *
+ * Game themes keep a hidden `#inv-source` (display:none) copy of the whole
+ * invitation and CLONE its sections into a visible reveal modal on demand. While
+ * a clone is on screen there are TWO elements with the same host id (e.g. two
+ * `#rsvp-form`) — the hidden source's and the visible clone's. A plain
+ * `querySelector` returns the FIRST in DOM order (the hidden source), so the host
+ * would read empty inputs and reveal the wrong (hidden) card. Preferring an
+ * on-screen element (`offsetParent !== null`, which is null for display:none)
+ * makes the host operate on the clone the guest actually sees. Falls back to the
+ * first match when none is visible (normal single-copy themes).
+ */
+function pick<T extends HTMLElement>(
+    container: HTMLElement | null | undefined,
+    selector: string,
+): T | null {
+    if (!container) return null;
+    const all = Array.from(container.querySelectorAll<T>(selector));
+    if (all.length <= 1) return all[0] || null;
+    return all.find((el) => el.offsetParent !== null) || all[0];
+}
+
+/**
  * Reveal a "thank you" card and hide its form after a successful submit,
  * WITHOUT triggering a full theme re-render.
  *
@@ -20,7 +43,7 @@ function revealThankYou(
 ): HTMLElement | null {
     if (!container) return null;
 
-    const formEl = container.querySelector<HTMLElement>(formSelector);
+    const formEl = pick<HTMLElement>(container, formSelector);
     if (formEl) {
         formEl.style.display = 'none';
         // Also neutralize the {{#hidden}} wrapper if the form happens to sit in
@@ -29,7 +52,7 @@ function revealThankYou(
         if (formWrap && formWrap !== container) formWrap.style.display = 'none';
     }
 
-    const cardEl = container.querySelector<HTMLElement>(cardSelector);
+    const cardEl = pick<HTMLElement>(container, cardSelector);
     if (cardEl) {
         cardEl.style.display = '';
         cardEl.style.removeProperty('display');
@@ -41,6 +64,69 @@ function revealThankYou(
     }
 
     return cardEl;
+}
+
+/**
+ * Prepend a just-submitted wish to the top of the rendered wishes list WITHOUT
+ * re-rendering the theme (which would look like a page refresh). The new item is
+ * built from the FORM's own name+message so what the guest typed is exactly what
+ * shows. Theme contract:
+ *   - the list container is marked `data-loop="wishes"`,
+ *   - each wish item marks its fields with `data-wish-field="name|message|time"`.
+ * We clone the first existing item as a template (preserving each theme's markup)
+ * and only swap the field text. If the list is empty and no `[data-wish-template]`
+ * is provided, we build a minimal generic item so the wish still appears.
+ */
+function prependWish(
+    container: HTMLElement | null | undefined,
+    name: string,
+    message: string,
+): void {
+    if (!container) return;
+    const list = pick<HTMLElement>(container, '[data-loop="wishes"]');
+    if (!list) return;
+
+    // Prefer cloning an existing rendered item (or a hidden [data-wish-template]
+    // the theme provides) so the new one matches the theme's markup exactly.
+    const template = container.querySelector<HTMLElement>('[data-wish-template]')
+        || list.querySelector<HTMLElement>(':scope > [data-wish-item]')
+        || list.querySelector<HTMLElement>(':scope > *');
+
+    let clone: HTMLElement;
+    if (template) {
+        clone = template.cloneNode(true) as HTMLElement;
+        clone.removeAttribute('data-wish-template');
+        clone.style.removeProperty('display');
+        clone.setAttribute('data-wish-item', '');
+        // Scroll-reveal themes style list items at opacity:0 until an
+        // IntersectionObserver adds `.is-visible`. Our clone won't be observed, so
+        // mark it visible up front (harmless on themes that don't use it).
+        clone.classList.add('is-visible');
+        const setField = (field: string, text: string) => {
+            const el = clone.querySelector<HTMLElement>(`[data-wish-field="${field}"]`);
+            if (el) el.textContent = text;
+        };
+        setField('name', name);
+        setField('message', message);
+        setField('time', 'Baru saja');
+    } else {
+        // No item and no template (empty list, no seed) → build a minimal generic
+        // item so the guest's wish still appears. Neutral markup that inherits the
+        // list's styling as best it can.
+        clone = document.createElement('div');
+        clone.setAttribute('data-wish-item', '');
+        const nameEl = document.createElement('div');
+        nameEl.setAttribute('data-wish-field', 'name');
+        nameEl.style.fontWeight = '700';
+        nameEl.textContent = name;
+        const msgEl = document.createElement('div');
+        msgEl.setAttribute('data-wish-field', 'message');
+        msgEl.textContent = message;
+        clone.appendChild(nameEl);
+        clone.appendChild(msgEl);
+    }
+
+    list.insertBefore(clone, list.firstChild);
 }
 
 /**
@@ -560,40 +646,51 @@ export function ThemeWrapper({
             if (btn.disabled) return;
 
             const container = containerRef.current;
-            const alertEl = container?.querySelector('#alert-submit-kehadiran');
-            const status = (container?.querySelector('#rsvp-status') as HTMLSelectElement | HTMLInputElement)?.value || 'confirmed';
-            const guests = parseInt((container?.querySelector('#rsvp-guests') as HTMLInputElement)?.value || '1');
+            // Prefer the VISIBLE copy (game themes clone a hidden #inv-source, creating
+            // duplicate ids while a reveal is open — read the on-screen clone, not the
+            // hidden source). #rsvp-code is a hidden input (same value in both), so a
+            // plain query is fine for it.
+            const alertEl = pick(container, '#alert-submit-kehadiran');
+            const status = (pick<HTMLSelectElement | HTMLInputElement>(container, '#rsvp-status'))?.value || 'confirmed';
+            const guests = parseInt((pick<HTMLInputElement>(container, '#rsvp-guests'))?.value || '1');
             const code = (container?.querySelector('#rsvp-code') as HTMLInputElement)?.value || '';
 
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
 
-            if (alertEl) alertEl.innerHTML = '';
+            // #alert-submit-kehadiran is the theme's thank-you CARD (holds hadir/tidak
+            // [data-rsvp-branch] sub-cards), NOT a bare alert line. Never clear or write
+            // a status string into it — that would wipe the pretty card. Feedback about
+            // success/failure is a toast (fired in onSubmitRSVP).
+            const rsvpIsCard = !!alertEl?.querySelector('[data-rsvp-branch]');
+            if (alertEl && !rsvpIsCard) alertEl.innerHTML = '';
 
             const res = await onSubmitRSVP({ status, guests, code });
 
             btn.innerHTML = originalText;
 
-            if (alertEl) {
-                alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
-                alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
-            }
+            const hadir = String(status).toLowerCase() === 'confirmed'
+                || String(status).toLowerCase() === 'hadir';
 
             if (res.success) {
                 btn.disabled = true;
-
-                // Reveal the RSVP "thank you" card and hide the form without re-rendering
-                // the theme (both already in the DOM via {{#hidden}}/{{^hidden}}).
-                const hadir = String(status).toLowerCase() === 'confirmed'
-                    || String(status).toLowerCase() === 'hadir';
                 submittedRSVPRef.current = { hadir };
+                // Hide the form + reveal the thank-you card, then show only the branch
+                // matching the answer (Hadir / Tidak Hadir) — no re-render/refresh.
                 const cardEl = revealThankYou(container, '#rsvp-form', '#alert-submit-kehadiran');
-                // The card's hadir/tidak-hadir branches were rendered from the guest's
-                // status AT LOAD (before this submit), so re-sync them to what was picked.
                 syncRsvpBranch(cardEl, hadir);
+                // Legacy alert-line themes (no branches) still get an inline status line.
+                if (alertEl && !rsvpIsCard) {
+                    alertEl.className = 'uk-margin-small-top uk-text-small uk-text-success';
+                    alertEl.innerHTML = '<i class="ri-checkbox-circle-line"></i> ' + res.message;
+                }
             } else {
                 btn.disabled = false;
+                if (alertEl && !rsvpIsCard) {
+                    alertEl.className = 'uk-margin-small-top uk-text-small uk-text-danger';
+                    alertEl.innerHTML = '<i class="ri-error-warning-line"></i> ' + res.message;
+                }
             }
         }
 
@@ -604,37 +701,36 @@ export function ThemeWrapper({
             if (btn.disabled) return;
 
             const container = containerRef.current;
-            const alertEl = container?.querySelector('#alert-submit-ucapan');
-            const name = (container?.querySelector('#wish-name') as HTMLInputElement)?.value || '';
-            const message = (container?.querySelector('#wish-message') as HTMLTextAreaElement)?.value || '';
+            // Prefer the VISIBLE copy (see note in the RSVP handler above).
+            const name = (pick<HTMLInputElement>(container, '#wish-name'))?.value || '';
+            const message = (pick<HTMLTextAreaElement>(container, '#wish-message'))?.value || '';
 
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="ri-loader-4-line uk-animation-spin"></i> Mengirim...';
 
-            if (alertEl) alertEl.innerHTML = '';
-
+            // #alert-submit-ucapan is the theme's thank-you CARD (not a bare alert line):
+            // don't clear or overwrite it, or we'd wipe the card. Feedback = toast.
             const res = await onSubmitWish({ name, message });
 
             btn.innerHTML = originalText;
 
-            if (alertEl) {
-                alertEl.className = `uk-margin-small-top uk-text-small ${res.success ? 'uk-text-success' : 'uk-text-danger'}`;
-                alertEl.innerHTML = (res.success ? '<i class="ri-checkbox-circle-line"></i> ' : '<i class="ri-error-warning-line"></i> ') + res.message;
-            }
-
             if (res.success) {
-                btn.disabled = true; // Stay disabled on success as requested
-                // Clear inputs
-                const activeName = container?.querySelector('#wish-name') as HTMLInputElement;
-                const activeMsg = container?.querySelector('#wish-message') as HTMLTextAreaElement;
+                btn.disabled = true; // stay disabled on success
+
+                // Prepend the just-typed wish to the top of the list from the FORM's own
+                // values, so what the guest typed == what appears — no re-render/refresh.
+                prependWish(container, name, message);
+
+                // Clear inputs (the visible copy)
+                const activeName = pick<HTMLInputElement>(container, '#wish-name');
+                const activeMsg = pick<HTMLTextAreaElement>(container, '#wish-message');
                 if (activeName) activeName.value = '';
                 if (activeMsg) activeMsg.value = '';
 
-                // Reveal the "thank you" card and hide the form WITHOUT re-rendering
-                // the whole theme. Themes gate these with {{#hidden}}/{{^hidden}}, so
-                // both the form and the card are already present in the DOM (the card
-                // wrapped in a display:none <div data-hidden-by>). We just flip display.
+                // Reveal the "thank you" card and hide the form WITHOUT re-rendering the
+                // theme. Both the form and the card are already in the DOM (gated via
+                // {{#hidden}}/{{^hidden}}); we just flip display.
                 submittedWishRef.current = true;
                 revealThankYou(container, '#wish-form', '#alert-submit-ucapan');
             } else {

@@ -5,16 +5,19 @@
    ====================================================================== */
 
 :root {
-  --jw-sky-a: #7ec8e3;   /* top sky */
-  --jw-sky-b: #cdeafe;   /* low sky */
-  --jw-gold: #ffc94d;
-  --jw-gold-d: #e59b25;
-  --jw-rose: #ff6f9c;
-  --jw-rose-d: #d84d7c;
-  --jw-ink: #23324a;
-  --jw-ink-2: #3b4c6b;
-  --jw-cream: #fff7ec;
-  --jw-panel: #10233a;
+  /* MARIO tone — bright classic-platformer palette. Accent vars keep their names
+     (--jw-gold/-rose) so the whole UI recolours from here: gold = coin-yellow,
+     rose = Mario-red, sky = cerulean, ink = deep navy. */
+  --jw-sky-a: #5c94fc;   /* top sky (SMB cerulean) */
+  --jw-sky-b: #a7d3ff;   /* low sky (pale blue) */
+  --jw-gold: #fbd000;    /* primary accent → coin gold */
+  --jw-gold-d: #e59b00;  /* accent dark (amber) */
+  --jw-rose: #e52521;    /* secondary accent → Mario red */
+  --jw-rose-d: #b81a17;  /* secondary dark */
+  --jw-ink: #1a1a3a;     /* deep navy ink */
+  --jw-ink-2: #3a3a66;
+  --jw-cream: #fff8e6;   /* warm off-white */
+  --jw-panel: #12235a;   /* deep blue panel */
   --jw-mono: 'Courier New', ui-monospace, monospace;
   --jw-body: 'Poppins', 'Segoe UI', system-ui, sans-serif;
 }
@@ -76,16 +79,16 @@
 .jw-hud-area-row { display: flex; align-items: center; gap: 6px; }
 .jw-hud-diff {
   font-size: 9px; padding: 2px 6px; border-radius: 5px; font-weight: 800;
-  background: var(--jw-gold); color: #4a2c00; letter-spacing: .5px;
+  background: var(--jw-gold); color: #5a3a00; letter-spacing: .5px;
 }
-.jw-hud-diff[data-lvl="normal"] { background: #6fd08c; color: #0b3a1c; }
-.jw-hud-diff[data-lvl="hard"] { background: var(--jw-rose); color: #4a0018; }
+.jw-hud-diff[data-lvl="normal"] { background: #43b047; color: #fff; }
+.jw-hud-diff[data-lvl="hard"] { background: var(--jw-rose); color: #fff; }
 
 /* currency chip + progress */
 .jw-power {
   position: absolute; top: 44px; left: 10px; z-index: 12; pointer-events: none;
   display: flex; align-items: center; gap: 5px;
-  background: rgba(16,35,58,.55); border: 1px solid rgba(255,255,255,.2);
+  background: rgba(18,35,90,.55); border: 1px solid rgba(255,255,255,.2);
   border-radius: 20px; padding: 3px 10px 3px 7px;
   font-family: var(--jw-mono); font-size: 13px; font-weight: 800; color: #fff;
   backdrop-filter: blur(3px);
@@ -94,7 +97,7 @@
 .jw-power-extra { font-size: 10px; color: var(--jw-gold); }
 .jw-progress {
   position: absolute; top: 44px; right: 10px; z-index: 12; pointer-events: none;
-  background: rgba(16,35,58,.55); border: 1px solid rgba(255,255,255,.2);
+  background: rgba(18,35,90,.55); border: 1px solid rgba(255,255,255,.2);
   border-radius: 20px; padding: 3px 10px;
   font-family: var(--jw-mono); font-size: 12px; font-weight: 800; color: #fff;
   backdrop-filter: blur(3px);
@@ -108,7 +111,7 @@
 .jw-iconbtn {
   width: 44px; height: 44px; border-radius: 12px;
   border: 2px solid rgba(255,255,255,.35);
-  background: rgba(16,35,58,.62); color: #fff;
+  background: rgba(18,35,90,.62); color: #fff;
   font-size: 18px; font-weight: 800; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 0 rgba(0,0,0,.28); backdrop-filter: blur(3px);
@@ -130,7 +133,7 @@
 .jw-inv-item {
   width: 34px; height: 34px; border-radius: 9px;
   border: 2px solid rgba(255,255,255,.28);
-  background: rgba(16,35,58,.5); color: rgba(255,255,255,.55);
+  background: rgba(18,35,90,.5); color: rgba(255,255,255,.55);
   font-size: 15px; display: flex; align-items: center; justify-content: center;
   cursor: default; transition: transform .12s; position: relative;
 }
@@ -145,7 +148,7 @@
 .jw-toast {
   position: absolute; top: 22%; left: 50%; transform: translate(-50%, -12px);
   z-index: 24; opacity: 0; pointer-events: none;
-  background: rgba(16,35,58,.92); color: #fff;
+  background: rgba(18,35,90,.92); color: #fff;
   border: 2px solid var(--jw-gold); border-radius: 14px;
   padding: 10px 18px; font-family: var(--jw-mono); font-weight: 800; font-size: 14px;
   text-align: center; max-width: 84%; transition: opacity .22s, transform .22s;
@@ -155,9 +158,11 @@
 .jw-toast.danger { border-color: var(--jw-rose); }
 
 .jw-version {
-  position: absolute; bottom: 4px; left: 6px; z-index: 11;
-  font-family: var(--jw-mono); font-size: 9px; color: rgba(255,255,255,.4);
-  pointer-events: none;
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 16;
+  font-family: var(--jw-mono); font-size: 10px; font-weight: 800; letter-spacing: .5px;
+  color: #ffe873; background: rgba(18,35,90,.55); backdrop-filter: blur(2px);
+  border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 2px 9px;
+  pointer-events: none; text-transform: uppercase;
 }
 
 /* ============ touch control (bottom green zone) ============ */
@@ -167,16 +172,37 @@
   z-index: 14; display: flex; justify-content: space-between; align-items: flex-end;
   padding: 0 16px; pointer-events: none;
 }
-.jw-steerbtn, .jw-firebtn {
-  pointer-events: auto; cursor: pointer; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.4); color: #fff; font-weight: 800;
-  background: rgba(16,35,58,.5); backdrop-filter: blur(3px);
-  box-shadow: 0 4px 0 rgba(0,0,0,.28); user-select: none;
+/* ---- analog joystick (left, horizontal steer only) ---- */
+.jw-joy {
+  pointer-events: auto; touch-action: none; user-select: none; cursor: grab;
+  position: relative; width: 128px; height: 128px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.4);
+  background: radial-gradient(circle at 50% 40%, rgba(30,55,88,.55), rgba(12,26,44,.6));
+  backdrop-filter: blur(3px); box-shadow: 0 4px 0 rgba(0,0,0,.28) inset, 0 4px 0 rgba(0,0,0,.28);
   display: flex; align-items: center; justify-content: center;
 }
-.jw-steerbtn { width: 72px; height: 72px; font-size: 30px; }
-.jw-steerbtn:active, .jw-firebtn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.28); }
-.jw-firebtn { width: 60px; height: 60px; font-size: 22px; background: rgba(255,111,156,.7); border-color: #ffd0e0; margin-bottom: 6px; }
+.jw-joy:active { cursor: grabbing; }
+.jw-joy-track {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  text-align: center; color: rgba(255,255,255,.55); font-weight: 800; font-size: 15px;
+  letter-spacing: 22px; text-indent: 22px; pointer-events: none;
+}
+.jw-joy-stick {
+  position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px;
+  border-radius: 50%; border: 2px solid #ffe0c0;
+  background: radial-gradient(circle at 42% 35%, #ff7a52, #e52521 70%);   /* Mario red knob */
+  box-shadow: 0 3px 8px rgba(0,0,0,.35); will-change: transform; pointer-events: none;
+}
+/* ---- HIT button (right) ---- */
+.jw-firebtn {
+  pointer-events: auto; cursor: pointer; border-radius: 50%; user-select: none;
+  border: 2px solid #ffe0c0; color: #fff; font-weight: 900; letter-spacing: 1px;
+  background: rgba(229,37,33,.82); backdrop-filter: blur(3px);   /* Mario red */
+  box-shadow: 0 4px 0 rgba(0,0,0,.28);
+  display: flex; align-items: center; justify-content: center;
+  width: 92px; height: 92px; font-size: 22px; margin-bottom: 10px;
+}
+.jw-firebtn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.28); }
 
 /* ================= OVERLAYS ================= */
 .jw-overlay {
@@ -222,9 +248,9 @@
 .jw-bigbtn {
   display: inline-block; width: 100%; margin-top: 12px;
   font-family: var(--jw-mono); font-size: 17px; font-weight: 900; letter-spacing: 1px;
-  padding: 13px; border-radius: 14px; cursor: pointer; color: #4a0018;
-  background: linear-gradient(180deg, #ffe58a, var(--jw-gold));
-  border: 2px solid #fff3d0; box-shadow: 0 4px 0 var(--jw-gold-d);
+  padding: 13px; border-radius: 14px; cursor: pointer; color: #5a3a00;
+  background: linear-gradient(180deg, #ffe873, var(--jw-gold));
+  border: 2px solid #fff6c8; box-shadow: 0 4px 0 var(--jw-gold-d);
   transition: transform .08s;
 }
 .jw-bigbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--jw-gold-d); }
@@ -337,6 +363,7 @@
 .jw-glass-form { background: #fff; border-radius: 16px; padding: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.08); border: 1px solid #ffe4c4; }
 .jw-field { margin-bottom: 10px; }
 .jw-input { width: 100%; padding: 12px; border-radius: 10px; border: 1.5px solid #e2d3bd; background: #fffdfa; font-family: var(--jw-body); font-size: 14px; color: var(--jw-ink); box-sizing: border-box; }
+.jw-input[readonly], .jw-input:disabled { background: #f1ece3; color: #8a7d6a; cursor: default; }
 .jw-textarea { resize: vertical; min-height: 70px; }
 .jw-btn { display: inline-block; cursor: pointer; font-family: var(--jw-mono); font-weight: 800; font-size: 13px; letter-spacing: .5px; padding: 12px 18px; border-radius: 12px; border: 2px solid transparent; text-decoration: none; text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,.14); transition: transform .08s; }
 .jw-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.14); }
@@ -476,11 +503,11 @@
   .jw-side-event-addr { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; line-height: 1.5; }
   .jw-side-map { display: inline-block; margin-top: 8px; font-family: var(--jw-mono); font-size: 11px; color: var(--jw-gold); text-decoration: none; border: 1px solid rgba(255,201,77,.4); border-radius: 8px; padding: 4px 10px; }
 
-  .jw-side-mission { background: rgba(255,111,156,.1); border: 1px solid rgba(255,111,156,.3); border-radius: 14px; padding: 14px; margin: 16px 0; }
+  .jw-side-mission { background: rgba(229,37,33,.12); border: 1px solid rgba(229,37,33,.3); border-radius: 14px; padding: 14px; margin: 16px 0; }
   .jw-side-mission-title { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 1px; color: var(--jw-rose); font-weight: 800; margin-bottom: 6px; }
   .jw-side-mission-text { font-size: 12px; line-height: 1.6; color: rgba(255,255,255,.82); }
 
-  .jw-side-open { width: 100%; margin-top: 10px; font-family: var(--jw-mono); font-size: 15px; font-weight: 900; letter-spacing: 1px; padding: 14px; border-radius: 14px; cursor: pointer; color: #4a0018; background: linear-gradient(180deg, #ffe58a, var(--jw-gold)); border: 2px solid #fff3d0; box-shadow: 0 4px 0 var(--jw-gold-d); transition: transform .08s; }
+  .jw-side-open { width: 100%; margin-top: 10px; font-family: var(--jw-mono); font-size: 15px; font-weight: 900; letter-spacing: 1px; padding: 14px; border-radius: 14px; cursor: pointer; color: #5a3a00; background: linear-gradient(180deg, #ffe873, var(--jw-gold)); border: 2px solid #fff6c8; box-shadow: 0 4px 0 var(--jw-gold-d); transition: transform .08s; }
   .jw-side-open:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--jw-gold-d); }
 
   /* desktop uses keyboard → hide touch controls */

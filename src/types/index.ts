@@ -109,6 +109,7 @@ export interface Guest {
 export interface Wish {
     id: string;
     tenant_id: string;
+    guest_id?: string;
     guest_name: string;
     message: string;
     created_at: string;
@@ -254,6 +255,8 @@ export interface CreateGuestRequest {
     category: string;
     status: GuestStatus;
     number_of_guests: number;
+    flag_sudah_isi_ucapan?: boolean | string;
+    flag_sudah_kirim_hadiah?: boolean | string;
 }
 
 export interface UpdateGuestRequest extends CreateGuestRequest {

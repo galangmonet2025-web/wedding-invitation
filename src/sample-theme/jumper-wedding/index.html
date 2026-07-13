@@ -147,9 +147,11 @@
 
       <!-- ===== touch control (bottom green zone): ◄ steer · ▲ shoot · ► steer ===== -->
       <div class="jw-touch" id="jw-touch">
-        <button class="jw-steerbtn jw-steer-left" id="jw-steer-left" type="button" aria-label="Geser kiri">◄</button>
-        <button class="jw-firebtn" id="jw-fire" type="button" aria-label="Tembak cinta">▲</button>
-        <button class="jw-steerbtn jw-steer-right" id="jw-steer-right" type="button" aria-label="Geser kanan">►</button>
+        <div class="jw-joy" id="jw-joy" aria-label="Analog geser kiri/kanan">
+          <span class="jw-joy-track">◄ ►</span>
+          <span class="jw-joy-stick" id="jw-joy-stick"></span>
+        </div>
+        <button class="jw-firebtn" id="jw-fire" type="button" aria-label="Tembak / HIT">HIT</button>
       </div>
 
       <!-- ===== OVERLAYS ===== -->
@@ -402,7 +404,9 @@
         <div class="jw-sec-name">Konfirmasi Kehadiran</div>
       </div>
       <div class="jw-form-wrap">
-        <div class="jw-glass-form">
+        <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
+        {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+        <div class="jw-glass-form" id="rsvp-form">
           <div class="jw-field">
             <select class="jw-input" id="rsvp-status">
               <option value="Hadir">Hadir</option>
@@ -411,11 +415,37 @@
             </select>
           </div>
           <div class="jw-field">
-            <input class="jw-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+            <select class="jw-input" id="rsvp-guests">
+              <option value="" disabled selected>Jumlah tamu</option>
+              <option value="1">1 Orang</option>
+              <option value="2">2 Orang</option>
+              <option value="3">3 Orang</option>
+              <option value="4">4 Orang</option>
+              <option value="5">5 Orang</option>
+            </select>
           </div>
           <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
           <button class="jw-btn jw-btn-primary" id="btn-submit-kehadiran" type="button">▶ Konfirmasi</button>
-          <div class="jw-alert" id="alert-submit-kehadiran"></div>
+        </div>
+        {{/hidden}}
+        </div>
+        <div data-if="is_sudah_isi_konfirmasi_kehadiran">
+        {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+          <div id="alert-submit-kehadiran" class="jw-glass-form" style="text-align:center;padding:18px;">
+            <div data-if="is_hadir">
+            {{^hidden is_hadir}}
+              <div data-rsvp-branch="hadir" style="font-size:24px;margin-bottom:8px;">🎉</div>
+              Terima kasih <strong>{{nama_tamu}}</strong>! Kami sangat senang Anda bisa hadir. Sampai jumpa di hari bahagia kami!
+            {{/hidden}}
+            </div>
+            <div data-unless="is_hadir">
+            {{#hidden is_hadir}}
+              <div data-rsvp-branch="tidak" style="font-size:24px;margin-bottom:8px;">🙏</div>
+              Terima kasih <strong>{{nama_tamu}}</strong>. Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
+            {{/hidden}}
+            </div>
+          </div>
+        {{/hidden}}
         </div>
       </div>
       {{/unless}}
@@ -533,21 +563,32 @@
       </div>
       <div class="jw-form-wrap">
         {{#unless is_link_umum_and_not_for_spesific_guest}}
-        <div class="jw-glass-form" id="jw-wish-form">
-          <div class="jw-field"><input class="jw-input" id="wish-name" type="text" placeholder="Nama Anda" /></div>
+        <div data-unless="is_sudah_isi_ucapan">
+        {{#hidden is_sudah_isi_ucapan}}
+        <div class="jw-glass-form" id="wish-form">
+          <div class="jw-field"><input class="jw-input" id="wish-name" type="text" placeholder="Nama Anda" value="{{nama_tamu}}" readonly /></div>
           <div class="jw-field"><textarea class="jw-input jw-textarea" id="wish-message" rows="3" placeholder="Tulis Ucapan &amp; Doa..."></textarea></div>
           <button class="jw-btn jw-btn-primary" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
-          <div class="jw-alert" id="alert-submit-ucapan"></div>
+        </div>
+        {{/hidden}}
+        </div>
+        <div data-if="is_sudah_isi_ucapan">
+        {{^hidden is_sudah_isi_ucapan}}
+          <div id="alert-submit-ucapan" class="jw-glass-form" style="text-align:center;padding:18px;">
+            <div style="font-size:24px;margin-bottom:8px;">⭐</div>
+            Terima kasih atas ucapan &amp; doanya! Semoga kebaikan kembali kepada Anda.
+          </div>
+        {{/hidden}}
         </div>
         {{/unless}}
-        <div class="jw-wishes-list" id="jw-wish-list">
+        <div class="jw-wishes-list" id="jw-wish-list" data-loop="wishes">
           {{#each wishes}}
-          <div class="jw-wish-item">
+          <div class="jw-wish-item" data-wish-item>
             <div class="jw-wish-head">
-              <span class="jw-wish-author">{{this.guest_name}}</span>
-              <span class="jw-wish-time">{{this.guest_comment_time}}</span>
+              <span class="jw-wish-author" data-wish-field="name">{{this.guest_name}}</span>
+              <span class="jw-wish-time" data-wish-field="time">{{this.guest_comment_time}}</span>
             </div>
-            <div class="jw-wish-text">{{this.guest_message}}</div>
+            <div class="jw-wish-text" data-wish-field="message">{{this.guest_message}}</div>
           </div>
           {{/each}}
         </div>

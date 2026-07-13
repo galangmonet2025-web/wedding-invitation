@@ -533,29 +533,13 @@
         });
     }
 
-    /* re-wire host form buttons inside a clone so backend still fires
-       (Bible APPENDIX Z.2). IDs stay verbatim; we just (re)attach handlers. */
-    function rewireHostFormsInside(root) {
-        var rsvp = root.querySelector('#btn-submit-kehadiran');
-        if (rsvp) bindOnce(rsvp, function () {
-            if (typeof window.submitRsvp === 'function') { window.submitRsvp(); return; }
-            var a = root.querySelector('#alert-submit-kehadiran'); if (a) { a.className = 'msw-alert ok'; a.textContent = 'Terima kasih! Konfirmasi tersimpan.'; }
-        });
-        var ucp = root.querySelector('#btn-submit-ucapan');
-        if (ucp) bindOnce(ucp, function () {
-            if (typeof window.submitUcapan === 'function') { window.submitUcapan(); return; }
-            // optimistic fallback: prepend to the wish list locally
-            var nm = (root.querySelector('#wish-name') || {}).value || 'Tamu';
-            var msg = (root.querySelector('#wish-message') || {}).value || '';
-            var a = root.querySelector('#alert-submit-ucapan'); if (a) { a.className = 'msw-alert ok'; a.textContent = 'Terima kasih atas ucapannya!'; }
-            var list = root.querySelector('#msw-wish-list');
-            if (list && msg) {
-                var it = document.createElement('div'); it.className = 'msw-wish-item';
-                it.innerHTML = '<div class="msw-wish-head"><span class="msw-wish-author">' + esc(nm) + '</span><span class="msw-wish-time">baru saja</span></div><div class="msw-wish-text">' + esc(msg) + '</div>';
-                list.insertBefore(it, list.firstChild);
-            }
-        });
-    }
+    /* RSVP + wishes are handled entirely by the HOST (ThemeWrapper): it intercepts
+       #btn-submit-kehadiran / #btn-submit-ucapan (delegated on the theme container,
+       which contains this clone too), calls the backend, hides the form, reveals the
+       thank-you card, and prepends the new wish. We must NOT bind our own cosmetic
+       fallback here or the same click is handled twice (double card / double wish).
+       Kept as a no-op so existing callers don't break. */
+    function rewireHostFormsInside(root) { /* host-owned; no local handler */ }
     function bindOnce(el, fn) {
         if (el.__mswBound) return;
         el.__mswBound = true;

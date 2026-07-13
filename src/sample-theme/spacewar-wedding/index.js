@@ -458,28 +458,12 @@
         });
     }
 
-    /* re-wire host form buttons inside a clone so backend still fires
-       (Bible APPENDIX Z.2). IDs stay verbatim; we just (re)attach handlers. */
-    function rewireHostFormsInside(root) {
-        var rsvp = root.querySelector('#btn-submit-kehadiran');
-        if (rsvp) bindOnce(rsvp, function () {
-            if (typeof window.submitRsvp === 'function') { window.submitRsvp(); return; }
-            var a = root.querySelector('#alert-submit-kehadiran'); if (a) { a.className = 'sw-alert ok'; a.textContent = 'Terima kasih! Konfirmasi tersimpan.'; }
-        });
-        var ucp = root.querySelector('#btn-submit-ucapan');
-        if (ucp) bindOnce(ucp, function () {
-            if (typeof window.submitUcapan === 'function') { window.submitUcapan(); return; }
-            var nm = (root.querySelector('#wish-name') || {}).value || 'Tamu';
-            var msg = (root.querySelector('#wish-message') || {}).value || '';
-            var a = root.querySelector('#alert-submit-ucapan'); if (a) { a.className = 'sw-alert ok'; a.textContent = 'Terima kasih atas ucapannya!'; }
-            var list = root.querySelector('#sw-wish-list');
-            if (list && msg) {
-                var it = document.createElement('div'); it.className = 'sw-wish-item';
-                it.innerHTML = '<div class="sw-wish-head"><span class="sw-wish-author">' + esc(nm) + '</span><span class="sw-wish-time">baru saja</span></div><div class="sw-wish-text">' + esc(msg) + '</div>';
-                list.insertBefore(it, list.firstChild);
-            }
-        });
-    }
+    /* RSVP + wishes are handled entirely by the HOST (ThemeWrapper): it intercepts
+       #btn-submit-kehadiran / #btn-submit-ucapan (delegated on the theme container),
+       calls the backend, hides the form, reveals the thank-you card, and prepends the
+       new wish. We must NOT bind a local fallback here or the click is handled twice.
+       Kept as a no-op so existing callers don't break. */
+    function rewireHostFormsInside(root) { /* host-owned; no local handler */ }
     function bindOnce(el, fn) { if (el.__swBound) return; el.__swBound = true; el.addEventListener('click', fn); }
     function rewireGalleryInside(root) {
         var items = root.querySelectorAll('.sw-gallery-item img');

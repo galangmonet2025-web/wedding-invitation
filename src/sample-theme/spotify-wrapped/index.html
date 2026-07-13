@@ -339,18 +339,18 @@
 
 
             <!-- ===== RSVP ("Add to your library") ===== -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
             <section id="rsvp" class="section-rsvp">
                 <div class="sec-head reveal-item">
                     <span class="sec-eyebrow">Save this playlist</span>
                     <h3 class="sec-title">Konfirmasi Kehadiran</h3>
                 </div>
 
-                {{#unless is_link_umum_and_not_for_spesific_guest}}
                 {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
                 <div class="rsvp-card reveal-item" id="rsvp-form">
                     <div class="rsvp-field">
                         <label>Kode Undangan</label>
-                        <input class="spwr-input" type="text" id="rsvp-code" placeholder="Kode undangan" value="{{kode_undangan}}">
+                        <input class="spwr-input" type="text" id="rsvp-code" placeholder="Kode undangan" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1">
                     </div>
                     {{#if is_link_umum_and_not_for_spesific_guest}}
                     <div class="rsvp-field">
@@ -366,6 +366,7 @@
                             <option value="2">2 Orang</option>
                             <option value="3">3 Orang</option>
                             <option value="4">4 Orang</option>
+                            <option value="5">5 Orang</option>
                         </select>
                     </div>
                     <div class="rsvp-field">
@@ -400,8 +401,8 @@
                     {{/hidden}}
                 </div>
                 {{/hidden}}
-                {{/unless}}
             </section>
+            {{/unless}}
 
 
             <!-- ===== GALLERY ("Your Top Moments" — Spotify album grid) ===== -->
@@ -523,17 +524,17 @@
                 {{/hidden}}
                 {{/unless}}
 
-                <div class="wish-list">
+                <div class="wish-list" data-loop="wishes">
                     {{#each wishes}}
-                    <div class="wish-item">
+                    <div class="wish-item" data-wish-item>
                         <div class="wish-ava">{{this.guest_name}}</div>
                         <div class="wish-body">
                             <div class="wish-top">
-                                <span class="wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
-                                <span class="wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
+                                <span class="wish-author" data-wish-field="name" data-var="this.guest_name">{{this.guest_name}}</span>
+                                <span class="wish-time" data-wish-field="time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
                             </div>
                             <div class="wish-stars">★★★★★</div>
-                            <div class="wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                            <div class="wish-text" data-wish-field="message" data-var="this.guest_message">{{this.guest_message}}</div>
                         </div>
                     </div>
                     {{/each}}

@@ -613,25 +613,44 @@
                     <div class="rm-card">
                         <div class="rm-card-pixel-top"></div>
                         <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
-                            {{#unless is_sudah_isi_konfirmasi_kehadiran}}
-                            <form id="rm-rsvp-form">
-                                <input class="rm-input" type="text" id="rm-rsvp-name" placeholder="Nama kamu" value="{{nama_tamu}}">
-                                <div class="rm-radio-row">
-                                    <label><input type="radio" name="rm-attend" value="1" checked><span>✔ Hadir</span></label>
-                                    <label><input type="radio" name="rm-attend" value="0"><span>✘ Tidak</span></label>
-                                </div>
-                                <input class="rm-input" type="number" id="rm-rsvp-count" placeholder="Jumlah tamu" min="1" value="1">
-                                <button type="button" id="rm-btn-rsvp" class="rm-pixbtn green" style="width:100%;">KIRIM</button>
+                            {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+                            <form id="rsvp-form">
+                                <input class="rm-input" type="text" id="guest-name-input" placeholder="Nama kamu" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
+                                <input class="rm-input" type="text" id="rsvp-code" placeholder="Kode Undangan" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1">
+                                <select class="rm-input" id="rsvp-status">
+                                    <option value="" disabled selected>Konfirmasi Kehadiran</option>
+                                    <option value="hadir">Hadir</option>
+                                    <option value="tidak-hadir">Tidak Hadir</option>
+                                </select>
+                                <select class="rm-input" id="rsvp-guests">
+                                    <option value="" disabled selected>Jumlah tamu</option>
+                                    <option value="1">1 Orang</option>
+                                    <option value="2">2 Orang</option>
+                                    <option value="3">3 Orang</option>
+                                    <option value="4">4 Orang</option>
+                                    <option value="5">5 Orang</option>
+                                </select>
+                                <button type="button" id="btn-submit-kehadiran" class="rm-pixbtn green" style="width:100%;">KIRIM</button>
                             </form>
-                            {{/unless}}
+                            {{/hidden}}
                         </div>
                         <div data-if="is_sudah_isi_konfirmasi_kehadiran">
-                            {{#if is_sudah_isi_konfirmasi_kehadiran}}
-                            <div class="rm-thanks" id="rm-rsvp-thanks">
-                                ⭐ Terima kasih <strong data-var="nama_tamu">{{nama_tamu}}</strong>!<br>
-                                Konfirmasimu sudah kami terima.
+                            {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+                            <div class="rm-thanks" id="alert-submit-kehadiran">
+                                <div data-if="is_hadir">
+                                    {{^hidden is_hadir}}
+                                    <div data-rsvp-branch="hadir">⭐ Terima kasih <strong data-var="nama_tamu">{{nama_tamu}}</strong>!<br>
+                                    Senang kamu bisa hadir. Sampai jumpa di level terakhir 🎮</div>
+                                    {{/hidden}}
+                                </div>
+                                <div data-unless="is_hadir">
+                                    {{#hidden is_hadir}}
+                                    <div data-rsvp-branch="tidak">⭐ Terima kasih <strong data-var="nama_tamu">{{nama_tamu}}</strong>.<br>
+                                    Kami mengerti kamu tak bisa hadir. Terima kasih atas doa restunya 🙏</div>
+                                    {{/hidden}}
+                                </div>
                             </div>
-                            {{/if}}
+                            {{/hidden}}
                         </div>
                     </div>
                 </section>
@@ -670,12 +689,12 @@
                 </div>
                 <div class="rm-wish-list" data-loop="wishes">
                     {{#each wishes}}
-                    <div class="rm-wish-item">
+                    <div class="rm-wish-item" data-wish-item>
                         <div class="rm-wish-head">
-                            <span class="rm-wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
-                            <span class="rm-wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
+                            <span class="rm-wish-author" data-var="this.guest_name" data-wish-field="name">{{this.guest_name}}</span>
+                            <span class="rm-wish-time" data-var="this.guest_comment_time" data-wish-field="time">{{this.guest_comment_time}}</span>
                         </div>
-                        <div class="rm-wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                        <div class="rm-wish-text" data-var="this.guest_message" data-wish-field="message">{{this.guest_message}}</div>
                     </div>
                     {{/each}}
                 </div>

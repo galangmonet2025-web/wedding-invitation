@@ -569,6 +569,9 @@
                                                 <option value="" disabled selected>Pilih jumlah tamu</option>
                                                 <option value="1">1 Orang</option>
                                                 <option value="2">2 Orang</option>
+                                                <option value="3">3 Orang</option>
+                                                <option value="4">4 Orang</option>
+                                                <option value="5">5 Orang</option>
                                             </select>
                                             <span class="ig-select-chev" aria-hidden="true"></span>
                                         </div>
@@ -596,13 +599,13 @@
                                 <div id="alert-submit-kehadiran" class="thank-you-message glass-card" style="padding:22px;">
                                     <div data-if="is_hadir">
                                         {{^hidden is_hadir}}
-                                        <div style="font-size:26px; margin-bottom:8px;">&#127881;</div>
+                                        <div data-rsvp-branch="hadir" style="font-size:26px; margin-bottom:8px;">&#127881;</div>
                                         Terima kasih <strong>{{guest_name}}</strong>!<br>Sampai jumpa di hari bahagia kami.
                                         {{/hidden}}
                                     </div>
                                     <div data-unless="is_hadir">
                                         {{#hidden is_hadir}}
-                                        <div style="font-size:26px; margin-bottom:8px;">&#128591;</div>
+                                        <div data-rsvp-branch="tidak" style="font-size:26px; margin-bottom:8px;">&#128591;</div>
                                         Terima kasih <strong>{{guest_name}}</strong>.<br>Terima kasih atas doa restunya.
                                         {{/hidden}}
                                     </div>
@@ -628,17 +631,17 @@
                     </div>
 
                     <!-- Comment list (scrolls) -->
-                    <div class="wishes-scroll ig-comments-list">
+                    <div class="wishes-scroll ig-comments-list" data-loop="wishes">
                         {{#each wishes}}
-                        <div class="wish-item anim-up">
+                        <div class="wish-item anim-up" data-wish-item>
                             <span class="wish-avatar">{{this.guest_name}}</span>
                             <div class="wish-body">
                                 <div class="wish-line">
-                                    <span class="wish-author">{{this.guest_name}}</span>
-                                    <span class="wish-text">{{this.guest_message}}</span>
+                                    <span class="wish-author" data-wish-field="name">{{this.guest_name}}</span>
+                                    <span class="wish-text" data-wish-field="message">{{this.guest_message}}</span>
                                 </div>
                                 <div class="wish-meta">
-                                    <span class="wish-time">{{this.guest_comment_time}}</span>
+                                    <span class="wish-time" data-wish-field="time">{{this.guest_comment_time}}</span>
                                     <span class="wish-meta-likes">Suka</span>
                                     <span class="wish-meta-reply">Balas</span>
                                 </div>

@@ -402,16 +402,44 @@
       </div>
       {{#unless is_link_umum_and_not_for_spesific_guest}}
       <h3 class="sw-sub-title">KONFIRMASI KEHADIRAN</h3>
-      <div class="sw-form" id="sw-rsvp-form">
+      <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
+      {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+      <div class="sw-form" id="rsvp-form">
         <select class="sw-input" id="rsvp-status">
           <option value="Hadir">Hadir</option>
           <option value="Tidak Hadir">Tidak hadir</option>
           <option value="Ragu">Masih ragu</option>
         </select>
-        <input class="sw-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+        <select class="sw-input" id="rsvp-guests">
+          <option value="" disabled selected>Jumlah tamu</option>
+          <option value="1">1 Orang</option>
+          <option value="2">2 Orang</option>
+          <option value="3">3 Orang</option>
+          <option value="4">4 Orang</option>
+          <option value="5">5 Orang</option>
+        </select>
         <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
         <button class="sw-btn" id="btn-submit-kehadiran" type="button">KIRIM RSVP</button>
-        <div class="sw-alert" id="alert-submit-kehadiran"></div>
+      </div>
+      {{/hidden}}
+      </div>
+      <div data-if="is_sudah_isi_konfirmasi_kehadiran">
+      {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+        <div id="alert-submit-kehadiran" class="sw-form" style="text-align:center;padding:18px;">
+          <div data-if="is_hadir">
+          {{^hidden is_hadir}}
+            <div data-rsvp-branch="hadir" style="font-size:24px;margin-bottom:8px;">🎉</div>
+            Terima kasih <strong>{{nama_tamu}}</strong>! Kami sangat senang Anda bisa hadir. Sampai jumpa di hari bahagia kami!
+          {{/hidden}}
+          </div>
+          <div data-unless="is_hadir">
+          {{#hidden is_hadir}}
+            <div data-rsvp-branch="tidak" style="font-size:24px;margin-bottom:8px;">🙏</div>
+            Terima kasih <strong>{{nama_tamu}}</strong>. Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
+          {{/hidden}}
+          </div>
+        </div>
+      {{/hidden}}
       </div>
       {{/unless}}
     </section>
@@ -504,20 +532,31 @@
     <section class="sw-sec" data-info="wishes">
       <h2 class="sw-sec-title">UCAPAN &amp; DOA</h2>
       {{#unless is_link_umum_and_not_for_spesific_guest}}
-      <div class="sw-form" id="sw-wish-form">
+      <div data-unless="is_sudah_isi_ucapan">
+      {{#hidden is_sudah_isi_ucapan}}
+      <div class="sw-form" id="wish-form">
         <input class="sw-input" id="wish-name" type="text" placeholder="Nama kamu" />
         <textarea class="sw-input" id="wish-message" rows="3" placeholder="Tulis ucapan & doa..."></textarea>
         <button class="sw-btn" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
-        <div class="sw-alert" id="alert-submit-ucapan"></div>
+      </div>
+      {{/hidden}}
+      </div>
+      <div data-if="is_sudah_isi_ucapan">
+      {{^hidden is_sudah_isi_ucapan}}
+        <div id="alert-submit-ucapan" class="sw-form" style="text-align:center;padding:18px;">
+          <div style="font-size:24px;margin-bottom:8px;">⭐</div>
+          Terima kasih atas ucapan &amp; doanya! Semoga kebaikan kembali kepada Anda.
+        </div>
+      {{/hidden}}
       </div>
       {{/unless}}
-      <div class="sw-wish-list" id="sw-wish-list">
+      <div class="sw-wish-list" id="sw-wish-list" data-loop="wishes">
         {{#each wishes}}
-        <div class="sw-wish-item">
+        <div class="sw-wish-item" data-wish-item>
           <div class="sw-wish-head">
-            <span class="sw-wish-author">{{this.guest_name}}</span><span class="sw-wish-time">{{this.guest_comment_time}}</span>
+            <span class="sw-wish-author" data-wish-field="name">{{this.guest_name}}</span><span class="sw-wish-time" data-wish-field="time">{{this.guest_comment_time}}</span>
           </div>
-          <div class="sw-wish-text">{{this.guest_message}}</div>
+          <div class="sw-wish-text" data-wish-field="message">{{this.guest_message}}</div>
         </div>
         {{/each}}
       </div>

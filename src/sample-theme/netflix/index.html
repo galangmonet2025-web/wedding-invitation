@@ -413,17 +413,20 @@
                             <div class="glass-form" id="rsvp-form">
                                 <div class="uk-margin-small">
                                     <input class="uk-input custom-input" type="text" id="rsvp-code"
-                                        placeholder="Kode Undangan">
+                                        placeholder="Kode Undangan" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1">
                                 </div>
                                 <div class="uk-margin-small">
                                     <input class="uk-input custom-input" type="text" id="guest-name-input"
-                                        placeholder="Nama Tamu">
+                                        placeholder="Nama Tamu" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
                                 </div>
                                 <div class="uk-margin-small">
                                     <select class="uk-select custom-input" id="rsvp-guests">
                                         <option value="" disabled="" selected="">Jumlah Kehadiran</option>
                                         <option value="1">1 Orang</option>
                                         <option value="2">2 Orang</option>
+                                        <option value="3">3 Orang</option>
+                                        <option value="4">4 Orang</option>
+                                        <option value="5">5 Orang</option>
                                     </select>
                                 </div>
                                 <div class="uk-margin-small">
@@ -442,20 +445,15 @@
                         <div data-if="is_sudah_isi_konfirmasi_kehadiran">
                             {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
                             <div id="alert-submit-kehadiran" style="padding: 20px;" class="thank-you-message glass-card">
-                                <div data-if="is_hadir">
-                                    {{^hidden is_hadir}}
-                                    <div data-rsvp-branch="hadir" style="font-size: 24px; margin-bottom: 10px;">&#127916;</div>
+                                <div data-rsvp-branch="hadir" style="display: {{#if is_hadir}}block{{else}}none{{/if}};">
+                                    <div style="font-size: 24px; margin-bottom: 10px;">&#127916;</div>
                                     Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>!<br>
                                     Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
-                                    {{/hidden}}
                                 </div>
-
-                                <div data-unless="is_hadir">
-                                    {{#hidden is_hadir}}
-                                    <div data-rsvp-branch="tidak" style="font-size: 24px; margin-bottom: 10px;">&#128591;</div>
+                                <div data-rsvp-branch="tidak" style="display: {{#if is_hadir}}none{{else}}block{{/if}};">
+                                    <div style="font-size: 24px; margin-bottom: 10px;">&#128591;</div>
                                     Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>.<br>
                                     Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
-                                    {{/hidden}}
                                 </div>
                             </div>
                             {{/hidden}}
@@ -700,7 +698,7 @@
                                 <form class="glass-form" id="wish-form">
                                     <div class="uk-margin-small">
                                         <input class="uk-input custom-input" type="text" id="wish-name"
-                                            placeholder="Nama Anda">
+                                            placeholder="Nama Anda" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
                                     </div>
                                     <div class="uk-margin-small">
                                         <textarea class="uk-textarea custom-input" rows="3" id="wish-message"
@@ -728,13 +726,13 @@
                         <div class="wishes-list-wrapper">
                             <div class="wishes-scroll-box" data-loop="wishes">
                                 {{#each wishes}}
-                                <div class="wish-item glass-card reveal-item">
+                                <div class="wish-item glass-card reveal-item" data-wish-item>
                                     <div class="wish-header">
-                                        <span class="wish-author" data-var="this.guest_name">{{this.guest_name}}</span>
-                                        <span class="wish-time" data-var="this.guest_comment_time">{{this.guest_comment_time}}</span>
+                                        <span class="wish-author" data-var="this.guest_name" data-wish-field="name">{{this.guest_name}}</span>
+                                        <span class="wish-time" data-var="this.guest_comment_time" data-wish-field="time">{{this.guest_comment_time}}</span>
                                     </div>
                                     <div class="wish-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                                    <div class="wish-text" data-var="this.guest_message">{{this.guest_message}}</div>
+                                    <div class="wish-text" data-var="this.guest_message" data-wish-field="message">{{this.guest_message}}</div>
                                 </div>
                                 {{/each}}
                             </div>

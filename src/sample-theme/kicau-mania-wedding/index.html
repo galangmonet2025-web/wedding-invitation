@@ -490,7 +490,9 @@
       </div>
 
       <div class="kmn-form-wrap">
-        <div class="kmn-glass-form">
+        <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
+        {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+        <div class="kmn-glass-form" id="rsvp-form">
           <div class="kmn-field">
             <select class="kmn-input" id="rsvp-status">
               <option value="Hadir">Hadir</option>
@@ -499,11 +501,37 @@
             </select>
           </div>
           <div class="kmn-field">
-            <input class="kmn-input" id="rsvp-guests" type="number" min="1" value="1" placeholder="Jumlah tamu" />
+            <select class="kmn-input" id="rsvp-guests">
+              <option value="" disabled selected>Jumlah tamu</option>
+              <option value="1">1 Orang</option>
+              <option value="2">2 Orang</option>
+              <option value="3">3 Orang</option>
+              <option value="4">4 Orang</option>
+              <option value="5">5 Orang</option>
+            </select>
           </div>
           <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
           <button class="kmn-btn kmn-btn-primary" id="btn-submit-kehadiran" type="button">▶ Konfirmasi</button>
-          <div class="kmn-alert" id="alert-submit-kehadiran"></div>
+        </div>
+        {{/hidden}}
+        </div>
+        <div data-if="is_sudah_isi_konfirmasi_kehadiran">
+        {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+          <div id="alert-submit-kehadiran" class="kmn-glass-form" style="text-align:center;padding:18px;">
+            <div data-if="is_hadir">
+            {{^hidden is_hadir}}
+              <div data-rsvp-branch="hadir" style="font-size:24px;margin-bottom:8px;">🎉</div>
+              Terima kasih <strong>{{nama_tamu}}</strong>! Kami sangat senang Anda bisa hadir. Sampai jumpa di hari bahagia kami!
+            {{/hidden}}
+            </div>
+            <div data-unless="is_hadir">
+            {{#hidden is_hadir}}
+              <div data-rsvp-branch="tidak" style="font-size:24px;margin-bottom:8px;">🙏</div>
+              Terima kasih <strong>{{nama_tamu}}</strong>. Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
+            {{/hidden}}
+            </div>
+          </div>
+        {{/hidden}}
         </div>
       </div>
       {{/unless}}
@@ -750,7 +778,9 @@
 
       <div class="kmn-form-wrap">
         {{#unless is_link_umum_and_not_for_spesific_guest}}
-        <div class="kmn-glass-form" id="km-wish-form">
+        <div data-unless="is_sudah_isi_ucapan">
+        {{#hidden is_sudah_isi_ucapan}}
+        <div class="kmn-glass-form" id="wish-form">
           <div class="kmn-field">
             <input class="kmn-input" id="wish-name" type="text" placeholder="Nama Anda" />
           </div>
@@ -758,19 +788,28 @@
             <textarea class="kmn-input kmn-textarea" id="wish-message" rows="3" placeholder="Tulis Ucapan &amp; Doa..."></textarea>
           </div>
           <button class="kmn-btn kmn-btn-primary" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
-          <div class="kmn-alert" id="alert-submit-ucapan"></div>
+        </div>
+        {{/hidden}}
+        </div>
+        <div data-if="is_sudah_isi_ucapan">
+        {{^hidden is_sudah_isi_ucapan}}
+          <div id="alert-submit-ucapan" class="kmn-glass-form" style="text-align:center;padding:18px;">
+            <div style="font-size:24px;margin-bottom:8px;">⭐</div>
+            Terima kasih atas ucapan &amp; doanya! Semoga kebaikan kembali kepada Anda.
+          </div>
+        {{/hidden}}
         </div>
         {{/unless}}
 
-        <div class="kmn-wishes-list" id="km-wish-list">
+        <div class="kmn-wishes-list" id="km-wish-list" data-loop="wishes">
           {{#each wishes}}
-          <div class="kmn-wish-item">
+          <div class="kmn-wish-item" data-wish-item>
             <div class="kmn-wish-head">
-              <span class="kmn-wish-author">{{this.guest_name}}</span>
-              <span class="kmn-wish-time">{{this.guest_comment_time}}</span>
+              <span class="kmn-wish-author" data-wish-field="name">{{this.guest_name}}</span>
+              <span class="kmn-wish-time" data-wish-field="time">{{this.guest_comment_time}}</span>
             </div>
             <div class="kmn-wish-stars">★★★★★</div>
-            <div class="kmn-wish-text">{{this.guest_message}}</div>
+            <div class="kmn-wish-text" data-wish-field="message">{{this.guest_message}}</div>
           </div>
           {{/each}}
         </div>

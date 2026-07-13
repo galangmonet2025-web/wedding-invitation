@@ -1676,9 +1676,38 @@ a.couple-instagram:hover { color: #fff !important; }
   background: #3a3a3a !important;
 }
 
+/* Locked fields (kode undangan & nama tamu) — prefilled by the host, not editable. */
+.custom-input[readonly] {
+  background: #262626 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  cursor: default;
+}
+.custom-input[readonly]:focus {
+  border-color: transparent !important;
+  background: #262626 !important;
+}
+
 .custom-input option {
   background: #181818;
   color: #fff;
+}
+
+/* Dropdown arrow for <select> — the theme's `background:#333 !important` on
+   .custom-input wipes UIkit's built-in chevron, so a <select> looked like a
+   plain text box. Re-draw a white chevron on the right and reserve space for it. */
+select.custom-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 38px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 16px !important;
+  background-color: #333 !important;
+}
+select.custom-input:focus {
+  background-color: #3a3a3a !important;
 }
 
 .thank-you-message {

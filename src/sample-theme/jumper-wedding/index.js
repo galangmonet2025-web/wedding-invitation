@@ -79,15 +79,16 @@
   };
 
   var ZONE_META = [
-    // Stage 1-3 = the search for the bride (climax at Stage 3). Stage 4-5 = optional bonus.
-    { name: 'Taman Perkenalan', skyTop: 0x8fd3f0, skyBot: 0xd7f3e0, plat: 0x6bbf59, accent: 0xffd36b, bonus: false },
-    { name: 'Langit Senja',      skyTop: 0xff9e6d, skyBot: 0xffd9a0, plat: 0xcf7a3a, accent: 0xffe08a, bonus: false },
-    { name: 'Menara Pelaminan',  skyTop: 0xffcaa0, skyBot: 0xffe9c8, plat: 0xe6b84d, accent: 0xff8fb0, bonus: false },
-    { name: 'Bonus · Awan Impian',  skyTop: 0x9ec9ff, skyBot: 0xe6f0ff, plat: 0xbfa8e6, accent: 0xfff0a0, bonus: true, hills: 0xbcd6ff },
-    { name: 'Bonus · Malam Bintang', skyTop: 0x0e1636, skyBot: 0x2a2c5a, plat: 0x5a6bb0, accent: 0xffe066, bonus: true, night: true, hills: 0x232a52 }
+    // MARIO tone — bright classic-platformer palette: cerulean overworld sky, sunset, sky-world,
+    // then a starry night. Grassy-brown ground + gold accents. Stage 3 = climax (bride at altar).
+    { name: 'Taman Overworld',   skyTop: 0x5c94fc, skyBot: 0xa7d3ff, plat: 0x6bbf3a, accent: 0xfbd000, bonus: false },
+    { name: 'Padang Senja',      skyTop: 0xff8b3d, skyBot: 0xffd27f, plat: 0x6bbf3a, accent: 0xfbd000, bonus: false },
+    { name: 'Kastil Pelaminan',  skyTop: 0x4a86f0, skyBot: 0xbfe0ff, plat: 0x6bbf3a, accent: 0xfbd000, bonus: false },
+    { name: 'Bonus · Dunia Awan', skyTop: 0x7fc0ff, skyBot: 0xe8f4ff, plat: 0x6bbf3a, accent: 0xfbd000, bonus: true, hills: 0xffffff },
+    { name: 'Bonus · Langit Malam', skyTop: 0x0b1240, skyBot: 0x28306e, plat: 0x5aa62f, accent: 0xfbd000, bonus: true, night: true, hills: 0x1a2050 }
   ];
-  // per-zone extra atmosphere hints (day zones get a sun + rolling hills)
-  ZONE_META[0].hills = 0x5fae54; ZONE_META[1].hills = 0xd98f52; ZONE_META[2].hills = 0xe0b060;
+  // per-zone hills (Mario rolling green hills on day stages)
+  ZONE_META[0].hills = 0x3aa03a; ZONE_META[1].hills = 0x2f8a2f; ZONE_META[2].hills = 0x3aa03a;
 
   var STORE_KEY = 'jw_wedding_v1';
 
@@ -330,8 +331,8 @@
   //  - clone the sections (they inherit the IDs),
   //  - then strip host IDs from #inv-source so the clone is the sole match,
   //  - restore them when the invitation view is closed (so the next clone gets IDs again).
-  var HOST_IDS = ['btn-submit-kehadiran', 'rsvp-status', 'rsvp-guests', 'rsvp-code', 'alert-submit-kehadiran',
-    'btn-submit-ucapan', 'wish-name', 'wish-message', 'alert-submit-ucapan',
+  var HOST_IDS = ['btn-submit-kehadiran', 'rsvp-form', 'rsvp-status', 'rsvp-guests', 'rsvp-code', 'guest-name-input', 'alert-submit-kehadiran',
+    'btn-submit-ucapan', 'wish-form', 'wish-name', 'wish-message', 'alert-submit-ucapan',
     'tm-countdown-days', 'tm-countdown-hours', 'tm-countdown-minutes', 'tm-countdown-seconds'];
   function setSourceHostIds(enabled) {
     var src = $('inv-source'); if (!src) return;
@@ -468,9 +469,14 @@
       this.bg = this.add.container(0, 0).setDepth(-50).setScrollFactor(0);
       this.parallax = [];
 
-      // player (couple)
+      // player (couple). Textures baked at SS× → BASE_SCALE (=1/SS) is the scale that renders the
+      // couple at its logical 48×56 size. stepPlayer's squash/stretch multiplies through BASE_SCALE
+      // (see setCoupleScale). Body sized in texture px (logical×SS) so its effective extent = logical.
+      var SS = this._SS || 2;
+      this.BASE_SCALE = 1 / SS;
       this.couple = this.physics.add.sprite(BW / 2, CFG.CONTROL_Y - 40, 't_couple_fall');
-      this.couple.body.setSize(46, 52);
+      this.couple.setScale(this.BASE_SCALE);
+      this.couple.body.setSize(46 * SS, 52 * SS);
       this.couple.setDepth(10);
       this.couple.body.velocity.y = CFG.BOUNCE;
 
@@ -607,9 +613,15 @@
       var w = 30;
       if (this.couple.x < -w) this.couple.x = BW + w;
       else if (this.couple.x > BW + w) this.couple.x = -w;
-      // pose by vertical velocity
+      // pose: while the guest is STEERING sideways, play the running side-profile (legs cycle);
+      // otherwise fall back to the jump poses driven by vertical velocity.
       var vy = b.velocity.y;
+      var steering = Math.abs(this.moveX) > 0.35;
       if (this.time.now < this.autoRiseUntil) this.setPose('launch');
+      else if (steering) {
+        // cycle run1/run2 ~8 fps so the feet visibly stride while moving sideways
+        this.setPose((Math.floor((this._animClock || 0) * 8) % 2) ? 'run1' : 'run2');
+      }
       else if (vy < -60) this.setPose('rise');
       else if (vy > 60) this.setPose('fall');
       else this.setPose('apex');
@@ -626,7 +638,7 @@
         var stretch = Math.max(-1, Math.min(1, vy / 900));   // −1 fast up … +1 fast down
         var sy = 1 + Math.abs(stretch) * 0.16 * (vy < 0 ? 1 : 0.7);
         var sx = 1 - Math.abs(stretch) * 0.10;
-        this.couple.setScale(sx, sy);
+        this.setCoupleScale(sx, sy);
       }
       // shield bubble follows the couple
       this.updateShieldFx();
@@ -638,13 +650,27 @@
     // worn-shield bubble sprite that trails the couple while shield is active
     GameScene.prototype.updateShieldFx = function () {
       if (this.shieldOn) {
-        if (!this._shieldFx) { this._shieldFx = this.add.image(this.couple.x, this.couple.y, 't_shieldbubble').setDepth(9).setAlpha(0.9); this.tweens.add({ targets: this._shieldFx, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }); }
+        if (!this._shieldFx) { this._shieldFx = this.normTex(this.add.image(this.couple.x, this.couple.y, 't_shieldbubble'), 't_shieldbubble').setDepth(9).setAlpha(0.9); var sbs = this._shieldFx.scaleX || 1; this.tweens.add({ targets: this._shieldFx, scaleX: sbs * 1.06, scaleY: sbs * 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }); }
         this._shieldFx.x = this.couple.x; this._shieldFx.y = this.couple.y; this._shieldFx.setVisible(true);
       } else if (this._shieldFx) {
         this._shieldFx.setVisible(false);
       }
     };
 
+    // Bring a sprite/image baked at SS× down to its LOGICAL footprint (see buildTextures). Returns
+    // the object for chaining. For the couple we DON'T lock display size (its squash/stretch drives
+    // scale directly through BASE_SCALE), so it's excluded — everything else is normalized here.
+    GameScene.prototype.normTex = function (obj, key) {
+      var d = this._texLogical && this._texLogical[key];
+      if (d && obj.setDisplaySize) obj.setDisplaySize(d.w, d.h);
+      return obj;
+    };
+    // set the couple's LOGICAL scale (1,1 = normal), automatically folding in BASE_SCALE so the
+    // SS× texture renders at its true size. All squash/stretch/land tweens go through here.
+    GameScene.prototype.setCoupleScale = function (sx, sy) {
+      var b = this.BASE_SCALE || 1;
+      this.couple.setScale((sx == null ? 1 : sx) * b, (sy == null ? sx : sy) * b);
+    };
     GameScene.prototype.setPose = function (st) {
       if (this._pose === st) return;
       this._pose = st;
@@ -683,13 +709,13 @@
     GameScene.prototype.resetCoupleTransforms = function () {
       this.tweens.killTweensOf(this.couple);
       this._squashing = false; this._tumbling = false; this._leanAngle = 0;
-      this.couple.setScale(1, 1); this.couple.setAngle(0); this.couple.setAlpha(1);
+      this.setCoupleScale(1, 1); this.couple.setAngle(0); this.couple.setAlpha(1);
     };
     GameScene.prototype.squashLand = function (boosted) {
-      var c = this.couple, self = this;
+      var c = this.couple, self = this, b = this.BASE_SCALE || 1;
       this._squashing = true;
-      c.setScale(boosted ? 1.35 : 1.22, boosted ? 0.62 : 0.76);
-      this.tweens.add({ targets: c, scaleX: 1, scaleY: 1, duration: boosted ? 200 : 140, ease: 'Back.easeOut', onComplete: function () { self._squashing = false; } });
+      this.setCoupleScale(boosted ? 1.35 : 1.22, boosted ? 0.62 : 0.76);
+      this.tweens.add({ targets: c, scaleX: 1 * b, scaleY: 1 * b, duration: boosted ? 200 : 140, ease: 'Back.easeOut', onComplete: function () { self._squashing = false; } });
       this.cameras.main.shake(boosted ? 90 : 50, boosted ? 0.008 : 0.004);
     };
     GameScene.prototype.dustPuff = function (x, y) {
@@ -705,19 +731,35 @@
     };
     GameScene.prototype.mountRecoil = function (plat) {
       var badge = plat.getData('badge'); if (!badge) return;
-      badge.setScale(1, 0.5);
-      this.tweens.add({ targets: badge, scaleY: 1, duration: 220, ease: 'Back.easeOut' });
+      var bs = badge.scaleX || 1;              // normalized base scale (texture baked at SS×)
+      badge.setScale(bs, bs * 0.5);
+      this.tweens.add({ targets: badge, scaleY: bs, duration: 220, ease: 'Back.easeOut' });
     };
 
+    // remove a platform's mounted spring/tramp badge (else it floats on after the platform
+    // breaks / vanishes / is culled). Fades it out in sync when a tween duration is given.
+    GameScene.prototype.killBadge = function (plat, fadeMs) {
+      var badge = plat.getData && plat.getData('badge');
+      if (!badge) return;
+      plat.setData('badge', null);
+      if (fadeMs) {
+        this.tweens.killTweensOf(badge);
+        this.tweens.add({ targets: badge, alpha: 0, y: badge.y + 30, duration: fadeMs, onComplete: function () { try { badge.destroy(); } catch (e) {} } });
+      } else {
+        try { badge.destroy(); } catch (e) {}
+      }
+    };
     GameScene.prototype.breakPlatform = function (plat) {
       plat.setData('kind', 'broken');
       if (plat.body) plat.body.checkCollision.none = true;   // stop further landings immediately
       this.emitSpark(plat.x, plat.y, 0x9a6b3a);
+      this.killBadge(plat, 260);                             // badge falls away with the platform
       this.tweens.add({ targets: plat, alpha: 0, y: plat.y + 30, duration: 260, onComplete: function () { plat.disableBody(true, true); } });
     };
     GameScene.prototype.vanishPlatform = function (plat) {
       plat.setData('kind', 'vanishing');
       if (plat.body) plat.body.checkCollision.none = true;
+      this.killBadge(plat, 200);                             // badge fades with the platform
       this.tweens.add({ targets: plat, alpha: 0, duration: 200, onComplete: function () { plat.disableBody(true, true); } });
     };
 
@@ -725,8 +767,9 @@
     // detached decorative pop: sprite scales up + fades + drifts up where the item was grabbed
     GameScene.prototype.collectPop = function (x, y, texKey, tint) {
       if (!this.textures.exists(texKey)) return;
-      var img = this.add.image(x, y, texKey).setDepth(11); if (tint != null) img.setTint(tint);
-      this.tweens.add({ targets: img, scale: 1.9, alpha: 0, y: y - 34, duration: 340, ease: 'Cubic.easeOut', onComplete: function () { img.destroy(); } });
+      var img = this.normTex(this.add.image(x, y, texKey), texKey).setDepth(11); if (tint != null) img.setTint(tint);
+      var bs = img.scaleX || 1;
+      this.tweens.add({ targets: img, scaleX: bs * 1.9, scaleY: bs * 1.9, alpha: 0, y: y - 34, duration: 340, ease: 'Cubic.easeOut', onComplete: function () { img.destroy(); } });
     };
     // rising "+N" score popup near the couple
     GameScene.prototype.floatScore = function (x, y, txt, color) {
@@ -794,15 +837,18 @@
     /* ---- enemies ---- */
     // detached spinning corpse that arcs away + fades (enemy already disabled)
     GameScene.prototype.enemyDefeat = function (x, y, texKey, dir) {
-      var img = this.add.image(x, y, texKey).setDepth(8);
-      this.tweens.add({ targets: img, angle: 360 * (dir || 1), y: y + 90, x: x + 40 * (dir || 1), alpha: 0, scaleX: 0.6, scaleY: 0.6, duration: 520, ease: 'Cubic.easeIn', onComplete: function () { img.destroy(); } });
+      var img = this.normTex(this.add.image(x, y, texKey), texKey).setDepth(8);
+      var bs = img.scaleX || 1;
+      this.tweens.add({ targets: img, angle: 360 * (dir || 1), y: y + 90, x: x + 40 * (dir || 1), alpha: 0, scaleX: bs * 0.6, scaleY: bs * 0.6, duration: 520, ease: 'Cubic.easeIn', onComplete: function () { img.destroy(); } });
       this.emitSpark(x, y, 0xffe066); this.emitSpark(x, y, 0xff9ac0);
     };
     GameScene.prototype.enemyHitFlash = function (enemy) {
       enemy.setTintFill(0xffffff);
       this.time.delayedCall(70, function () { if (enemy.active) enemy.clearTint(); });
-      // brief squash flinch (no permanent bob drift)
-      this.tweens.add({ targets: enemy, scaleX: 1.15, scaleY: 0.9, duration: 80, yoyo: true });
+      // brief squash flinch (no permanent bob drift). yoyo returns to the enemy's current
+      // (normalized) base scale automatically, so multiply the flinch factors through it.
+      var bs = enemy.scaleX || 1;
+      this.tweens.add({ targets: enemy, scaleX: bs * 1.15, scaleY: bs * 0.9, duration: 80, yoyo: true });
     };
     GameScene.prototype.touchEnemy = function (couple, enemy) {
       if (!enemy.active) return;
@@ -857,7 +903,7 @@
     GameScene.prototype.fire = function () {
       var b = this.bullets.get(this.couple.x, this.couple.y - 20, 't_bullet');
       if (!b) return;
-      b.setActive(true).setVisible(true);
+      b.setActive(true).setVisible(true); this.normTex(b, 't_bullet');
       if (b.body) { b.body.enable = true; b.body.setVelocity(0, -640); b.body.setAllowGravity(false); }
       b.setData('born', this.time.now);
       this.emitSpark(this.couple.x, this.couple.y - 18, 0xff9ac0);   // muzzle flash
@@ -912,12 +958,15 @@
     };
 
     GameScene.prototype.makePlatform = function (r) {
-      var tex = 't_plat_' + (r.type || 'green');
+      var tex = 't_plat_' + (r.type || 'green'), SS = this._SS || 2;
       var p = this.platforms.create(r.x, r.y, tex);
+      this.normTex(p, tex);                    // display back to logical 84×32 (texture baked at SS×)
       p.body.setImmovable(true); p.body.setAllowGravity(false);
       p.setData('kind', r.type === 'brown' ? 'break' : (r.type === 'white' ? 'white' : 'solid'));
       p.setData('accent', 0xffd36b);
-      p.body.setSize(84, 18); p.body.setOffset(0, 2);
+      // texture is 84x32 logical; grass top (standable surface) at y=6, soil to ~y=24. Body values are
+      // in TEXTURE px (baked at SS×), so multiply the logical 84×18 slab and its y=6 offset by SS.
+      p.body.setSize(84 * SS, 18 * SS); p.body.setOffset(0, 6 * SS);
       if (r.type === 'blue') {
         // horizontal mover
         var spd = (this.diffKey === 'hard' ? 130 : this.diffKey === 'normal' ? 100 : 70);
@@ -928,30 +977,31 @@
     };
     GameScene.prototype.mountBadge = function (p, kind) {
       var tex = kind === 'spring' ? 't_spring' : 't_tramp';
-      var badge = this.add.image(p.x, p.y - 14, tex).setDepth(9);
+      var badge = this.normTex(this.add.image(p.x, p.y - 14, tex), tex).setDepth(9);
       p.setData('badge', badge);
     };
 
     GameScene.prototype.makeRing = function (x, y) {
-      var r = this.rings.create(x, y, 't_ring'); r.body.setAllowGravity(false);
+      var r = this.rings.create(x, y, 't_ring'); this.normTex(r, 't_ring'); r.body.setAllowGravity(false);
       r.setData('anim', { frames: ['t_ring', 't_ring1', 't_ring2', 't_ring3'], fps: 8, t: Math.random() });  // spin
       r.setData('bob', { base: y, amp: 5, w: 2.4, ph: Math.random() * 6 });
       return r;
     };
     GameScene.prototype.makeHeart = function (x, y) {
-      var h = this.hearts.create(x, y, 't_heart'); h.body.setAllowGravity(false);
+      var h = this.hearts.create(x, y, 't_heart'); this.normTex(h, 't_heart'); h.body.setAllowGravity(false);
       h.setData('anim', { frames: ['t_heart', 't_heart1', 't_heart', 't_heart2'], fps: 6, t: Math.random() }); // pulse
       h.setData('bob', { base: y, amp: 6, w: 2.0, ph: Math.random() * 6 });
       return h;
     };
     GameScene.prototype.makePowerup = function (x, y, type) {
-      var pu = this.powerups.create(x, y, 't_pu_' + type); pu.body.setAllowGravity(false); pu.setData('kind', type);
+      var pu = this.powerups.create(x, y, 't_pu_' + type); this.normTex(pu, 't_pu_' + type); pu.body.setAllowGravity(false); pu.setData('kind', type);
       pu.setData('bob', { base: y, amp: 5, w: 2.6, ph: Math.random() * 6 });
       this.tweens.add({ targets: pu, angle: type === 'propeller' ? 0 : 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       return pu;
     };
     GameScene.prototype.makeEnemy = function (x, y, type) {
       var e = this.enemies.create(x, y, 't_enemy_' + type);
+      this.normTex(e, 't_enemy_' + type);
       e.body.setAllowGravity(false);
       e.setData('type', type);
       e.setData('stompable', type === 'bee' || type === 'bird');
@@ -987,12 +1037,12 @@
     GameScene.prototype.stepCull = function () {
       // cull well BELOW the fall-out line (camScrollY+BH+40) + past the respawn point, so the
       // checkpoint platform is never disabled out from under a respawn while the camera is frozen.
-      var cam = this.cameras.main, botEdge = cam.scrollY + BH + 400;
+      var cam = this.cameras.main, botEdge = cam.scrollY + BH + 400, self = this;
       var keepY = (RUN.respawnY || 0) + 120;   // don't cull near the current checkpoint
       function cull(group) {
         group.getChildren().forEach(function (o) {
           if (o.active && o.y > botEdge && o.y > keepY) {
-            var badge = o.getData && o.getData('badge'); if (badge) badge.destroy();
+            self.killBadge(o);                 // remove any mounted badge so it can't float on
             o.disableBody(true, true);
           }
         });
@@ -1024,12 +1074,14 @@
     GameScene.prototype.activateClimax = function () {
       this.climaxActive = true;
       var self = this, ax = BW / 2, ay = this.altarY != null ? this.altarY : (this.climaxY - 40);
-      // altar fades + scales in with a bloom
-      if (this.altar) { this.altar.setScale(0.8); this.tweens.add({ targets: this.altar, alpha: 1, scaleX: 1, scaleY: 1, duration: 600, ease: 'Back.Out' }); }
+      // altar fades + scales in with a bloom (bs = the altar's normalized base scale, since its
+      // texture is baked at SS× and setDisplaySize left it at 1/SS)
+      if (this.altar) { var abs = this.altar.scaleX || 1; this.altar.setScale(abs * 0.8); this.tweens.add({ targets: this.altar, alpha: 1, scaleX: abs, scaleY: abs, duration: 600, ease: 'Back.Out' }); }
       // groom celebrate: settle near the altar, arms-up pose, gentle hop
       this._climaxLock = true; this.setPose('celebrate');
       this.couple.body.velocity.set(0, 0); this.couple.body.setAllowGravity(false);
-      this.tweens.add({ targets: this.couple, x: ax + 22, y: ay + 4, angle: 0, scaleX: 1, scaleY: 1, duration: 500, ease: 'Sine.easeInOut', onComplete: function () {
+      var cbs = this.BASE_SCALE || 1;
+      this.tweens.add({ targets: this.couple, x: ax + 22, y: ay + 4, angle: 0, scaleX: cbs, scaleY: cbs, duration: 500, ease: 'Sine.easeInOut', onComplete: function () {
         self.tweens.add({ targets: self.couple, y: ay - 6, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });   // joyful bob
       } });
       this.showBrideAtAltar();
@@ -1046,7 +1098,7 @@
       if (this.brideSprite || this.climaxY == null) return;
       var self = this, ax = BW / 2, ay = this.altarY != null ? this.altarY : (this.climaxY - 40);
       // bride walks in from the left of the altar and rises with a bounce
-      var b = this.add.image(ax - 80, ay + 4, 't_bride').setDepth(11).setAlpha(0);
+      var b = this.normTex(this.add.image(ax - 80, ay + 4, 't_bride'), 't_bride').setDepth(11).setAlpha(0);
       this.brideSprite = b;
       this.tweens.add({ targets: b, x: ax - 26, alpha: 1, duration: 600, ease: 'Sine.easeOut', onComplete: function () {
         self.tweens.add({ targets: b, y: ay - 4, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });   // sway
@@ -1066,7 +1118,10 @@
       RUN.zone = zoneIdx;
       var meta = ZONE_META[Math.min(zoneIdx, ZONE_META.length - 1)];
       this.buildBackdrop(meta);
-      // clear world
+      // clear world — kill mounted badges first (they're standalone images, not group members,
+      // so g.clear() won't remove them and they'd otherwise float on into the next zone)
+      var self0 = this;
+      this.platforms.getChildren().forEach(function (p) { self0.killBadge(p); });
       [this.platforms, this.rings, this.hearts, this.powerups, this.enemies, this.bullets].forEach(function (g) { g.clear(true, true); });
       this.spawnList = []; this._next = 0;
       // reset per-zone transition state + destroy leftover gate/altar/bride images (else stale
@@ -1150,12 +1205,13 @@
           records.push({ kind: 'powerup', x: nx, y: y - 46, triggerY: y - 46, type: pk });
         }
 
-        // enemy (zone tempur) — minEnemies floor via probability + guarantee
-        if (!isSafe && zoneIdx >= 1) {
+        // enemy (zone tempur) — musuh sudah muncul sejak Stage 1 supaya tombol HIT terpakai.
+        // Frekuensi dinaikkan agar ada target tembak yang cukup rutin di tiap kesulitan.
+        if (!isSafe && zoneIdx >= 0) {
           var etypes = ['bee', 'bird'];
-          if (zoneIdx >= 2) etypes.push('stormcloud');
+          if (zoneIdx >= 1) etypes.push('stormcloud');   // awan badai mulai Stage 2
           if (zoneIdx >= 3) etypes.push('ufo');
-          var eProb = (D.minEnemies === 0 ? 0.06 : D.minEnemies === 1 ? 0.14 : 0.22);
+          var eProb = (D.minEnemies === 0 ? 0.16 : D.minEnemies === 1 ? 0.26 : 0.36);
           if (Math.random() < eProb) {
             var et = etypes[Math.floor(Math.random() * etypes.length)];
             records.push({ kind: 'enemy', x: 60 + Math.random() * (BW - 120), y: y - 80, triggerY: y - 80, type: et });
@@ -1176,11 +1232,11 @@
         this.climaxY = endY + BH * 0.5;   // reunion fires just before the altar platform
         this.altarY = altarPlatY - 30;    // bride/altar image sits on the platform
         records.push({ kind: 'platform', type: 'green', x: BW / 2, y: altarPlatY, triggerY: endY + BH * 0.6 });
-        var altar = this.add.image(BW / 2, this.altarY, 't_altar').setDepth(5).setAlpha(0);
+        var altar = this.normTex(this.add.image(BW / 2, this.altarY, 't_altar'), 't_altar').setDepth(5).setAlpha(0);
         this.altar = altar;
         // NOT a dead end: a gate higher up lets the guest OPTIONALLY continue to the bonus.
         this.gateY = endY + BH * 0.12;
-        var cgate = this.add.image(BW / 2, this.gateY, 't_gate').setDepth(5).setAlpha(0.85);
+        var cgate = this.normTex(this.add.image(BW / 2, this.gateY, 't_gate'), 't_gate').setDepth(5).setAlpha(0.85);
         this.gate = cgate;
         // a couple of catch platforms between altar and bonus gate (keep it reachable)
         records.push({ kind: 'platform', type: 'green', x: BW * 0.32, y: endY + BH * 0.24, triggerY: endY + BH * 0.3 });
@@ -1188,7 +1244,7 @@
       } else {
         // gate marker (visual); crossing top → transition
         this.gateY = endY + BH * 0.5;
-        var gate = this.add.image(BW / 2, this.gateY, 't_gate').setDepth(5);
+        var gate = this.normTex(this.add.image(BW / 2, this.gateY, 't_gate'), 't_gate').setDepth(5);
         this.gate = gate;
       }
 
@@ -1225,7 +1281,7 @@
         if (this.couple.body) this.couple.body.setAllowGravity(true);
       }
       // gate "opens": bloom + pop before the launch
-      if (this.gate) { var gt = this.gate; this.tweens.add({ targets: gt, scaleX: 1.15, scaleY: 1.15, alpha: 1, duration: 260, yoyo: true }); this.emitSpark(gt.x, gt.y, 0xfff0c0); }
+      if (this.gate) { var gt = this.gate, gbs = gt.scaleX || 1; this.tweens.add({ targets: gt, scaleX: gbs * 1.15, scaleY: gbs * 1.15, alpha: 1, duration: 260, yoyo: true }); this.emitSpark(gt.x, gt.y, 0xfff0c0); }
       RUN.autoFly = true;
       this.autoFlyDist = 0;
       this.stopThrustFx();
@@ -1285,11 +1341,49 @@
       if (hi != null) { g.fillStyle(hi, 1); g.fillRect(x, y, w, Math.max(1, (h * 0.22) | 0)); }
       if (sh != null) { g.fillStyle(sh, 1); g.fillRect(x, y + h - ((h * 0.22) | 0), w, Math.max(1, (h * 0.22) | 0)); }
     }
+    // SUPERSAMPLED texture bake — the key to crisp art on hi-DPI phones. Art is authored in logical
+    // coords; a proxy multiplies each draw call by SS so the baked bitmap is 2× dense. Sprites and
+    // images are then created via mk()/img() (below in the scene) which setDisplaySize back to the
+    // LOGICAL size, and physics bodies are sized in logical px against that display size — so every
+    // existing squash/tween/offset value keeps its meaning. Net: identical layout & physics, but the
+    // pixels are 2× dense → smooth curves when the FIT scaler upsizes. With pixelArt:false this is
+    // what pulls the graphics out of the blocky "asal jadi" look.
+    var SS = 2;
+    scene._SS = SS;
+    scene._texLogical = scene._texLogical || {};   // key -> {w,h} logical (read by mk()/img())
     function tex(key, w, h, draw) {
+      scene._texLogical[key] = { w: w, h: h };
+      if (scene.textures.exists(key)) return;
+      var g = scene.make.graphics({ x: 0, y: 0 }, false);
+      draw(scaleProxy(g));
+      g.generateTexture(key, w * SS, h * SS); g.destroy();
+    }
+    // 1× bake for particle blobs (t_spark/t_dust/t_petal/t_star4): they're soft, sub-pixel-fuzzy
+    // by design and are consumed by particle emitters whose `scale` config multiplies texture size —
+    // baking these at 1× keeps every existing emitter `scale:` value correct with no rescale math.
+    function texP(key, w, h, draw) {
+      scene._texLogical[key] = { w: w, h: h };
       if (scene.textures.exists(key)) return;
       var g = scene.make.graphics({ x: 0, y: 0 }, false);
       draw(g);
       g.generateTexture(key, w, h); g.destroy();
+    }
+    // proxy multiplying the coordinate args of the drawing methods our art uses by SS (angles kept)
+    function scaleProxy(g) {
+      var COORD = { fillRect: 4, fillCircle: 3, fillEllipse: 4, fillTriangle: 6, fillRoundedRect: 5,
+        strokeRect: 4, strokeCircle: 3, strokeEllipse: 4, strokeRoundedRect: 5, lineBetween: 4,
+        moveTo: 2, lineTo: 2 };
+      var P = {};
+      ['fillStyle', 'fillGradientStyle', 'beginPath', 'closePath', 'fillPath', 'strokePath'].forEach(function (fn) {
+        P[fn] = function () { return g[fn].apply(g, arguments); };
+      });
+      P.lineStyle = function () { var a = Array.prototype.slice.call(arguments); a[0] = (a[0] || 1) * SS; return g.lineStyle.apply(g, a); };
+      Object.keys(COORD).forEach(function (fn) {
+        var n = COORD[fn];
+        P[fn] = function () { var a = Array.prototype.slice.call(arguments); for (var i = 0; i < n && i < a.length; i++) if (typeof a[i] === 'number') a[i] *= SS; return g[fn].apply(g, a); };
+      });
+      P.arc = function (cx, cy, r, s, e, ac) { return g.arc(cx * SS, cy * SS, r * SS, s, e, ac); };
+      return P;
     }
     /* ---- rich draw helpers (fake gradients / glow / sparkle via banded fills) ---- */
     function lerpC(a, b, t) {
@@ -1312,6 +1406,13 @@
       a = a || 0.16;
       for (var i = 0; i < 4; i++) { g.fillStyle(color, a * (1 - i * 0.22)); g.fillCircle(cx, cy, r + i * 3); }
     }
+    // rounded limb/capsule — replaces blocky fillRect limbs. Draws a soft-cornered bar with an
+    // optional darker outline underneath, so arms/legs read as rounded cartoon shapes not rectangles.
+    function limb(g, x, y, w, h, col, outline) {
+      var rr = Math.min(w, h) / 2;
+      if (outline != null) { g.fillStyle(outline, 1); g.fillRoundedRect(x - 0.6, y - 0.6, w + 1.2, h + 1.2, rr + 0.6); }
+      g.fillStyle(col, 1); g.fillRoundedRect(x, y, w, h, rr);
+    }
     // tiny 4-point sparkle
     function sparkle(g, cx, cy, s, color) {
       g.fillStyle(color, 1);
@@ -1323,8 +1424,9 @@
     // altar (t_bride), never as the player sprite. Canvas 48x56; body footprint kept ~x15..33.
     // Each pose is a genuinely distinct drawing (arms, legs, coat-tails, torso squash).
     function drawGroomSprite(g, o) {
-      var SUIT_HI = 0x3d4a66, SUIT = 0x2a2f40, SUIT_SH = 0x191d2c;   // navy tux, top-lit
-      var SKIN = 0xf1c9a5, SKIN_SH = 0xd8a97f, HAIR = 0x35281a, HAIR_HI = 0x574230;
+      var SUIT_HI = 0x3d4a66, SUIT = 0x2a2f40, SUIT_SH = 0x191d2c, SUIT_OUT = 0x0f1220;   // navy tux + outline
+      var SKIN = 0xf1c9a5, SKIN_SH = 0xd8a97f, SKIN_OUT = 0xb98a63, HAIR = 0x35281a, HAIR_HI = 0x574230;
+      var SHOE = 0x14100c, SHOE_HI = 0x3a3128;
       var torsoY = o.torsoY || 0, sx = o.sx || 1, sy = o.sy || 1;   // per-pose torso offset/squash
 
       // ---- soft ground shadow (only for grounded/land pose) ----
@@ -1337,50 +1439,86 @@
       else if (tail > 0) { g.fillTriangle(18, 36, 14, 50, 22, 42); g.fillTriangle(30, 36, 34, 50, 26, 42); }
       else { g.fillTriangle(18, 36, 16, 48, 22, 42); g.fillTriangle(30, 36, 32, 48, 26, 42); }
 
-      // ---- legs ----
-      g.fillStyle(SUIT, 1);
-      if (o.legs === 'tuck') { g.fillRect(19, 40, 5, 7); g.fillRect(24, 40, 5, 7); }        // tucked (apex)
-      else if (o.legs === 'split') { g.fillRect(15, 42, 5, 9); g.fillRect(28, 42, 5, 9); }  // split (fall)
-      else if (o.legs === 'crouch') { g.fillRect(18, 44, 6, 5); g.fillRect(24, 44, 6, 5); } // deep crouch (land)
-      else { g.fillRect(19, 42, 5, 9); g.fillRect(24, 42, 5, 9); }                          // stand
-      // shoes
-      g.fillStyle(0x14100c, 1);
-      if (o.legs === 'split') { g.fillRect(14, 50, 7, 3); g.fillRect(27, 50, 7, 3); }
-      else if (o.legs === 'crouch') { g.fillRect(17, 48, 7, 3); g.fillRect(24, 48, 7, 3); }
-      else { g.fillRect(18, 50, 6, 3); g.fillRect(24, 50, 6, 3); }
+      // ---- legs (rounded trouser limbs w/ outline) ----
+      if (o.legs === 'tuck') { limb(g, 19, 40, 5, 7, SUIT, SUIT_OUT); limb(g, 24, 40, 5, 7, SUIT, SUIT_OUT); }        // tucked (apex)
+      else if (o.legs === 'split') { limb(g, 15, 42, 5, 9, SUIT, SUIT_OUT); limb(g, 28, 42, 5, 9, SUIT, SUIT_OUT); }  // split (fall)
+      else if (o.legs === 'crouch') { limb(g, 18, 44, 6, 5, SUIT, SUIT_OUT); limb(g, 24, 44, 6, 5, SUIT, SUIT_OUT); } // deep crouch (land)
+      else if (o.legs === 'run') {
+        // RUNNING stride (side profile, faces RIGHT; host flips for LEFT). `step` alternates the
+        // stride: front leg reaches forward, back leg kicks behind — swapped between run1/run2.
+        if (o.step === 1) {
+          limb(g, 26, 40, 5, 7, SUIT, SUIT_OUT); limb(g, 30, 46, 5, 4, SUIT, SUIT_OUT);   // front leg forward (thigh + shin)
+          limb(g, 17, 41, 5, 8, SUIT, SUIT_OUT); limb(g, 13, 47, 5, 4, SUIT, SUIT_OUT);   // back leg kicked behind
+        } else {
+          limb(g, 17, 40, 5, 7, SUIT, SUIT_OUT); limb(g, 13, 46, 5, 4, SUIT, SUIT_OUT);   // front leg (mirrored stride)
+          limb(g, 26, 41, 5, 8, SUIT, SUIT_OUT); limb(g, 30, 47, 5, 4, SUIT, SUIT_OUT);
+        }
+      }
+      else { limb(g, 19, 42, 5, 9, SUIT, SUIT_OUT); limb(g, 24, 42, 5, 9, SUIT, SUIT_OUT); }                          // stand
+      // shoes (rounded, glossy toe cap)
+      function shoe(x, y, w) { limb(g, x, y, w, 3.4, SHOE, 0x000000); g.fillStyle(SHOE_HI, 0.9); g.fillEllipse(x + w * 0.32, y + 1, w * 0.4, 1.1); }
+      if (o.legs === 'split') { shoe(14, 50, 7); shoe(27, 50, 7); }
+      else if (o.legs === 'crouch') { shoe(17, 48, 7); shoe(24, 48, 7); }
+      else if (o.legs === 'run') {
+        if (o.step === 1) { shoe(32, 49, 8); shoe(10, 50, 8); }           // front shoe ahead, back shoe behind
+        else { shoe(8, 49, 8); shoe(32, 50, 8); }
+      }
+      else { shoe(18, 50, 6); shoe(24, 50, 6); }
 
-      // ---- torso (shaded tux jacket) ----
+      // ---- torso (shaded tux jacket, rounded shoulders + soft outline) ----
       var bx = 16, bw = 16, by = 18 + torsoY, bh = 22;
-      vgrad(g, bx, by, bw, bh, SUIT_HI, SUIT_SH, 6);
+      g.fillStyle(SUIT_OUT, 1); g.fillRoundedRect(bx - 0.8, by - 0.8, bw + 1.6, bh + 1.6, 5);   // jacket outline
+      // rounded jacket body with vertical shade (clip the gradient bands inside a rounded silhouette
+      // by drawing the rounded base first, then banding over it slightly inset)
+      g.fillStyle(SUIT_SH, 1); g.fillRoundedRect(bx, by, bw, bh, 5);
+      for (var ti = 0; ti < 6; ti++) { g.fillStyle(lerpC(SUIT_HI, SUIT_SH, ti / 5), 1); g.fillRoundedRect(bx + 1, by + 1 + ti * ((bh - 2) / 6), bw - 2, (bh - 2) / 6 + 1, 2); }
+      g.fillStyle(0xffffff, 0.10); g.fillEllipse(bx + 5, by + 4, 8, 5);                 // soft shoulder sheen
       // lapels (V) + shirt + tie
       g.fillStyle(0xf3f4f8, 1); g.fillTriangle(20, by + 1, 28, by + 1, 24, by + 14);   // shirt V
-      g.fillStyle(0xffffff, 1); g.fillRect(22, by + 1, 4, 9);
+      g.fillStyle(0xffffff, 1); g.fillRoundedRect(22, by + 1, 4, 9, 1.5);
       g.fillStyle(SUIT_HI, 1); g.fillTriangle(16, by, 24, by + 2, 20, by + 12);        // left lapel
       g.fillTriangle(32, by, 24, by + 2, 28, by + 12);                                 // right lapel
+      g.fillStyle(SUIT_OUT, 0.5); g.fillTriangle(24, by + 2, 20, by + 12, 24, by + 11);// lapel crease shadow
       g.fillStyle(0xd84d7c, 1); g.fillTriangle(23, by + 2, 25, by + 2, 24, by + 11);   // tie
       g.fillStyle(0xffd36b, 1); g.fillCircle(24, by + 4, 1);                            // tie knot glint
-      g.fillStyle(0xff6f9c, 1); g.fillCircle(19, by + 4, 1.4);                          // boutonniere
+      g.fillStyle(0xff6f9c, 1); g.fillCircle(19, by + 4, 1.6); g.fillStyle(0xffd36b, 1); g.fillCircle(19, by + 4, 0.7);   // boutonniere + center
 
-      // ---- arms (skin hands) by pose ----
-      g.fillStyle(SUIT, 1); var ay = by + 2;
-      if (o.arms === 'up') { g.fillRect(12, ay - 6, 4, 10); g.fillRect(32, ay - 6, 4, 10); g.fillStyle(SKIN, 1); g.fillCircle(14, ay - 7, 2.4); g.fillCircle(34, ay - 7, 2.4); }
-      else if (o.arms === 'out') { g.fillRect(9, ay + 2, 8, 4); g.fillRect(31, ay + 2, 8, 4); g.fillStyle(SKIN, 1); g.fillCircle(9, ay + 4, 2.4); g.fillCircle(39, ay + 4, 2.4); }
-      else if (o.arms === 'flail') { g.fillRect(11, ay - 4, 4, 9); g.fillRect(33, ay + 3, 4, 9); g.fillStyle(SKIN, 1); g.fillCircle(13, ay - 5, 2.4); g.fillCircle(35, ay + 12, 2.4); }
-      else { g.fillRect(13, ay + 2, 4, 10); g.fillRect(31, ay + 2, 4, 10); g.fillStyle(SKIN, 1); g.fillCircle(15, ay + 12, 2.4); g.fillCircle(33, ay + 12, 2.4); } // down
+      // ---- arms (rounded sleeves + skin hands) by pose ----
+      var ay = by + 2;
+      function hand(cx, cy) { g.fillStyle(SKIN_OUT, 1); g.fillCircle(cx, cy, 2.7); g.fillStyle(SKIN, 1); g.fillCircle(cx, cy, 2.2); g.fillStyle(0xffe4cc, 0.5); g.fillCircle(cx - 0.6, cy - 0.6, 0.9); }
+      if (o.arms === 'up') { limb(g, 12, ay - 6, 4, 10, SUIT, SUIT_OUT); limb(g, 32, ay - 6, 4, 10, SUIT, SUIT_OUT); hand(14, ay - 7); hand(34, ay - 7); }
+      else if (o.arms === 'out') { limb(g, 9, ay + 2, 8, 4, SUIT, SUIT_OUT); limb(g, 31, ay + 2, 8, 4, SUIT, SUIT_OUT); hand(9, ay + 4); hand(39, ay + 4); }
+      else if (o.arms === 'flail') { limb(g, 11, ay - 4, 4, 9, SUIT, SUIT_OUT); limb(g, 33, ay + 3, 4, 9, SUIT, SUIT_OUT); hand(13, ay - 5); hand(35, ay + 12); }
+      else if (o.arms === 'pump') {
+        // running arm swing (bent elbows), OPPOSITE phase to the legs for a natural gait
+        if (o.step === 1) {
+          limb(g, 28, ay - 2, 4, 7, SUIT, SUIT_OUT); limb(g, 30, ay + 3, 5, 4, SUIT, SUIT_OUT);   // front arm forward
+          limb(g, 15, ay, 4, 7, SUIT, SUIT_OUT); limb(g, 11, ay + 4, 5, 4, SUIT, SUIT_OUT);       // back arm behind
+          hand(34, ay + 4); hand(12, ay + 5);
+        } else {
+          limb(g, 16, ay - 2, 4, 7, SUIT, SUIT_OUT); limb(g, 13, ay + 3, 5, 4, SUIT, SUIT_OUT);
+          limb(g, 29, ay, 4, 7, SUIT, SUIT_OUT); limb(g, 32, ay + 4, 5, 4, SUIT, SUIT_OUT);
+          hand(14, ay + 4); hand(36, ay + 5);
+        }
+      }
+      else { limb(g, 13, ay + 2, 4, 10, SUIT, SUIT_OUT); limb(g, 31, ay + 2, 4, 10, SUIT, SUIT_OUT); hand(15, ay + 12); hand(33, ay + 12); } // down
 
       // ---- head ----
       var hy = 11 + torsoY;
       g.fillStyle(SKIN_SH, 1); g.fillCircle(24, hy, 8);            // skin base (shadow ring)
       g.fillStyle(SKIN, 1); g.fillCircle(24, hy - 1, 7);           // lit face
+      g.fillStyle(0xffe4cc, 0.5); g.fillCircle(21, hy - 2, 3);     // face rim-light (upper-left)
       g.fillStyle(HAIR, 1); g.fillEllipse(24, hy - 5, 15, 9);      // hair mass
       g.fillStyle(HAIR_HI, 1); g.fillEllipse(21, hy - 6, 6, 3);    // hair sheen
+      g.fillStyle(0x6a5238, 0.7); g.fillEllipse(27, hy - 5, 5, 2); // hair strand hi (right)
       g.fillStyle(SKIN, 1); g.fillRect(18, hy - 2, 12, 6);         // forehead/face reveal
       // eyes + brows + smile + cheeks
       g.fillStyle(0x23324a, 1); g.fillRect(20, hy, 2, 2); g.fillRect(26, hy, 2, 2);
-      g.fillStyle(0xffffff, 0.8); g.fillRect(20, hy, 1, 1); g.fillRect(26, hy, 1, 1);
+      g.fillStyle(0xffffff, 0.85); g.fillRect(20, hy, 1, 1); g.fillRect(26, hy, 1, 1);  // catchlights
       g.fillStyle(0x7a4a3a, 1); g.fillRect(19, hy - 2, 3, 1); g.fillRect(26, hy - 2, 3, 1);
       g.fillStyle(0xc65b6b, 1); if (o.mouth === 'O') g.fillCircle(24, hy + 4, 1.6); else g.fillRect(22, hy + 4, 5, 1);
-      g.fillStyle(0xff9aa8, 0.7); g.fillCircle(19, hy + 2, 1.6); g.fillCircle(29, hy + 2, 1.6);
+      g.fillStyle(0xff9aa8, 0.65); g.fillCircle(19, hy + 2, 1.6); g.fillCircle(29, hy + 2, 1.6);   // cheeks
+      g.fillStyle(0xd8a97f, 0.4); g.fillEllipse(24, hy + 5, 8, 2);  // jaw shadow
 
       // ---- effects ----
       if (o.hurt) { g.fillStyle(0xff4d4d, 0.35); g.fillCircle(24, 26, 22); }
@@ -1395,7 +1533,12 @@
       fall:      { arms: 'flail',legs: 'split', tail: 1,  mouth: 'O' },
       land:      { arms: 'out',  legs: 'crouch',tail: 1,  torsoY: 3, mouth: '-', shadow: 1 },
       hurt:      { arms: 'flail',legs: 'split', tail: 1,  hurt: 1, mouth: 'O' },
-      celebrate: { arms: 'up',   legs: 'stand', tail: 0,  celebrate: 1, mouth: 'O', shadow: 1 }
+      celebrate: { arms: 'up',   legs: 'stand', tail: 0,  celebrate: 1, mouth: 'O', shadow: 1 },
+      // RUNNING side-profile (faces right; host setFlipX turns it left). 2 stride frames the
+      // player cycles while steering, so the legs visibly run. The game's existing lean-angle
+      // banking tilts the whole sprite toward the steer direction = forward run lean.
+      run1:      { arms: 'pump', legs: 'run', step: 1, tail: 1, mouth: 'O' },
+      run2:      { arms: 'pump', legs: 'run', step: 0, tail: -1, mouth: 'O' }
     };
     Object.keys(poses).forEach(function (p) { tex('t_couple_' + p, 48, 56, function (g) { drawGroomSprite(g, poses[p]); }); });
 
@@ -1406,20 +1549,28 @@
       // gown (gradient white→soft blue, layered flare)
       for (var i = 0; i < 6; i++) { g.fillStyle(lerpC(0xffffff, 0xdfe7f5, i / 5), 1); var wy = 20 + i * 5, hw = 4 + i * 3; g.fillTriangle(22, 18, 22 - hw, wy + 5, 22 + hw, wy + 5); }
       g.fillStyle(0xffffff, 1); g.fillTriangle(22, 18, 8, 50, 36, 50); g.fillRect(8, 48, 28, 4);
+      g.fillStyle(0xd2ddef, 0.6); g.fillTriangle(22, 26, 30, 50, 22, 50);           // right-side fold shadow
       g.fillStyle(0xdfe7f5, 0.7); g.fillTriangle(22, 24, 15, 50, 22, 50);            // fold shadow
-      g.fillStyle(0xffffff, 0.9); g.fillTriangle(22, 22, 26, 40, 22, 40);           // fold highlight
+      g.fillStyle(0xffffff, 0.95); g.fillTriangle(22, 22, 26, 40, 22, 40);          // fold highlight
+      g.fillStyle(0xffffff, 0.7); g.fillTriangle(20, 20, 22, 46, 20, 46);           // extra sheen
+      g.lineStyle(1, 0xc6d2e6, 0.7); g.beginPath(); g.moveTo(9, 49); g.lineTo(35, 49); g.strokePath(); // hem line
       // torso bodice
-      g.fillStyle(0xf4f6fb, 1); g.fillRect(17, 18, 10, 8);
+      g.fillStyle(0xf4f6fb, 1); g.fillRect(17, 18, 10, 8); g.fillStyle(0xffffff, 0.8); g.fillRect(18, 18, 3, 7); // bodice + hi
+      g.fillStyle(0xffd36b, 1); g.fillRect(21, 24, 2, 3);                             // waist sash gem
       // head + hair + veil
       g.fillStyle(SKIN_SH, 1); g.fillCircle(22, 11, 8); g.fillStyle(SKIN, 1); g.fillCircle(22, 10, 7);
+      g.fillStyle(0xffe4cc, 0.5); g.fillCircle(19, 9, 2.4);                           // face rim-light
       g.fillStyle(0x6a4a2e, 1); g.fillEllipse(22, 6, 15, 8);                          // hair
+      g.fillStyle(0x8a6a44, 0.7); g.fillEllipse(18, 5, 6, 3);                         // hair sheen
       g.fillStyle(0xf3f3f3, 0.55); g.fillTriangle(22, 2, 8, 40, 14, 40);             // veil left
       g.fillStyle(0xf3f3f3, 0.55); g.fillTriangle(22, 2, 36, 40, 30, 40);            // veil right
       g.fillStyle(0xffffff, 0.9); g.fillEllipse(22, 3, 16, 4);                        // veil crown
       g.fillStyle(0xffd36b, 1); for (var f = 14; f <= 30; f += 4) g.fillCircle(f, 3, 1); // tiara
+      g.fillStyle(0xffffff, 0.9); g.fillCircle(22, 2.6, 1);                           // tiara gem glint
       // face
       g.fillStyle(0x23324a, 1); g.fillRect(19, 11, 2, 2); g.fillRect(24, 11, 2, 2);
-      g.fillStyle(0xff9aa8, 0.7); g.fillCircle(18, 13, 1.6); g.fillCircle(27, 13, 1.6);
+      g.fillStyle(0xffffff, 0.85); g.fillRect(19, 11, 1, 1); g.fillRect(24, 11, 1, 1); // eye catchlights
+      g.fillStyle(0xff9aa8, 0.65); g.fillCircle(18, 13, 1.6); g.fillCircle(27, 13, 1.6);
       g.fillStyle(0xc65b6b, 1); g.fillRect(21, 14, 3, 1);
       // bouquet
       g.fillStyle(0x5aa03a, 1); g.fillRect(28, 30, 3, 12);
@@ -1428,136 +1579,305 @@
       g.fillStyle(0xffffff, 0.9); g.fillCircle(29, 28, 1);
     });
 
-    // platforms — gradient body + top rim-light + detail per type
-    tex('t_plat_green', 84, 20, function (g) {
-      vgrad(g, 0, 0, 84, 20, 0x8fd97a, 0x3f8f38, 6);
-      g.fillStyle(0xb6f09a, 0.9); g.fillRect(2, 1, 80, 3);                              // rim light
-      g.fillStyle(0x2e5a24, 1); for (var i = 6; i < 84; i += 11) { g.fillTriangle(i, 4, i + 3, -2, i + 6, 4); } // grass tufts
-      g.fillStyle(0x6bbf59, 1); for (var j = 6; j < 84; j += 11) { g.fillTriangle(j, 4, j + 3, 0, j + 6, 4); }
-      g.lineStyle(2, 0x27521f, 1); g.strokeRect(1, 1, 82, 18);
+    // platforms — soft-cartoon, 84x32. LAYOUT (texture-y):
+    //   0..5   grass blades poking UP above the surface (silhouette)
+    //   6..14  grass top layer (lit green) — the standable surface top is ~y6
+    //   14..27 earth/dirt body (brown, layered strata + pebbles)
+    //   27..32 soft cast shadow (floating look)
+    // Physics body stays 84x18 @ offset (0,6): rows 6..24 = the solid soil+grass the couple lands on.
+    // (grass blades above y6 are decorative overhang; the landing surface is the grass-top at y6.)
+    var PLAT_H = 32, SURF_Y = 6;
+
+    // generic rounded slab (used by non-ground platforms: mover / fragile / vanishing)
+    function platBase(g, top, bot, rim, edge) {
+      g.fillStyle(0x0c2a16, 0.16); g.fillRoundedRect(3, SURF_Y + 8, 80, 18, 8);        // cast shadow
+      vgrad(g, 0, SURF_Y, 84, 18, top, bot, 7);                                        // body
+      g.fillStyle(rim, 0.95); g.fillRoundedRect(3, SURF_Y + 1, 78, 4, 3);              // glossy rim
+      g.fillStyle(0xffffff, 0.18); g.fillEllipse(26, SURF_Y + 5, 34, 4);               // broad gloss
+      g.lineStyle(2, edge, 1); g.strokeRoundedRect(1, SURF_Y + 1, 82, 16, 8);          // rounded edge
+    }
+
+    // GRASS-ON-EARTH ground tile — the signature "real game" platform.
+    // grassLit/grassMid/grassDk shade the turf; soilLit/soilDk shade the dirt below.
+    function groundTile(g, grassLit, grassMid, grassDk, soilLit, soilDk, edge, flowers) {
+      var W = 84;
+      // --- soft cast shadow under the whole slab ---
+      g.fillStyle(0x0c2a16, 0.18); g.fillRoundedRect(4, 26, 76, 6, 5);
+      // --- EARTH body (rounded, layered) ---
+      g.fillStyle(soilDk, 1); g.fillRoundedRect(2, 12, 80, 18, 9);                     // dirt base
+      vgrad(g, 4, 13, 76, 15, soilLit, soilDk, 6);                                     // dirt vertical shade
+      // strata bands (subtle horizontal soil layers)
+      g.fillStyle(lerpC(soilLit, soilDk, 0.35), 0.6); g.fillRect(6, 19, 72, 1.4);
+      g.fillStyle(lerpC(soilLit, soilDk, 0.7), 0.5);  g.fillRect(6, 24, 72, 1.4);
+      // pebbles / dirt speckles
+      var peb = [[14,21,1.6],[30,25,1.3],[46,20,1.5],[58,26,1.2],[70,22,1.5],[22,27,1.1],[40,28,1.2],[66,18,1.3]];
+      g.fillStyle(lerpC(soilLit, 0xffffff, 0.25), 0.85);
+      peb.forEach(function (p) { g.fillCircle(p[0], p[1], p[2]); });
+      g.fillStyle(soilDk, 0.8);
+      peb.forEach(function (p) { g.fillCircle(p[0] + 0.6, p[1] + 0.7, p[2] * 0.7); });
+      // --- GRASS cap (thick top band) ---
+      g.fillStyle(grassDk, 1); g.fillRoundedRect(2, SURF_Y, 80, 10, 8);                // grass base (darker, defines the lip)
+      vgrad(g, 4, SURF_Y + 1, 76, 8, grassLit, grassMid, 5);                           // grass vertical shade
+      g.fillStyle(grassLit, 0.9); g.fillRoundedRect(5, SURF_Y + 1, 74, 2.5, 2);        // bright top rim-light
+      g.fillStyle(0xffffff, 0.16); g.fillEllipse(28, SURF_Y + 3, 34, 3);               // broad gloss on turf
+      // scalloped grass↔dirt boundary (little bumps so the line reads organic, not flat)
+      g.fillStyle(grassDk, 1);
+      for (var b = 4; b < W - 4; b += 8) { g.fillCircle(b, SURF_Y + 9, 4); }
+      g.fillStyle(grassMid, 1);
+      for (var b2 = 4; b2 < W - 4; b2 += 8) { g.fillCircle(b2, SURF_Y + 8, 3.4); }
+      // --- individual GRASS BLADES poking up above the surface (clear contour) ---
+      var bladeX = [7, 13, 19, 26, 33, 40, 47, 54, 61, 68, 75];
+      for (var k = 0; k < bladeX.length; k++) {
+        var bx = bladeX[k], lean = (k % 2 ? 1 : -1) * (1 + (k % 3));
+        // back blade (dark) then front blade (light) for depth
+        g.fillStyle(grassDk, 1); g.fillTriangle(bx - 2.4, SURF_Y + 2, bx + 2.4, SURF_Y + 2, bx + lean, SURF_Y - 5);
+        g.fillStyle(grassLit, 1); g.fillTriangle(bx - 1.6, SURF_Y + 2, bx + 1.6, SURF_Y + 2, bx + lean * 0.7, SURF_Y - 3.5);
+      }
+      // --- little flowers on the turf ---
+      if (flowers) {
+        var fl = [[24, SURF_Y + 4, 0xffffff, 0xffe27a], [58, SURF_Y + 5, 0xff9ac0, 0xffe27a]];
+        fl.forEach(function (f) {
+          g.fillStyle(f[2], 1);
+          for (var pI = 0; pI < 5; pI++) { var an = pI * (Math.PI * 2 / 5); g.fillCircle(f[0] + Math.cos(an) * 2, f[1] + Math.sin(an) * 2, 1.3); }
+          g.fillStyle(f[3], 1); g.fillCircle(f[0], f[1], 1.2);
+        });
+      }
+      // crisp outline around grass cap for a clean cartoon edge
+      g.lineStyle(1.4, edge, 0.9); g.strokeRoundedRect(2, SURF_Y, 80, 10, 8);
+    }
+
+    // MARIO tone platforms: bright grass over warm orange-brown earth (like SMB ground blocks).
+    tex('t_plat_green', 84, PLAT_H, function (g) {
+      groundTile(g, 0x7ede3a, 0x53b81f, 0x2f8a10, 0xe89b3c, 0xa0521e, 0x7a3c14, true);
     });
-    tex('t_plat_blue', 84, 20, function (g) {
-      vgrad(g, 0, 0, 84, 20, 0x9cd2f7, 0x2f78b8, 6);
-      g.fillStyle(0xd6f0ff, 0.9); g.fillRect(2, 1, 80, 3);
-      g.fillStyle(0xffffff, 0.5); g.fillEllipse(20, 12, 22, 5); g.fillEllipse(60, 13, 18, 4); // sheen (cloud-like)
-      g.fillStyle(0xffd36b, 1); g.fillTriangle(6, 10, 12, 10, 9, 4); g.fillTriangle(72, 10, 78, 10, 75, 4); // arrows (mover hint)
-      g.lineStyle(2, 0x225a86, 1); g.strokeRect(1, 1, 82, 18);
+    tex('t_plat_blue', 84, PLAT_H, function (g) {            // horizontal MOVER — bright sky-blue mushroom-top
+      groundTile(g, 0x8fd0ff, 0x4a9ef0, 0x2f6fc0, 0xe89b3c, 0xa0521e, 0x214a86, false);
+      g.fillStyle(0xffffff, 0.95); g.fillTriangle(9, 16, 15, 16, 12, 10); g.fillTriangle(69, 16, 75, 16, 72, 10); // mover arrows
     });
-    tex('t_plat_brown', 84, 20, function (g) {
-      vgrad(g, 0, 0, 84, 20, 0xd0a060, 0x6a4518, 6);
-      g.fillStyle(0xe6c088, 0.8); g.fillRect(2, 1, 80, 2);
-      g.lineStyle(1, 0x4a2e0e, 0.8); for (var i = 14; i < 84; i += 18) g.lineBetween(i, 2, i - 2, 18); // planks
-      g.fillStyle(0x3a2408, 1); g.fillCircle(10, 6, 1.2); g.fillCircle(74, 14, 1.2);                    // knots/nails
-      g.fillStyle(0x8a5a26, 1); g.fillRect(6, 14, 72, 2);                                                // crack line (fragile hint)
-      g.lineStyle(2, 0x3d2408, 1); g.strokeRect(1, 1, 82, 18);
+    tex('t_plat_brown', 84, PLAT_H, function (g) {           // FRAGILE (breaks) — SMB brick block
+      // classic brick body (red-brown) with mortar grid
+      g.fillStyle(0x0c2a16, 0.16); g.fillRoundedRect(3, 26, 78, 6, 4);              // cast shadow
+      vgrad(g, 2, SURF_Y, 80, 22, 0xd06a2c, 0x9a4a18, 6);                           // brick body
+      g.fillStyle(0xf0a860, 0.9); g.fillRect(4, SURF_Y + 1, 76, 2);                 // top rim-light
+      g.fillStyle(0x7a3410, 1);                                                     // mortar lines
+      g.fillRect(2, SURF_Y + 8, 80, 1.6); g.fillRect(2, SURF_Y + 16, 80, 1.6);      // horizontal
+      for (var mb = 0; mb < 3; mb++) { var ry = SURF_Y + mb * 8, off = (mb % 2) * 14; for (var mx = 14 + off; mx < 80; mx += 28) g.fillRect(mx, ry, 1.6, 8); }
+      g.lineStyle(1.5, 0x5a2408, 0.9); g.strokeRoundedRect(2, SURF_Y, 80, 22, 3);   // outline
     });
-    tex('t_plat_white', 84, 18, function (g) {
-      vgrad(g, 0, 0, 84, 18, 0xffffff, 0xcdd8ee, 5);
-      g.fillStyle(0xffffff, 0.9); g.fillRect(2, 1, 80, 3);
-      g.fillStyle(0xeaf1ff, 0.6); for (var i = 8; i < 84; i += 14) g.fillCircle(i, 9, 3);   // frosty motes (about-to-vanish)
-      g.lineStyle(2, 0x9aa8c0, 0.8); g.strokeRect(1, 1, 82, 15);
+    tex('t_plat_white', 84, PLAT_H, function (g) {           // VANISHING — Mario fluffy white cloud
+      g.fillStyle(0x0c2a16, 0.12); g.fillEllipse(42, 26, 66, 8);                    // soft shadow
+      g.fillStyle(0xffffff, 1);                                                     // cloud lobes
+      g.fillCircle(18, SURF_Y + 10, 11); g.fillCircle(34, SURF_Y + 8, 13); g.fillCircle(52, SURF_Y + 8, 13); g.fillCircle(68, SURF_Y + 10, 11);
+      g.fillRoundedRect(10, SURF_Y + 8, 64, 12, 8);
+      g.fillStyle(0xdfefff, 1); g.fillRoundedRect(12, SURF_Y + 15, 60, 5, 4);       // underside shade
+      g.fillStyle(0xffffff, 1); g.fillRoundedRect(12, SURF_Y + 4, 60, 6, 5);        // bright top
+      g.lineStyle(2, 0xbcd6f0, 0.8); g.strokeCircle(34, SURF_Y + 8, 13); g.strokeCircle(52, SURF_Y + 8, 13);
     });
 
     // collectibles — ring (spinning gem band, 4 frames) + heart (glossy, 3 pulse frames)
     // ring frame: sw = perspective width of the band (1=face-on … 0.25=edge)
     function drawRing(g, sw) {
-      glow(g, 13, 13, 9, 0xffe27a, 0.14);
-      g.lineStyle(4, 0xffcf4d, 1); g.strokeEllipse(13, 13, 16 * sw, 16);
-      g.lineStyle(2, 0xfff0b0, 1); g.strokeEllipse(13, 13, 16 * sw, 16);
-      // diamond
+      glow(g, 13, 13, 10, 0xffe27a, 0.16);
+      // gold band: dark base ring for depth, then two lit rims for a rounded metal look
+      g.lineStyle(6, 0xb8860b, 1); g.strokeEllipse(13, 13, 16 * sw, 16);      // dark underside
+      g.lineStyle(4, 0xffcf4d, 1); g.strokeEllipse(13, 12, 16 * sw, 16);      // mid gold
+      g.lineStyle(2, 0xfff3c0, 1); g.strokeEllipse(13, 11.4, 16 * sw, 15);    // top rim-light
+      // diamond (multi-facet)
       var dx = 13, dy = 13 - 8;
-      orb(g, dx, dy, 3.4, 0xeaffff, 0x8fd3f0, 4);
-      g.fillStyle(0xffffff, 0.95); g.fillTriangle(dx, dy - 3, dx - 2, dy, dx + 2, dy);
-      sparkle(g, dx + 2, dy - 2, 1.6, 0xffffff);
+      glow(g, dx, dy, 5, 0xbfeaff, 0.18);
+      orb(g, dx, dy, 3.6, 0xffffff, 0x6fb8e6, 4);
+      g.fillStyle(0xeaffff, 1); g.fillTriangle(dx - 3.2, dy - 1, dx + 3.2, dy - 1, dx, dy - 4);   // crown facet
+      g.fillStyle(0xbfe8ff, 1); g.fillTriangle(dx - 3.2, dy - 1, dx, dy + 3.6, dx, dy - 1);       // left pavilion
+      g.fillStyle(0x9fd6f5, 1); g.fillTriangle(dx + 3.2, dy - 1, dx, dy + 3.6, dx, dy - 1);       // right pavilion
+      g.fillStyle(0xffffff, 0.95); g.fillTriangle(dx, dy - 3.4, dx - 1.4, dy - 1, dx + 1.4, dy - 1); // table
+      sparkle(g, dx + 2.4, dy - 2.4, 1.8, 0xffffff);
     }
     var ringFrames = [1, 0.62, 0.28, 0.62];
     ringFrames.forEach(function (sw, i) { tex('t_ring' + (i || ''), 26, 26, function (g) { drawRing(g, sw); }); });
     function drawHeart(g, s, cx, cy) {
-      glow(g, cx, cy + 1, 8 * s, 0xff8fb0, 0.13);
+      glow(g, cx, cy + 1, 9 * s, 0xff8fb0, 0.15);
+      // deep base for a rounded, glossy candy-heart look
+      g.fillStyle(0xa81f4c, 1); g.fillCircle(cx - 5 * s, cy, 6.2 * s); g.fillCircle(cx + 5 * s, cy, 6.2 * s); g.fillTriangle(cx - 10.4 * s, cy + 2, cx + 10.4 * s, cy + 2, cx, cy + 12.6 * s);
       g.fillStyle(0xd83f6c, 1); g.fillCircle(cx - 5 * s, cy - 1, 6 * s); g.fillCircle(cx + 5 * s, cy - 1, 6 * s); g.fillTriangle(cx - 10 * s, cy + 2, cx + 10 * s, cy + 2, cx, cy + 12 * s);
       g.fillStyle(0xff6f9c, 1); g.fillCircle(cx - 5 * s, cy - 2, 4.6 * s); g.fillCircle(cx + 5 * s, cy - 2, 4.6 * s); g.fillTriangle(cx - 8 * s, cy + 1, cx + 8 * s, cy + 1, cx, cy + 10 * s);
-      g.fillStyle(0xffc0d4, 0.95); g.fillEllipse(cx - 4 * s, cy - 3, 4 * s, 2.4 * s);   // gloss
+      g.fillStyle(0xffa8c6, 0.9); g.fillCircle(cx - 4.5 * s, cy - 3, 2.6 * s);            // lit lobe
+      g.fillStyle(0xffd8e6, 0.95); g.fillEllipse(cx - 4 * s, cy - 3.4, 3.6 * s, 2.2 * s); // primary gloss
+      g.fillStyle(0xffffff, 0.85); g.fillCircle(cx - 5.4 * s, cy - 3.6, 1 * s);           // hot spot
+      g.fillStyle(0xffc0d4, 0.5); g.fillEllipse(cx + 4 * s, cy + 3, 2.4 * s, 1.6 * s);    // secondary gloss
     }
     [1, 1.12, 0.94].forEach(function (s, i) { tex('t_heart' + (i || ''), 30, 28, function (g) { drawHeart(g, s, 15, 12); }); });
 
-    // powerups — shaded
-    tex('t_spring', 26, 20, function (g) { vgrad(g, 4, 2, 18, 5, 0xff7fa8, 0xc23e6a, 3); g.lineStyle(3, 0xcfcfcf, 1); g.lineBetween(6, 9, 20, 9); g.lineBetween(6, 13, 20, 13); g.lineBetween(6, 17, 20, 17); g.fillStyle(0xffffff, 0.5); g.fillRect(6, 2, 6, 1); });
-    tex('t_tramp', 30, 16, function (g) { vgrad(g, 2, 2, 26, 6, 0x3a4056, 0x1c2030, 3); g.fillStyle(0x5aa9e6, 1); g.fillRect(4, 4, 22, 2); g.fillStyle(0x86c9f5, 0.8); g.fillRect(4, 4, 22, 1); g.fillStyle(0x777, 1); g.fillRect(4, 10, 3, 5); g.fillRect(23, 10, 3, 5); });
-    tex('t_pu_springshoes', 26, 22, function (g) { glow(g, 13, 12, 11, 0xff8fb0, 0.12); vgrad(g, 4, 4, 18, 10, 0xff8fb0, 0xd83f6c, 4); g.fillStyle(0xffffff, 1); g.fillRect(4, 14, 18, 4); g.lineStyle(2, 0xcfcfcf, 1); g.lineBetween(6, 18, 20, 18); g.fillStyle(0xffffff, 0.6); g.fillRect(6, 5, 5, 1); });
-    tex('t_pu_propeller', 28, 24, function (g) { glow(g, 14, 12, 12, 0xffe27a, 0.12); g.fillStyle(0xffd36b, 1); g.fillEllipse(14, 10, 26, 4); g.fillStyle(0xfff0b0, 0.8); g.fillEllipse(14, 9, 24, 2); vgrad(g, 11, 12, 6, 11, 0xff7fa8, 0xc23e6a, 3); orb(g, 14, 10, 3, 0xbfe8ff, 0x5aa9e6, 3); });
-    tex('t_pu_jetpack', 24, 26, function (g) { glow(g, 12, 20, 9, 0xffb04d, 0.14); vgrad(g, 6, 2, 12, 16, 0xbfc4cc, 0x5a5f68, 4); g.fillStyle(0xd84d7c, 1); g.fillRect(6, 2, 4, 16); g.fillStyle(0xffffff, 0.5); g.fillRect(15, 3, 2, 12); orb(g, 12, 22, 5, 0xfff0a0, 0xff6a2a, 4); g.fillStyle(0xffffff, 0.8); g.fillTriangle(10, 18, 14, 18, 12, 24); });
-    tex('t_pu_shield', 26, 28, function (g) { glow(g, 13, 14, 12, 0x8fd3f0, 0.16); vgrad(g, 4, 2, 18, 20, 0xbfeaff, 0x4a9fd0, 4); g.fillTriangle(4, 22, 22, 22, 13, 28); g.lineStyle(2, 0x2f78b8, 1); g.strokeRect(4, 2, 18, 20); g.fillStyle(0xffd36b, 1); g.fillTriangle(13, 6, 10, 14, 16, 14); g.fillTriangle(9, 11, 17, 11, 13, 18); g.fillStyle(0xffffff, 0.7); g.fillEllipse(9, 7, 4, 8); });
+    // powerups — richly shaded (rim-light + outline + hot-spot gloss)
+    tex('t_spring', 26, 20, function (g) {
+      g.lineStyle(3, 0x9a9a9a, 1); g.lineBetween(6, 9, 20, 9); g.lineBetween(6, 13, 20, 13); g.lineBetween(6, 17, 20, 17); // coil shadow
+      g.lineStyle(2, 0xeaeaea, 1); g.lineBetween(6, 8.4, 20, 8.4); g.lineBetween(6, 12.4, 20, 12.4); g.lineBetween(6, 16.4, 20, 16.4); // coil hi
+      vgrad(g, 4, 1, 18, 6, 0xff9ac0, 0xc23e6a, 4); g.lineStyle(1.4, 0x9a2a4c, 1); g.strokeRoundedRect(4, 1, 18, 6, 2); // top plate
+      g.fillStyle(0xffffff, 0.7); g.fillEllipse(10, 3, 7, 2);   // plate gloss
+    });
+    tex('t_tramp', 30, 16, function (g) {
+      g.fillStyle(0x2a2f3c, 1); g.fillRect(3, 9, 4, 6); g.fillRect(23, 9, 4, 6);        // legs
+      vgrad(g, 2, 2, 26, 7, 0x46506a, 0x1c2030, 4); g.lineStyle(1.4, 0x11141d, 1); g.strokeRoundedRect(2, 2, 26, 7, 3); // frame
+      g.fillStyle(0x5aa9e6, 1); g.fillRect(4, 4, 22, 2.4); g.fillStyle(0xbfe4ff, 0.9); g.fillRect(4, 4, 22, 1); // trampoline mat + sheen
+      g.fillStyle(0xffffff, 0.6); g.fillEllipse(12, 5, 10, 1.4);
+    });
+    tex('t_pu_springshoes', 26, 22, function (g) {
+      glow(g, 13, 12, 12, 0xff8fb0, 0.14);
+      vgrad(g, 4, 3, 18, 11, 0xffa8c6, 0xc23e6a, 4); g.lineStyle(1.4, 0x9a2a4c, 1); g.strokeRoundedRect(4, 3, 18, 11, 3); // boot
+      g.fillStyle(0xffffff, 1); g.fillRoundedRect(4, 14, 18, 4.6, 2); g.lineStyle(2, 0x9a9a9a, 1); g.lineBetween(6, 19, 20, 19); // sole + coil
+      g.fillStyle(0xffe0ec, 0.9); g.fillEllipse(9, 6, 6, 2); g.fillStyle(0xffffff, 0.8); g.fillCircle(8, 5, 1); // gloss + hotspot
+    });
+    tex('t_pu_propeller', 28, 24, function (g) {
+      glow(g, 14, 12, 13, 0xffe27a, 0.14);
+      g.fillStyle(0xd9a318, 1); g.fillEllipse(14, 10, 26, 4);                              // blade shadow
+      g.fillStyle(0xffd36b, 1); g.fillEllipse(14, 9, 26, 3.4); g.fillStyle(0xfff3c0, 0.9); g.fillEllipse(14, 8.4, 22, 1.6); // lit blades
+      vgrad(g, 11, 12, 6, 11, 0xffa8c6, 0xc23e6a, 3); g.lineStyle(1.2, 0x9a2a4c, 1); g.strokeRoundedRect(11, 12, 6, 11, 2); // cap
+      orb(g, 14, 10, 3, 0xffffff, 0x5aa9e6, 3);                                            // hub jewel
+    });
+    tex('t_pu_jetpack', 24, 26, function (g) {
+      glow(g, 12, 21, 10, 0xffb04d, 0.16);
+      vgrad(g, 5, 2, 14, 17, 0xd6dbe2, 0x5a5f68, 5); g.lineStyle(1.4, 0x3a3f47, 1); g.strokeRoundedRect(5, 2, 14, 17, 3); // tank
+      g.fillStyle(0xe52521, 1); g.fillRect(6, 3, 4, 15); g.fillStyle(0xff8a6a, 0.8); g.fillRect(6, 3, 4, 2);   // red stripe + hi
+      g.fillStyle(0xffffff, 0.6); g.fillRect(15, 4, 2, 12);                                 // chrome highlight
+      orb(g, 12, 21, 4.6, 0xfff0a0, 0xff5a1a, 4); g.fillStyle(0xffffff, 0.85); g.fillTriangle(10, 18, 14, 18, 12, 24.5); // flame
+    });
+    tex('t_pu_shield', 26, 28, function (g) {
+      glow(g, 13, 14, 13, 0x8fd3f0, 0.18);
+      g.fillStyle(0x2f78b8, 1); g.fillRoundedRect(3, 2, 20, 20, 5); g.fillTriangle(3, 21, 23, 21, 13, 27.6);   // dark crest base
+      vgrad(g, 4, 3, 18, 18, 0xd6f2ff, 0x4a9fd0, 5); g.fillTriangle(5, 21, 21, 21, 13, 27.5);                 // face
+      g.lineStyle(1.6, 0x1f5a8a, 1); g.strokeRoundedRect(3.6, 2.4, 19, 20, 5);
+      g.fillStyle(0xffd36b, 1); g.fillTriangle(13, 6, 10, 14, 16, 14); g.fillTriangle(9, 11, 17, 11, 13, 18);  // gold cross/leaf
+      g.fillStyle(0xffffff, 0.75); g.fillEllipse(9, 8, 3.4, 8);                              // vertical gloss
+    });
 
     // worn-shield bubble (drawn around the couple while shield active) — see stepPlayer shieldFx
     tex('t_shieldbubble', 72, 72, function (g) { for (var i = 0; i < 4; i++) { g.fillStyle(0x8fd3f0, 0.10 - i * 0.02); g.fillCircle(36, 36, 34 - i * 3); } g.lineStyle(2, 0xbfeaff, 0.7); g.strokeCircle(36, 36, 33); g.fillStyle(0xffffff, 0.5); g.fillEllipse(24, 22, 8, 14); });
 
     // enemies — bee (2 wing frames), bird (2 flap frames), stormcloud (2 flash), ufo (2 glow)
     function drawBee(g, wingUp) {
-      glow(g, 15, 14, 12, 0xffe27a, 0.10);
-      g.fillStyle(0xffffff, wingUp ? 0.75 : 0.5); g.fillEllipse(8, wingUp ? 5 : 8, 10, wingUp ? 8 : 5); g.fillEllipse(22, wingUp ? 5 : 8, 10, wingUp ? 8 : 5);
-      orb(g, 15, 14, 8, 0xffe066, 0xd9a318, 4);                                  // body
-      g.fillStyle(0x2a2a2a, 1); g.fillRect(11, 8, 3, 12); g.fillRect(17, 8, 3, 12); // stripes
-      g.fillStyle(0xffffff, 1); g.fillCircle(20, 12, 2.4); g.fillStyle(0x000, 1); g.fillCircle(21, 12, 1.2); // eye
-      g.fillStyle(0x000, 1); g.fillTriangle(23, 18, 27, 20, 23, 21);              // stinger
+      glow(g, 15, 14, 12, 0xffe27a, 0.12);
+      // translucent wings with a faint blue edge
+      g.fillStyle(0xffffff, wingUp ? 0.8 : 0.55); g.fillEllipse(8, wingUp ? 5 : 8, 11, wingUp ? 9 : 5); g.fillEllipse(22, wingUp ? 5 : 8, 11, wingUp ? 9 : 5);
+      g.lineStyle(1, 0xbfe0ff, 0.6); g.strokeEllipse(8, wingUp ? 5 : 8, 11, wingUp ? 9 : 5); g.strokeEllipse(22, wingUp ? 5 : 8, 11, wingUp ? 9 : 5);
+      orb(g, 15, 14, 8.4, 0xfff0a0, 0xc98a00, 5);                                 // body (rounder shading)
+      g.lineStyle(1.4, 0x8a5e08, 1); g.strokeCircle(15, 14, 8);                   // body outline
+      g.fillStyle(0x2a2a2a, 1); g.fillRect(11, 7, 3, 13); g.fillRect(17, 7, 3, 13); // stripes
+      g.fillStyle(0xffffff, 0.35); g.fillEllipse(13, 10, 6, 3);                   // top gloss
+      g.fillStyle(0xffffff, 1); g.fillCircle(20, 12, 2.6); g.fillStyle(0x1a1a1a, 1); g.fillCircle(21, 12, 1.3); g.fillStyle(0xffffff, 0.9); g.fillCircle(20.4, 11.4, 0.6); // eye + catchlight
+      g.fillStyle(0x1a1a1a, 1); g.fillTriangle(23, 18, 28, 20, 23, 21.4);         // stinger
     }
     [false, true].forEach(function (up, i) { tex('t_enemy_bee' + (i || ''), 30, 24, function (g) { drawBee(g, up); }); });
     function drawBird(g, wing) { // wing: -1 down, +1 up
-      g.fillStyle(0xb83560, 1); g.fillEllipse(15, 15, 20, 13);                    // body base
+      g.fillStyle(0x8a2648, 1); g.fillEllipse(15, 16, 21, 14);                    // deep base (belly shadow)
+      g.fillStyle(0xd84d7c, 1); g.fillEllipse(15, 15, 20, 13);
       g.fillStyle(0xe85f8a, 1); g.fillEllipse(15, 13, 18, 11);                    // lit body
-      g.fillStyle(0xffb0c8, 0.8); g.fillEllipse(12, 11, 8, 4);                    // back sheen
-      g.fillStyle(0xd84d7c, 1); if (wing > 0) { g.fillTriangle(6, 14, 16, 6, 16, 15); } else { g.fillTriangle(6, 16, 16, 22, 16, 14); } // wing
-      g.fillStyle(0xffd36b, 1); g.fillTriangle(25, 13, 30, 15, 25, 17);           // beak
-      g.fillStyle(0xffffff, 1); g.fillCircle(20, 11, 3); g.fillStyle(0x000, 1); g.fillCircle(21, 11, 1.5);
+      g.fillStyle(0xffb0c8, 0.85); g.fillEllipse(12, 10.5, 9, 4.5);               // back sheen
+      g.lineStyle(1.2, 0x7a2040, 1); g.strokeEllipse(15, 14.5, 20, 13);           // soft outline
+      // wing with its own shading
+      g.fillStyle(0xc23e6a, 1); if (wing > 0) { g.fillTriangle(6, 14, 16, 6, 16, 15); } else { g.fillTriangle(6, 16, 16, 22, 16, 14); }
+      g.fillStyle(0xff8ab0, 0.7); if (wing > 0) { g.fillTriangle(9, 13, 15, 8, 15, 13); } else { g.fillTriangle(9, 17, 15, 20, 15, 15); } // wing hi
+      g.fillStyle(0xe59b00, 1); g.fillTriangle(25, 13, 31, 15, 25, 17.4);         // beak base
+      g.fillStyle(0xffd36b, 1); g.fillTriangle(25, 13, 30, 15, 25, 16.4);         // beak lit
+      g.fillStyle(0xffffff, 1); g.fillCircle(20, 11, 3.2); g.fillStyle(0x1a1a1a, 1); g.fillCircle(21, 11, 1.6); g.fillStyle(0xffffff, 0.9); g.fillCircle(20.3, 10.3, 0.7); // eye + catchlight
     }
     [-1, 1].forEach(function (w, i) { tex('t_enemy_bird' + (i || ''), 32, 26, function (g) { drawBird(g, w); }); });
     function drawCloud(g, flash) {
-      g.fillStyle(0x3a4556, 1); g.fillEllipse(20, 15, 38, 20); g.fillEllipse(11, 17, 18, 13); g.fillEllipse(30, 17, 16, 12);
-      g.fillStyle(0x556277, 1); g.fillEllipse(20, 12, 30, 12); g.fillStyle(0x2a3340, 0.9); g.fillEllipse(20, 20, 32, 8);
-      g.fillStyle(flash ? 0xfff29a : 0xffe066, 1); g.fillTriangle(18, 19, 24, 19, 14, 30); g.fillTriangle(14, 28, 20, 26, 17, 34);
-      if (flash) { glow(g, 20, 15, 20, 0xfff0a0, 0.12); }
+      if (flash) { glow(g, 20, 14, 22, 0xfff0a0, 0.14); }
+      // billowy storm body (dark base + mid lobes + lit crown)
+      g.fillStyle(0x2a3340, 1); g.fillEllipse(20, 17, 40, 20); g.fillEllipse(10, 18, 18, 13); g.fillEllipse(31, 18, 17, 12);
+      g.fillStyle(0x3a4556, 1); g.fillEllipse(20, 14, 36, 18); g.fillEllipse(11, 15, 16, 11); g.fillEllipse(30, 15, 15, 10);
+      g.fillStyle(0x556277, 1); g.fillEllipse(18, 11, 26, 11); g.fillEllipse(30, 12, 16, 9);
+      g.fillStyle(flash ? 0xaebfd6 : 0x6a7890, 0.9); g.fillEllipse(16, 9, 18, 6);   // top rim-light
+      g.fillStyle(0x1e2530, 0.7); g.fillEllipse(20, 22, 34, 7);                      // underside shadow
+      // lightning bolt (kept within the 30px canvas)
+      g.fillStyle(flash ? 0xfff6b0 : 0xffe066, 1); g.fillTriangle(18, 19, 24, 19, 14, 28); g.fillTriangle(14, 26, 20, 24, 16, 30);
+      if (flash) { g.fillStyle(0xffffff, 0.9); g.fillTriangle(18.5, 19.5, 22, 19.5, 15.5, 27); }
     }
     [false, true].forEach(function (f, i) { tex('t_enemy_stormcloud' + (i || ''), 44, 30, function (g) { drawCloud(g, f); }); });
     function drawUfo(g, lit) {
-      glow(g, 20, 14, 16, lit ? 0x9be7ff : 0x6fc0e0, lit ? 0.16 : 0.08);
-      g.fillStyle(0x9be7ff, 0.35); g.fillTriangle(10, 16, 30, 16, 20, 26);        // beam
-      vgrad(g, 3, 12, 34, 6, 0xcfd6de, 0x6a7280, 3); g.fillEllipse(20, 14, 34, 9); // saucer body
-      g.fillStyle(0x8a929e, 1); g.fillEllipse(20, 16, 30, 6);
-      orb(g, 20, 8, 9, 0xd6f4ff, 0x4a9fd0, 4);                                    // dome
-      g.fillStyle(0xffffff, 0.6); g.fillEllipse(16, 6, 5, 3);
-      var lc = lit ? 0xfff0a0 : 0xffe066; g.fillStyle(lc, 1); g.fillCircle(8, 15, 2.2); g.fillCircle(20, 17, 2.2); g.fillCircle(32, 15, 2.2);
+      glow(g, 20, 13, 17, lit ? 0x9be7ff : 0x6fc0e0, lit ? 0.18 : 0.09);
+      // tractor beam (gradient cone)
+      g.fillStyle(0x9be7ff, lit ? 0.4 : 0.25); g.fillTriangle(9, 16, 31, 16, 20, 27);
+      g.fillStyle(0xdff6ff, lit ? 0.35 : 0.18); g.fillTriangle(13, 16, 27, 16, 20, 25);
+      // saucer body (dark underside + lit hull)
+      g.fillStyle(0x5a626e, 1); g.fillEllipse(20, 16, 34, 8);
+      vgrad(g, 3, 11, 34, 6, 0xe6ebf0, 0x7a828e, 4); g.fillEllipse(20, 14, 34, 9);
+      g.lineStyle(1.4, 0x4a505a, 1); g.strokeEllipse(20, 14.5, 34, 9);           // hull outline
+      g.fillStyle(0xffffff, 0.5); g.fillEllipse(14, 12, 12, 2.4);                // hull sheen
+      // glass dome (rounded, glossy)
+      orb(g, 20, 8, 9, 0xeafaff, 0x3f8fd0, 5);
+      g.lineStyle(1.2, 0x2f6fa8, 1); g.strokeCircle(20, 8, 8.6);
+      g.fillStyle(0xffffff, 0.7); g.fillEllipse(16, 5.5, 5, 3); g.fillStyle(0xffffff, 0.9); g.fillCircle(15, 5, 1);
+      // rim lights (blink between frames)
+      var lc = lit ? 0xfff0a0 : 0xffe066; g.fillStyle(lc, 1);
+      [8, 14, 20, 26, 32].forEach(function (lx, i) { g.fillCircle(lx, 16 + (i % 2 ? 1 : 0), 2.2); });
+      if (lit) { g.fillStyle(0xffffff, 0.8); [8, 20, 32].forEach(function (lx) { g.fillCircle(lx - 0.6, 15.4, 0.8); }); }
     }
     [false, true].forEach(function (l, i) { tex('t_enemy_ufo' + (i || ''), 40, 28, function (g) { drawUfo(g, l); }); });
 
     // objects / particles
     tex('t_bullet', 14, 16, function (g) { glow(g, 6, 8, 6, 0xff8fb0, 0.2); g.fillStyle(0xd83f6c, 1); g.fillCircle(4, 8, 4); g.fillCircle(9, 8, 4); g.fillTriangle(0, 9, 13, 9, 6, 15); g.fillStyle(0xffc0d4, 0.9); g.fillCircle(4, 6, 1.6); });
-    tex('t_spark', 8, 8, function (g) { g.fillStyle(0xffffff, 1); g.fillCircle(4, 4, 3); g.fillStyle(0xffffff, 0.4); g.fillCircle(4, 4, 4); });
-    tex('t_star4', 12, 12, function (g) { sparkle(g, 6, 6, 3, 0xffffff); });
-    tex('t_petal', 12, 10, function (g) { g.fillStyle(0xff8fb0, 1); g.fillEllipse(6, 5, 10, 6); g.fillStyle(0xffc0d4, 0.9); g.fillEllipse(5, 4, 5, 3); });
-    tex('t_dust', 14, 14, function (g) { g.fillStyle(0xffffff, 0.85); g.fillCircle(7, 7, 5); g.fillStyle(0xe8e0d0, 0.6); g.fillCircle(7, 8, 6); });
+    texP('t_spark', 8, 8, function (g) { g.fillStyle(0xffffff, 1); g.fillCircle(4, 4, 3); g.fillStyle(0xffffff, 0.4); g.fillCircle(4, 4, 4); });
+    texP('t_star4', 12, 12, function (g) { sparkle(g, 6, 6, 3, 0xffffff); });
+    texP('t_petal', 12, 10, function (g) { g.fillStyle(0xff8fb0, 1); g.fillEllipse(6, 5, 10, 6); g.fillStyle(0xffc0d4, 0.9); g.fillEllipse(5, 4, 5, 3); });
+    texP('t_dust', 14, 14, function (g) { g.fillStyle(0xffffff, 0.85); g.fillCircle(7, 7, 5); g.fillStyle(0xe8e0d0, 0.6); g.fillCircle(7, 8, 6); });
 
-    // gate — floral archway with a soft light through it
-    tex('t_gate', 220, 96, function (g) {
-      glow(g, 110, 40, 46, 0xfff0c0, 0.10);
-      vgrad(g, 20, 20, 18, 72, 0x8fd97a, 0x3f8f38, 5); vgrad(g, 182, 20, 18, 72, 0x8fd97a, 0x3f8f38, 5); // posts
-      // arch band
-      g.lineStyle(14, 0x5aa03a, 1); g.beginPath(); g.arc(110, 46, 76, Math.PI, 0, false); g.strokePath();
-      // flowers on arch
-      for (var a = 0; a <= 12; a++) { var an = Math.PI - a * (Math.PI / 12); var fx = 110 + Math.cos(an) * 76, fy = 46 + Math.sin(an) * -76; orb(g, fx, fy, 7, [0xff9ac0, 0xffd36b, 0xffffff][a % 3], [0xd83f6c, 0xd9a318, 0xdfe7f5][a % 3], 3); g.fillStyle(0xffe066, 1); g.fillCircle(fx, fy, 1.5); }
-      // ribbon
-      g.fillStyle(0xffd36b, 1); g.fillTriangle(104, 20, 116, 20, 110, 30);
+    // gate — floral archway (240x150). Geometry laid out so the FULL semicircle fits:
+    //   arch centre (cx=120, cy=96), radius R=88 → top of arch reaches y = 96-88-flowerR ≈ 0.
+    //   posts run from just under the arch spring (y≈96) down to the base (y≈150).
+    tex('t_gate', 240, 150, function (g) {
+      var cx = 120, cy = 96, R = 84;
+      glow(g, cx, cy - 30, 60, 0xfff0c0, 0.10);
+      // posts (leaf-green, wrapped with a spiral vine)
+      vgrad(g, 22, 92, 20, 58, 0x8fe07a, 0x3f9d4a, 5); vgrad(g, 198, 92, 20, 58, 0x8fe07a, 0x3f9d4a, 5);
+      g.fillStyle(0x2f8a34, 0.6); for (var vp = 96; vp < 148; vp += 10) { g.fillEllipse(32, vp, 18, 4); g.fillEllipse(208, vp, 18, 4); }
+      g.fillStyle(0xffffff, 0.18); g.fillRect(24, 92, 4, 58); g.fillRect(200, 92, 4, 58);   // post highlight
+      // base pots
+      vgrad(g, 16, 140, 32, 10, 0xcaa06a, 0x6e4a22, 3); vgrad(g, 192, 140, 32, 10, 0xcaa06a, 0x6e4a22, 3);
+      // arch band (green vine)
+      g.lineStyle(15, 0x3f9d4a, 1); g.beginPath(); g.arc(cx, cy, R, Math.PI, 0, false); g.strokePath();
+      g.lineStyle(6, 0x6fd08c, 0.8); g.beginPath(); g.arc(cx, cy, R + 4, Math.PI, 0, false); g.strokePath();  // vine sheen
+      // flowers all along the arch (full semicircle now visible)
+      for (var a = 0; a <= 16; a++) {
+        var an = Math.PI - a * (Math.PI / 16);
+        var fx = cx + Math.cos(an) * R, fy = cy + Math.sin(an) * -R;
+        orb(g, fx, fy, 8, [0xffffff, 0xff9ac0, 0xffe27a][a % 3], [0xdfe7f5, 0xd83f6c, 0xd9a318][a % 3], 3);
+        g.fillStyle(0xffe066, 1); g.fillCircle(fx, fy, 1.6);
+        // a few green leaves tucked between blossoms
+        if (a % 2 === 0) { g.fillStyle(0x5cbf55, 1); g.fillEllipse(fx + 6, fy + 4, 7, 4); }
+      }
+      // hanging ribbon at the crown
+      g.fillStyle(0xff9ac0, 1); g.fillTriangle(cx - 8, cy - R - 2, cx + 8, cy - R - 2, cx, cy - R + 8);
+      g.fillStyle(0xffe066, 1); g.fillCircle(cx, cy - R - 1, 2.4);
     });
-    // altar — pillared floral canopy with white cloth
-    tex('t_altar', 260, 140, function (g) {
-      glow(g, 130, 60, 60, 0xfff0c0, 0.10);
-      vgrad(g, 34, 34, 22, 100, 0xf0cd6a, 0xb98a2c, 6); vgrad(g, 204, 34, 22, 100, 0xf0cd6a, 0xb98a2c, 6); // pillars
-      g.fillStyle(0xfff0b0, 0.8); g.fillRect(36, 34, 4, 100); g.fillRect(206, 34, 4, 100);
-      vgrad(g, 30, 18, 200, 18, 0xf0cd6a, 0xb98a2c, 4);                          // beam
-      // arch of flowers over the beam
-      g.lineStyle(12, 0x5aa03a, 1); g.beginPath(); g.arc(130, 30, 96, Math.PI, 0, false); g.strokePath();
-      for (var a = 0; a <= 14; a++) { var an = Math.PI - a * (Math.PI / 14); var fx = 130 + Math.cos(an) * 96, fy = 30 + Math.sin(an) * -96 + 30; orb(g, fx, fy, 8, [0xff9ac0, 0xffffff, 0xffd36b][a % 3], [0xd83f6c, 0xdfe7f5, 0xd9a318][a % 3], 3); }
-      // white cloth panel
-      vgrad(g, 66, 66, 128, 68, 0xffffff, 0xe6ecf7, 5); g.fillStyle(0xffd36b, 1); g.fillRect(66, 60, 128, 8);
-      g.fillStyle(0xff9ac0, 1); g.fillCircle(130, 100, 6); g.fillStyle(0xffe066, 1); g.fillCircle(130, 100, 2); // centerpiece
+    // altar — pillared floral canopy (280x180). Arch centre (cx=140, cy=96), R=108 → the FULL
+    // dome fits inside the canvas (top blossoms land near y≈2). Pillars run under the spring line.
+    tex('t_altar', 280, 180, function (g) {
+      var cx = 140, cy = 100, R = 88;   // cy-R=12 → top blossoms (orb r≈9) land at y≈3, fully inside
+      glow(g, cx, cy - 40, 80, 0xfff0c0, 0.10);
+      // pillars (ornate gold)
+      vgrad(g, 40, 92, 24, 84, 0xf5d982, 0xb98a2c, 6); vgrad(g, 216, 92, 24, 84, 0xf5d982, 0xb98a2c, 6);
+      g.fillStyle(0xfff0b0, 0.85); g.fillRect(43, 92, 4, 84); g.fillRect(219, 92, 4, 84);   // pillar highlight
+      // pillar caps + bases
+      vgrad(g, 36, 86, 32, 8, 0xffe9a8, 0xd8a94a, 3); vgrad(g, 212, 86, 32, 8, 0xffe9a8, 0xd8a94a, 3);
+      vgrad(g, 34, 172, 36, 8, 0xd8a94a, 0x8a5a1a, 3); vgrad(g, 210, 172, 36, 8, 0xd8a94a, 0x8a5a1a, 3);
+      // green vine arch (double band for depth)
+      g.lineStyle(14, 0x3f9d4a, 1); g.beginPath(); g.arc(cx, cy, R, Math.PI, 0, false); g.strokePath();
+      g.lineStyle(6, 0x6fd08c, 0.8); g.beginPath(); g.arc(cx, cy, R + 5, Math.PI, 0, false); g.strokePath();
+      // flowers along the full arch
+      for (var a = 0; a <= 18; a++) {
+        var an = Math.PI - a * (Math.PI / 18);
+        var fx = cx + Math.cos(an) * R, fy = cy + Math.sin(an) * -R;
+        orb(g, fx, fy, 9, [0xffffff, 0xff9ac0, 0xffe27a][a % 3], [0xdfe7f5, 0xd83f6c, 0xd9a318][a % 3], 3);
+        if (a % 2) { g.fillStyle(0x5cbf55, 1); g.fillEllipse(fx - 7, fy + 5, 8, 4); }   // leaves
+      }
+      // white cloth panel (the platform/altar table)
+      vgrad(g, 78, 118, 124, 58, 0xffffff, 0xe6ecf7, 5);
+      g.fillStyle(0xffd36b, 1); g.fillRect(78, 112, 124, 8);                            // gold trim
+      g.fillStyle(0xdfe7f5, 0.7); g.fillRect(78, 150, 124, 6);                          // cloth fold shadow
+      // floral centerpiece on the table
+      orb(g, 140, 132, 10, 0xff9ac0, 0xd83f6c, 4);
+      g.fillStyle(0xffe066, 1); g.fillCircle(140, 132, 2.5);
+      g.fillStyle(0x5cbf55, 1); g.fillEllipse(130, 138, 10, 4); g.fillEllipse(150, 138, 10, 4);
     });
   }
 
@@ -1606,31 +1926,65 @@
       this.parallax.forEach(function (p) { p.obj.destroy(); });
       this.parallax = [];
 
-      // --- HILLS (far silhouette, subtle parallax) ---
-      var hillC = meta.hills || mixHex(meta.skyBot, 0x000000, 0.15);
-      var hills = this.add.graphics().setScrollFactor(0).setDepth(-56);
-      hills.fillStyle(hillC, meta.night ? 0.85 : 0.5);
-      hills.beginPath(); hills.moveTo(0, BH);
-      for (var hx = 0; hx <= BW; hx += 60) { hills.lineTo(hx, BH * 0.62 + Math.sin(hx * 0.02) * 40 + (hx % 120 ? 0 : 20)); }
-      hills.lineTo(BW, BH); hills.closePath(); hills.fillPath();
-      this.parallax.push({ obj: hills, baseY: 0, factor: 0.12 });
+      // --- HILLS: two ridges for depth. Far = pale, high, smooth. Near = darker, lower, with
+      //     a treeline of bush/tree silhouettes on top so the horizon reads as a real landscape.
+      var hillFarC = meta.hills || mixHex(meta.skyBot, 0x000000, 0.12);
+      var hillNearC = mixHex(hillFarC, 0x000000, meta.night ? 0.25 : 0.18);
+      // far ridge
+      var hillsF = this.add.graphics().setScrollFactor(0).setDepth(-57);
+      hillsF.fillStyle(hillFarC, meta.night ? 0.7 : 0.42);
+      hillsF.beginPath(); hillsF.moveTo(0, BH);
+      for (var hx = 0; hx <= BW; hx += 40) { hillsF.lineTo(hx, BH * 0.56 + Math.sin(hx * 0.016) * 46 + Math.sin(hx * 0.05) * 10); }
+      hillsF.lineTo(BW, BH); hillsF.closePath(); hillsF.fillPath();
+      this.parallax.push({ obj: hillsF, baseY: 0, factor: 0.08 });
+      // near ridge + treeline
+      var hillsN = this.add.graphics().setScrollFactor(0).setDepth(-56);
+      hillsN.fillStyle(hillNearC, meta.night ? 0.9 : 0.6);
+      hillsN.beginPath(); hillsN.moveTo(0, BH);
+      var ridgeY = [];
+      for (var hx2 = 0; hx2 <= BW; hx2 += 30) { var yy2 = BH * 0.66 + Math.sin(hx2 * 0.02) * 34 + (hx2 % 90 ? 0 : 16); ridgeY.push([hx2, yy2]); hillsN.lineTo(hx2, yy2); }
+      hillsN.lineTo(BW, BH); hillsN.closePath(); hillsN.fillPath();
+      // Mario green hills / bushes poking above the near ridge (round humps; day = the classic
+      // hill with two little eye-notches, night = plain silhouettes).
+      var hillTopC = mixHex(0x3aa03a, 0x000000, meta.night ? 0.4 : 0);
+      for (var ti = 1; ti < ridgeY.length - 1; ti += 2) {
+        var tx = ridgeY[ti][0], ty = ridgeY[ti][1];
+        if (((tx * 7) % 10) < 4) continue;   // deterministic gaps (no Date/random dependency for layout)
+        var big = ((tx * 13) % 3) === 0;
+        hillsN.fillStyle(meta.night ? mixHex(hillNearC, 0x000000, 0.15) : hillTopC, meta.night ? 0.95 : 0.9);
+        if (big) {                            // big rounded hill (SMB overworld)
+          hillsN.fillCircle(tx, ty - 4, 16); hillsN.fillCircle(tx - 13, ty + 4, 10); hillsN.fillCircle(tx + 13, ty + 4, 10);
+          hillsN.fillRect(tx - 22, ty + 2, 44, 8);
+          if (!meta.night) { hillsN.fillStyle(0x1f6b1f, 1); hillsN.fillCircle(tx - 5, ty - 4, 2); hillsN.fillCircle(tx + 5, ty - 4, 2); } // eyes
+        } else {                              // small bush
+          hillsN.fillCircle(tx, ty - 3, 10); hillsN.fillCircle(tx - 8, ty + 2, 7); hillsN.fillCircle(tx + 8, ty + 2, 7);
+        }
+      }
+      this.parallax.push({ obj: hillsN, baseY: 0, factor: 0.14 });
 
-      // --- CLOUDS / BALLOONS / PETALS / DISTANT BIRDS (drifting) ---
+      // --- CLOUDS / BALLOONS / PETALS / BIRDS / BUTTERFLIES / FIREFLIES (drifting) ---
       function cloud(obj, w) {
         obj.fillStyle(0xffffff, meta.night ? 0.22 : 0.85);
         obj.fillEllipse(0, 0, w, w * 0.42); obj.fillEllipse(-w * 0.32, w * 0.06, w * 0.5, w * 0.34); obj.fillEllipse(w * 0.32, w * 0.05, w * 0.55, w * 0.36);
         obj.fillStyle(0xffffff, meta.night ? 0.1 : 0.5); obj.fillEllipse(-w * 0.1, -w * 0.14, w * 0.5, w * 0.2);
       }
-      function balloon(obj, col) { obj.fillStyle(col, 0.9); obj.fillEllipse(0, 0, 26, 32); obj.fillStyle(0xffffff, 0.4); obj.fillEllipse(-6, -8, 6, 10); obj.fillStyle(col, 1); obj.fillTriangle(-3, 15, 3, 15, 0, 20); obj.lineStyle(1, 0xffffff, 0.4); obj.lineBetween(0, 20, 0, 40); }
+      function balloon(obj, col) { obj.fillStyle(col, 0.95); obj.fillEllipse(0, 0, 26, 32); obj.fillStyle(0xffffff, 0.45); obj.fillEllipse(-6, -8, 6, 10); obj.fillStyle(col, 1); obj.fillTriangle(-3, 15, 3, 15, 0, 20); obj.lineStyle(1, 0xffffff, 0.4); obj.lineBetween(0, 20, 0, 40); }
       function petal(obj, col) { obj.fillStyle(col, 0.9); obj.fillEllipse(0, 0, 12, 7); obj.fillStyle(0xffffff, 0.5); obj.fillEllipse(-2, -1, 5, 3); }
       function birdV(obj) { obj.lineStyle(2, meta.night ? 0x9aa8d0 : 0x556, 0.5); obj.beginPath(); obj.moveTo(-8, 4); obj.lineTo(0, 0); obj.lineTo(8, 4); obj.strokePath(); }
+      function butterfly(obj, col) { obj.fillStyle(col, 0.9); obj.fillEllipse(-4, 0, 7, 9); obj.fillEllipse(4, 0, 7, 9); obj.fillStyle(0xffffff, 0.5); obj.fillEllipse(-4, -1, 3, 4); obj.fillEllipse(4, -1, 3, 4); obj.fillStyle(0x2f5a3a, 1); obj.fillRect(-0.7, -4, 1.4, 8); }
+      function firefly(obj) { obj.fillStyle(0xffe066, 0.9); obj.fillCircle(0, 0, 2); obj.fillStyle(0xfff6c0, 0.35); obj.fillCircle(0, 0, 4); }
+      // spinning gold coin (Mario staple) — screen-decoration, not collectible
+      function coin(obj) { obj.fillStyle(0xfbd000, 1); obj.fillEllipse(0, 0, 14, 18); obj.fillStyle(0xffe873, 1); obj.fillEllipse(0, 0, 8, 14); obj.fillStyle(0xc98a00, 1); obj.fillRect(-1, -6, 2, 12); obj.fillStyle(0xffffff, 0.7); obj.fillEllipse(-3, -4, 2, 5); }
 
       var specs = [
         { factor: 0.18, n: 4, make: function (o) { cloud(o, 120); }, drift: 8 },
         { factor: 0.30, n: 3, make: function (o) { cloud(o, 80); }, drift: 14 },
         { factor: 0.30, n: 2, make: birdV, drift: 26 },
-        { factor: 0.5, n: 3, make: function (o) { balloon(o, [0xff6f9c, 0xffd36b, 0x8fd3f0][(rnd() * 3) | 0]); }, drift: 4 },
-        { factor: 0.72, n: 6, make: function (o) { petal(o, [0xff9ac0, 0xffd36b, 0xffffff][(rnd() * 3) | 0]); }, drift: 20 }
+        { factor: 0.5, n: 3, make: function (o) { balloon(o, [0xe52521, 0xfbd000, 0x43b047][(rnd() * 3) | 0]); }, drift: 4 },   // Mario red/yellow/green balloons
+        { factor: 0.58, n: meta.night ? 0 : 3, make: coin, drift: 12 },                                                        // floating coins (day)
+        { factor: 0.62, n: meta.night ? 0 : 2, make: function (o) { butterfly(o, [0xfbd000, 0xff6f9c, 0xffffff][(rnd() * 3) | 0]); }, drift: 16 }, // butterflies (day)
+        { factor: 0.62, n: meta.night ? 8 : 0, make: firefly, drift: 10 },                                                     // fireflies (night)
+        { factor: 0.72, n: 5, make: function (o) { petal(o, [0xffffff, 0xfbd000, 0x8fe07a][(rnd() * 3) | 0]); }, drift: 20 }    // drifting confetti/leaves
       ];
       specs.forEach(function (L) {
         for (var i = 0; i < L.n; i++) {
@@ -1855,7 +2209,15 @@
         backgroundColor: '#8fd3f0',
         physics: { default: 'arcade', arcade: { gravity: { y: CFG.GRAVITY_Y }, debug: false } },
         scale: { mode: P.Scale.FIT, autoCenter: P.Scale.CENTER_BOTH, width: BW, height: BH },
-        render: { pixelArt: true, antialias: false, roundPixels: true },
+        // smooth (NOT pixelArt): sprites are procedural vector-ish art with gradients, circles and
+        // soft shading — antialiasing + linear filtering keep the curved edges clean instead of
+        // stair-stepped. Textures are supersampled 2× (see buildTextures) so they stay crisp when
+        // the FIT scaler upsizes them on hi-DPI phones. This is what removes the "blocky" look.
+        // smooth rendering: antialias + linear filtering keep the procedural curves/gradients clean
+        // as the FIT scaler upsizes the 2×-baked textures. No mipmapFilter (our textures aren't POT;
+        // mipmaps on NPOT WebGL textures can render black) and no roundPixels (that re-introduces the
+        // stair-stepping we're removing). This is the switch that kills the blocky "asal jadi" look.
+        render: { pixelArt: false, antialias: true, antialiasGL: true, roundPixels: false },
         scene: [GameSceneClass]
       };
       window.__jwBootCb = cb || null;      // create() invokes this after the scene is ready
@@ -1889,94 +2251,163 @@
   /* ====================================================================
      14. WIRE UI EVENTS
      ==================================================================== */
-  function wireUI() {
-    // difficulty pickers (pending → commit on start)
-    qsa('#jw-diff .jw-diff-opt').forEach(function (b) { on(b, 'click', function () { selectDiff(b.getAttribute('data-diff'), '#jw-diff'); }); });
-    qsa('#jw-zonesel-diff .jw-diff-opt').forEach(function (b) { on(b, 'click', function () { selectDiff(b.getAttribute('data-diff'), '#jw-zonesel-diff'); }); });
-
-    var _sb = $('jw-start'); if (_sb) _sb._jwWired = true;
-    on(_sb, 'click', function () { startGame(); });
-    on($('jw-cover-view'), 'click', function () { unlockAll(true); STORE.announcedAll = true; saveStore(); openReveal(); });
-    on($('jw-side-open'), 'click', function () { unlockAll(true); STORE.announcedAll = true; saveStore(); openReveal(); });
-    on($('jw-briefing-go'), 'click', function () { overlay('jw-briefing', false); RUN.started = true; setStagePlayable(true); });
-    on($('jw-clear-next'), 'click', function () { overlay('jw-clear', false); });
-    on($('jw-allpieces-view'), 'click', function () { overlay('jw-allpieces', false); openReveal(); });
-    on($('jw-allpieces-keep'), 'click', function () { overlay('jw-allpieces', false); });
-    on($('jw-win-view'), 'click', function () { overlay('jw-win', false); openReveal(); });
-    // continue from the Stage 3 reunion into the optional bonus stages
-    on($('jw-win-bonus'), 'click', function () {
-      overlay('jw-win', false);
-      if (SCENE && !RUN.autoFly && RUN.zone < CFG.ZONES - 1) SCENE.reachGate();
-    });
-    on($('jw-win-close'), 'click', function () { overlay('jw-win', false); });
-    on($('jw-view-btn'), 'click', function () { if (coreUnlocked() || cheat.on) openReveal(); else toast('Temukan calon istrimu dulu 💍 (atau tekan ★)', true); });
-    on($('jw-reveal-close'), 'click', function () { closeReveal(); });
-
-    // tilt permission (iOS)
-    var tiltBtn = $('jw-tilt');
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      show(tiltBtn, true);
-      on(tiltBtn, 'click', function () {
+  // ---- DELEGATED UI (survives host HTML re-injection) ----
+  // The host re-injects the theme HTML AFTER our JS runs, which SWAPS every DOM node
+  // (PRESS START etc.) so any listener bound directly to a node is silently dropped
+  // ("node swapped!" in the tap probe). We therefore bind ONE delegated click handler on
+  // `document` keyed by the clicked element's id (or nearest ancestor id). Document-level
+  // listeners are never re-injected, so the whole cover/overlay UI keeps working after any
+  // number of host re-injections. Same for press-and-hold steer/fire.
+  var CLICK_ACTIONS = {
+    'jw-start': function () { startGame(); },
+    'jw-cover-view': function () { unlockAll(true); STORE.announcedAll = true; saveStore(); openReveal(); },
+    'jw-side-open': function () { unlockAll(true); STORE.announcedAll = true; saveStore(); openReveal(); },
+    'jw-briefing-go': function () { overlay('jw-briefing', false); RUN.started = true; setStagePlayable(true); },
+    'jw-clear-next': function () { overlay('jw-clear', false); },
+    'jw-allpieces-view': function () { overlay('jw-allpieces', false); openReveal(); },
+    'jw-allpieces-keep': function () { overlay('jw-allpieces', false); },
+    'jw-win-view': function () { overlay('jw-win', false); openReveal(); },
+    'jw-win-bonus': function () { overlay('jw-win', false); if (SCENE && !RUN.autoFly && RUN.zone < CFG.ZONES - 1) SCENE.reachGate(); },
+    'jw-win-close': function () { overlay('jw-win', false); },
+    'jw-view-btn': function () { if (coreUnlocked() || cheat.on) openReveal(); else toast('Temukan calon istrimu dulu 💍 (atau tekan ★)', true); },
+    'jw-reveal-close': function () { closeReveal(); },
+    'jw-tilt': function () {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission().then(function (res) {
-          if (res === 'granted') { enableTilt(); toast('📱 Kontrol miring aktif!'); show(tiltBtn, false); }
+          if (res === 'granted') { enableTilt(); toast('📱 Kontrol miring aktif!'); show($('jw-tilt'), false); }
         }).catch(function () {});
-      });
-    } else if (isTouch && window.DeviceOrientationEvent) {
-      enableTilt();
-    }
-
-    // cheat
-    on($('jw-star-btn'), 'click', function () {
+      }
+    },
+    'jw-star-btn': function () {
       cheat.on = !cheat.on;
       var star = $('jw-star-btn'); if (star) star.classList.toggle('is-on', cheat.on);
       show($('jw-zonesel-btn'), cheat.on);
       if (cheat.on) { unlockAll(true); toast('★ CHEAT: kebal + semua kepingan'); }
       else { toast('Cheat dimatikan'); }
       refreshIndicators(); updateHUD();
-    });
-
-    // zone select
-    on($('jw-zonesel-btn'), 'click', function () { pendingZone = RUN.zone; buildZoneSelGrid(); selectDiff(STORE.diff, '#jw-zonesel-diff'); overlay('jw-zonesel', true); });
-    on($('jw-zonesel-ok'), 'click', function () {
+    },
+    'jw-zonesel-btn': function () { pendingZone = RUN.zone; buildZoneSelGrid(); selectDiff(STORE.diff, '#jw-zonesel-diff'); overlay('jw-zonesel', true); },
+    'jw-zonesel-ok': function () {
       STORE.diff = pendingDiff; saveStore();
       overlay('jw-zonesel', false);
       window.__jwStarted = { zone: pendingZone };
       if (SCENE) { SCENE.diffKey = STORE.diff; SCENE.D = DIFF[STORE.diff]; SCENE.couple.x = BW / 2; SCENE.couple.y = CFG.CONTROL_Y - 40; SCENE.couple.body.velocity.set(0, CFG.BOUNCE); SCENE.buildZone(pendingZone); RUN.started = true; setStagePlayable(true); }
-    });
-    on($('jw-zonesel-close'), 'click', function () { overlay('jw-zonesel', false); });
+    },
+    'jw-zonesel-close': function () { overlay('jw-zonesel', false); },
+    'jw-reset-btn': function () { overlay('jw-resetconfirm', true); },
+    'jw-reset-yes': function () { overlay('jw-resetconfirm', false); resetGame(); },
+    'jw-reset-no': function () { overlay('jw-resetconfirm', false); },
+    'jw-sfx-btn': function () { sfxOn = !sfxOn; show($('jw-sfx-on'), sfxOn); show($('jw-sfx-off'), !sfxOn); },
+    'jw-modal-close': function () { closePieceModal(); },
+    'jw-lightbox-close': function () { var lb = $('jw-lightbox'); if (lb) lb.classList.remove('show'); }
+    // NOTE: #jw-fire is intentionally NOT here — it fires on pointerdown (see joystick wiring) so
+    // steering + shooting work as simultaneous multi-touch; a click handler would double-fire.
+  };
 
-    // reset
-    on($('jw-reset-btn'), 'click', function () { overlay('jw-resetconfirm', true); });
-    on($('jw-reset-yes'), 'click', function () { overlay('jw-resetconfirm', false); resetGame(); });
-    on($('jw-reset-no'), 'click', function () { overlay('jw-resetconfirm', false); });
+  function wireUI() {
+    // single delegated click handler: resolve the acting element via closest ancestor with an id
+    addGlobal(document, 'click', function (e) {
+      var t = e.target;
+      // difficulty pickers (bubble up to the .jw-diff-opt element)
+      var opt = t.closest && t.closest('.jw-diff-opt');
+      if (opt) {
+        var grp = opt.closest('#jw-zonesel-diff') ? '#jw-zonesel-diff' : '#jw-diff';
+        selectDiff(opt.getAttribute('data-diff'), grp);
+        return;
+      }
+      // backdrop click-to-close (only when the backdrop itself is the target)
+      if (t.id === 'jw-modal-root') { closePieceModal(); return; }
+      if (t.id === 'jw-lightbox') { t.classList.remove('show'); return; }
+      // zone-select cell / inventory item / gallery clicks are wired at build time (dynamic),
+      // so here we only handle the fixed control buttons keyed by id.
+      var node = t.closest && t.closest('[id]');
+      if (node && CLICK_ACTIONS[node.id]) CLICK_ACTIONS[node.id]();
+    }, false);
 
-    // sfx
-    on($('jw-sfx-btn'), 'click', function () {
-      sfxOn = !sfxOn;
-      show($('jw-sfx-on'), sfxOn); show($('jw-sfx-off'), !sfxOn);
-    });
-
-    // modal + lightbox close (closePieceModal restores host IDs to #inv-source)
-    on($('jw-modal-close'), 'click', function () { closePieceModal(); });
-    on($('jw-modal-root'), 'click', function (e) { if (e.target === $('jw-modal-root')) closePieceModal(); });
-    on($('jw-lightbox-close'), 'click', function () { var lb = $('jw-lightbox'); if (lb) lb.classList.remove('show'); });
-    on($('jw-lightbox'), 'click', function (e) { if (e.target === $('jw-lightbox')) e.currentTarget.classList.remove('show'); });
-
-    // touch steer + fire (hold)
-    var sl = $('jw-steer-left'), sr = $('jw-steer-right'), fb = $('jw-fire');
-    function holdSteer(btn, dir) {
-      if (!btn) return;
-      var set = function (e) { if (e) e.preventDefault(); if (SCENE) SCENE.steerHold = dir; };
-      var clr = function () { if (SCENE) SCENE.steerHold = 0; };
-      on(btn, 'touchstart', set); on(btn, 'mousedown', set);
-      on(btn, 'touchend', clr); on(btn, 'mouseup', clr); on(btn, 'mouseleave', clr); on(btn, 'touchcancel', clr);
+    // show the iOS tilt-permission button only where it's needed
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      show($('jw-tilt'), true);
+    } else if (isTouch && window.DeviceOrientationEvent) {
+      enableTilt();
     }
-    holdSteer(sl, -1); holdSteer(sr, 1);
-    if (fb) on(fb, 'click', function () { if (SCENE) SCENE.fire(); });
 
-    // host music mirror (button hidden, but we also mirror events on #bg-music)
-    var bg = $('bg-music');
-    if (bg) { on(bg, 'play', function () { musicWanted = true; }); on(bg, 'pause', function () { musicWanted = false; }); }
+    // ---- analog joystick steer (left) ----
+    // Track a drag that STARTS inside #jw-joy, map its horizontal offset from the pad centre to
+    // SCENE.steerHold (-1..1), and slide the stick knob to match. Delegated on document (via a
+    // pointer id lock) so it survives host HTML re-injection and drags that leave the pad.
+    var joyId = null;                       // active pointer/touch id owning the joystick
+    var JOY_R = 44;                         // px travel that maps to full ±1 steer
+    function joyEl() { return $('jw-joy'); }
+    function joyStickEl() { return $('jw-joy-stick'); }
+    function clrSteer() { if (SCENE) SCENE.steerHold = 0; var s = joyStickEl(); if (s) s.style.transform = 'translate(0,0)'; }
+    function joyMoveTo(clientX) {
+      var pad = joyEl(); if (!pad) return;
+      var r = pad.getBoundingClientRect();
+      var cx = r.left + r.width / 2;
+      var dx = clientX - cx;
+      var mag = Math.max(-1, Math.min(1, dx / JOY_R));
+      if (SCENE) SCENE.steerHold = mag;
+      var s = joyStickEl();
+      if (s) s.style.transform = 'translate(' + (mag * (r.width * 0.28)).toFixed(1) + 'px,0)';
+    }
+    function startsInJoy(target) { return !!(target && target.closest && target.closest('#jw-joy')); }
+    function inFire(target) { return !!(target && target.closest && target.closest('#jw-fire')); }
+    // fire on PRESS (pointerdown), not click — a `click` never arrives for the 2nd finger while
+    // the joystick finger holds the screen, so steering + shooting couldn't happen together.
+    // Handling pointerdown per-touch lets both fingers act simultaneously (true multi-touch).
+    var fireCooldownUntil = 0;
+    function tryFire() {
+      var now = (SCENE && SCENE.time) ? SCENE.time.now : Date.now();
+      if (now < fireCooldownUntil) return;      // debounce rapid double-fire from one tap
+      fireCooldownUntil = now + 120;
+      if (SCENE) SCENE.fire();
+    }
+
+    if (window.PointerEvent) {
+      addGlobal(document, 'pointerdown', function (e) {
+        if (inFire(e.target)) { e.preventDefault(); tryFire(); return; }   // HIT: fire on press (multi-touch)
+        if (joyId != null || !startsInJoy(e.target)) return;
+        joyId = e.pointerId; e.preventDefault(); joyMoveTo(e.clientX);
+      }, false);
+      addGlobal(document, 'pointermove', function (e) {
+        if (joyId == null || e.pointerId !== joyId) return;
+        e.preventDefault(); joyMoveTo(e.clientX);
+      }, { passive: false });
+      var relPtr = function (e) { if (joyId != null && (e.pointerId === joyId || e.pointerId == null)) { joyId = null; clrSteer(); } };
+      addGlobal(document, 'pointerup', relPtr, false);
+      addGlobal(document, 'pointercancel', relPtr, false);
+    } else {
+      // touch fallback (track by identifier) — fire is its own touch, independent of the joystick touch
+      addGlobal(document, 'touchstart', function (e) {
+        var handled = false;
+        for (var i = 0; i < e.changedTouches.length; i++) {
+          var t = e.changedTouches[i];
+          if (inFire(t.target)) { tryFire(); handled = true; continue; }
+          if (joyId == null && startsInJoy(t.target)) { joyId = t.identifier; joyMoveTo(t.clientX); handled = true; }
+        }
+        if (handled) e.preventDefault();
+      }, { passive: false });
+      addGlobal(document, 'touchmove', function (e) {
+        if (joyId == null) return;
+        for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; if (t.identifier === joyId) { e.preventDefault(); joyMoveTo(t.clientX); break; } }
+      }, { passive: false });
+      var relTouch = function (e) {
+        if (joyId == null) return;
+        for (var i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyId) { joyId = null; clrSteer(); break; } }
+      };
+      addGlobal(document, 'touchend', relTouch, false);
+      addGlobal(document, 'touchcancel', relTouch, false);
+      // mouse fallback (desktop, no PointerEvent)
+      var mouseDown = false;
+      addGlobal(document, 'mousedown', function (e) { if (inFire(e.target)) { tryFire(); return; } if (startsInJoy(e.target)) { mouseDown = true; e.preventDefault(); joyMoveTo(e.clientX); } }, false);
+      addGlobal(document, 'mousemove', function (e) { if (mouseDown) joyMoveTo(e.clientX); }, false);
+      addGlobal(document, 'mouseup', function () { if (mouseDown) { mouseDown = false; clrSteer(); } }, false);
+    }
+
+    // host music mirror — #bg-music is host-owned and re-appears on re-inject; delegate via
+    // capture on document (play/pause don't bubble, so listen in the capture phase).
+    addGlobal(document, 'play', function (e) { if (e.target && e.target.id === 'bg-music') musicWanted = true; }, true);
+    addGlobal(document, 'pause', function (e) { if (e.target && e.target.id === 'bg-music') musicWanted = false; }, true);
   }
 
   var tiltHandler = null;
@@ -1992,45 +2423,14 @@
   /* ====================================================================
      15. INIT (+ auto-resume guard, Bible §Z.1)
      ==================================================================== */
-  // TEMP diagnostic (always on this build): shows init status + which element catches each tap.
-  var _jwDbgBox = null;
-  function jwDbg(msg) {
-    if (!_jwDbgBox) {
-      _jwDbgBox = document.createElement('div');
-      _jwDbgBox.style.cssText = 'position:fixed;left:6px;right:6px;bottom:6px;z-index:2147483647;background:rgba(0,0,0,.88);color:#0f0;font:11px/1.4 monospace;padding:8px;border-radius:8px;pointer-events:none;white-space:pre-wrap;max-height:40vh;overflow:auto';
-      (document.body || document.documentElement).appendChild(_jwDbgBox);
-    }
-    _jwDbgBox.textContent = 'JW DEBUG\n' + msg;
-  }
-  function installTapProbe() {
-    jwDbg('init ran. tap PRESS START…');
-    function report(x, y, phase) {
-      var el = document.elementFromPoint(x, y);
-      var startNode = $('jw-start');
-      var wiredNow = startNode ? (startNode._jwWired ? 'WIRED' : 'NOT-wired(node swapped!)') : 'no #jw-start';
-      var nStarts = document.querySelectorAll('#jw-start').length;
-      jwDbg('(' + phase + ') @' + (x | 0) + ',' + (y | 0) + '\nTOP=' + (el ? (el.id || el.tagName) : 'null') +
-        '\n#jw-start: ' + wiredNow + ' | count=' + nStarts +
-        '\nclickedIsWired=' + (el && el.closest && el.closest('#jw-start') ? (el.closest('#jw-start')._jwWired ? 'yes' : 'NO') : '?'));
-    }
-    ['pointerdown', 'touchstart', 'mousedown', 'click'].forEach(function (ev) {
-      document.addEventListener(ev, function (e) {
-        var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
-        if (t && t.clientX != null) report(t.clientX, t.clientY, ev);
-      }, true);
-    });
-    // prove the start button has our listener by wrapping a marker
-    var sb = $('jw-start'); if (sb) sb.addEventListener('click', function () { jwDbg('✅ #jw-start CLICK handler fired! startGame should run.'); }, true);
-  }
   function init() {
     wireUI();
-    installTapProbe();
     buildIndicators();
     selectDiff(STORE.diff, '#jw-diff');
     updateHUD();
     try { drawCoupleCanvas(); } catch (e) {}   // decorative canvas must never break init
     // version
-    var v = $('jw-version'); if (v) v.textContent = 'v1.0.0 · ' + STORE.diff;
+    var v = $('jw-version'); if (v) v.textContent = 'v1.8.0 · ' + STORE.diff;
 
     // auto-resume ONLY if cover & reveal not shown (Bible §Z.1)
     var coverUp = (($('jw-cover') || {}).classList || { contains: function () { return false; } }).contains('show');

@@ -311,10 +311,12 @@
                                 </div>
                                 <div class="uk-margin-small">
                                     <input class="uk-input custom-input" type="text" id="rsvp-code"
+                                        value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1"
                                         placeholder="Kode Undangan">
                                 </div>
                                 <div class="uk-margin-small">
                                     <input class="uk-input custom-input" type="text" id="guest-name-input"
+                                        value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1"
                                         placeholder="Nama Tamu">
                                 </div>
                                 <div class="uk-margin-small">
@@ -322,6 +324,9 @@
                                         <option value="" disabled="" selected="">Jumlah Kehadiran</option>
                                         <option value="1">1 Orang</option>
                                         <option value="2">2 Orang</option>
+                                        <option value="3">3 Orang</option>
+                                        <option value="4">4 Orang</option>
+                                        <option value="5">5 Orang</option>
                                     </select>
                                 </div>
                                 <div class="uk-margin-small">
@@ -602,14 +607,14 @@
                     {{/unless}}
 
                     <div class="wishes-list-wrapper">
-                        <div class="wishes-scroll-box">
+                        <div class="wishes-scroll-box" data-loop="wishes">
                             {{#each wishes}}
-                            <div class="wish-item glass-card">
+                            <div class="wish-item glass-card" data-wish-item>
                                 <div class="wish-header">
-                                    <span class="wish-author">{{this.guest_name}}</span>
-                                    <span class="wish-time">{{this.guest_comment_time}}</span>
+                                    <span class="wish-author" data-wish-field="name">{{this.guest_name}}</span>
+                                    <span class="wish-time" data-wish-field="time">{{this.guest_comment_time}}</span>
                                 </div>
-                                <div class="wish-text">{{this.guest_message}}</div>
+                                <div class="wish-text" data-wish-field="message">{{this.guest_message}}</div>
                             </div>
                             {{/each}}
                         </div>

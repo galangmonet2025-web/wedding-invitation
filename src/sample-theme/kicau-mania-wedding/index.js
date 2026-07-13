@@ -309,26 +309,12 @@
         bgs.forEach(function (bg) { var u = bg.getAttribute('data-src'); if (u && u.indexOf('{{') !== 0) bg.style.backgroundImage = "url('" + u + "')"; });
     }
 
-    function rewireHostFormsInside(root) {
-        var rsvp = root.querySelector('#btn-submit-kehadiran');
-        if (rsvp) bindOnce(rsvp, function () {
-            if (typeof window.submitRsvp === 'function') { window.submitRsvp(); return; }
-            var a = root.querySelector('#alert-submit-kehadiran'); if (a) { a.className = 'km-alert ok'; a.textContent = 'Terima kasih! Konfirmasi tersimpan.'; }
-        });
-        var ucp = root.querySelector('#btn-submit-ucapan');
-        if (ucp) bindOnce(ucp, function () {
-            if (typeof window.submitUcapan === 'function') { window.submitUcapan(); return; }
-            var nm = (root.querySelector('#wish-name') || {}).value || 'Tamu';
-            var msg = (root.querySelector('#wish-message') || {}).value || '';
-            var a = root.querySelector('#alert-submit-ucapan'); if (a) { a.className = 'km-alert ok'; a.textContent = 'Terima kasih atas ucapannya!'; }
-            var list = root.querySelector('#km-wish-list');
-            if (list && msg) {
-                var it = document.createElement('div'); it.className = 'km-wish-item';
-                it.innerHTML = '<div class="km-wish-head"><span class="km-wish-author">' + esc(nm) + '</span><span class="km-wish-time">baru saja</span></div><div class="km-wish-text">' + esc(msg) + '</div>';
-                list.insertBefore(it, list.firstChild);
-            }
-        });
-    }
+    /* RSVP + wishes are handled entirely by the HOST (ThemeWrapper): it intercepts
+       #btn-submit-kehadiran / #btn-submit-ucapan (delegated on the theme container),
+       calls the backend, hides the form, reveals the thank-you card, and prepends the
+       new wish. We must NOT bind a local fallback here or the click is handled twice.
+       Kept as a no-op so existing callers don't break. */
+    function rewireHostFormsInside(root) { /* host-owned; no local handler */ }
     function bindOnce(el, fn) { if (el.__kmBound) return; el.__kmBound = true; el.addEventListener('click', fn); }
     function rewireGalleryInside(root) {
         var items = root.querySelectorAll('.km-gallery-item img');

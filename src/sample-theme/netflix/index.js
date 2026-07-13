@@ -141,6 +141,21 @@ function fallbackCopy(text, callback) {
 // immediately if the DOM is ready, otherwise wait for it.
 function initNetflixTheme() {
 
+    // ---- Clean up a previous run before re-wiring ----
+    // The host RE-EXECUTES this whole script when `isOpened` flips. Without a
+    // cleanup hook, every re-execution stacks a new MutationObserver, a new set
+    // of window/phoneContainer scroll listeners and a fresh batch of floating
+    // particles. Register a global cleanup and call it on entry.
+    if (typeof window.__nfxCleanup === 'function') {
+        try { window.__nfxCleanup(); } catch (e) { /* ignore */ }
+    }
+    const cleanupFns = [];
+    window.__nfxCleanup = function () {
+        while (cleanupFns.length) {
+            try { cleanupFns.pop()(); } catch (e) { /* ignore */ }
+        }
+    };
+
     // ---- Resolve the actual scroll container (phone on desktop, window on mobile) ----
     const phoneContainer = document.querySelector('.phone-container');
     const appScreen = document.querySelector('.mock-app-screen');
@@ -180,46 +195,68 @@ function initNetflixTheme() {
             : scroller.scrollTop;
     }
 
-    // ---- 1. Scroll-reveal via IntersectionObserver ----
-    const revealEls = document.querySelectorAll('.reveal-item');
+    // ---- Node lists re-queried on every (re)wire ----
+    // The host swaps the theme HTML (via dangerouslySetInnerHTML) whenever guest
+    // state changes — e.g. submitting a wish appends to {{#each wishes}}. That
+    // replaces every DOM node these features touch, so we keep the node lists in
+    // outer-scoped `let`s that wireContent() refreshes, and the scroll handler
+    // reads them live rather than closing over a stale snapshot.
+    let revealEls = [];
+    let parallaxLayers = [];
+    let storyBackdrop = null;
+    let progressBar = null;
+    let btnScrollUp = null;
+    let revealObserver = null;
 
+    // ---- 1. Scroll-reveal via IntersectionObserver ----
     const observerRoot = (phoneContainer && phoneContainer.scrollHeight > phoneContainer.clientHeight + 5)
         ? phoneContainer
         : null;
 
-    if ('IntersectionObserver' in window && revealEls.length) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                } else {
-                    entry.target.classList.remove('is-visible');
-                }
-            });
-        }, { root: observerRoot, threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    function wireReveal() {
+        revealEls = Array.from(document.querySelectorAll('.reveal-item'));
+        if (revealObserver) { try { revealObserver.disconnect(); } catch (e) { } revealObserver = null; }
 
-        revealEls.forEach(el => observer.observe(el));
+        if ('IntersectionObserver' in window && revealEls.length) {
+            revealObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                    } else {
+                        entry.target.classList.remove('is-visible');
+                    }
+                });
+            }, { root: observerRoot, threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
 
-        const revealInView = () => {
-            const vh = window.innerHeight;
-            revealEls.forEach(el => {
-                const r = el.getBoundingClientRect();
-                if (r.top < vh * 0.95 && r.bottom > 0) {
-                    el.classList.add('is-visible');
-                }
-            });
-        };
-        revealInView();
-        window.__revealInView = revealInView;
-    } else {
-        revealEls.forEach(el => el.classList.add('is-visible'));
+            revealEls.forEach(el => revealObserver.observe(el));
+
+            const revealInView = () => {
+                const vh = window.innerHeight;
+                revealEls.forEach(el => {
+                    const r = el.getBoundingClientRect();
+                    if (r.top < vh * 0.95 && r.bottom > 0) {
+                        el.classList.add('is-visible');
+                    }
+                });
+            };
+            revealInView();
+            window.__revealInView = revealInView;
+        } else {
+            revealEls.forEach(el => el.classList.add('is-visible'));
+        }
     }
+    cleanupFns.push(function () {
+        if (revealObserver) { try { revealObserver.disconnect(); } catch (e) { } revealObserver = null; }
+    });
 
     // ---- 2. Parallax layers + scroll progress (responsive image movement) ----
-    const parallaxLayers = document.querySelectorAll('.parallax-layer');
-    const storyBackdrop = document.querySelector('.story-backdrop');
-    const progressBar = document.getElementById('scroll-progress');
-    const btnScrollUp = document.getElementById('btn-scroll-up');
+    // Refresh the parallax/progress node references (fresh DOM after re-inject).
+    function refreshScrollNodes() {
+        parallaxLayers = Array.from(document.querySelectorAll('.parallax-layer'));
+        storyBackdrop = document.querySelector('.story-backdrop');
+        progressBar = document.getElementById('scroll-progress');
+        btnScrollUp = document.getElementById('btn-scroll-up');
+    }
     let ticking = false;
 
     function onScroll() {
@@ -260,56 +297,72 @@ function initNetflixTheme() {
         }
     }
 
+    // Scroll listeners live on window / phoneContainer (NOT on swapped nodes), so
+    // they survive HTML re-injection. Register them once; onScroll() reads the
+    // live node lists refreshed by refreshScrollNodes().
     window.addEventListener('scroll', requestScroll, { passive: true });
     if (phoneContainer) phoneContainer.addEventListener('scroll', requestScroll, { passive: true });
-    onScroll();
+    cleanupFns.push(function () {
+        window.removeEventListener('scroll', requestScroll, { passive: true });
+        if (phoneContainer) phoneContainer.removeEventListener('scroll', requestScroll, { passive: true });
+    });
 
-    // ---- Scroll-to-top button ----
-    if (btnScrollUp) {
-        btnScrollUp.addEventListener('click', function () {
-            const scroller = getScroller();
-            if (scroller === window) {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                scroller.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        });
+    function scrollTop(scroller) {
+        if (scroller === window) window.scrollTo({ top: 0, behavior: 'smooth' });
+        else scroller.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // ---- Hero "Play" / "More Info" buttons → scroll down to next section ----
-    const heroNext = document.getElementById('hero-next');
-    document.querySelectorAll('[data-scroll-next]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
+    // ---- Navigation buttons via DOCUMENT-DELEGATED click ----
+    // The host replaces the theme HTML on guest-state change (e.g. submitting a
+    // wish), which detaches any listener bound directly to these buttons. A
+    // single delegated listener on `document` survives every re-injection and
+    // keeps scroll navigation working. Handles: scroll-to-top FAB, hero
+    // "Play/More Info" (data-scroll-next), and the "Next Episode" replay card
+    // (data-scroll-top).
+    function onNavClick(e) {
+        const scroller = getScroller();
+
+        if (e.target.closest('#btn-scroll-up')) {
+            scrollTop(scroller);
+            return;
+        }
+        if (e.target.closest('[data-scroll-next]')) {
+            const heroNext = document.getElementById('hero-next');
             if (!heroNext) return;
-            const scroller = getScroller();
             if (scroller === window) {
                 heroNext.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
-                // Scroll the phone-container by the element's offset within it.
                 const top = heroNext.offsetTop - scroller.offsetTop;
                 scroller.scrollTo({ top: top, behavior: 'smooth' });
             }
-        });
+            return;
+        }
+        if (e.target.closest('[data-scroll-top]')) {
+            scrollTop(scroller);
+            return;
+        }
+    }
+    function onNavKey(e) {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-scroll-top]')) {
+            e.preventDefault();
+            scrollTop(getScroller());
+        }
+    }
+    document.addEventListener('click', onNavClick);
+    document.addEventListener('keydown', onNavKey);
+    cleanupFns.push(function () {
+        document.removeEventListener('click', onNavClick);
+        document.removeEventListener('keydown', onNavKey);
     });
 
-    // ---- "Next Episode" card on closing → scroll back to top (replay) ----
-    document.querySelectorAll('[data-scroll-top]').forEach(function (el) {
-        function goTop() {
-            const scroller = getScroller();
-            if (scroller === window) {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                scroller.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        }
-        el.addEventListener('click', goTop);
-        el.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTop(); }
-        });
-    });
+    // (The "Next Episode" replay card [data-scroll-top] is handled by the
+    // document-delegated onNavClick/onNavKey above — it survives re-injection.)
 
     // ---- 3. Floating ambient particles ----
+    // Particles live on <body> (outside the swapped theme HTML) so they persist,
+    // but re-execution would spawn a second batch — guard so they spawn once.
     function spawnParticles() {
+        if (document.querySelector('.floating-particle')) return;
         const count = window.innerWidth < 960 ? 14 : 22;
         const host = document.body;
         const rightEdge = window.innerWidth >= 960 ? 500 : window.innerWidth;
@@ -329,10 +382,19 @@ function initNetflixTheme() {
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         spawnParticles();
     }
+    cleanupFns.push(function () {
+        document.querySelectorAll('.floating-particle').forEach(function (p) { p.remove(); });
+    });
 
     // ---- 4. Happiness Horizontal Carousel ----
-    const storyCarousel = document.getElementById('story-carousel');
-    if (storyCarousel) {
+    // Re-runnable: after a host HTML re-injection the carousel nodes are new, so
+    // this re-queries them and re-binds. Direct scroll/click listeners here are
+    // fine because wireCarousels() is called again from the MutationObserver.
+    function wireStoryCarousel() {
+        const storyCarousel = document.getElementById('story-carousel');
+        if (!storyCarousel || storyCarousel.dataset.nfxWired) return;
+        storyCarousel.dataset.nfxWired = '1';
+
         const slides = Array.from(storyCarousel.querySelectorAll('.story-slide'));
         const dots = Array.from(document.querySelectorAll('#story-dots .story-dot-nav'));
 
@@ -380,9 +442,12 @@ function initNetflixTheme() {
     }
 
     // ---- 4a-2. Wedding Gift horizontal slider (dots generated from slide count) ----
-    const giftCarousel = document.getElementById('gift-carousel');
-    const giftDotsHost = document.getElementById('gift-dots');
-    if (giftCarousel) {
+    function wireGiftCarousel() {
+        const giftCarousel = document.getElementById('gift-carousel');
+        const giftDotsHost = document.getElementById('gift-dots');
+        if (!giftCarousel || giftCarousel.dataset.nfxWired) return;
+        giftCarousel.dataset.nfxWired = '1';
+
         const giftSlides = Array.from(giftCarousel.querySelectorAll('.gift-slide'));
 
         // Single card → no need for slider chrome; keep it centered & static.
@@ -441,6 +506,7 @@ function initNetflixTheme() {
     }
 
     // ---- 4b. Wedding-date calendar with the day highlighted ----
+    function renderCalendar() {
     const calEl = document.getElementById('wedding-calendar');
     if (calEl && !calEl.dataset.rendered) {
         const raw = (calEl.getAttribute('data-wedding-date') || '').trim();
@@ -485,6 +551,68 @@ function initNetflixTheme() {
             calEl.innerHTML = html;
             calEl.dataset.rendered = 'true';
         }
+    }
+    }
+
+    // ---- (Re)wire everything that lives inside the swapped theme HTML ----
+    // Called on init and again from the MutationObserver after the host replaces
+    // the invitation HTML (e.g. after submitting a wish). Each piece guards
+    // against double-binding, so calling this repeatedly is safe.
+    function wireContent() {
+        refreshScrollNodes();
+        wireReveal();
+        wireStoryCarousel();
+        wireGiftCarousel();
+        renderCalendar();
+        onScroll();
+    }
+    wireContent();
+
+    // The host re-injects the theme HTML (via dangerouslySetInnerHTML) whenever
+    // guest state changes — submitting a wish appends to {{#each wishes}} and
+    // swaps in a completely fresh DOM. That silently detaches every direct
+    // listener (reveal observer, carousels, the story/gift dots) and leaves the
+    // scroll handlers pointing at stale nodes — which is exactly why scroll
+    // navigation "died" after sending an ucapan.
+    //
+    // IMPORTANT: observe document.body, NOT `.mock-app-screen`/`.phone-container`.
+    // The host swaps the ENTIRE theme HTML inside its React container, so those
+    // theme nodes are themselves detached on re-injection — an observer bound to
+    // them would go deaf after the first swap. `document.body` is host-owned and
+    // stable, so it keeps catching every re-injection.
+    const reinjectTarget = document.body;
+    if (reinjectTarget && 'MutationObserver' in window) {
+        let rewireRaf = 0;
+        // Only act on a REAL re-injection: the fresh HTML brings an un-wired
+        // carousel (no data-nfx-wired) or an un-rendered calendar. Our own
+        // wireContent() mutations (setting innerHTML on dots/calendar) leave those
+        // flags set, so they don't re-trigger this — avoiding an infinite loop.
+        function needsRewire() {
+            const sc = document.getElementById('story-carousel');
+            if (sc && !sc.dataset.nfxWired) return true;
+            const gc = document.getElementById('gift-carousel');
+            if (gc && !gc.dataset.nfxWired) return true;
+            const cal = document.getElementById('wedding-calendar');
+            if (cal && !cal.dataset.rendered) return true;
+            // Fresh reveal items that the current observer isn't tracking.
+            if (document.querySelectorAll('.reveal-item').length !== revealEls.length) return true;
+            return false;
+        }
+        const mo = new MutationObserver(function () {
+            if (rewireRaf || !needsRewire()) return;
+            rewireRaf = window.requestAnimationFrame(function () {
+                rewireRaf = 0;
+                wireContent();
+                // Re-assert visibility for content the guest had already scrolled
+                // past, so a wish submit never leaves sections blank.
+                if (window.__revealInView) window.__revealInView();
+            });
+        });
+        mo.observe(reinjectTarget, { childList: true, subtree: true });
+        cleanupFns.push(function () {
+            try { mo.disconnect(); } catch (e) { }
+            if (rewireRaf) window.cancelAnimationFrame(rewireRaf);
+        });
     }
 
     // ---- 5. Music state UI ----

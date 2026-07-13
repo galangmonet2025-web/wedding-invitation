@@ -1331,6 +1331,12 @@
       if (sanitized.category) updates.category = sanitized.category;
       if (sanitized.status) updates.status = sanitized.status;
       if (sanitized.number_of_guests) updates.number_of_guests = parseInt(sanitized.number_of_guests);
+      if (payload.flag_sudah_isi_ucapan !== undefined) {
+        updates.flag_sudah_isi_ucapan = (payload.flag_sudah_isi_ucapan === true || payload.flag_sudah_isi_ucapan === 'true' || payload.flag_sudah_isi_ucapan === 'TRUE') ? 'TRUE' : 'FALSE';
+      }
+      if (payload.flag_sudah_kirim_hadiah !== undefined) {
+        updates.flag_sudah_kirim_hadiah = (payload.flag_sudah_kirim_hadiah === true || payload.flag_sudah_kirim_hadiah === 'true' || payload.flag_sudah_kirim_hadiah === 'TRUE') ? 'TRUE' : 'FALSE';
+      }
 
       DB.update('Guests', payload.id, updates);
       ActivityLogService.log(tenantId, auth.user_id, 'update_guest');
@@ -2150,9 +2156,18 @@
       var tenant = DB.findOne('Tenants', 'domain_slug', sanitized.slug);
       if (!tenant) return ResponseHelper.error('Invitation not found', 404);
 
+      // Resolve the guest first (by invitation_code) so we can stamp guest_id on the
+      // wish. Public/general invitations have no code → guest_id stays ''.
+      var guest = null;
+      if (sanitized.invitation_code) {
+        var guests = DB.getByTenant('Guests', tenant.id);
+        guest = guests.find(function(g) { return g.invitation_code === sanitized.invitation_code; }) || null;
+      }
+
       var wish = {
         id: DB.generateId(),
         tenant_id: tenant.id,
+        guest_id: guest ? guest.id : '',
         guest_name: sanitized.guest_name,
         message: sanitized.message,
         created_at: new Date().toISOString()
@@ -2160,13 +2175,9 @@
 
       DB.insert('Wishes', wish);
 
-      // Auto-flag guest if invitation_code is provided
-      if (sanitized.invitation_code) {
-        var guests = DB.getByTenant('Guests', tenant.id);
-        var guest = guests.find(function(g) { return g.invitation_code === sanitized.invitation_code; });
-        if (guest) {
-          DB.update('Guests', guest.id, { flag_sudah_isi_ucapan: 'TRUE' });
-        }
+      // Auto-flag guest as having submitted a wish.
+      if (guest) {
+        DB.update('Guests', guest.id, { flag_sudah_isi_ucapan: 'TRUE' });
       }
 
       return ResponseHelper.success(wish, 'Wish submitted successfully');
@@ -3332,7 +3343,7 @@
       'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
       'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'flag_sudah_kirim_undangan_via_whatsapp', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
-      'Wishes': ['id', 'tenant_id', 'guest_name', 'message', 'created_at'],
+      'Wishes': ['id', 'tenant_id', 'guest_id', 'guest_name', 'message', 'created_at'],
       'Gifts': ['id', 'tenant_id', 'guest_name', 'amount', 'bank_name', 'created_at'],
       'ActivityLogs': ['id', 'tenant_id', 'user_id', 'action', 'created_at'],
       'InvitationContent': [

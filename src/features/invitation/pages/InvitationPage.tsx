@@ -650,14 +650,20 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             });
             if (res.success && res.data) {
                 const newWish = res.data;
-                setWishes((prev) => [newWish, ...prev]);
                 setWishName('');
                 setWishMessage('');
-                // NOTE: we intentionally do NOT setData({ guest.flag_sudah_isi_ucapan }) here.
-                // It would flip `is_sudah_isi_ucapan` in templateData → recompute `htmlBase`
-                // → re-inject the whole custom theme just to show the thank-you card.
-                // The theme has both the form and card in the DOM ({{#hidden}}/{{^hidden}});
-                // ThemeWrapper reveals the card via a DOM display toggle on submit success.
+                // IMPORTANT: for custom (ThemeWrapper) themes we do NOT call setWishes()
+                // here. That would change `wishes` in templateData → recompute `htmlBase`
+                // → re-inject the ENTIRE theme DOM (the "page refresh" the user complained
+                // about). Instead ThemeWrapper prepends the new wish straight into the
+                // rendered list from the FORM's own name+message (so what the guest typed
+                // is exactly what appears), and reveals the thank-you card — all without a
+                // re-render. We also do NOT flip `flag_sudah_isi_ucapan` for the same reason.
+                // (The native React invitation UI, which uses this `wishes` state directly,
+                // updates it in its own handler; custom themes read the DOM, not state.)
+                if (!activeTheme?.html_template) {
+                    setWishes((prev) => [newWish, ...prev]);
+                }
                 toast.success(t('invitation.wish_success'), { duration: 4000 });
                 return { success: true, message: t('invitation.wish_success'), data: newWish };
             }

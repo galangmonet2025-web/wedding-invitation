@@ -4563,34 +4563,12 @@
             // ============================================================
             // RSVP + WISHES
             // ============================================================
-            var btnRsvp = document.getElementById('rm-btn-rsvp');
-            if (btnRsvp) btnRsvp.addEventListener('click', function () {
-                var name = (document.getElementById('rm-rsvp-name') || {}).value || '';
-                if (typeof window.submitRsvp === 'function') { window.submitRsvp(); return; }
-                var form = document.getElementById('rm-rsvp-form');
-                if (form) form.innerHTML = '<div class="rm-thanks">⭐ Terima kasih' + (name ? ' ' + name : '') + '!<br>Konfirmasimu sudah kami terima.</div>';
-                toast('RSVP terkirim!');
-            });
-
-            var btnWish = document.getElementById('btn-submit-ucapan');
-            if (btnWish) btnWish.addEventListener('click', function () {
-                if (typeof window.submitUcapan === 'function') { window.submitUcapan(); return; }
-                var nm = (document.getElementById('wish-name') || {}).value || '';
-                var msg = (document.getElementById('wish-message') || {}).value || '';
-                if (!msg.trim()) { toast('Tulis ucapanmu dulu'); return; }
-                var form = document.getElementById('wish-form');
-                if (form) form.style.display = 'none';
-                var thanks = document.getElementById('alert-submit-ucapan');
-                if (thanks) thanks.style.display = '';
-                var list = document.querySelector('.rm-wish-list');
-                if (list) {
-                    var item = document.createElement('div'); item.className = 'rm-wish-item';
-                    item.innerHTML = '<div class="rm-wish-head"><span class="rm-wish-author">' + (nm || 'Tamu') + '</span><span class="rm-wish-time">baru saja</span></div><div class="rm-wish-text"></div>';
-                    item.querySelector('.rm-wish-text').textContent = msg;
-                    list.insertBefore(item, list.firstChild);
-                }
-                toast('Ucapan terkirim!');
-            });
+            // RSVP + WISHES are handled entirely by the HOST (ThemeWrapper):
+            // it intercepts #btn-submit-kehadiran / #btn-submit-ucapan, calls the
+            // backend, then hides the form + reveals the thank-you card (and, for
+            // wishes, prepends the new item to the list) — no local handler needed.
+            // (Older builds had a cosmetic local fallback here; removed so the host
+            // is the single owner and we don't double-handle the same click.)
 
             // ============================================================
             // MUSIC — host-driven (plays the TENANT's chosen song).
