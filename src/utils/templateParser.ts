@@ -40,8 +40,13 @@ export const parseTemplate = (html: string, data: Record<string, any>): string =
         }
 
         const value = data[trimmed];
-        if (value === 'false') return false;
-        if (value === '0') return false;
+        // Google Sheets returns boolean cells as 'TRUE'/'FALSE' (uppercase). Treat any
+        // casing of the false-literal (and '0') as falsy so a raw 'FALSE' string never
+        // reads as truthy just because it's a non-empty string.
+        if (typeof value === 'string') {
+            const lower = value.trim().toLowerCase();
+            if (lower === 'false' || lower === '0' || lower === '') return false;
+        }
         return value !== undefined && value !== null && value !== '' && value !== false && (Array.isArray(value) ? value.length > 0 : true);
     };
 

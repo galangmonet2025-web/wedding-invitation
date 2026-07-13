@@ -834,7 +834,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     const getBool = (val: any) => {
         if (typeof val === 'boolean') return val;
-        return val === 'true' || val === '1';
+        // Google Sheets returns boolean cells as uppercase 'TRUE'/'FALSE' strings,
+        // and the backend stamps flags as literal 'TRUE' (e.g. flag_sudah_isi_ucapan).
+        // Accept any casing so "sudah isi ucapan/hadiah" state is honored on render.
+        if (typeof val === 'string') {
+            const v = val.trim().toLowerCase();
+            return v === 'true' || v === '1';
+        }
+        return val === 1;
     };
 
     // Helper to get the cdn_url of a specific image type from tenant images

@@ -86,7 +86,8 @@ function SortableFeatureItem({ feature, onEdit, onDelete, onToggleActive, isUpda
         zIndex: isDragging ? 50 : 0,
     };
 
-    const isActive = String(feature.active) === 'true';
+    // Backend stores `active` as Sheets-boolean 'TRUE'/'FALSE' (uppercase); compare case-insensitively.
+    const isActive = String(feature.active).trim().toLowerCase() === 'true';
 
     // Plan-based accent colors
     const planId = feature.plan_id;
@@ -543,7 +544,7 @@ export function PlanConfigPage() {
                                                             setFeatureToDelete(id);
                                                             setShowDeleteModal(true);
                                                         }}
-                                                        onToggleActive={(feat) => handleUpdateFeature(feat.id, { active: String(feat.active) === 'false' })}
+                                                        onToggleActive={(feat) => handleUpdateFeature(feat.id, { active: String(feat.active).trim().toLowerCase() !== 'true' })}
                                                     />
                                                 )
                                             ))}
