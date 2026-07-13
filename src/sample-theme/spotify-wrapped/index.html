@@ -352,12 +352,10 @@
                         <label>Kode Undangan</label>
                         <input class="spwr-input" type="text" id="rsvp-code" placeholder="Kode undangan" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1">
                     </div>
-                    {{#if is_link_umum_and_not_for_spesific_guest}}
                     <div class="rsvp-field">
                         <label>Nama Tamu</label>
-                        <input class="spwr-input" type="text" id="guest-name-input" placeholder="Nama kamu">
+                        <input class="spwr-input" type="text" id="guest-name-input" placeholder="Nama kamu" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
                     </div>
-                    {{/if}}
                     <div class="rsvp-field">
                         <label>Jumlah Tamu</label>
                         <select class="spwr-input" id="rsvp-guests">
@@ -509,7 +507,7 @@
                 {{#unless is_link_umum_and_not_for_spesific_guest}}
                 {{#hidden is_sudah_isi_ucapan}}
                 <div class="wish-form reveal-item" id="wish-form">
-                    <input class="spwr-input" type="text" id="wish-name" placeholder="Nama kamu" value="{{guest_name}}">
+                    <input class="spwr-input" type="text" id="wish-name" placeholder="Nama kamu" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1">
                     <textarea class="spwr-input" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa terbaik..."></textarea>
                     <button type="button" id="btn-submit-ucapan" class="spwr-cta">Kirim Review ★</button>
                 </div>

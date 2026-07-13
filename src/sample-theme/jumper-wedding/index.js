@@ -2014,6 +2014,9 @@
   // animated "just married" scene on the desktop side panel
   var _canvasRAF = null, _floatHearts = null;
   function drawCoupleCanvas() {
+    // NOTE: the desktop side-panel #jw-couple-canvas was REMOVED in v1.8.1 (it drew a frame then
+    // blinked blank on host re-inject). The panel now uses a static CSS medallion, so this is a
+    // no-op when the element is absent — kept only so an older cached HTML still degrades safely.
     var cv = $('jw-couple-canvas'); if (!cv || !cv.getContext) return;
     // The canvas lives ONLY in the desktop side panel (.jw-side { display:none } on mobile).
     // On the live mobile invitation it is not visible — do NOT start a RAF there (wasted work
@@ -2430,7 +2433,7 @@
     updateHUD();
     try { drawCoupleCanvas(); } catch (e) {}   // decorative canvas must never break init
     // version
-    var v = $('jw-version'); if (v) v.textContent = 'v1.8.0 · ' + STORE.diff;
+    var v = $('jw-version'); if (v) v.textContent = 'v1.8.1 · ' + STORE.diff;
 
     // auto-resume ONLY if cover & reveal not shown (Bible §Z.1)
     var coverUp = (($('jw-cover') || {}).classList || { contains: function () { return false; } }).contains('show');

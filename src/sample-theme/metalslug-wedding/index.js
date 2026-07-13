@@ -468,31 +468,64 @@
     /* =================================================================
        MODAL + FULL REVEAL — clone from #inv-source (Bible APPENDIX X.5)
        ================================================================= */
+    // DUPLICATE-ID GUARD: the host reads submitted RSVP/wish values via
+    // container.querySelector('#<id>') = FIRST match in DOM. #inv-source (the
+    // hidden source) precedes the reveal/modal clones, so WITHOUT this the host
+    // would read the empty hidden inputs and reveal the wrong thank-you card.
+    // We keep host IDs on the VISIBLE clone only: clone first (inherits the IDs),
+    // then strip the IDs from #inv-source so the clone is the sole match, and
+    // restore them when the invitation view closes (so the next clone gets IDs).
+    var HOST_IDS = ['btn-submit-kehadiran', 'rsvp-form', 'rsvp-status', 'rsvp-guests', 'rsvp-code', 'guest-name-input', 'alert-submit-kehadiran',
+        'btn-submit-ucapan', 'wish-form', 'wish-name', 'wish-message', 'alert-submit-ucapan',
+        'tm-countdown-days', 'tm-countdown-hours', 'tm-countdown-minutes', 'tm-countdown-seconds'];
+    function setSourceHostIds(enabled) {
+        var src = $('inv-source'); if (!src) return;
+        HOST_IDS.forEach(function (id) {
+            if (!enabled) {
+                var els = src.querySelectorAll('#' + id);
+                Array.prototype.forEach.call(els, function (el) { el.setAttribute('data-mswid', id); el.removeAttribute('id'); });
+            } else {
+                var els2 = src.querySelectorAll('[data-mswid="' + id + '"]');
+                Array.prototype.forEach.call(els2, function (el) { el.setAttribute('id', id); el.removeAttribute('data-mswid'); });
+            }
+        });
+    }
+
     function openPieceModal(key) {
+        // close the full reveal first so only ONE clone carrying host IDs exists at a time
+        closeReveal();
         var src = document.querySelector('#inv-source > section[data-info="' + key + '"]');
         if (!src) return;
         var body = $('msw-modal-body'), title = $('msw-modal-title');
         title.textContent = (SECTION_TITLE[key] || key).toUpperCase();
         body.innerHTML = '';
-        var clone = src.cloneNode(true);
+        var clone = src.cloneNode(true);   // clone carries host IDs
         clone.style.display = '';
         hydrateImages(clone);
         body.appendChild(clone);
+        setSourceHostIds(false);           // strip IDs from #inv-source → clone is sole match
         rewireHostFormsInside(body);
         rewireGalleryInside(body);
         $('msw-modal-root').classList.add('show');
     }
-    function closeModal() { $('msw-modal-root').classList.remove('show'); }
+    function closeModal() {
+        $('msw-modal-root').classList.remove('show');
+        var body = $('msw-modal-body'); if (body) body.innerHTML = '';
+        setSourceHostIds(true);            // restore IDs so a later clone gets them
+    }
 
     function revealFullInvitation() {
+        // close any open piece modal first so only ONE clone with host IDs exists
+        closeModal();
         var scroll = $('msw-reveal-scroll');
         scroll.innerHTML = '';
         INFOS.forEach(function (info) {
-            var clone = info.el.cloneNode(true);
+            var clone = info.el.cloneNode(true);   // clone carries host IDs
             clone.style.display = '';
             hydrateImages(clone);
             scroll.appendChild(clone);
         });
+        setSourceHostIds(false);           // strip IDs from #inv-source → visible clone is sole match
         rewireHostFormsInside(scroll);
         rewireGalleryInside(scroll);
         wireShareCarouselInside(scroll);
@@ -501,7 +534,10 @@
         setMusic(true);
     }
     function closeReveal() {
+        var wasShown = $('msw-reveal').classList.contains('show');
         $('msw-reveal').classList.remove('show');
+        var scroll = $('msw-reveal-scroll'); if (scroll) scroll.innerHTML = '';
+        if (wasShown) setSourceHostIds(true);   // restore IDs so a later clone gets them
         // REVIVE THE GAME on return (fix for "kadang blank saat kembali dari undangan").
         // Opening the invitation calls setMusic(true) → clicks #btn-toggle-music → the host
         // flips its React isPlaying state, which RE-INJECTS this whole theme (DOM+JS). That

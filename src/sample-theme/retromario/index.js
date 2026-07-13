@@ -1126,20 +1126,49 @@
             var modalTitle = document.getElementById('rm-modal-title');
             var modalIco = document.getElementById('rm-modal-ico');
 
+            // DUPLICATE-ID GUARD: the RSVP/wishes info-block modals clone a whole
+            // `.rm-sec` (which carries host IDs like #rsvp-form/#wish-message) into
+            // #rm-modal-body. The full invitation source (#rm-invitation) already holds
+            // those same IDs, so a naive clone yields two copies. The host reads submit
+            // values via container.querySelector('#<id>') = FIRST match in DOM, and
+            // #rm-invitation precedes #rm-modal-root — so it would read the wrong (source)
+            // copy and reveal the wrong thank-you card. While a modal is open we strip the
+            // host IDs from the source (#rm-invitation) so the visible modal clone the guest
+            // clicks is the sole match, and restore them on close.
+            var RM_HOST_IDS = ['btn-submit-kehadiran', 'rsvp-form', 'rsvp-status', 'rsvp-guests', 'rsvp-code', 'guest-name-input', 'alert-submit-kehadiran',
+                'btn-submit-ucapan', 'wish-form', 'wish-name', 'wish-message', 'alert-submit-ucapan'];
+            function rmSetSourceHostIds(enabled) {
+                var src = document.getElementById('rm-invitation'); if (!src) return;
+                RM_HOST_IDS.forEach(function (id) {
+                    if (!enabled) {
+                        var els = src.querySelectorAll('#' + id);
+                        Array.prototype.forEach.call(els, function (el) { el.setAttribute('data-rmid', id); el.removeAttribute('id'); });
+                    } else {
+                        var els2 = src.querySelectorAll('[data-rmid="' + id + '"]');
+                        Array.prototype.forEach.call(els2, function (el) { el.setAttribute('id', id); el.removeAttribute('data-rmid'); });
+                    }
+                });
+            }
+
             function openModal(info) {
                 var sec = document.querySelector('.rm-sec[data-info="' + info.key + '"]');
                 if (!sec || !modalRoot) return;
                 modalBody.innerHTML = '';
-                var clone = sec.cloneNode(true);
+                var clone = sec.cloneNode(true);   // clone carries host IDs
                 clone.classList.add('rm-modal-clone');
                 modalBody.appendChild(clone);
+                rmSetSourceHostIds(false);         // strip IDs from #rm-invitation → clone is sole match
                 if (info.key === 'schedule') renderCalendar(clone.querySelector('.rm-cal'));
                 modalTitle.textContent = info.label;
                 if (modalIco) { modalIco.width = 14; modalIco.height = 14; pixIcon(modalIco, info.key); }
                 modalRoot.classList.add('show');
                 playSfx('modal');
             }
-            function closeModal() { var m = document.getElementById('rm-modal-root'); if (m) m.classList.remove('show'); }
+            function closeModal() {
+                var m = document.getElementById('rm-modal-root'); if (m) m.classList.remove('show');
+                var mb = document.getElementById('rm-modal-body'); if (mb) mb.innerHTML = '';
+                rmSetSourceHostIds(true);          // restore IDs so the full invitation forms work
+            }
             // rm-modal-close (✕) and the rm-modal-root backdrop are routed through the
             // delegated document listener below, so they survive host re-injection.
 

@@ -33,16 +33,22 @@
       <div class="jw-deco-petal dp2">🌸</div>
       <div class="jw-deco-heart dh1">💗</div>
     </div>
+    <!-- NO-SCROLL desktop panel: fixed 100vh grid. Left = hero/names/countdown, right = event
+         cards + mission + CTA. All key info visible at once (no vertical scroll). The old animated
+         <canvas> (which blinked on host re-inject) is replaced by a stable CSS hero medallion. -->
     <div class="jw-side-panel">
-      <header class="jw-side-head">
-        <div class="jw-side-badge">✦ UNDANGAN PERNIKAHAN ✦</div>
-        <div class="jw-side-logo">JUMPER<br><span class="jw-side-logo-sub">WEDDING</span></div>
-        <div class="jw-side-op">MELOMPAT MENCARI SANG MEMPELAI</div>
-      </header>
+      <div class="jw-side-left">
+        <header class="jw-side-head">
+          <div class="jw-side-badge">✦ UNDANGAN PERNIKAHAN ✦</div>
+          <div class="jw-side-logo">JUMPER<span class="jw-side-logo-sub">WEDDING</span></div>
+        </header>
 
-      <div class="jw-side-hero">
-        <div class="jw-couple-stage">
-          <canvas id="jw-couple-canvas" width="760" height="380"></canvas>
+        <div class="jw-side-medallion" aria-hidden="true">
+          <div class="jw-medallion-ring"></div>
+          <div class="jw-medallion-emoji">💑</div>
+          <div class="jw-medallion-spark s1">✦</div>
+          <div class="jw-medallion-spark s2">✧</div>
+          <div class="jw-medallion-spark s3">❀</div>
         </div>
 
         <div class="jw-side-names">
@@ -51,8 +57,19 @@
           <span data-var="bride_nickname">{{bride_nickname}}</span>
         </div>
         <div class="jw-side-date" data-var="wedding_date">{{wedding_date}}</div>
-        <div class="jw-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+        <div class="jw-side-guest">Kepada Yth. <strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
 
+        <div class="jw-side-cd" id="jw-side-cd">
+          <div class="jw-side-cd-item"><b>{{countdown_hari}}</b><span>Hari</span></div>
+          <div class="jw-side-cd-item"><b>{{countdown_jam}}</b><span>Jam</span></div>
+          <div class="jw-side-cd-item"><b>{{countdown_menit}}</b><span>Menit</span></div>
+          <div class="jw-side-cd-item"><b>{{countdown_detik}}</b><span>Detik</span></div>
+        </div>
+
+        <button class="jw-side-open" id="jw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
+      </div>
+
+      <div class="jw-side-right">
         <div class="jw-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
         <div class="jw-side-event">
           <div class="jw-side-event-tag">AKAD NIKAH</div>
@@ -73,12 +90,10 @@
 
         <div class="jw-side-mission">
           <div class="jw-side-mission-title">🕹️ CARA BERMAIN</div>
-          <p class="jw-side-mission-text">Sang mempelai pria memantul otomatis ke atas <b>mencari
-            calon istrinya</b> di puncak Stage 3. Geser <b>kiri / kanan</b> (atau miringkan HP)
-            untuk mengarahkan pendaratan. Kumpulkan 💍 &amp; ❤️ untuk membuka bagian undangan.</p>
+          <p class="jw-side-mission-text">Mempelai pria memantul otomatis ke atas <b>mencari
+            calon istrinya</b> di puncak Stage 3. Geser <b>kiri / kanan</b> untuk mengarahkan
+            pendaratan &amp; kumpulkan 💍 ❤️ untuk membuka bagian undangan.</p>
         </div>
-
-        <button class="jw-side-open" id="jw-side-open" type="button">💌 BUKA UNDANGAN LENGKAP</button>
       </div>
     </div>
   </aside>
@@ -408,10 +423,16 @@
         {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
         <div class="jw-glass-form" id="rsvp-form">
           <div class="jw-field">
+            <input class="jw-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1" placeholder="Kode Undangan" />
+          </div>
+          <div class="jw-field">
+            <input class="jw-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" placeholder="Nama Tamu" />
+          </div>
+          <div class="jw-field">
             <select class="jw-input" id="rsvp-status">
-              <option value="Hadir">Hadir</option>
-              <option value="Tidak Hadir">Tidak hadir</option>
-              <option value="Ragu">Masih ragu</option>
+              <option value="" disabled selected>Konfirmasi Kehadiran</option>
+              <option value="hadir">Hadir</option>
+              <option value="tidak-hadir">Tidak Hadir</option>
             </select>
           </div>
           <div class="jw-field">
@@ -424,7 +445,6 @@
               <option value="5">5 Orang</option>
             </select>
           </div>
-          <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
           <button class="jw-btn jw-btn-primary" id="btn-submit-kehadiran" type="button">▶ Konfirmasi</button>
         </div>
         {{/hidden}}

@@ -313,6 +313,7 @@ export interface UpdateTenantRequest {
 
 export interface CreateThemeRequest {
     name: string;
+    code?: string;
     html_template?: string;
     css_template?: string;
     js_template?: string;
@@ -328,6 +329,7 @@ export interface CreateThemeRequest {
 export interface UpdateThemeRequest {
     id: string;
     name: string;
+    code?: string;
     html_template?: string;
     css_template?: string;
     js_template?: string;

@@ -318,7 +318,10 @@ export async function chunkedSaveTheme(
     // left undefined is NOT sent — its Sheet columns stay exactly as they were, so an
     // unchanged HTML/CSS/JS never re-uploads (saves bandwidth + avoids needless writes).
     templates: { html?: string; css?: string; js?: string },
-    onProgress?: (done: number, total: number) => void
+    onProgress?: (done: number, total: number) => void,
+    // Optional axios config forwarded to every chunk request. Pass { skipLoader: true }
+    // to keep a background/queued save from triggering the global blocking loader overlay.
+    config: any = {}
 ): Promise<void> {
     // Build the column set for ONLY the provided templates. We send EVERY column of a
     // changed template (including empty ones) so that when it shrinks, the now-unused
@@ -355,7 +358,7 @@ export async function chunkedSaveTheme(
         for (const name of batches[i]) cols[name] = allCols[name];
         // metadata rides along with the FIRST request only.
         const extra = i === 0 ? meta : {};
-        const res = await themeApi.updateThemeChunk(id, cols, extra);
+        const res = await themeApi.updateThemeChunk(id, cols, extra, config);
         if (!res.success) {
             throw new Error(res.message || `Gagal menyimpan potongan ${i + 1}/${total}`);
         }

@@ -23,7 +23,8 @@ import {
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { ThemeGuideModal } from '../components/ThemeGuideModal';
-import { PREMIUM_THEME_PAYLOAD } from '../utils/premiumThemePayload';
+import { ThemeInjectModal } from '../components/ThemeInjectModal';
+import { injectSampleThemes } from '../utils/injectSampleThemes';
 import { useThemeStore } from '../store/themeStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { createPortal } from 'react-dom';
@@ -35,6 +36,7 @@ export function ManageThemesPage() {
     const { themes, loading, fetchThemes, deleteTheme, updateTheme } = useThemeStore();
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [guideTab, setGuideTab] = useState<'guide' | 'variables' | 'logic'>('guide');
+    const [isInjectOpen, setIsInjectOpen] = useState(false);
 
     const [themeToDelete, setThemeToDelete] = useState<Theme | null>(null);
     // Row currently being saved (inline spinner) instead of a blocking dialog loader.
@@ -109,20 +111,27 @@ export function ManageThemesPage() {
         }
     };
 
-    const handleInjectPremiumTheme = async () => {
-        if (!confirm('Ingin melakukan auto-inject tema Premium Emas ke Backend GAS?')) return;
-        try {
-            toast.loading('Menginjeksi tema...', { id: 'inject-theme' });
-            const res = await themeApi.createTheme(PREMIUM_THEME_PAYLOAD as any);
-            if(res.success) {
-                toast.success('Tema Premium Emas berhasil dimasukkan ke Spreadsheet/GAS!', { id: 'inject-theme' });
-                fetchThemes(true); // Force refresh after injection
+    // Kick off the non-blocking inject/edit queue for the chosen sample-theme folders.
+    // Progress shows in the header background-task indicator; we don't block the screen.
+    const handleInjectThemes = (folders: string[]) => {
+        setIsInjectOpen(false);
+        if (folders.length === 0) return;
+        toast.success(`Memproses ${folders.length} tema di latar belakang...`);
+        // Fire-and-forget: the background task store drives the UI. Refresh the list when done.
+        injectSampleThemes(folders, themes, (result) => {
+            fetchThemes(true);
+            if (result.failCount === 0) {
+                toast.success(
+                    `Inject selesai: ${result.inserted.length} baru, ${result.edited.length} diperbarui.`
+                );
             } else {
-                toast.error(res.message || 'Failed to inject theme', { id: 'inject-theme' });
+                toast.error(
+                    `Inject selesai dengan ${result.failCount} gagal. Lihat detail di panel tugas.`
+                );
             }
-        } catch {
-            toast.error('Gagal memasukkan data.', { id: 'inject-theme' });
-        }
+        }).catch((err) => {
+            toast.error(err?.message || 'Gagal menjalankan inject tema.');
+        });
     };
 
     // Filter Logic
@@ -397,9 +406,9 @@ export function ManageThemesPage() {
                             <HiOutlineViewGrid className="w-4 h-4" />
                         </button>
                     </div>
-                    <button onClick={handleInjectPremiumTheme} className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl shadow-md transition-all font-medium flex items-center gap-2 text-xs">
+                    <button onClick={() => setIsInjectOpen(true)} className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl shadow-md transition-all font-medium flex items-center gap-2 text-xs">
                         <i className="ri-flashlight-fill"></i>
-                        <span>Inject Premium Theme</span>
+                        <span>Inject Theme</span>
                     </button>
                     <Button
                         onClick={() => navigate(`${base}/themes/editor/new`)}
@@ -632,12 +641,20 @@ export function ManageThemesPage() {
                 </div>
             )}
 
-            <ThemeGuideModal 
-                isOpen={isGuideOpen} 
-                onClose={() => setIsGuideOpen(false)} 
+            <ThemeGuideModal
+                isOpen={isGuideOpen}
+                onClose={() => setIsGuideOpen(false)}
                 activeTab={guideTab}
                 onTabChange={setGuideTab}
             />
+
+            {isInjectOpen && (
+                <ThemeInjectModal
+                    existingThemes={themes}
+                    onClose={() => setIsInjectOpen(false)}
+                    onConfirm={handleInjectThemes}
+                />
+            )}
 
             {/* Custom Premium Theme Lightbox with Full Info rendered via React Portal */}
             {selectedThemeForLightbox && createPortal(

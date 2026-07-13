@@ -19,6 +19,7 @@ import { imageApi } from '@/core/api/imageApi';
 import { ProxyImage, fetchProxyImageBase64, setCachedImage, getCachedImage } from '@/shared/components/ProxyImage';
 import html2canvas from 'html2canvas';
 import { useThemeStore } from '../store/themeStore';
+import { convertHtmlToHandlebars, cleanThemeJs } from '../utils/themeTransform';
 import { useSaveProgressStore } from '@/shared/store/saveProgressStore';
 import { useApiStore } from '@/core/api/apiStore';
 import { useTenantStore } from '../store/tenantStore';
@@ -268,80 +269,6 @@ export function ThemeEditorPage() {
     // AI Theme Upload Handler
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const convertHtmlToHandlebars = (html: string): string => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        // Convert data-var
-        doc.querySelectorAll('[data-var]').forEach(el => {
-            const varName = el.getAttribute('data-var');
-            el.removeAttribute('data-var');
-            if (el.tagName === 'A' && (!el.getAttribute('href') || el.getAttribute('href') === '#' || el.getAttribute('href') === '')) {
-                el.setAttribute('href', `{{${varName}}}`);
-            } else {
-                el.innerHTML = `{{${varName}}}`;
-            }
-        });
-
-        // Convert data-img
-        doc.querySelectorAll('[data-img]').forEach(el => {
-            const varName = el.getAttribute('data-img');
-            el.removeAttribute('data-img');
-            el.setAttribute('src', `{{${varName}}}`);
-        });
-
-        // Convert data-bg
-        doc.querySelectorAll('[data-bg]').forEach(el => {
-            const varName = el.getAttribute('data-bg');
-            el.removeAttribute('data-bg');
-            const htmlEl = el as HTMLElement;
-            const currentBg = htmlEl.style.backgroundImage;
-            if (currentBg && currentBg.includes('url(')) {
-                htmlEl.style.backgroundImage = currentBg.replace(/url\(['"]?[^)]+['"]?\)/gi, `url("{{${varName}}}")`);
-            } else {
-                htmlEl.style.backgroundImage = `url("{{${varName}}}")`;
-            }
-        });
-
-        // Convert data-loop (Reverse order to handle nesting)
-        const loopNodes = Array.from(doc.querySelectorAll('[data-loop]'));
-        for (let i = loopNodes.length - 1; i >= 0; i--) {
-            const el = loopNodes[i];
-            const loopVar = el.getAttribute('data-loop');
-            el.removeAttribute('data-loop');
-            if (el.children.length > 0) {
-                const template = el.children[0].outerHTML;
-                el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
-            } else {
-                const template = el.innerHTML;
-                el.innerHTML = `\n{{#each ${loopVar}}}\n${template}\n{{/each}}\n`;
-            }
-        }
-
-        // Convert data-if (Reverse order to handle nesting)
-        const ifNodes = Array.from(doc.querySelectorAll('[data-if]'));
-        for (let i = ifNodes.length - 1; i >= 0; i--) {
-            const el = ifNodes[i];
-            const condition = el.getAttribute('data-if');
-            el.removeAttribute('data-if');
-            const content = el.outerHTML;
-            el.outerHTML = `\n{{#if ${condition}}}\n${content}\n{{/if}}\n`;
-        }
-
-        // Convert data-unless (Reverse order to handle nesting)
-        const unlessNodes = Array.from(doc.querySelectorAll('[data-unless]'));
-        for (let i = unlessNodes.length - 1; i >= 0; i--) {
-            const el = unlessNodes[i];
-            const condition = el.getAttribute('data-unless');
-            el.removeAttribute('data-unless');
-            const content = el.outerHTML;
-            el.outerHTML = `\n{{#unless ${condition}}}\n${content}\n{{/unless}}\n`;
-        }
-
-        let resultHtml = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
-        return resultHtml.trim();
-    };
-
     const processRawCode = (codes: { html?: string; css?: string; js?: string }) => {
         let processedCount = 0;
         let lastType = '';
@@ -352,7 +279,7 @@ export function ThemeEditorPage() {
             lastType = 'css';
         }
         if (codes.js) {
-            let cleanJs = codes.js.replace(/<script[^>]*>/gi, '').replace(/<\/script>/gi, '');
+            let cleanJs = cleanThemeJs(codes.js);
             setJsCode(cleanJs);
             processedCount++;
             lastType = 'js';

@@ -525,10 +525,12 @@
       <div class="msw-panel msw-panel-cyan">
         <div class="msw-panel-head"><span class="msw-panel-led"></span> KONFIRMASI KEHADIRAN</div>
         <div class="msw-form" id="rsvp-form">
+          <input class="msw-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1" placeholder="Kode Undangan" />
+          <input class="msw-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" placeholder="Nama Tamu" />
           <select class="msw-input" id="rsvp-status">
-                  <option value="Hadir">Hadir</option>
-                  <option value="Tidak Hadir">Tidak hadir</option>
-                  <option value="Ragu">Masih ragu</option>
+                  <option value="" disabled selected>Konfirmasi Kehadiran</option>
+                  <option value="hadir">Hadir</option>
+                  <option value="tidak-hadir">Tidak Hadir</option>
               </select>
           <select class="msw-input" id="rsvp-guests">
               <option value="" disabled selected>Jumlah tamu</option>
@@ -538,7 +540,6 @@
               <option value="4">4 Orang</option>
               <option value="5">5 Orang</option>
           </select>
-          <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
           <button class="msw-btn msw-btn-red" id="btn-submit-kehadiran" type="button">KIRIM RSVP</button>
         </div>
       </div>
@@ -711,7 +712,7 @@
       <div class="msw-panel msw-panel-cyan">
         <div class="msw-panel-head"><span class="msw-panel-led"></span> KIRIM TRANSMISI</div>
         <div class="msw-form" id="wish-form">
-          <input class="msw-input" id="wish-name" type="text" placeholder="Nama kamu" />
+          <input class="msw-input" id="wish-name" type="text" placeholder="Nama kamu" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" />
           <textarea class="msw-input" id="wish-message" rows="3" placeholder="Tulis ucapan &amp; doa..."></textarea>
           <button class="msw-btn msw-btn-red" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
         </div>

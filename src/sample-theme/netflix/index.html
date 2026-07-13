@@ -445,16 +445,21 @@
                         <div data-if="is_sudah_isi_konfirmasi_kehadiran">
                             {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
                             <div id="alert-submit-kehadiran" style="padding: 20px;" class="thank-you-message glass-card">
-                                <div data-rsvp-branch="hadir" style="display: {{#if is_hadir}}block{{else}}none{{/if}};">
+                                {{^hidden is_hadir}}
+                                <div data-rsvp-branch="hadir">
                                     <div style="font-size: 24px; margin-bottom: 10px;">&#127916;</div>
                                     Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>!<br>
                                     Kami sangat senang Anda bisa hadir di hari bahagia kami. Sampai jumpa di lokasi!
                                 </div>
-                                <div data-rsvp-branch="tidak" style="display: {{#if is_hadir}}none{{else}}block{{/if}};">
+                                {{/hidden}}
+
+                                {{#hidden is_hadir}}
+                                <div data-rsvp-branch="tidak">
                                     <div style="font-size: 24px; margin-bottom: 10px;">&#128591;</div>
                                     Terima kasih <strong data-var="guest_name">{{guest_name}}</strong>.<br>
                                     Kami mengerti Anda tidak bisa hadir. Terima kasih atas doa restunya!
                                 </div>
+                                {{/hidden}}
                             </div>
                             {{/hidden}}
                         </div>

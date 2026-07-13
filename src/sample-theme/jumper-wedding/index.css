@@ -465,7 +465,7 @@
   }
   .jw-side {
     display: block; order: 2; flex: 1; min-width: 320px;
-    position: relative; height: 100vh; overflow-y: auto;
+    position: relative; height: 100vh; overflow: hidden;   /* NO scroll — all info fits one screen */
     background: linear-gradient(160deg, #12233a, #0a1524);
   }
   .jw-side-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 10%, rgba(255,201,77,.12), transparent 60%); pointer-events: none; }
@@ -481,37 +481,65 @@
   .jw-deco-heart.dh1 { top: 30%; left: 20%; animation: jw-float 5.5s ease-in-out infinite; }
   @keyframes jw-float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-14px);} }
 
-  .jw-side-panel { position: relative; z-index: 2; max-width: 460px; margin: 0 auto; padding: 44px 40px; }
-  .jw-side-head { text-align: center; margin-bottom: 20px; }
-  .jw-side-badge { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 2px; color: var(--jw-gold); font-weight: 800; }
-  .jw-side-logo { font-family: var(--jw-mono); font-size: 34px; font-weight: 900; letter-spacing: 3px; color: #fff; line-height: 1; margin: 8px 0; text-shadow: 0 3px 0 var(--jw-rose-d); }
-  .jw-side-logo-sub { font-size: 14px; letter-spacing: 6px; color: var(--jw-gold); }
-  .jw-side-op { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 1px; color: rgba(255,255,255,.65); }
+  /* NO-SCROLL two-column layout filling the full viewport height */
+  .jw-side-panel {
+    position: relative; z-index: 2; height: 100vh; box-sizing: border-box;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 26px;
+    align-items: center; padding: 3.2vh 4vh; max-width: 900px; margin: 0 auto;
+  }
+  .jw-side-left { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .jw-side-right { display: flex; flex-direction: column; justify-content: center; gap: 12px; }
 
-  .jw-couple-stage { border-radius: 18px; overflow: hidden; border: 2px solid rgba(255,201,77,.4); box-shadow: 0 10px 30px rgba(0,0,0,.35); margin-bottom: 18px; background: #0e2138; }
-  .jw-couple-stage canvas { display: block; width: 100%; height: auto; }
+  .jw-side-head { margin-bottom: 1.6vh; }
+  .jw-side-badge { font-family: var(--jw-mono); font-size: 10.5px; letter-spacing: 2px; color: var(--jw-gold); font-weight: 800; }
+  .jw-side-logo { font-family: var(--jw-mono); font-size: clamp(26px, 3vw, 36px); font-weight: 900; letter-spacing: 3px; color: #fff; line-height: 1; margin: 6px 0 0; text-shadow: 0 3px 0 var(--jw-rose-d); display: flex; flex-direction: column; }
+  .jw-side-logo-sub { font-size: 13px; letter-spacing: 6px; color: var(--jw-gold); margin-top: 2px; }
 
-  .jw-side-names { text-align: center; font-size: 26px; font-weight: 800; color: #fff; }
-  .jw-side-date { text-align: center; font-family: var(--jw-mono); font-size: 14px; letter-spacing: 2px; color: var(--jw-gold); margin-top: 4px; }
-  .jw-side-guest { text-align: center; font-size: 12px; color: rgba(255,255,255,.7); margin: 12px 0; line-height: 1.5; }
+  /* medallion hero (replaces the blinking canvas — pure CSS, stable) */
+  .jw-side-medallion { position: relative; width: clamp(120px, 15vw, 168px); height: clamp(120px, 15vw, 168px); margin: 2vh 0 1.4vh; display: grid; place-items: center; }
+  .jw-medallion-ring { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 38% 32%, #1f3a5c, #0c1c30 70%); border: 3px solid var(--jw-gold); box-shadow: 0 0 0 6px rgba(255,201,77,.14), 0 14px 34px rgba(0,0,0,.45), inset 0 4px 18px rgba(255,255,255,.06); }
+  .jw-medallion-ring::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; border: 1.5px dashed rgba(255,201,77,.35); }
+  .jw-medallion-emoji { position: relative; font-size: clamp(48px, 6.5vw, 70px); filter: drop-shadow(0 4px 8px rgba(0,0,0,.4)); animation: jw-float 4.5s ease-in-out infinite; }
+  .jw-medallion-spark { position: absolute; color: var(--jw-gold); font-size: 16px; opacity: .85; }
+  .jw-medallion-spark.s1 { top: -4px; right: 8%; animation: jw-float 3.8s ease-in-out infinite; }
+  .jw-medallion-spark.s2 { bottom: 2%; left: 4%; font-size: 13px; color: #fff; animation: jw-float 4.6s ease-in-out infinite reverse; }
+  .jw-medallion-spark.s3 { top: 44%; right: -6%; color: var(--jw-rose); animation: jw-float 5.2s ease-in-out infinite; }
 
-  .jw-side-info-title { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 2px; color: var(--jw-gold); font-weight: 800; text-align: center; margin: 18px 0 10px; }
-  .jw-side-event { background: rgba(255,255,255,.06); border: 1px solid rgba(255,201,77,.25); border-radius: 14px; padding: 14px; text-align: center; margin-bottom: 10px; }
-  .jw-side-event-tag { display: inline-block; font-family: var(--jw-mono); font-size: 10px; letter-spacing: 2px; font-weight: 800; color: #4a2c00; background: var(--jw-gold); border-radius: 16px; padding: 3px 12px; margin-bottom: 8px; }
-  .jw-side-event-line { font-size: 15px; font-weight: 800; color: #fff; }
-  .jw-side-event-place { font-size: 13px; font-weight: 700; color: #fff; margin-top: 6px; }
-  .jw-side-event-addr { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; line-height: 1.5; }
-  .jw-side-map { display: inline-block; margin-top: 8px; font-family: var(--jw-mono); font-size: 11px; color: var(--jw-gold); text-decoration: none; border: 1px solid rgba(255,201,77,.4); border-radius: 8px; padding: 4px 10px; }
+  .jw-side-names { font-size: clamp(22px, 2.8vw, 30px); font-weight: 800; color: #fff; line-height: 1.15; }
+  .jw-side-date { font-family: var(--jw-mono); font-size: 13px; letter-spacing: 2px; color: var(--jw-gold); margin-top: 6px; }
+  .jw-side-guest { font-size: 12px; color: rgba(255,255,255,.7); margin: 10px 0 0; line-height: 1.5; }
 
-  .jw-side-mission { background: rgba(229,37,33,.12); border: 1px solid rgba(229,37,33,.3); border-radius: 14px; padding: 14px; margin: 16px 0; }
-  .jw-side-mission-title { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 1px; color: var(--jw-rose); font-weight: 800; margin-bottom: 6px; }
-  .jw-side-mission-text { font-size: 12px; line-height: 1.6; color: rgba(255,255,255,.82); }
+  /* compact countdown row */
+  .jw-side-cd { display: flex; gap: 8px; margin: 2vh 0; }
+  .jw-side-cd-item { min-width: 52px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,201,77,.22); display: flex; flex-direction: column; align-items: center; }
+  .jw-side-cd-item b { font-family: var(--jw-mono); font-size: 22px; font-weight: 900; color: #fff; line-height: 1; }
+  .jw-side-cd-item span { font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,.6); margin-top: 4px; text-transform: uppercase; }
 
-  .jw-side-open { width: 100%; margin-top: 10px; font-family: var(--jw-mono); font-size: 15px; font-weight: 900; letter-spacing: 1px; padding: 14px; border-radius: 14px; cursor: pointer; color: #5a3a00; background: linear-gradient(180deg, #ffe873, var(--jw-gold)); border: 2px solid #fff6c8; box-shadow: 0 4px 0 var(--jw-gold-d); transition: transform .08s; }
+  .jw-side-info-title { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 2px; color: var(--jw-gold); font-weight: 800; text-align: center; margin: 0 0 2px; }
+  .jw-side-event { background: rgba(255,255,255,.06); border: 1px solid rgba(255,201,77,.25); border-radius: 14px; padding: 12px 14px; text-align: center; }
+  .jw-side-event-tag { display: inline-block; font-family: var(--jw-mono); font-size: 10px; letter-spacing: 2px; font-weight: 800; color: #4a2c00; background: var(--jw-gold); border-radius: 16px; padding: 3px 12px; margin-bottom: 7px; }
+  .jw-side-event-line { font-size: 14px; font-weight: 800; color: #fff; }
+  .jw-side-event-place { font-size: 12.5px; font-weight: 700; color: #fff; margin-top: 5px; }
+  .jw-side-event-addr { font-size: 10.5px; color: rgba(255,255,255,.65); margin-top: 2px; line-height: 1.45; }
+  .jw-side-map { display: inline-block; margin-top: 7px; font-family: var(--jw-mono); font-size: 11px; color: var(--jw-gold); text-decoration: none; border: 1px solid rgba(255,201,77,.4); border-radius: 8px; padding: 4px 10px; }
+
+  .jw-side-mission { background: rgba(229,37,33,.12); border: 1px solid rgba(229,37,33,.3); border-radius: 14px; padding: 12px 14px; }
+  .jw-side-mission-title { font-family: var(--jw-mono); font-size: 11px; letter-spacing: 1px; color: var(--jw-rose); font-weight: 800; margin-bottom: 5px; }
+  .jw-side-mission-text { font-size: 11.5px; line-height: 1.55; color: rgba(255,255,255,.82); }
+
+  .jw-side-open { width: 100%; max-width: 300px; font-family: var(--jw-mono); font-size: 15px; font-weight: 900; letter-spacing: 1px; padding: 13px; border-radius: 14px; cursor: pointer; color: #5a3a00; background: linear-gradient(180deg, #ffe873, var(--jw-gold)); border: 2px solid #fff6c8; box-shadow: 0 4px 0 var(--jw-gold-d); transition: transform .08s; }
   .jw-side-open:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--jw-gold-d); }
 
   /* desktop uses keyboard → hide touch controls */
   .jw-touch { display: none; }
+
+  /* short viewports: shrink vertical rhythm so it still never scrolls */
+  @media (max-height: 720px) {
+    .jw-side-medallion { width: 108px; height: 108px; margin: 1vh 0; }
+    .jw-side-cd { margin: 1.2vh 0; }
+    .jw-side-cd-item b { font-size: 18px; }
+    .jw-side-names { font-size: 22px; }
+  }
 }
 
 @media (hover:hover) and (pointer:fine) and (min-width: 980px) {

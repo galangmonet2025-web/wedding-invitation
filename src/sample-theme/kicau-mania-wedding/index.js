@@ -269,31 +269,64 @@
     }
 
     /* ===== MODAL + FULL REVEAL — clone from #inv-source ===== */
+    // DUPLICATE-ID GUARD: the host reads submitted RSVP/wish values via
+    // container.querySelector('#<id>') = FIRST match in DOM. #inv-source (hidden
+    // source) precedes the reveal/modal clones, so WITHOUT this the host would read
+    // the empty hidden inputs and reveal the wrong thank-you card. Keep host IDs on
+    // the VISIBLE clone only: clone first (inherits IDs), then strip IDs from
+    // #inv-source, and restore them when the view closes (so the next clone gets IDs).
+    var HOST_IDS = ['btn-submit-kehadiran', 'rsvp-form', 'rsvp-status', 'rsvp-guests', 'rsvp-code', 'guest-name-input', 'alert-submit-kehadiran',
+        'btn-submit-ucapan', 'wish-form', 'wish-name', 'wish-message', 'alert-submit-ucapan',
+        'tm-countdown-days', 'tm-countdown-hours', 'tm-countdown-minutes', 'tm-countdown-seconds'];
+    function setSourceHostIds(enabled) {
+        var src = $('inv-source'); if (!src) return;
+        HOST_IDS.forEach(function (id) {
+            if (!enabled) {
+                var els = src.querySelectorAll('#' + id);
+                Array.prototype.forEach.call(els, function (el) { el.setAttribute('data-kmid', id); el.removeAttribute('id'); });
+            } else {
+                var els2 = src.querySelectorAll('[data-kmid="' + id + '"]');
+                Array.prototype.forEach.call(els2, function (el) { el.setAttribute('id', id); el.removeAttribute('data-kmid'); });
+            }
+        });
+    }
+
     function openPieceModal(key) {
+        closeReveal();   // only ONE clone carrying host IDs at a time
         var src = document.querySelector('#inv-source > section[data-info="' + key + '"]');
         if (!src) return;
         var body = $('km-modal-body'), title = $('km-modal-title');
         title.textContent = (SECTION_TITLE[key] || key).toUpperCase();
         body.innerHTML = '';
-        var clone = src.cloneNode(true); clone.style.display = '';
+        var clone = src.cloneNode(true); clone.style.display = '';   // clone carries host IDs
         hydrateImages(clone);
         body.appendChild(clone);
+        setSourceHostIds(false);   // strip IDs from #inv-source → clone is sole match
         rewireHostFormsInside(body);
         rewireGalleryInside(body);
         $('km-modal-root').classList.add('show');
     }
-    function closeModal() { $('km-modal-root').classList.remove('show'); }
+    function closeModal() {
+        $('km-modal-root').classList.remove('show');
+        var body = $('km-modal-body'); if (body) body.innerHTML = '';
+        setSourceHostIds(true);    // restore IDs so a later clone gets them
+    }
 
     function revealFullInvitation() {
+        closeModal();   // only ONE clone with host IDs at a time
         var scroll = $('km-reveal-scroll'); scroll.innerHTML = '';
         INFOS.forEach(function (info) { var clone = info.el.cloneNode(true); clone.style.display = ''; hydrateImages(clone); scroll.appendChild(clone); });
+        setSourceHostIds(false);   // strip IDs from #inv-source → visible clone is sole match
         rewireHostFormsInside(scroll);
         rewireGalleryInside(scroll);
         $('km-reveal').classList.add('show');
         setMusic(true);
     }
     function closeReveal() {
+        var wasShown = $('km-reveal').classList.contains('show');
         $('km-reveal').classList.remove('show');
+        var scroll = $('km-reveal-scroll'); if (scroll) scroll.innerHTML = '';
+        if (wasShown) setSourceHostIds(true);   // restore IDs so a later clone gets them
         // revive game on return (opening invitation re-injects theme via music toggle)
         try {
             if (window.__kmStarted) {

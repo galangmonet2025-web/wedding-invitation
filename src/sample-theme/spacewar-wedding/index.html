@@ -405,10 +405,12 @@
       <div data-unless="is_sudah_isi_konfirmasi_kehadiran">
       {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
       <div class="sw-form" id="rsvp-form">
+        <input class="sw-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1" placeholder="Kode Undangan" />
+        <input class="sw-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" placeholder="Nama Tamu" />
         <select class="sw-input" id="rsvp-status">
-          <option value="Hadir">Hadir</option>
-          <option value="Tidak Hadir">Tidak hadir</option>
-          <option value="Ragu">Masih ragu</option>
+          <option value="" disabled selected>Konfirmasi Kehadiran</option>
+          <option value="hadir">Hadir</option>
+          <option value="tidak-hadir">Tidak Hadir</option>
         </select>
         <select class="sw-input" id="rsvp-guests">
           <option value="" disabled selected>Jumlah tamu</option>
@@ -418,7 +420,6 @@
           <option value="4">4 Orang</option>
           <option value="5">5 Orang</option>
         </select>
-        <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
         <button class="sw-btn" id="btn-submit-kehadiran" type="button">KIRIM RSVP</button>
       </div>
       {{/hidden}}
@@ -535,7 +536,7 @@
       <div data-unless="is_sudah_isi_ucapan">
       {{#hidden is_sudah_isi_ucapan}}
       <div class="sw-form" id="wish-form">
-        <input class="sw-input" id="wish-name" type="text" placeholder="Nama kamu" />
+        <input class="sw-input" id="wish-name" type="text" placeholder="Nama kamu" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" />
         <textarea class="sw-input" id="wish-message" rows="3" placeholder="Tulis ucapan & doa..."></textarea>
         <button class="sw-btn" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
       </div>

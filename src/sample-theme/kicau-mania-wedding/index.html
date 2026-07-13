@@ -494,10 +494,16 @@
         {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
         <div class="kmn-glass-form" id="rsvp-form">
           <div class="kmn-field">
+            <input class="kmn-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly aria-readonly="true" tabindex="-1" placeholder="Kode Undangan" />
+          </div>
+          <div class="kmn-field">
+            <input class="kmn-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" placeholder="Nama Tamu" />
+          </div>
+          <div class="kmn-field">
             <select class="kmn-input" id="rsvp-status">
-              <option value="Hadir">Hadir</option>
-              <option value="Tidak Hadir">Tidak hadir</option>
-              <option value="Ragu">Masih ragu</option>
+              <option value="" disabled selected>Konfirmasi Kehadiran</option>
+              <option value="hadir">Hadir</option>
+              <option value="tidak-hadir">Tidak Hadir</option>
             </select>
           </div>
           <div class="kmn-field">
@@ -510,7 +516,6 @@
               <option value="5">5 Orang</option>
             </select>
           </div>
-          <input id="rsvp-code" type="hidden" value="{{kode_undangan}}" />
           <button class="kmn-btn kmn-btn-primary" id="btn-submit-kehadiran" type="button">▶ Konfirmasi</button>
         </div>
         {{/hidden}}
@@ -782,7 +787,7 @@
         {{#hidden is_sudah_isi_ucapan}}
         <div class="kmn-glass-form" id="wish-form">
           <div class="kmn-field">
-            <input class="kmn-input" id="wish-name" type="text" placeholder="Nama Anda" />
+            <input class="kmn-input" id="wish-name" type="text" placeholder="Nama Anda" value="{{nama_tamu}}" readonly aria-readonly="true" tabindex="-1" />
           </div>
           <div class="kmn-field">
             <textarea class="kmn-input kmn-textarea" id="wish-message" rows="3" placeholder="Tulis Ucapan &amp; Doa..."></textarea>

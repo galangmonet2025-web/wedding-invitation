@@ -81,31 +81,38 @@ export const useLandingStore = create<LandingState>((set, get) => ({
             };
             setFavicon(kosaIcon);   // default; overridden by site_logo below if set
 
+            let siteLogo: string | undefined;
             if (configRes.success) {
                 set({
                     config: configRes.data,
                     reviews: configRes.data.reviews || [],
                     additionalFeatures: configRes.data.features || [],
                 });
-
-                // Resolve the site logo once (base64) — reused by the navbar/
-                // footer logo blocks AND the favicon.
-                if (configRes.data.site_logo) {
-                    try {
-                        const { fetchProxyImageBase64 } = await import('@/shared/components/ProxyImage');
-                        const resolvedLogo = await fetchProxyImageBase64(configRes.data.site_logo);
-                        set({ logoUrl: resolvedLogo });
-                        setFavicon(resolvedLogo);
-                    } catch {
-                        /* logo resolve is best-effort; ignore failures */
-                    }
-                }
+                siteLogo = configRes.data.site_logo;
             }
             if (themesRes.success) set({ themes: themesRes.data });
             if (plansRes.success) set({ planTypes: plansRes.data });
             if (featuresRes.success) set({ planFeatures: featuresRes.data });
 
+            // Text data is ready → unblock the page NOW. The page has skeletons
+            // for every data-driven section, so nothing else needs to gate the
+            // first paint.
             set({ loaded: true });
+
+            // Resolve the site logo (base64) in the BACKGROUND — reused by the
+            // navbar/footer logo blocks AND the favicon. This is a separate
+            // proxy fetch; awaiting it before `loaded` used to hold the whole
+            // landing page hostage behind one image. Now it updates whenever it
+            // finishes; until then the components fall back to the bundled icon.
+            if (siteLogo) {
+                import('@/shared/components/ProxyImage')
+                    .then(({ fetchProxyImageBase64 }) => fetchProxyImageBase64(siteLogo!))
+                    .then((resolvedLogo) => {
+                        set({ logoUrl: resolvedLogo });
+                        setFavicon(resolvedLogo);
+                    })
+                    .catch(() => { /* logo resolve is best-effort; ignore failures */ });
+            }
         } catch (err) {
             console.error('Landing Page Data Fetch Error:', err);
         } finally {

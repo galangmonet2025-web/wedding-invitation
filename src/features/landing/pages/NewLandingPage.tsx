@@ -105,11 +105,7 @@ export function NewLandingPage() {
     const reviews = useLandingStore(s => s.reviews);
     const additionalFeatures = useLandingStore(s => s.additionalFeatures);
     const logoUrl = useLandingStore(s => s.logoUrl);
-    const loaded = useLandingStore(s => s.loaded);
-    const isLoading = useLandingStore(s => s.isLoading);
     const fetchAll = useLandingStore(s => s.fetchAll);
-    // Show the loading screen only on the very first load (nothing cached yet).
-    const loading = !loaded && isLoading;
 
     // UI States
     const [scrolled, setScrolled] = useState(false);
@@ -219,20 +215,12 @@ export function NewLandingPage() {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    if (loading) {
-        return (
-            <div className="rm-lp min-h-screen flex items-center justify-center" style={{ background: 'var(--lp-ink)' }}>
-                <RetroStyles />
-                <div className="flex flex-col items-center gap-6">
-                    <div className="lp-coin-spin" />
-                    <p className="lp-pixel text-[10px] lp-blink" style={{ color: 'var(--lp-coin)' }}>
-                        LOADING… PRESS START
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
+    // NOTE: we intentionally do NOT gate the whole page behind a loading screen.
+    // Every data-driven section (themes, plans, features, reviews) has its own
+    // skeleton/dummy fallback, and the static chrome (navbar, hero copy, FAQ,
+    // footer) renders from bundled defaults. So the page paints immediately and
+    // each section fills in as its data arrives — instead of a 3s full-screen
+    // "LOADING…" while the slowest Apps Script request finishes.
     const siteName = config?.site_name || 'WEDDING SAAS';
 
     return (
