@@ -18,7 +18,8 @@ import {
     HiOutlineXCircle,
     HiOutlineX,
     HiOutlineChevronLeft,
-    HiOutlineChevronRight
+    HiOutlineChevronRight,
+    HiOutlineEye
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +30,11 @@ import { useThemeStore } from '../store/themeStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { createPortal } from 'react-dom';
 import { useBasePath } from '@/shared/hooks/useBasePath';
+
+// Demo tenant slug used by the theme-preview URL (/#/preview/<theme_code>/<slug>).
+// Forces the chosen theme onto this demo tenant's real invitation data so admins
+// can see a live invitation. Must match an ACTIVE tenant's domain_slug.
+const PREVIEW_DEMO_SLUG = 'dini-galang';
 
 export function ManageThemesPage() {
     const navigate = useNavigate();
@@ -75,6 +81,19 @@ export function ManageThemesPage() {
         } finally {
             setDeletingId(null);
         }
+    };
+
+    // Open the real invitation in a new tab using the theme-preview override URL
+    // (#/preview/<kode-tema>/<slug>) so admins can see the theme rendered live on
+    // the demo tenant's data. Needs the theme to have a code set.
+    const handlePreviewTheme = (theme: Theme) => {
+        const themeCode = (theme.code || '').trim();
+        if (!themeCode) {
+            toast.error('Tema belum punya kode. Isi kolom "Kode Tema" lewat Edit untuk melihat preview.');
+            return;
+        }
+        const url = `${window.location.origin}${window.location.pathname}#/preview/${themeCode}/${PREVIEW_DEMO_SLUG}`;
+        window.open(url, '_blank', 'noopener');
     };
 
     const isDraft = (theme: Theme) =>
@@ -318,6 +337,15 @@ export function ManageThemesPage() {
                 const deleting = deletingId === item.id;
                 return (
                     <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => handlePreviewTheme(item)}
+                            disabled={deleting}
+                            className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 transition-colors tooltip tooltip-top disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Lihat Tema"
+                        >
+                            <HiOutlineEye className="w-4 h-4" />
+                            <span className="tooltip-text">Lihat Tema</span>
+                        </button>
                         <button
                             onClick={() => navigate(`${base}/themes/editor/${item.id}`)}
                             disabled={deleting}
@@ -598,6 +626,13 @@ export function ManageThemesPage() {
                                         {/* Action Row */}
                                         <div className="pt-2 mt-1 border-t border-white/15 flex items-center gap-1.5">
                                             <button
+                                                onClick={() => handlePreviewTheme(item)}
+                                                className="p-2 rounded-lg bg-white/15 hover:bg-emerald-500 text-white transition-colors"
+                                                title="Lihat Tema"
+                                            >
+                                                <HiOutlineEye className="w-4 h-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => navigate(`${base}/themes/editor/${item.id}`)}
                                                 className={`p-2 rounded-lg bg-white/15 ${planAccent.act} text-white transition-colors`}
                                                 title="Edit Theme"
@@ -757,6 +792,13 @@ export function ManageThemesPage() {
 
                             {/* Actions Footer */}
                             <div className="pt-6 mt-6 border-t border-white/10 space-y-2">
+                                <button
+                                    onClick={() => handlePreviewTheme(selectedThemeForLightbox)}
+                                    className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                >
+                                    <HiOutlineEye className="w-4 h-4" />
+                                    <span>Lihat Tema (Preview)</span>
+                                </button>
                                 <button
                                     onClick={() => {
                                         setSelectedThemeForLightbox(null);

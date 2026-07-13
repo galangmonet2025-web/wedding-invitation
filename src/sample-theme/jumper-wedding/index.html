@@ -93,6 +93,17 @@
           <p class="jw-side-mission-text">Mempelai pria memantul otomatis ke atas <b>mencari
             calon istrinya</b> di puncak Stage 3. Geser <b>kiri / kanan</b> untuk mengarahkan
             pendaratan &amp; kumpulkan 💍 ❤️ untuk membuka bagian undangan.</p>
+          <!-- KEYBOARD CONTROLS (desktop only) — PC tak punya joystick/tombol HIT di layar -->
+          <div class="jw-side-keys" aria-label="Kontrol keyboard">
+            <div class="jw-key-row">
+              <span class="jw-keys"><kbd>←</kbd><kbd>→</kbd> <span class="jw-key-or">/</span> <kbd>A</kbd><kbd>D</kbd></span>
+              <span class="jw-key-label">Geser kiri / kanan</span>
+            </div>
+            <div class="jw-key-row">
+              <span class="jw-keys"><kbd class="jw-kbd-space">SPACE</kbd></span>
+              <span class="jw-key-label">Tembak / HIT musuh</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -157,8 +168,9 @@
       <!-- toast (top-center) -->
       <div class="jw-toast" id="jw-toast"></div>
 
-      <!-- version badge -->
-      <div class="jw-version" id="jw-version">v1.0.0</div>
+      <!-- version badge (keep this string in sync with the JS version in init() so preview and the
+           live invitation show the SAME version even when the host re-injects this static HTML) -->
+      <div class="jw-version" id="jw-version">v2.4.1</div>
 
       <!-- ===== touch control (bottom green zone): ◄ steer · ▲ shoot · ► steer ===== -->
       <div class="jw-touch" id="jw-touch">
@@ -238,8 +250,8 @@
             <div class="jw-howto-step">
               <div class="jw-howto-ico">🐝</div>
               <div class="jw-howto-body">
-                <div class="jw-howto-title">Musuh &amp; jebakan</div>
-                <div class="jw-howto-desc"><b>Injak dari atas</b> lebah/burung untuk melumpuhkannya. Hindari awan petir &amp; UFO. Kena musuh = terpelanting (tidak mati) — kamu selalu bisa lanjut naik.</div>
+                <div class="jw-howto-title">Musuh &amp; cara menembak</div>
+                <div class="jw-howto-desc"><b>Injak dari atas</b> lebah/burung, atau <b>tembak</b> mereka — di HP tekan tombol <b>HIT</b>, di PC tekan <b>SPASI</b>. Hindari awan petir &amp; UFO. Kena musuh = terpelanting (tidak mati), kamu selalu bisa lanjut naik.</div>
               </div>
             </div>
             <div class="jw-howto-step">
@@ -344,7 +356,7 @@
 
     <!-- 1 · HERO (always) -->
     <section class="jw-sec jw-hero" data-info="hero">
-      <div class="jw-hero-bg" data-var="photo_hero_cover" data-src="{{photo_hero_cover}}" style="background-image:url('{{photo_hero_cover}}')"></div>
+      <div class="jw-hero-bg" style="background-image:url(&quot;{{photo_hero_cover}}&quot;)"></div>
       <div class="jw-hero-scrim"></div>
       <div class="jw-hero-inner">
         <div class="jw-hero-eyebrow">THE WEDDING OF</div>
@@ -656,7 +668,7 @@
 
     <!-- 11 · CLOSING (always) -->
     <section class="jw-sec jw-sec-closing" data-info="closing">
-      <div class="jw-closing-bg" data-src="{{photo_closing}}" style="background-image:url('{{photo_closing}}')"></div>
+      <div class="jw-closing-bg" style="background-image:url(&quot;{{photo_closing}}&quot;)"></div>
       <div class="jw-closing-overlay"></div>
       <div class="jw-closing-card">
         <div class="jw-eyebrow jw-closing-eyebrow">With Love &amp; Gratitude</div>
@@ -667,6 +679,30 @@
           <span data-var="groom_nickname">{{groom_nickname}}</span>
           <em>&amp;</em>
           <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </div>
+        <!-- SOCIAL MEDIA — each icon renders only if its flag is set (kondisional via if-block
+             honored by templateParser). Standard webconfig vars, sama seperti tema netflix/lake-como. -->
+        <div class="jw-social">
+          {{#if flag_use_instagram_webconfig}}
+          <a class="jw-social-btn" aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_tiktok_webconfig}}
+          <a class="jw-social-btn" aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_youtube_webconfig}}
+          <a class="jw-social-btn" aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+          </a>
+          {{/if}}
+          {{#if flag_use_whatsapp_webconfig}}
+          <a class="jw-social-btn" aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path><path d="M8.5 9.3c0-.3.3-.5.5-.5h.8c.2 0 .4.1.5.4l.6 1.4c.1.2 0 .4-.1.5l-.5.6c.5 1 1.3 1.8 2.3 2.3l.6-.5c.1-.1.3-.2.5-.1l1.4.6c.3.1.4.3.4.5v.8c0 .3-.2.5-.5.5-3.4 0-6.6-2.8-6.6-6.5z"></path></svg>
+          </a>
+          {{/if}}
         </div>
         <div class="jw-credit">
           <a href="{{site_url}}" target="_blank" rel="noopener noreferrer" data-var="site_name">{{site_name}}</a>

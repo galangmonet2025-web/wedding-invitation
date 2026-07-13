@@ -16,6 +16,28 @@
 (function () {
   'use strict';
 
+  /* ---- 0a. GLOBAL ERROR BANNER (diagnostic) — show any uncaught error on-screen so a runtime
+     failure that would silently kill the theme (dead buttons) becomes visible. Installed FIRST,
+     before anything else can throw. Safe to keep; only appears when there IS an error. ---- */
+  function jwErrBanner(msg) {
+    try {
+      var id = 'jw-err-banner', ex = document.getElementById(id);
+      if (ex) { ex.textContent = '⚠ ' + msg; return; }
+      var b = document.createElement('div');
+      b.id = id;
+      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#b3140f;color:#fff;font:12px/1.4 monospace;padding:8px 12px;white-space:pre-wrap;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,.4)';
+      b.textContent = '⚠ ' + msg;
+      (document.body || document.documentElement).appendChild(b);
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (ev) {
+    var m = ev && ev.error && ev.error.stack ? ev.error.stack : (ev && ev.message ? ev.message : 'unknown error');
+    jwErrBanner('JS error: ' + m + (ev.filename ? ('\n@ ' + ev.filename + ':' + ev.lineno + ':' + ev.colno) : ''));
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason; jwErrBanner('Promise rejected: ' + (r && r.stack ? r.stack : r));
+  });
+
   /* ---- 0. CLEANUP PREVIOUS RUN (host re-injects this script) ---- */
   if (typeof window.__gwCleanup === 'function') { try { window.__gwCleanup(); } catch (e) {} }
   var disposers = [];
@@ -152,9 +174,31 @@
   var CORE_SECTIONS = SECTIONS.filter(function (k) { return BONUS_LAST.indexOf(k) < 0; });
   var BONUS_SECTIONS = SECTIONS.filter(function (k) { return BONUS_LAST.indexOf(k) >= 0; });
 
-  // cumulative currency threshold per piece i (Bible §X.2): piece i needs ~ (i+1)*base
-  var BASE_PER_PIECE = 6;               // rings to open one piece (hearts worth 3 each)
-  function thresholdFor(i) { return (i + 1) * BASE_PER_PIECE; }
+  // Cumulative currency threshold per piece. BALANCE: a single climb of one stage yields ~90 coins
+  // (ring +1, heart +3, ~66 platforms/stage on easy). The old formula `(i+1)*6` capped the LAST of
+  // 11 pieces at 66 coins → every piece unlocked inside Stage 1, defeating the "earn pieces as you
+  // climb across stages" design. New model spreads pieces over the intended stages:
+  //   • CORE pieces trickle in across Stages 1–3 (they also force-reveal at the Stage 3 reunion),
+  //   • BONUS pieces require the optional Stages 4–5.
+  // Thresholds are computed from a per-group budget so they scale with however many sections the
+  // tenant's invitation actually has (PIECE_COUNT varies per tenant).
+  var COINS_PER_STAGE = 90;             // rough easy-mode yield per full stage climb
+  var CORE_STAGES = 3;                  // core spread over the first 3 stages (reunion = Stage 3)
+  var BONUS_STAGES = 2;                 // bonus spread over the 2 optional stages
+  var _coreN = Math.max(1, CORE_SECTIONS.length), _bonusN = Math.max(0, BONUS_SECTIONS.length);
+  function thresholdFor(i) {
+    // i is the global index in SECTIONS = [core..., bonus...]
+    if (i < _coreN) {
+      // spread core pieces from ~0.5 stage up to ~ (CORE_STAGES - 0.4) stages of coins
+      var f = (i + 1) / _coreN;                       // 0<f<=1 across the core group
+      return Math.round(COINS_PER_STAGE * (0.5 + f * (CORE_STAGES - 0.9)));
+    }
+    // bonus pieces start AFTER the core budget and spread across the bonus stages
+    var bi = i - _coreN;                              // 0-based within bonus group
+    var base = COINS_PER_STAGE * CORE_STAGES;         // must have cleared ~3 stages first
+    var bf = _bonusN > 0 ? (bi + 1) / _bonusN : 1;    // 0<bf<=1 across the bonus group
+    return Math.round(base + COINS_PER_STAGE * bf * BONUS_STAGES);
+  }
 
   /* ====================================================================
      4. RUNTIME STATE
@@ -163,7 +207,7 @@
   function freshRun() {
     return {
       coins: 0, score: 0, zone: 0, started: false, cheat: false,
-      autoFly: false, climaxActive: false, highestY: 0, respawnY: 0
+      autoFly: false, climaxActive: false, highestY: 0, respawnY: 0, finished: false
     };
   }
   RUN = freshRun();
@@ -349,35 +393,71 @@
   }
 
   function openPieceModal(key) {
+    setInvView('piece');       // claim the view FIRST so closing the reveal below can't resume mid-hand-off
     // close reveal first so only ONE clone with host IDs exists at a time
     closeReveal();
-    var node = cloneSection(key); if (!node) return;   // clone carries host IDs
+    var node = cloneSection(key); if (!node) { if (_invView === 'piece') setInvView(null); return; }   // clone carries host IDs
     setSourceHostIds(false);                            // strip IDs from #inv-source → clone is sole match
     var body = $('jw-modal-body'), title = $('jw-modal-title');
     if (title) title.textContent = '💌 ' + (SECTION_TITLE[key] || key);
     if (body) { body.innerHTML = ''; body.appendChild(node); wireClonedGallery(body); }
-    overlay2('jw-modal-root', true);
+    overlay2('jw-modal-root', true);   // FREEZE already active via setInvView('piece')
   }
   function overlay2(id, yes) { var el = $(id); if (el) el.classList.toggle('show', yes); }
-  function closePieceModal() { overlay2('jw-modal-root', false); clearClone($('jw-modal-body')); }
+  function closePieceModal() {
+    overlay2('jw-modal-root', false); clearClone($('jw-modal-body'));
+    if (_invView === 'piece') setInvView(null);   // only clear if the piece view is the active one
+  }
+
+  // PAUSE / RESUME the Phaser scene while the invitation is open. The user wants the game to FREEZE
+  // (no bouncing / spawning / falling) the moment the invitation reveal is shown, and only resume
+  // once it's closed. Phaser scene.pause() halts update()+physics+tweens+timers cleanly.
+  // `_invView` tracks WHICH invitation view is open ('reveal' | 'piece' | null). The reveal and the
+  // piece modal hand off to each other, so we drive pause/resume off this single intended state and
+  // reconcile once per change — a transient hand-off never resumes+re-pauses (flicker/false threat
+  // clear). Resume (with clean-up) fires only on the transition back to null.
+  var _invView = null;
+  function setInvView(v) {
+    if (v === _invView) return;
+    _invView = v;
+    if (v) pauseGame(); else resumeGame();
+  }
+  function pauseGame() {
+    try { if (SCENE && SCENE.scene && !SCENE.scene.isPaused()) SCENE.scene.pause(); } catch (e) {}
+  }
+  function resumeGame() {
+    if (RUN && RUN.finished) return;   // never un-freeze a finished game (stays in its calm finale)
+    if (_invView) return;              // an invitation view is still open
+    try {
+      if (SCENE && SCENE.scene && SCENE.scene.isPaused()) {
+        SCENE.scene.resume();
+        // CLEAN resume: clear any enemy that was sitting on the couple while paused + brief grace
+        // invuln, so the player never resumes straight into a hit ("halangan hilang baru main lagi").
+        if (SCENE.clearThreatsAndGrace) SCENE.clearThreatsAndGrace();
+      }
+    } catch (e) {}
+  }
 
   function openReveal() {
+    setInvView('reveal');      // claim the view FIRST so the piece-modal close below can't resume mid-hand-off
     closePieceModal();
     var scroll = $('jw-reveal-scroll'), src = $('inv-source');
-    if (!scroll || !src) return;
+    if (!scroll || !src) { if (_invView === 'reveal') setInvView(null); return; }   // malformed DOM → don't leave paused
     scroll.innerHTML = '';
     // append all sections in DOM order (invitation reading order) — clones carry host IDs
     qsa('section[data-info]', src).forEach(function (s) { scroll.appendChild(s.cloneNode(true)); });
     setSourceHostIds(false);   // strip IDs from #inv-source so host reads the visible clone
     wireClonedGallery(scroll);
     var rev = $('jw-reveal'); if (rev) rev.classList.add('show');
-    setStagePlayable(false);   // reveal covers the frame → game canvas must not eat taps
+    setStagePlayable(false);   // reveal covers the frame → game canvas must not eat taps (FREEZE via setInvView)
     wantMusic(true);   // opening invitation → intend music on
   }
   function closeReveal() {
-    var rev = $('jw-reveal'); if (rev) rev.classList.remove('show');
+    var rev = $('jw-reveal');
+    if (rev) rev.classList.remove('show');
     clearClone($('jw-reveal-scroll'));
-    if (RUN && RUN.started && !RUN.autoFly) setStagePlayable(true);   // back to gameplay
+    if (_invView === 'reveal') setInvView(null);   // un-freeze only if the reveal is the active view
+    if (RUN && RUN.started && !RUN.autoFly && !RUN.finished) setStagePlayable(true);   // back to gameplay
   }
   // empty a clone container and restore host IDs to #inv-source (so a later clone gets them)
   function clearClone(container) {
@@ -433,6 +513,8 @@
   function announceWin() {
     STORE.completed = true; unlockAll(true); saveStore();
     refreshIndicators();
+    RUN.finished = true;                 // terminal state: stop bouncing / fall-out (fixes the
+    if (SCENE) SCENE.endGameFinale();    // "platform hilang tapi masih loncat + terpelanting" bug)
     if (SCENE) SCENE.juiceCelebrate();
     setTimeout(function () {
       var t = $('jw-win-text');
@@ -550,6 +632,15 @@
     /* ---- procedural loop (frame-rate independent) ---- */
     GameScene.prototype.update = function (time, delta) {
       var dt = Math.min(delta, 40) / 1000;
+      // GAME FINISHED (Happily-Ever-After) — the climb is over. Freeze the couple and skip ALL
+      // gameplay physics: no bouncing, no fall-out respawn, no "terpelanting". The backdrop still
+      // breathes (rays/aurora) so the finale screen stays alive. This is a terminal state.
+      if (RUN.finished) {
+        if (this.couple && this.couple.body) { this.couple.body.velocity.set(0, 0); this.couple.body.setAllowGravity(false); }
+        this.stepCamera();   // keep god-rays/aurora/stars living behind the win overlay
+        this.stepAnims(dt);
+        return;
+      }
       if (RUN.autoFly) { this.updateAutoFly(dt); return; }
       if (!RUN.started) { // hold couple gently while briefing shown
         this.couple.body.velocity.y = 0; this.couple.body.velocity.x = 0;
@@ -810,6 +901,7 @@
       else if (kind === 'propeller') { this.startAutoRise(CFG.PROPELLER, CFG.PROPELLER_MS); toast('🚁 Baling-baling!'); this.startThrustFx('propeller'); }
       else if (kind === 'jetpack') { this.startAutoRise(CFG.JETPACK, CFG.JETPACK_MS); toast('🚀 Jetpack!'); this.startThrustFx('jetpack'); }
       else if (kind === 'shield') { this.shieldOn = true; toast('🛡️ Perisai!'); }
+      else if (kind === 'mushroom') { couple.body.velocity.y = CFG.TRAMP; this.shoesLeft = 2; toast('🍄 Jamur super!'); }
     };
     // continuous thrust particles below the couple during propeller/jetpack auto-rise
     GameScene.prototype.startThrustFx = function (kind) {
@@ -927,6 +1019,21 @@
       var t = this._animClock || 0;
       for (var i = 0; i < this.parallax.length; i++) {
         var p = this.parallax[i];
+        if (p.bob != null) {
+          // FOCAL landmark: don't tile — hold near its base position (tiny parallax) and bob slowly
+          // so it stays a constant "there it is" beacon the guest climbs toward.
+          p.obj.y = p.baseY - this.camScrollY * p.factor + Math.sin(t * 0.4 + p.ph) * p.bob;
+          continue;
+        }
+        if (p.noTile) {
+          // HORIZON RIDGES: a full landmass drawn from its crest down to BH. It must NEVER tile —
+          // wrapping made the hills reappear from the top and cover the sun/god-rays. Instead it
+          // starts exactly where drawn (delta 0) and sinks gently DOWN as the camera climbs above
+          // the zone start (parallax), clamped so it never rises up over the sky.
+          var climbed = this._camY0 - this.camScrollY;         // >=0 while climbing (camScrollY only shrinks)
+          p.obj.y = Math.max(0, climbed * p.factor * 0.5);
+          continue;
+        }
         // vertical: tile within [−BH, BH] so a few objects cover the whole climb
         var yy = (p.baseY - this.camScrollY * p.factor);
         yy = ((yy % (BH * 2)) + (BH * 2)) % (BH * 2) - BH * 0.5;
@@ -937,7 +1044,9 @@
           p.obj.x = xx + Math.sin(t * 0.6 + (p.ph || 0)) * 3;
         }
       }
-      // star twinkle
+      // living light: god rays breathe, aurora shifts, stars twinkle (all slow, out of phase)
+      if (this._drawRays) this._drawRays(t);
+      if (this._drawAurora) this._drawAurora(t);
       if (this._stars) this._stars.setAlpha(0.7 + Math.sin(t * 2) * 0.25);
     };
 
@@ -958,15 +1067,23 @@
     };
 
     GameScene.prototype.makePlatform = function (r) {
-      var tex = 't_plat_' + (r.type || 'green'), SS = this._SS || 2;
+      var type = r.type || 'green', SS = this._SS || 2;
+      // green platforms come in several widths (short 56 … x-long 148). Others stay 84. The body
+      // width MUST track the visible slab, so resolve W from the record (default 84) and use the
+      // matching baked texture for green.
+      var W = 84, tex;
+      if (type === 'green') { W = r.w || 84; tex = 't_plat_green_' + W; if (!this.textures.exists(tex)) { tex = 't_plat_green'; W = 84; } }
+      else { tex = 't_plat_' + type; }
       var p = this.platforms.create(r.x, r.y, tex);
-      this.normTex(p, tex);                    // display back to logical 84×32 (texture baked at SS×)
+      this.normTex(p, tex);                    // display back to logical W×32 (texture baked at SS×)
       p.body.setImmovable(true); p.body.setAllowGravity(false);
-      p.setData('kind', r.type === 'brown' ? 'break' : (r.type === 'white' ? 'white' : 'solid'));
+      p.setData('kind', type === 'brown' ? 'break' : (type === 'white' ? 'white' : 'solid'));
       p.setData('accent', 0xffd36b);
-      // texture is 84x32 logical; grass top (standable surface) at y=6, soil to ~y=24. Body values are
-      // in TEXTURE px (baked at SS×), so multiply the logical 84×18 slab and its y=6 offset by SS.
-      p.body.setSize(84 * SS, 18 * SS); p.body.setOffset(0, 6 * SS);
+      p.setData('halfW', W / 2);               // used by generateZone reward placement
+      // texture is Wx32 logical; grass top (standable surface) at y=6, soil to ~y=24. Body values are
+      // in TEXTURE px (baked at SS×): the slab spans the inner width (W - 2*PLAT_IN) with a 3px inset.
+      var slabW = W - 6;                       // W - 2*PLAT_IN (PLAT_IN=3)
+      p.body.setSize(slabW * SS, 18 * SS); p.body.setOffset(3 * SS, 6 * SS);
       if (r.type === 'blue') {
         // horizontal mover
         var spd = (this.diffKey === 'hard' ? 130 : this.diffKey === 'normal' ? 100 : 70);
@@ -1004,15 +1121,18 @@
       this.normTex(e, 't_enemy_' + type);
       e.body.setAllowGravity(false);
       e.setData('type', type);
-      e.setData('stompable', type === 'bee' || type === 'bird');
+      e.setData('stompable', type === 'bee' || type === 'bird' || type === 'slime');
       e.setData('hp', type === 'ufo' ? 3 : 1);
       if (type === 'bee') { e.setData('vx', (Math.random() < 0.5 ? -1 : 1) * 60); e.setData('x0', x); e.setData('range', 90); }
+      else if (type === 'slime') { e.setData('vx', (Math.random() < 0.5 ? -1 : 1) * 45); e.setData('x0', x); e.setData('range', 70); }
       // idle animations + hover bob
       if (type === 'bee') e.setData('anim', { frames: ['t_enemy_bee', 't_enemy_bee1'], fps: 14, t: 0 });
       else if (type === 'bird') e.setData('anim', { frames: ['t_enemy_bird', 't_enemy_bird1'], fps: 7, t: 0 });
+      else if (type === 'slime') e.setData('anim', { frames: ['t_enemy_slime', 't_enemy_slime1'], fps: 4, t: 0 });   // hop squish
       else if (type === 'stormcloud') e.setData('anim', { frames: ['t_enemy_stormcloud', 't_enemy_stormcloud', 't_enemy_stormcloud1'], fps: 2.5, t: 0 });
       else if (type === 'ufo') e.setData('anim', { frames: ['t_enemy_ufo', 't_enemy_ufo1'], fps: 4, t: 0 });
-      if (type !== 'bee') e.setData('bob', { base: y, amp: type === 'ufo' ? 10 : 7, w: type === 'ufo' ? 1.6 : 2.8, ph: Math.random() * 6 });
+      // slime crawls on ground level (no float bob); others hover
+      if (type !== 'bee' && type !== 'slime') e.setData('bob', { base: y, amp: type === 'ufo' ? 10 : 7, w: type === 'ufo' ? 1.6 : 2.8, ph: Math.random() * 6 });
       return e;
     };
 
@@ -1145,6 +1265,7 @@
       this.startY0 = startY;
       RUN.respawnY = startY - 40;
       this.camScrollY = startY - BH * CFG.CAM_ANCHOR;
+      this._camY0 = this.camScrollY;     // baseline: horizon ridges sink relative to THIS (per-zone)
       this.cameras.main.scrollY = this.camScrollY;
 
       // generate spawn records upward
@@ -1184,37 +1305,52 @@
         } else chainSame = 0;
         lastType = type;
 
-        // horizontal position: keep within reach, vary
-        var nx = 60 + Math.random() * (BW - 120);
+        // width variety (green only): weighted toward medium; short/x-long rarer. Harder difficulty
+        // biases SHORTER (more precise landings). Non-green types stay 84.
+        var pw = 84;
+        if (type === 'green' && !isSafe) {
+          var wr = Math.random();
+          if (this.diffKey === 'hard')      pw = wr < 0.34 ? 56 : wr < 0.74 ? 84 : wr < 0.92 ? 116 : 148;
+          else if (this.diffKey === 'normal') pw = wr < 0.22 ? 56 : wr < 0.64 ? 84 : wr < 0.88 ? 116 : 148;
+          else                              pw = wr < 0.12 ? 56 : wr < 0.52 ? 84 : wr < 0.82 ? 116 : 148;  // easy: wider, friendlier
+        } else if (type === 'green' && isSafe) { pw = 148; }   // starter platforms nice & long
+        var halfW = pw / 2;
+        // horizontal position: keep the whole slab on-screen (account for its half-width), vary
+        var margin = Math.max(48, halfW + 8);
+        var nx = margin + Math.random() * (BW - margin * 2);
         lastX = nx;
-        var rec = { kind: 'platform', type: type, x: nx, y: y, triggerY: y, dir: (Math.random() < 0.5 ? -1 : 1) };
+        var rec = { kind: 'platform', type: type, x: nx, y: y, w: pw, triggerY: y, dir: (Math.random() < 0.5 ? -1 : 1) };
 
         // mount spring/tramp occasionally (relevance: before wider gap)
         if (!isSafe && Math.random() < D.springFreq) rec.mount = (Math.random() < 0.6 ? 'spring' : 'tramp');
         records.push(rec);
 
-        // rings trail on/around platform (reward cadence)
+        // rings trail on/around platform (reward cadence). clamp x so rewards stay on-board even for
+        // wide platforms (halfW up to 74).
+        var clampX = function (x) { return Math.max(24, Math.min(BW - 24, x)); };
         if (Math.random() < 0.7) records.push({ kind: 'ring', x: nx, y: y - 26, triggerY: y - 26 });
-        if (Math.random() < 0.28) records.push({ kind: 'ring', x: nx + (Math.random() < 0.5 ? -50 : 50), y: y - 50, triggerY: y - 50 });
-        // heart on a branch occasionally
-        if (!isSafe && Math.random() < 0.14) records.push({ kind: 'heart', x: (nx < BW / 2 ? nx + 120 : nx - 120), y: y - 40, triggerY: y - 40 });
+        if (Math.random() < 0.28) { var rox = nx + (Math.random() < 0.5 ? -1 : 1) * (halfW + 28); records.push({ kind: 'ring', x: clampX(rox), y: y - 50, triggerY: y - 50 }); }
+        // heart on a branch occasionally (opposite side, clamped on-board)
+        if (!isSafe && Math.random() < 0.14) records.push({ kind: 'heart', x: clampX(nx < BW / 2 ? nx + halfW + 80 : nx - halfW - 80), y: y - 40, triggerY: y - 40 });
 
         // powerup occasionally (relevance: standalone floating)
         if (!isSafe && Math.random() < 0.05) {
-          var pk = ['springshoes', 'propeller', 'jetpack', 'shield'][Math.floor(Math.random() * 4)];
+          var pk = ['springshoes', 'propeller', 'jetpack', 'shield', 'mushroom'][Math.floor(Math.random() * 5)];
           records.push({ kind: 'powerup', x: nx, y: y - 46, triggerY: y - 46, type: pk });
         }
 
         // enemy (zone tempur) — musuh sudah muncul sejak Stage 1 supaya tombol HIT terpakai.
         // Frekuensi dinaikkan agar ada target tembak yang cukup rutin di tiap kesulitan.
         if (!isSafe && zoneIdx >= 0) {
-          var etypes = ['bee', 'bird'];
+          var etypes = ['bee', 'bird', 'slime'];          // slime = ground crawler (per reference)
           if (zoneIdx >= 1) etypes.push('stormcloud');   // awan badai mulai Stage 2
           if (zoneIdx >= 3) etypes.push('ufo');
           var eProb = (D.minEnemies === 0 ? 0.16 : D.minEnemies === 1 ? 0.26 : 0.36);
           if (Math.random() < eProb) {
             var et = etypes[Math.floor(Math.random() * etypes.length)];
-            records.push({ kind: 'enemy', x: 60 + Math.random() * (BW - 120), y: y - 80, triggerY: y - 80, type: et });
+            // slime sits ON the platform surface; flyers hover above it
+            var eY = (et === 'slime') ? y - 22 : y - 80;
+            records.push({ kind: 'enemy', x: (et === 'slime') ? nx : 60 + Math.random() * (BW - 120), y: eY, triggerY: eY, type: et });
           }
         }
 
@@ -1307,6 +1443,40 @@
       em.explode(8, x, y);
       this.time.delayedCall(600, function () { em.destroy(); });
     };
+    // FINALE settle — the climb is done. Bring the couple (which flew off-screen top during the
+    // last auto-fly) back into view, plant it, lock physics, and hold a happy celebrate pose with a
+    // gentle bob. No platforms exist anymore and that's fine: RUN.finished stops all fall logic.
+    GameScene.prototype.endGameFinale = function () {
+      var self = this;
+      this.stopThrustFx();
+      this.resetCoupleTransforms();
+      if (this.couple.body) { this.couple.body.setAllowGravity(false); this.couple.body.velocity.set(0, 0); }
+      this.tweens.killTweensOf(this.couple);
+      // place at a pleasant spot in the current view, facing forward, arms-up
+      var restX = BW / 2, restY = this.camScrollY + BH * 0.5;
+      this.couple.setFlipX(false); this.setPose('celebrate');
+      this.couple.x = restX; this.couple.y = restY;
+      var cbs = this.BASE_SCALE || 1;
+      this.couple.setScale(cbs, cbs); this.couple.setAngle(0); this.couple.setAlpha(1);
+      this.tweens.add({ targets: this.couple, y: restY - 8, duration: 640, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });   // joyful hover
+    };
+    // CLEAN RESUME after the invitation was open: remove any enemy currently overlapping / hovering
+    // near the couple (so the guest never un-pauses straight into a hit), grant a short grace invuln,
+    // and cancel downward momentum so a mid-air resume doesn't instantly drop into a fall-out.
+    GameScene.prototype.clearThreatsAndGrace = function () {
+      var self = this, cx = this.couple.x, cy = this.couple.y;
+      this.enemies.getChildren().forEach(function (e) {
+        if (!e.active) return;
+        var dx = e.x - cx, dy = e.y - cy;
+        if (dx * dx + dy * dy < 130 * 130) {                 // within a safe radius → clear it away
+          var ex = e.x, ey = e.y, tk = e.texture && e.texture.key;
+          e.disableBody(true, true);
+          if (tk) self.enemyDefeat(ex, ey, tk, ex < cx ? -1 : 1);   // little poof so it's not jarring
+        }
+      });
+      this.invulnUntil = this.time.now + 1200;               // brief grace so the resume is fair
+      if (this.couple.body && this.couple.body.velocity.y > 0) this.couple.body.velocity.y = CFG.BOUNCE * 0.5;
+    };
     GameScene.prototype.juicePieceUnlock = function () { this.cameras.main.flash(120, 255, 240, 200); this.emitSpark(this.couple.x, this.couple.y, 0xffd36b); };
     GameScene.prototype.juiceCelebrate = function () {
       this.cameras.main.flash(160, 255, 240, 200);
@@ -1348,8 +1518,8 @@
     // existing squash/tween/offset value keeps its meaning. Net: identical layout & physics, but the
     // pixels are 2× dense → smooth curves when the FIT scaler upsizes. With pixelArt:false this is
     // what pulls the graphics out of the blocky "asal jadi" look.
-    var SS = 2;
-    scene._SS = SS;
+    var SS = 3;   // supersample 3× (was 2×) — the cheapest universal quality jump: every curve baked
+    scene._SS = SS;   // 3× dense then downscaled by the FIT scaler = free anti-aliasing on all silhouettes
     scene._texLogical = scene._texLogical || {};   // key -> {w,h} logical (read by mk()/img())
     function tex(key, w, h, draw) {
       scene._texLogical[key] = { w: w, h: h };
@@ -1419,6 +1589,31 @@
       g.fillTriangle(cx - s, cy, cx, cy - s * 1.8, cx + s, cy); g.fillTriangle(cx - s, cy, cx, cy + s * 1.8, cx + s, cy);
       g.fillTriangle(cx, cy - s, cx - s * 1.8, cy, cx, cy + s); g.fillTriangle(cx, cy - s, cx + s * 1.8, cy, cx, cy + s);
       g.fillStyle(0xffffff, 0.9); g.fillCircle(cx, cy, s * 0.5);
+    }
+    // ---- SHARED PREMIUM-SHADING HELPERS (researched): one global light from TOP-LEFT everywhere.
+    //   warm highlights (toward cream), COOL shadows (blended toward indigo, never pure black),
+    //   a soft ground contact shadow, a rim-light crescent on the shadow (bottom-right) side, and
+    //   a two-part specular hot-spot. Applying these consistently is what reads as "premium". ----
+    var LIGHT_WARM = 0xfff3dc, SHADOW_COOL = 0x2a2a5e;   // shared key-light & ambient-shadow tones
+    function warm(col, t) { return lerpC(col, LIGHT_WARM, t == null ? 0.4 : t); }   // push toward warm light
+    function cool(col, t) { return lerpC(col, SHADOW_COOL, t == null ? 0.32 : t); } // push shadow toward cool indigo
+    // flattened soft ground shadow beneath an object (grounds it — kills the "floating sticker" look)
+    function contactShadow(g, cx, cy, w, a) { g.fillStyle(SHADOW_COOL, a == null ? 0.22 : a); g.fillEllipse(cx, cy, w, w * 0.24); }
+    // warm top-left highlight + cool bottom-right core shadow on a round body of radius r
+    function formShade(g, cx, cy, r, base) {
+      g.fillStyle(cool(base, 0.5), 0.55); g.fillEllipse(cx + r * 0.32, cy + r * 0.34, r * 1.1, r * 1.1);   // core shadow (btm-right)
+      g.fillStyle(warm(base, 0.55), 0.7); g.fillEllipse(cx - r * 0.34, cy - r * 0.36, r * 0.78, r * 0.7);   // lit hemisphere (top-left)
+    }
+    // rim-light crescent stroke on the shadow (lower-right) side — the cinematic "premium" edge
+    function rimArc(g, cx, cy, r, col, a) { g.lineStyle(2, col || LIGHT_WARM, a == null ? 0.7 : a); g.beginPath(); g.arc(cx, cy, r, Math.PI * 0.08, Math.PI * 0.92, false); g.strokePath(); }
+    // two-part specular hot-spot at the top-left of a curved surface (sharp dot + soft blob) = gloss
+    function specular(g, cx, cy, r) { g.fillStyle(0xffffff, 0.35); g.fillCircle(cx, cy, r * 1.6); g.fillStyle(0xffffff, 0.95); g.fillCircle(cx, cy, r); }
+    // lively eye: dark oval + big top-left catchlight + small secondary catchlight (makes it "alive")
+    function eye(g, cx, cy, r) {
+      g.fillStyle(0xffffff, 1); g.fillCircle(cx, cy, r * 1.25);
+      g.fillStyle(0x1a2338, 1); g.fillCircle(cx, cy, r);
+      g.fillStyle(0xffffff, 0.95); g.fillCircle(cx - r * 0.35, cy - r * 0.4, r * 0.42);   // main catchlight
+      g.fillStyle(0xffffff, 0.6); g.fillCircle(cx + r * 0.3, cy + r * 0.25, r * 0.2);      // secondary
     }
     // PLAYER = the GROOM alone (jumping to find his bride). Bride is drawn only at the Stage 3
     // altar (t_bride), never as the player sprite. Canvas 48x56; body footprint kept ~x15..33.
@@ -1512,12 +1707,11 @@
       g.fillStyle(HAIR_HI, 1); g.fillEllipse(21, hy - 6, 6, 3);    // hair sheen
       g.fillStyle(0x6a5238, 0.7); g.fillEllipse(27, hy - 5, 5, 2); // hair strand hi (right)
       g.fillStyle(SKIN, 1); g.fillRect(18, hy - 2, 12, 6);         // forehead/face reveal
-      // eyes + brows + smile + cheeks
-      g.fillStyle(0x23324a, 1); g.fillRect(20, hy, 2, 2); g.fillRect(26, hy, 2, 2);
-      g.fillStyle(0xffffff, 0.85); g.fillRect(20, hy, 1, 1); g.fillRect(26, hy, 1, 1);  // catchlights
-      g.fillStyle(0x7a4a3a, 1); g.fillRect(19, hy - 2, 3, 1); g.fillRect(26, hy - 2, 3, 1);
+      // eyes (rounded + dual catchlight = alive) + brows + smile + cheeks
+      eye(g, 21, hy + 0.6, 1.5); eye(g, 27, hy + 0.6, 1.5);
+      g.fillStyle(0x5a3a2e, 1); g.fillRect(19.5, hy - 2, 3, 1.1); g.fillRect(25.5, hy - 2, 3, 1.1);   // brows
       g.fillStyle(0xc65b6b, 1); if (o.mouth === 'O') g.fillCircle(24, hy + 4, 1.6); else g.fillRect(22, hy + 4, 5, 1);
-      g.fillStyle(0xff9aa8, 0.65); g.fillCircle(19, hy + 2, 1.6); g.fillCircle(29, hy + 2, 1.6);   // cheeks
+      g.fillStyle(0xff9aa8, 0.65); g.fillCircle(19, hy + 2, 1.8); g.fillCircle(29, hy + 2, 1.8);   // cheeks
       g.fillStyle(0xd8a97f, 0.4); g.fillEllipse(24, hy + 5, 8, 2);  // jaw shadow
 
       // ---- effects ----
@@ -1599,111 +1793,114 @@
 
     // GRASS-ON-EARTH ground tile — the signature "real game" platform.
     // grassLit/grassMid/grassDk shade the turf; soilLit/soilDk shade the dirt below.
-    function groundTile(g, grassLit, grassMid, grassDk, soilLit, soilDk, edge, flowers) {
-      var W = 84;
-      // --- soft cast shadow under the whole slab ---
-      g.fillStyle(0x0c2a16, 0.18); g.fillRoundedRect(4, 26, 76, 6, 5);
-      // --- EARTH body (rounded, layered) ---
-      g.fillStyle(soilDk, 1); g.fillRoundedRect(2, 12, 80, 18, 9);                     // dirt base
-      vgrad(g, 4, 13, 76, 15, soilLit, soilDk, 6);                                     // dirt vertical shade
-      // strata bands (subtle horizontal soil layers)
-      g.fillStyle(lerpC(soilLit, soilDk, 0.35), 0.6); g.fillRect(6, 19, 72, 1.4);
-      g.fillStyle(lerpC(soilLit, soilDk, 0.7), 0.5);  g.fillRect(6, 24, 72, 1.4);
-      // pebbles / dirt speckles
-      var peb = [[14,21,1.6],[30,25,1.3],[46,20,1.5],[58,26,1.2],[70,22,1.5],[22,27,1.1],[40,28,1.2],[66,18,1.3]];
-      g.fillStyle(lerpC(soilLit, 0xffffff, 0.25), 0.85);
-      peb.forEach(function (p) { g.fillCircle(p[0], p[1], p[2]); });
-      g.fillStyle(soilDk, 0.8);
-      peb.forEach(function (p) { g.fillCircle(p[0] + 0.6, p[1] + 0.7, p[2] * 0.7); });
-      // --- GRASS cap (thick top band) ---
-      g.fillStyle(grassDk, 1); g.fillRoundedRect(2, SURF_Y, 80, 10, 8);                // grass base (darker, defines the lip)
-      vgrad(g, 4, SURF_Y + 1, 76, 8, grassLit, grassMid, 5);                           // grass vertical shade
-      g.fillStyle(grassLit, 0.9); g.fillRoundedRect(5, SURF_Y + 1, 74, 2.5, 2);        // bright top rim-light
-      g.fillStyle(0xffffff, 0.16); g.fillEllipse(28, SURF_Y + 3, 34, 3);               // broad gloss on turf
-      // scalloped grass↔dirt boundary (little bumps so the line reads organic, not flat)
-      g.fillStyle(grassDk, 1);
-      for (var b = 4; b < W - 4; b += 8) { g.fillCircle(b, SURF_Y + 9, 4); }
+    // FLAT-VECTOR ground tile — clean, premium, minimal. One solid rounded slab, a flat grass cap
+    // with a smooth wavy top edge, a single soft drop-shadow, one gentle highlight band, and a few
+    // simple rounded grass tufts. No pixel grid / individual blades / strata — the flat look reads as
+    // a modern illustration, not busy retro noise. grassLit/grassMid = turf; soilLit/soilDk = earth.
+    // WIDTH-PARAMETERIZED ground tile. W = full logical texture width. All art derives from W so the
+    // SAME slab shape reads correct at any platform length (short 56 … x-long 148). Insets: the slab
+    // spans x=IN..W-IN; bumps/flowers are laid out proportionally across that span.
+    var PLAT_IN = 3;                                   // horizontal inset (shadow/slab margin)
+    function groundTile(g, W, grassLit, grassMid, grassDk, soilLit, soilDk, edge, flowers) {
+      var sw = W - PLAT_IN * 2;                          // slab inner width
+      var r = Math.min(10, sw * 0.5);                   // corner radius (don't over-round short tiles)
+      // --- single soft drop shadow (float) ---
+      g.fillStyle(0x1a3a20, 0.16); g.fillRoundedRect(PLAT_IN + 3, 25, sw - 6, 7, 6);
+      // --- EARTH slab (one flat fill + one subtle bottom shade) ---
+      g.fillStyle(soilLit, 1); g.fillRoundedRect(PLAT_IN, SURF_Y + 4, sw, 22, r);
+      g.fillStyle(soilDk, 1); g.fillRoundedRect(PLAT_IN, SURF_Y + 15, sw, 11, r);          // lower half a touch darker
+      g.fillStyle(soilLit, 1); g.fillRect(PLAT_IN, SURF_Y + 12, sw, 6);                    // seam blend
+      // --- GRASS cap: flat green band with a soft scalloped top edge (few big bumps) ---
+      g.fillStyle(grassMid, 1); g.fillRoundedRect(PLAT_IN, SURF_Y + 1, sw, 12, Math.min(9, r));
+      g.fillStyle(grassLit, 1); g.fillRoundedRect(PLAT_IN, SURF_Y + 1, sw, 7, Math.min(8, r)); // lit upper turf
+      // rounded top bumps (clean wave, not spiky blades) — count scales with width (one every ~16px)
+      var nb = Math.max(3, Math.round(sw / 16));
+      g.fillStyle(grassLit, 1);
+      for (var bi = 0; bi < nb; bi++) { var bx = PLAT_IN + (sw * (bi + 0.5) / nb); g.fillCircle(bx, SURF_Y + 2, bi % 2 ? 7 : 8.5); }
       g.fillStyle(grassMid, 1);
-      for (var b2 = 4; b2 < W - 4; b2 += 8) { g.fillCircle(b2, SURF_Y + 8, 3.4); }
-      // --- individual GRASS BLADES poking up above the surface (clear contour) ---
-      var bladeX = [7, 13, 19, 26, 33, 40, 47, 54, 61, 68, 75];
-      for (var k = 0; k < bladeX.length; k++) {
-        var bx = bladeX[k], lean = (k % 2 ? 1 : -1) * (1 + (k % 3));
-        // back blade (dark) then front blade (light) for depth
-        g.fillStyle(grassDk, 1); g.fillTriangle(bx - 2.4, SURF_Y + 2, bx + 2.4, SURF_Y + 2, bx + lean, SURF_Y - 5);
-        g.fillStyle(grassLit, 1); g.fillTriangle(bx - 1.6, SURF_Y + 2, bx + 1.6, SURF_Y + 2, bx + lean * 0.7, SURF_Y - 3.5);
-      }
-      // --- little flowers on the turf ---
+      for (var bj = 0; bj < nb; bj++) { if (bj % 2) { var bx2 = PLAT_IN + (sw * (bj + 0.5) / nb); g.fillCircle(bx2, SURF_Y + 3, 5.5); } } // slight tone variation
+      // one soft highlight sweep on the turf (proportional length)
+      g.fillStyle(0xffffff, 0.14); g.fillRoundedRect(PLAT_IN + 5, SURF_Y + 1, Math.max(20, sw * 0.55), 3, 2);
+      // grass↔earth divider (single clean line)
+      g.fillStyle(grassDk, 0.9); g.fillRect(PLAT_IN, SURF_Y + 11, sw, 1.6);
+      // --- simple flowers (flat dot + petals) — count scales with width ---
       if (flowers) {
-        var fl = [[24, SURF_Y + 4, 0xffffff, 0xffe27a], [58, SURF_Y + 5, 0xff9ac0, 0xffe27a]];
-        fl.forEach(function (f) {
-          g.fillStyle(f[2], 1);
-          for (var pI = 0; pI < 5; pI++) { var an = pI * (Math.PI * 2 / 5); g.fillCircle(f[0] + Math.cos(an) * 2, f[1] + Math.sin(an) * 2, 1.3); }
-          g.fillStyle(f[3], 1); g.fillCircle(f[0], f[1], 1.2);
-        });
+        var nf = sw >= 110 ? 3 : sw >= 70 ? 2 : 1, fcol = [0xffffff, 0xff9ac0, 0xffe27a];
+        for (var fi = 0; fi < nf; fi++) {
+          var fx = PLAT_IN + (sw * (fi + 0.7) / (nf + 0.4)), fy = SURF_Y + 3 + (fi % 2);
+          g.fillStyle(fcol[fi % fcol.length], 1); g.fillCircle(fx, fy, 2.4);
+          g.fillStyle(0xffe27a, 1); g.fillCircle(fx, fy, 1.1);
+        }
       }
-      // crisp outline around grass cap for a clean cartoon edge
-      g.lineStyle(1.4, edge, 0.9); g.strokeRoundedRect(2, SURF_Y, 80, 10, 8);
     }
 
     // MARIO tone platforms: bright grass over warm orange-brown earth (like SMB ground blocks).
-    tex('t_plat_green', 84, PLAT_H, function (g) {
-      groundTile(g, 0x7ede3a, 0x53b81f, 0x2f8a10, 0xe89b3c, 0xa0521e, 0x7a3c14, true);
+    // GREEN is baked at SEVERAL widths so the tower reads with varied platform lengths (Bible §3.3
+    // "plafon panjang/pendek"). makePlatform picks t_plat_green_<W>; t_plat_green stays = the 84 default.
+    var PLAT_WIDTHS = [56, 84, 116, 148];
+    PLAT_WIDTHS.forEach(function (W) {
+      tex('t_plat_green_' + W, W, PLAT_H, function (g) {
+        groundTile(g, W, 0x7ede3a, 0x53b81f, 0x2f8a10, 0xe89b3c, 0xa0521e, 0x7a3c14, true);
+      });
+    });
+    tex('t_plat_green', 84, PLAT_H, function (g) {          // default alias (84)
+      groundTile(g, 84, 0x7ede3a, 0x53b81f, 0x2f8a10, 0xe89b3c, 0xa0521e, 0x7a3c14, true);
     });
     tex('t_plat_blue', 84, PLAT_H, function (g) {            // horizontal MOVER — bright sky-blue mushroom-top
-      groundTile(g, 0x8fd0ff, 0x4a9ef0, 0x2f6fc0, 0xe89b3c, 0xa0521e, 0x214a86, false);
+      groundTile(g, 84, 0x8fd0ff, 0x4a9ef0, 0x2f6fc0, 0xe89b3c, 0xa0521e, 0x214a86, false);
       g.fillStyle(0xffffff, 0.95); g.fillTriangle(9, 16, 15, 16, 12, 10); g.fillTriangle(69, 16, 75, 16, 72, 10); // mover arrows
     });
-    tex('t_plat_brown', 84, PLAT_H, function (g) {           // FRAGILE (breaks) — SMB brick block
-      // classic brick body (red-brown) with mortar grid
-      g.fillStyle(0x0c2a16, 0.16); g.fillRoundedRect(3, 26, 78, 6, 4);              // cast shadow
-      vgrad(g, 2, SURF_Y, 80, 22, 0xd06a2c, 0x9a4a18, 6);                           // brick body
-      g.fillStyle(0xf0a860, 0.9); g.fillRect(4, SURF_Y + 1, 76, 2);                 // top rim-light
-      g.fillStyle(0x7a3410, 1);                                                     // mortar lines
-      g.fillRect(2, SURF_Y + 8, 80, 1.6); g.fillRect(2, SURF_Y + 16, 80, 1.6);      // horizontal
-      for (var mb = 0; mb < 3; mb++) { var ry = SURF_Y + mb * 8, off = (mb % 2) * 14; for (var mx = 14 + off; mx < 80; mx += 28) g.fillRect(mx, ry, 1.6, 8); }
-      g.lineStyle(1.5, 0x5a2408, 0.9); g.strokeRoundedRect(2, SURF_Y, 80, 22, 3);   // outline
+    tex('t_plat_brown', 84, PLAT_H, function (g) {           // FRAGILE (breaks) — WOODEN CRATE (per reference)
+      // FLAT-VECTOR fragile block — clean warm-wood slab, two flat tones + one seam. No plank
+      // noise / cross-brace / bolts; the flat look reads premium, and the warm tone still signals
+      // "fragile / different" vs the green ground.
+      var WL = 0xe0a458, WM = 0xc07f38, WDK = 0x8a5624;
+      g.fillStyle(0x1a3a20, 0.16); g.fillRoundedRect(6, 25, 72, 7, 6);              // soft drop shadow
+      g.fillStyle(WM, 1); g.fillRoundedRect(3, SURF_Y + 1, 78, 24, 10);            // body
+      g.fillStyle(WL, 1); g.fillRoundedRect(3, SURF_Y + 1, 78, 9, 9);              // lit top
+      g.fillStyle(WDK, 1); g.fillRect(3, SURF_Y + 12, 78, 1.6);                    // single clean seam
+      g.fillStyle(0xffffff, 0.14); g.fillRoundedRect(8, SURF_Y + 2, 46, 3, 2);     // highlight sweep
     });
-    tex('t_plat_white', 84, PLAT_H, function (g) {           // VANISHING — Mario fluffy white cloud
-      g.fillStyle(0x0c2a16, 0.12); g.fillEllipse(42, 26, 66, 8);                    // soft shadow
-      g.fillStyle(0xffffff, 1);                                                     // cloud lobes
-      g.fillCircle(18, SURF_Y + 10, 11); g.fillCircle(34, SURF_Y + 8, 13); g.fillCircle(52, SURF_Y + 8, 13); g.fillCircle(68, SURF_Y + 10, 11);
-      g.fillRoundedRect(10, SURF_Y + 8, 64, 12, 8);
-      g.fillStyle(0xdfefff, 1); g.fillRoundedRect(12, SURF_Y + 15, 60, 5, 4);       // underside shade
-      g.fillStyle(0xffffff, 1); g.fillRoundedRect(12, SURF_Y + 4, 60, 6, 5);        // bright top
-      g.lineStyle(2, 0xbcd6f0, 0.8); g.strokeCircle(34, SURF_Y + 8, 13); g.strokeCircle(52, SURF_Y + 8, 13);
+    tex('t_plat_white', 84, PLAT_H, function (g) {           // VANISHING — clean flat cloud
+      g.fillStyle(0x1a3a20, 0.10); g.fillEllipse(42, 26, 62, 7);                    // soft shadow
+      // flat cloud: a few big rounded lobes + a soft blue underside (no outline/rings)
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(20, SURF_Y + 9, 12); g.fillCircle(38, SURF_Y + 7, 14); g.fillCircle(56, SURF_Y + 7, 14); g.fillCircle(70, SURF_Y + 9, 11);
+      g.fillRoundedRect(10, SURF_Y + 7, 64, 13, 9);
+      g.fillStyle(0xe6f0fb, 1); g.fillRoundedRect(12, SURF_Y + 15, 60, 5, 4);       // underside shade
+      g.fillStyle(0xffffff, 1); g.fillRoundedRect(14, SURF_Y + 4, 54, 5, 4);        // bright top sweep
     });
 
     // collectibles — ring (spinning gem band, 4 frames) + heart (glossy, 3 pulse frames)
     // ring frame: sw = perspective width of the band (1=face-on … 0.25=edge)
     function drawRing(g, sw) {
-      glow(g, 13, 13, 10, 0xffe27a, 0.16);
-      // gold band: dark base ring for depth, then two lit rims for a rounded metal look
-      g.lineStyle(6, 0xb8860b, 1); g.strokeEllipse(13, 13, 16 * sw, 16);      // dark underside
-      g.lineStyle(4, 0xffcf4d, 1); g.strokeEllipse(13, 12, 16 * sw, 16);      // mid gold
-      g.lineStyle(2, 0xfff3c0, 1); g.strokeEllipse(13, 11.4, 16 * sw, 15);    // top rim-light
-      // diamond (multi-facet)
+      glow(g, 13, 13, 10, 0xffe27a, 0.18);
+      // METALLIC gold band: dark base rim (bottom in shadow) → gold body → bright specular ARC on
+      // the top-left (the sharp white gloss that reads as polished metal), + a thin dark reflection
+      // line on the lower edge. Consistent top-left key light.
+      g.lineStyle(6.4, 0x9a6f12, 1); g.strokeEllipse(13, 12.6, 16 * sw, 16);              // dark under-rim
+      g.lineStyle(5.4, 0xe8b94a, 1); g.strokeEllipse(13, 12, 16 * sw, 16);                // gold body
+      g.lineStyle(2.6, 0xffe9a8, 1); g.beginPath(); g.arc(13, 11.4, 8 * sw, Math.PI * 1.05, Math.PI * 1.9, false); g.strokePath();   // bright top-left specular arc
+      g.lineStyle(1.2, 0x6e4e0a, 0.8); g.beginPath(); g.arc(13, 12.4, 8 * sw, Math.PI * 0.1, Math.PI * 0.6, false); g.strokePath();  // dark lower reflection
+      // diamond (two tones + crown + table glint + a sparkle for "valuable")
       var dx = 13, dy = 13 - 8;
-      glow(g, dx, dy, 5, 0xbfeaff, 0.18);
-      orb(g, dx, dy, 3.6, 0xffffff, 0x6fb8e6, 4);
-      g.fillStyle(0xeaffff, 1); g.fillTriangle(dx - 3.2, dy - 1, dx + 3.2, dy - 1, dx, dy - 4);   // crown facet
-      g.fillStyle(0xbfe8ff, 1); g.fillTriangle(dx - 3.2, dy - 1, dx, dy + 3.6, dx, dy - 1);       // left pavilion
-      g.fillStyle(0x9fd6f5, 1); g.fillTriangle(dx + 3.2, dy - 1, dx, dy + 3.6, dx, dy - 1);       // right pavilion
-      g.fillStyle(0xffffff, 0.95); g.fillTriangle(dx, dy - 3.4, dx - 1.4, dy - 1, dx + 1.4, dy - 1); // table
-      sparkle(g, dx + 2.4, dy - 2.4, 1.8, 0xffffff);
+      g.fillStyle(0x6fb8e6, 1); g.fillTriangle(dx - 3.6, dy - 1, dx + 3.6, dy - 1, dx, dy + 4.4); // gem body (shadow)
+      g.fillStyle(0x8fd0f5, 1); g.fillTriangle(dx - 3.4, dy - 1, dx + 3.4, dy - 1, dx, dy + 4);   // gem body
+      g.fillStyle(0xdff2ff, 1); g.fillTriangle(dx - 3.4, dy - 1, dx + 3.4, dy - 1, dx, dy - 4);   // crown (lit)
+      g.fillStyle(0xffffff, 0.95); g.fillTriangle(dx, dy - 3.2, dx - 1.2, dy - 1, dx + 1.2, dy - 1); // table glint
+      if (sw > 0.9) sparkle(g, dx + 4, dy - 3, 2.2, 0xffffff);                            // twinkle on face-on frame
     }
     var ringFrames = [1, 0.62, 0.28, 0.62];
     ringFrames.forEach(function (sw, i) { tex('t_ring' + (i || ''), 26, 26, function (g) { drawRing(g, sw); }); });
+    // FLAT-VECTOR heart — solid pink, one darker under-tone, one clean gloss dot.
     function drawHeart(g, s, cx, cy) {
-      glow(g, cx, cy + 1, 9 * s, 0xff8fb0, 0.15);
-      // deep base for a rounded, glossy candy-heart look
-      g.fillStyle(0xa81f4c, 1); g.fillCircle(cx - 5 * s, cy, 6.2 * s); g.fillCircle(cx + 5 * s, cy, 6.2 * s); g.fillTriangle(cx - 10.4 * s, cy + 2, cx + 10.4 * s, cy + 2, cx, cy + 12.6 * s);
-      g.fillStyle(0xd83f6c, 1); g.fillCircle(cx - 5 * s, cy - 1, 6 * s); g.fillCircle(cx + 5 * s, cy - 1, 6 * s); g.fillTriangle(cx - 10 * s, cy + 2, cx + 10 * s, cy + 2, cx, cy + 12 * s);
-      g.fillStyle(0xff6f9c, 1); g.fillCircle(cx - 5 * s, cy - 2, 4.6 * s); g.fillCircle(cx + 5 * s, cy - 2, 4.6 * s); g.fillTriangle(cx - 8 * s, cy + 1, cx + 8 * s, cy + 1, cx, cy + 10 * s);
-      g.fillStyle(0xffa8c6, 0.9); g.fillCircle(cx - 4.5 * s, cy - 3, 2.6 * s);            // lit lobe
-      g.fillStyle(0xffd8e6, 0.95); g.fillEllipse(cx - 4 * s, cy - 3.4, 3.6 * s, 2.2 * s); // primary gloss
-      g.fillStyle(0xffffff, 0.85); g.fillCircle(cx - 5.4 * s, cy - 3.6, 1 * s);           // hot spot
-      g.fillStyle(0xffc0d4, 0.5); g.fillEllipse(cx + 4 * s, cy + 3, 2.4 * s, 1.6 * s);    // secondary gloss
+      glow(g, cx, cy + 2, 9 * s, 0xff6f9c, 0.14);                                          // soft valuable glow
+      g.fillStyle(0xb02a54, 1); g.fillCircle(cx - 5 * s, cy + 0.6, 6.2 * s); g.fillCircle(cx + 5 * s, cy + 0.6, 6.2 * s); g.fillTriangle(cx - 10.4 * s, cy + 2.4, cx + 10.4 * s, cy + 2.4, cx, cy + 12.6 * s); // deep base (core shadow)
+      g.fillStyle(0xd83f6c, 1); g.fillCircle(cx - 5 * s, cy, 6 * s); g.fillCircle(cx + 5 * s, cy, 6 * s); g.fillTriangle(cx - 10 * s, cy + 2, cx + 10 * s, cy + 2, cx, cy + 12 * s);   // body
+      g.fillStyle(0xff6f9c, 1); g.fillCircle(cx - 5 * s, cy - 1.5, 5 * s); g.fillCircle(cx + 5 * s, cy - 1.5, 5 * s); g.fillTriangle(cx - 8.4 * s, cy + 0.5, cx + 8.4 * s, cy + 0.5, cx, cy + 10 * s);  // lit top
+      g.fillStyle(0xff9ac0, 0.8); g.fillCircle(cx - 5 * s, cy - 2.6, 3 * s);               // warm lit lobe (top-left)
+      g.fillStyle(0xffffff, 0.9); g.fillEllipse(cx - 4.4 * s, cy - 3, 3 * s, 2 * s);        // candy gloss
+      g.fillStyle(0xffffff, 0.55); g.fillCircle(cx - 6 * s, cy - 3.4, 0.9 * s);             // hot-spot dot
     }
     [1, 1.12, 0.94].forEach(function (s, i) { tex('t_heart' + (i || ''), 30, 28, function (g) { drawHeart(g, s, 15, 12); }); });
 
@@ -1749,6 +1946,27 @@
       g.fillStyle(0xffffff, 0.75); g.fillEllipse(9, 8, 3.4, 8);                              // vertical gloss
     });
 
+    // RED MUSHROOM power-up (per reference) — classic red cap + white spots + cream stem + face.
+    // Gives a big spring-boost when grabbed (Mario "super" feel). Chunky outline for the 16-bit look.
+    tex('t_pu_mushroom', 28, 26, function (g) {
+      var CAP = 0xe23b2e, CAPD = 0xa8241a, STEM = 0xf3e6c8, STEMD = 0xcbb489, OUT = 0x3a1410;
+      glow(g, 14, 12, 12, 0xff8a6a, 0.12);
+      // stem
+      g.fillStyle(OUT, 1); g.fillRoundedRect(8, 13, 12, 12, 4);
+      g.fillStyle(STEM, 1); g.fillRoundedRect(9, 14, 10, 10, 3);
+      g.fillStyle(STEMD, 1); g.fillRect(15, 14, 4, 10);                       // stem shade
+      // little eyes on the stem (Mario mushroom face)
+      g.fillStyle(0x2a1a12, 1); g.fillRect(11, 17, 1.6, 3); g.fillRect(16, 17, 1.6, 3);
+      // cap (dome) with outline
+      g.fillStyle(OUT, 1); g.fillEllipse(14, 10, 26, 18); g.fillRect(1, 10, 26, 4);
+      g.fillStyle(CAPD, 1); g.fillEllipse(14, 10, 23, 15);
+      g.fillStyle(CAP, 1); g.fillEllipse(14, 9, 22, 13);
+      g.fillStyle(0xff8a6a, 0.8); g.fillEllipse(9, 6, 7, 3);                  // cap sheen
+      // white spots
+      g.fillStyle(0xfff6ea, 1); g.fillCircle(7, 9, 3); g.fillCircle(21, 9, 3); g.fillCircle(14, 4, 2.6);
+      g.fillStyle(0xdfe7f5, 0.5); g.fillCircle(8, 10, 1); g.fillCircle(22, 10, 1);
+    });
+
     // worn-shield bubble (drawn around the couple while shield active) — see stepPlayer shieldFx
     tex('t_shieldbubble', 72, 72, function (g) { for (var i = 0; i < 4; i++) { g.fillStyle(0x8fd3f0, 0.10 - i * 0.02); g.fillCircle(36, 36, 34 - i * 3); } g.lineStyle(2, 0xbfeaff, 0.7); g.strokeCircle(36, 36, 33); g.fillStyle(0xffffff, 0.5); g.fillEllipse(24, 22, 8, 14); });
 
@@ -1759,10 +1977,12 @@
       g.fillStyle(0xffffff, wingUp ? 0.8 : 0.55); g.fillEllipse(8, wingUp ? 5 : 8, 11, wingUp ? 9 : 5); g.fillEllipse(22, wingUp ? 5 : 8, 11, wingUp ? 9 : 5);
       g.lineStyle(1, 0xbfe0ff, 0.6); g.strokeEllipse(8, wingUp ? 5 : 8, 11, wingUp ? 9 : 5); g.strokeEllipse(22, wingUp ? 5 : 8, 11, wingUp ? 9 : 5);
       orb(g, 15, 14, 8.4, 0xfff0a0, 0xc98a00, 5);                                 // body (rounder shading)
+      g.fillStyle(cool(0xc98a00, 0.45), 0.4); g.fillEllipse(17.5, 16.5, 8, 7);    // cool core shadow (btm-right)
       g.lineStyle(1.4, 0x8a5e08, 1); g.strokeCircle(15, 14, 8);                   // body outline
       g.fillStyle(0x2a2a2a, 1); g.fillRect(11, 7, 3, 13); g.fillRect(17, 7, 3, 13); // stripes
-      g.fillStyle(0xffffff, 0.35); g.fillEllipse(13, 10, 6, 3);                   // top gloss
-      g.fillStyle(0xffffff, 1); g.fillCircle(20, 12, 2.6); g.fillStyle(0x1a1a1a, 1); g.fillCircle(21, 12, 1.3); g.fillStyle(0xffffff, 0.9); g.fillCircle(20.4, 11.4, 0.6); // eye + catchlight
+      specular(g, 12, 10, 1.6);                                                    // glossy top hot-spot
+      rimArc(g, 15, 14, 8, 0xfff6d0, 0.6);                                         // rim crescent
+      eye(g, 20, 12, 2.6);                                                         // lively dual-catchlight eye
       g.fillStyle(0x1a1a1a, 1); g.fillTriangle(23, 18, 28, 20, 23, 21.4);         // stinger
     }
     [false, true].forEach(function (up, i) { tex('t_enemy_bee' + (i || ''), 30, 24, function (g) { drawBee(g, up); }); });
@@ -1780,6 +2000,28 @@
       g.fillStyle(0xffffff, 1); g.fillCircle(20, 11, 3.2); g.fillStyle(0x1a1a1a, 1); g.fillCircle(21, 11, 1.6); g.fillStyle(0xffffff, 0.9); g.fillCircle(20.3, 10.3, 0.7); // eye + catchlight
     }
     [-1, 1].forEach(function (w, i) { tex('t_enemy_bird' + (i || ''), 32, 26, function (g) { drawBird(g, w); }); });
+    // SLIME (per reference) — round green blob with big eyes + smile. `squish`: 0 tall, 1 squashed
+    // (2 frames give a hopping idle). Chunky outline for the 16-bit look.
+    function drawSlime(g, squish) {
+      var GL = 0x8bec46, GM = 0x4fb524, GD = 0x2f7d14, OUT = 0x184409;
+      var cy = squish ? 18 : 15, rw = squish ? 15 : 13, rh = squish ? 10 : 13;
+      contactShadow(g, 16, cy + rh + 1, rw * 2.2, 0.2);                             // grounded (not floating)
+      // body: tinted-dark outline → dark base → mid → warm-lit top-left hemisphere (translucent gel)
+      g.fillStyle(OUT, 1); g.fillEllipse(16, cy, rw * 2 + 3, rh * 2 + 3);
+      g.fillStyle(cool(GD, 0.35), 1); g.fillEllipse(16, cy, rw * 2, rh * 2);        // cool-shadow base
+      g.fillStyle(GM, 1); g.fillEllipse(16, cy - 1, rw * 1.8, rh * 1.7);
+      g.fillStyle(GL, 1); g.fillEllipse(13, cy - rh * 0.5, rw * 1.1, rh * 0.9);     // top-left lit gel
+      g.fillStyle(warm(GL, 0.6), 0.6); g.fillEllipse(12, cy - rh * 0.7, rw * 0.55, rh * 0.4);  // warm sheen
+      specular(g, 11, cy - rh * 0.7, 1.8);                                          // glossy hot-spot
+      rimArc(g, 16, cy, rw * 1.9, warm(GL, 0.3), 0.5);                              // rim crescent on shadow side
+      g.fillStyle(GD, 1); g.fillEllipse(16, cy + rh - 2, rw * 1.6, 3);              // flat base
+      // eyes (lively, dual catchlight) + smile + cheeks
+      var ey = cy - 1;
+      eye(g, 11, ey, 3.0); eye(g, 21, ey, 3.0);
+      g.fillStyle(0x18240f, 1); g.fillRect(12, cy + 4, 8, 1.4); g.fillRect(11, cy + 3.4, 1.4, 1.4); g.fillRect(19.6, cy + 3.4, 1.4, 1.4);
+      g.fillStyle(0xff9ac0, 0.5); g.fillCircle(8, cy + 3, 1.6); g.fillCircle(24, cy + 3, 1.6);
+    }
+    [false, true].forEach(function (sq, i) { tex('t_enemy_slime' + (i || ''), 32, 30, function (g) { drawSlime(g, sq); }); });
     function drawCloud(g, flash) {
       if (flash) { glow(g, 20, 14, 22, 0xfff0a0, 0.14); }
       // billowy storm body (dark base + mid lobes + lit crown)
@@ -1888,37 +2130,134 @@
     GameScene.prototype.buildBackdrop = function (meta) {
       var self = this;
       var rnd = function () { return Math.random(); };
-      // --- SKY (screen-fixed 3-stop gradient) ---
+      // deterministic per-x jitter (no Date/Math.random for the STATIC landscape → identical on
+      // every re-inject, so the horizon never "reshuffles" when the host re-runs this script).
+      function hash(n) { var s = Math.sin(n * 12.9898) * 43758.5453; return s - Math.floor(s); }
+
+      // ============================================================================================
+      // RESEARCHED FLAT-VECTOR LANDSCAPE (aerial/atmospheric perspective):
+      //   • distant layers are DESATURATED + tinted toward a HAZE colour (blend of the sky), sit
+      //     HIGHER, have LOWER amplitude & LOWER contrast; near layers are DARKER, more saturated,
+      //     sit LOWER, higher contrast. This graded haze is what actually sells depth.
+      //   • a thin haze band under each ridge line makes the ridge "float" in air.
+      //   • richer multi-stop sky + soft horizon glow.
+      // ============================================================================================
+      var ADD = 1;   // Phaser.BlendModes.ADD — makes stacked light shapes read as EMISSIVE, not painted
+      var haze = mixHex(meta.skyBot, 0xffffff, meta.night ? 0.06 : 0.34);   // atmospheric tint layers blend toward
+      var sunX = BW * 0.72, sunY = BH * 0.19;   // shared anchor: celestial body + god rays + landmark backlight
+
+      // ============================================================================================
+      // RESEARCHED DREAM-SKY (light & depth over detail — the "wow"):
+      //   ① 6-band warm→cool gradient sky (asymmetric stops = real atmosphere, not a UI fill)
+      //   ② anti-banding dither dots (kills the cheap Mach-band stair-stepping in the mauve zone)
+      //   ③ haloed sun/moon + soft GOD RAYS fanning down (ADD blend) = cinematic, romantic
+      //   ④ AURORA ribbons at night; warm bokeh orbs by day = dreamy out-of-focus depth
+      //   ⑤ a rim-lit floating CHAPEL ISLE near the sun = a beautiful destination to climb toward
+      //   ⑥ 3 atmospheric-perspective ridges (far=pale/high/soft, near=rich/low/treed)
+      // ============================================================================================
+
+      // --- ① SKY: multi-stop vertical gradient built from stacked thin gradient bands so adjacent
+      //     edges share a colour (seamless). A romantic warm-horizon → cool-crown ramp. ---
       if (this._sky) this._sky.destroy();
       var g = this.add.graphics().setScrollFactor(0).setDepth(-60);
-      var mid = mixHex(meta.skyTop, meta.skyBot, 0.5);
-      g.fillGradientStyle(meta.skyTop, meta.skyTop, mid, mid, 1); g.fillRect(0, 0, BW, BH * 0.5);
-      g.fillGradientStyle(mid, mid, meta.skyBot, meta.skyBot, 1); g.fillRect(0, BH * 0.5 - 1, BW, BH * 0.5 + 1);
+      var sTop = meta.skyTop, sBot = meta.skyBot;
+      // build 5 interior stops between crown(sTop) and horizon(sBot); a warm blush pushed into the
+      // lower third for day skies gives the sunset "glow from below" that reads as romantic.
+      var blush = meta.night ? mixHex(sBot, 0x3a3f7a, 0.4) : mixHex(sBot, 0xffb488, 0.55);
+      var stops = [sTop, mixHex(sTop, sBot, 0.30), mixHex(sTop, sBot, 0.55),
+        mixHex(sBot, sTop, 0.28), blush, sBot];
+      var yB = [0, 0.20, 0.40, 0.60, 0.80, 1.0].map(function (f) { return f * BH; });
+      for (var bi = 0; bi < stops.length - 1; bi++) {
+        var c0 = stops[bi], c1 = stops[bi + 1];
+        g.fillGradientStyle(c0, c0, c1, c1, 1);
+        g.fillRect(0, yB[bi] - 1, BW, (yB[bi + 1] - yB[bi]) + 2);
+      }
+      // soft horizon bloom (warm by day / cool moonlit by night), alpha fading UP so it's a glow not a stripe
+      var glowC = meta.night ? 0xbcd0ff : mixHex(sBot, 0xfff2cf, 0.75);
+      g.fillGradientStyle(glowC, glowC, glowC, glowC, 0, 0, 0.55, 0.55); g.fillRect(0, BH * 0.5, BW, BH * 0.28);
+      // --- ② anti-banding dither: a scatter of faint 1-2px dots, denser in the band-prone mid zone.
+      //     Deterministic (hash) so it never reshuffles on re-inject. ---
+      g.fillStyle(meta.night ? 0xffffff : 0xffffff, meta.night ? 0.025 : 0.035);
+      for (var di = 0; di < 320; di++) {
+        var dyf = hash(di * 2.7 + 11);                       // bias toward the middle band
+        var dy = (0.18 + dyf * 0.6) * BH;
+        g.fillRect(hash(di * 1.3 + 3) * BW, dy, hash(di + 7) < 0.3 ? 2 : 1, 1);
+      }
       this._sky = g;
-      this.cameras.main.setBackgroundColor(meta.skyBot);
+      this.cameras.main.setBackgroundColor(sBot);
 
-      // --- CELESTIAL body (sun or moon), screen-fixed, soft glow ---
+      // --- ③ GOD RAYS: a fan of long thin translucent triangles from the sun, ADD-blended so they
+      //     brighten toward the source. A slow per-ray breathe is applied in stepCamera. ---
+      if (this._rays) this._rays.destroy();
+      var rays = this.add.graphics().setScrollFactor(0).setDepth(-59).setBlendMode(ADD);
+      var rayCol = meta.night ? 0x9fb4ff : 0xffe9b8;
+      this._rayMeta = [];
+      for (var ri = 0; ri < 8; ri++) {
+        var ang = (Math.PI * 0.5) + (ri - 3.5) * 0.14;       // splay downward around vertical
+        this._rayMeta.push({ ang: ang, ph: ri * 1.7, baseA: (meta.night ? 0.045 : 0.06) });
+      }
+      this._rays = rays; this._rayCol = rayCol; this._raySunX = sunX; this._raySunY = sunY;
+      this._drawRays = function (t) {
+        rays.clear();
+        for (var i = 0; i < self._rayMeta.length; i++) {
+          var m = self._rayMeta[i];
+          var a = m.baseA * (0.6 + 0.4 * Math.sin(t * 0.5 + m.ph));       // breathe
+          var len = BH * 0.9, spread = 22 + 12 * Math.sin(t * 0.3 + m.ph);
+          var dx = Math.cos(m.ang), dy = Math.sin(m.ang);
+          var px = -dy, py = dx;                                          // perpendicular for width
+          var ex = sunX + dx * len, ey = sunY + dy * len;
+          rays.fillStyle(self._rayCol, a);
+          rays.fillTriangle(sunX, sunY, ex - px * spread, ey - py * spread, ex + px * spread, ey + py * spread);
+        }
+      };
+      this._drawRays(0);
+
+      // --- CELESTIAL body (sun or moon): stacked-circle glow halo + core, screen-fixed ---
       if (this._cel) this._cel.destroy();
-      var cel = this.add.graphics().setScrollFactor(0).setDepth(-59);
-      var cx = BW * 0.76, cy = BH * 0.2;
+      var cel = this.add.graphics().setScrollFactor(0).setDepth(-58);
+      var cx = sunX, cy = sunY;
+      // big soft outer halo (ADD) — drawn on its own layer so it blooms over the sky
+      if (this._celGlow) this._celGlow.destroy();
+      var celGlow = this.add.graphics().setScrollFactor(0).setDepth(-59).setBlendMode(ADD);
+      var haloC = meta.night ? 0xcfe0ff : 0xfff0b0;
+      for (var hg = 0; hg < 6; hg++) { celGlow.fillStyle(haloC, 0.05); celGlow.fillCircle(cx, cy, 44 + hg * 20); }
+      this._celGlow = celGlow;
       if (meta.night) {
-        for (var gi = 0; gi < 5; gi++) { cel.fillStyle(0xdfe6ff, 0.05 * (5 - gi)); cel.fillCircle(cx, cy, 42 + gi * 10); }
         cel.fillStyle(0xf4f7ff, 1); cel.fillCircle(cx, cy, 34);
         cel.fillStyle(0xdfe4f2, 1); cel.fillCircle(cx + 10, cy - 6, 6); cel.fillCircle(cx - 8, cy + 8, 4); cel.fillCircle(cx + 4, cy + 12, 3); // craters
         cel.fillStyle(meta.skyTop, 1); cel.fillCircle(cx + 16, cy - 10, 30); // crescent bite
       } else {
-        for (var gj = 0; gj < 6; gj++) { cel.fillStyle(0xfff3c0, 0.06 * (6 - gj)); cel.fillCircle(cx, cy, 46 + gj * 12); }
-        cel.fillStyle(0xfff0a0, 1); cel.fillCircle(cx, cy, 40);
-        cel.fillStyle(0xffffff, 0.5); cel.fillCircle(cx - 10, cy - 10, 16);
+        cel.fillStyle(0xfff6d0, 1); cel.fillCircle(cx, cy, 40);
+        cel.fillStyle(0xffffff, 0.6); cel.fillCircle(cx - 11, cy - 11, 15);   // hot-spot
+        cel.setBlendMode(ADD); cel.fillStyle(0xffe9a8, 0.35); cel.fillCircle(cx, cy, 40); cel.setBlendMode(0);
       }
       this._cel = cel;
+
+      // --- AURORA ribbons (night) — 3 diagonal ADD gradient bands, slow shift in stepCamera ---
+      if (this._aurora) { this._aurora.destroy(); this._aurora = null; }
+      if (meta.night) {
+        var au = this.add.graphics().setScrollFactor(0).setDepth(-57).setBlendMode(ADD);
+        this._aurora = au; this._auroraCols = [0x3fe0c0, 0x6f8cff, 0xd06fff];
+        this._drawAurora = function (t) {
+          au.clear();
+          for (var k = 0; k < 3; k++) {
+            var col = self._auroraCols[k], yb = BH * (0.18 + k * 0.07);
+            var sh = Math.sin(t * 0.16 + k * 2.1) * 40;
+            au.fillStyle(col, 0.06 + 0.03 * Math.sin(t * 0.3 + k));
+            au.beginPath(); au.moveTo(0, yb);
+            for (var x = 0; x <= BW; x += 24) { au.lineTo(x, yb + Math.sin(x * 0.012 + t * 0.4 + k * 1.7) * 22 + sh); }
+            au.lineTo(BW, yb + 90); au.lineTo(0, yb + 90); au.closePath(); au.fillPath();
+          }
+        };
+        this._drawAurora(0);
+      } else { this._drawAurora = null; }
 
       // --- STARS (night only), screen-fixed twinkle handled in stepCamera ---
       if (this._stars) { this._stars.destroy(); this._stars = null; }
       if (meta.night) {
         var st = this.add.graphics().setScrollFactor(0).setDepth(-58);
         st.fillStyle(0xffffff, 1);
-        for (var s = 0; s < 60; s++) { st.fillCircle(rnd() * BW, rnd() * BH * 0.8, rnd() < 0.2 ? 1.6 : 0.9); }
+        for (var s = 0; s < 70; s++) { st.fillCircle(hash(s + 1) * BW, hash(s + 9) * BH * 0.82, hash(s + 4) < 0.18 ? 1.8 : 0.9); }
         this._stars = st;
       }
 
@@ -1926,71 +2265,179 @@
       this.parallax.forEach(function (p) { p.obj.destroy(); });
       this.parallax = [];
 
-      // --- HILLS: two ridges for depth. Far = pale, high, smooth. Near = darker, lower, with
-      //     a treeline of bush/tree silhouettes on top so the horizon reads as a real landscape.
-      var hillFarC = meta.hills || mixHex(meta.skyBot, 0x000000, 0.12);
-      var hillNearC = mixHex(hillFarC, 0x000000, meta.night ? 0.25 : 0.18);
-      // far ridge
-      var hillsF = this.add.graphics().setScrollFactor(0).setDepth(-57);
-      hillsF.fillStyle(hillFarC, meta.night ? 0.7 : 0.42);
-      hillsF.beginPath(); hillsF.moveTo(0, BH);
-      for (var hx = 0; hx <= BW; hx += 40) { hillsF.lineTo(hx, BH * 0.56 + Math.sin(hx * 0.016) * 46 + Math.sin(hx * 0.05) * 10); }
-      hillsF.lineTo(BW, BH); hillsF.closePath(); hillsF.fillPath();
-      this.parallax.push({ obj: hillsF, baseY: 0, factor: 0.08 });
-      // near ridge + treeline
-      var hillsN = this.add.graphics().setScrollFactor(0).setDepth(-56);
-      hillsN.fillStyle(hillNearC, meta.night ? 0.9 : 0.6);
-      hillsN.beginPath(); hillsN.moveTo(0, BH);
-      var ridgeY = [];
-      for (var hx2 = 0; hx2 <= BW; hx2 += 30) { var yy2 = BH * 0.66 + Math.sin(hx2 * 0.02) * 34 + (hx2 % 90 ? 0 : 16); ridgeY.push([hx2, yy2]); hillsN.lineTo(hx2, yy2); }
-      hillsN.lineTo(BW, BH); hillsN.closePath(); hillsN.fillPath();
-      // Mario green hills / bushes poking above the near ridge (round humps; day = the classic
-      // hill with two little eye-notches, night = plain silhouettes).
-      var hillTopC = mixHex(0x3aa03a, 0x000000, meta.night ? 0.4 : 0);
-      for (var ti = 1; ti < ridgeY.length - 1; ti += 2) {
-        var tx = ridgeY[ti][0], ty = ridgeY[ti][1];
-        if (((tx * 7) % 10) < 4) continue;   // deterministic gaps (no Date/random dependency for layout)
-        var big = ((tx * 13) % 3) === 0;
-        hillsN.fillStyle(meta.night ? mixHex(hillNearC, 0x000000, 0.15) : hillTopC, meta.night ? 0.95 : 0.9);
-        if (big) {                            // big rounded hill (SMB overworld)
-          hillsN.fillCircle(tx, ty - 4, 16); hillsN.fillCircle(tx - 13, ty + 4, 10); hillsN.fillCircle(tx + 13, ty + 4, 10);
-          hillsN.fillRect(tx - 22, ty + 2, 44, 8);
-          if (!meta.night) { hillsN.fillStyle(0x1f6b1f, 1); hillsN.fillCircle(tx - 5, ty - 4, 2); hillsN.fillCircle(tx + 5, ty - 4, 2); } // eyes
-        } else {                              // small bush
-          hillsN.fillCircle(tx, ty - 3, 10); hillsN.fillCircle(tx - 8, ty + 2, 7); hillsN.fillCircle(tx + 8, ty + 2, 7);
+      // --- ⑤ FOCAL LANDMARK: a rim-lit floating "chapel isle" near the sun — the beautiful
+      //     destination the guest climbs toward. Backlit by the celestial glow, warm lit windows.
+      //     (the previous landmark was already destroyed via the parallax clear above.) ---
+      this._land = null;
+      (function () {
+        var lg = self.add.graphics().setScrollFactor(0).setDepth(-56.5);
+        var lx = BW * 0.24, ly = BH * 0.26;
+        // atmospheric-perspective silhouette colour (plum tinted toward sky, never black)
+        var rock = mixHex(meta.night ? 0x2a2f5a : 0x7a5a86, haze, meta.night ? 0.28 : 0.5);
+        var rockDk = mixHex(rock, 0x000000, 0.22), rockLit = mixHex(rock, 0xffffff, 0.22);
+        var roofC = mixHex(meta.night ? 0x5a3f7a : 0xc06a86, haze, meta.night ? 0.3 : 0.35);
+        // floating rock underside (tapering)
+        lg.fillStyle(rockDk, meta.night ? 0.9 : 0.95);
+        lg.fillTriangle(lx - 40, ly, lx + 40, ly, lx, ly + 62);
+        lg.fillStyle(rock, meta.night ? 0.92 : 0.96); lg.fillEllipse(lx, ly, 92, 26);   // grassy top disc
+        lg.fillStyle(rockLit, 0.5); lg.fillEllipse(lx - 14, ly - 4, 46, 12);            // lit top
+        // trailing floaty rocks below
+        lg.fillStyle(rockDk, 0.7); lg.fillEllipse(lx + 22, ly + 60, 20, 9); lg.fillEllipse(lx - 26, ly + 44, 14, 7);
+        // little chapel: body + roof + steeple
+        var bx = lx - 16, by = ly - 30;
+        lg.fillStyle(mixHex(0xffffff, haze, meta.night ? 0.5 : 0.25), meta.night ? 0.85 : 0.95); lg.fillRect(bx, by, 32, 30);
+        lg.fillStyle(roofC, 1); lg.fillTriangle(bx - 4, by, bx + 36, by, lx, by - 20);   // roof
+        lg.fillStyle(roofC, 1); lg.fillRect(lx - 3, by - 40, 6, 22);                      // steeple
+        lg.fillTriangle(lx - 5, by - 40, lx + 5, by - 40, lx, by - 52);
+        // rim-light the sun-facing (right) edge — the single trick that makes it read as lit/3D
+        var rim = meta.night ? 0xcfe0ff : 0xfff2cf;
+        lg.lineStyle(2, rim, 0.85);
+        lg.beginPath(); lg.moveTo(lx, by - 52); lg.lineTo(bx + 36, by); lg.lineTo(bx + 32, by + 30); lg.strokePath();
+        lg.lineStyle(1.5, rim, 0.5); lg.beginPath(); lg.moveTo(lx + 40, ly - 3); lg.lineTo(lx + 6, ly + 58); lg.strokePath();
+        // emissive warm windows (ADD) — makes the destination feel inhabited & welcoming
+        lg.setBlendMode(ADD);
+        lg.fillStyle(0xffd98a, 0.9); lg.fillRect(bx + 6, by + 8, 5, 8); lg.fillRect(bx + 21, by + 8, 5, 8); lg.fillRect(lx - 2.5, by + 14, 5, 10);
+        lg.fillStyle(0xffe9b8, 0.3); lg.fillCircle(bx + 8.5, by + 12, 7); lg.fillCircle(bx + 23.5, by + 12, 7);
+        lg.setBlendMode(0);
+        self._land = lg;
+        // slow bob via parallax entry (tiny factor so it stays a constant beacon)
+        self.parallax.push({ obj: lg, baseX: lx, baseY: ly, factor: 0.04, drift: 0, ph: 3.0, bob: 10 });
+      })();
+
+      // --- filled sine ridge helper: draws a smooth flat-vector ridge from x=0..BW down to BH.
+      //   yBase = horizon height, amp/amp2 = twin sine amplitudes, freq/freq2 = their frequencies,
+      //   seed shifts the phase so layers don't align. Returns sampled [x,y] crest points. ---
+      function ridge(obj, col, alpha, yBase, amp, amp2, freq, freq2, seed) {
+        obj.fillStyle(col, alpha);
+        obj.beginPath(); obj.moveTo(0, BH);
+        var pts = [];
+        for (var x = 0; x <= BW; x += 14) {
+          var yy = yBase + Math.sin(x * freq + seed) * amp + Math.sin(x * freq2 + seed * 2.3) * amp2;
+          pts.push([x, yy]); obj.lineTo(x, yy);
         }
+        obj.lineTo(BW, BH); obj.closePath(); obj.fillPath();
+        return pts;
       }
-      this.parallax.push({ obj: hillsN, baseY: 0, factor: 0.14 });
+      // a thin lighter "mist" band riding just under a ridge crest → makes it float (aerial haze)
+      function mistBand(obj, pts, col) {
+        obj.fillStyle(col, meta.night ? 0.12 : 0.22);
+        obj.beginPath(); obj.moveTo(pts[0][0], pts[0][1] + 4);
+        for (var i = 0; i < pts.length; i++) obj.lineTo(pts[i][0], pts[i][1] + 4);
+        for (var j = pts.length - 1; j >= 0; j--) obj.lineTo(pts[j][0], pts[j][1] + 22);
+        obj.closePath(); obj.fillPath();
+      }
+
+      // base landscape colour (per-zone green/rock tint) then 3 ridges graded by haze amount.
+      var baseHill = meta.hills || mixHex(meta.skyBot, 0x2f6f2f, 0.5);
+      // FAR ridge — most haze (pale, high, smooth, low amplitude)
+      var farC = mixHex(baseHill, haze, meta.night ? 0.55 : 0.72);
+      var rF = this.add.graphics().setScrollFactor(0).setDepth(-57);
+      var ptsF = ridge(rF, farC, 1, BH * 0.50, 26, 8, 0.010, 0.031, 1.7);
+      mistBand(rF, ptsF, haze);
+      this.parallax.push({ obj: rF, baseY: 0, factor: 0.06, noTile: true });
+      // MID ridge — medium haze
+      var midC = mixHex(baseHill, haze, meta.night ? 0.32 : 0.42);
+      var rM = this.add.graphics().setScrollFactor(0).setDepth(-56);
+      var ptsM = ridge(rM, midC, 1, BH * 0.60, 34, 12, 0.014, 0.045, 4.2);
+      mistBand(rM, ptsM, haze);
+      this.parallax.push({ obj: rM, baseY: 0, factor: 0.11, noTile: true });
+      // NEAR ridge — least haze (darkest, lowest, highest amplitude) + a clean flat-vector treeline
+      var nearC = mixHex(baseHill, 0x000000, meta.night ? 0.30 : 0.10);
+      var rN = this.add.graphics().setScrollFactor(0).setDepth(-55);
+      var ptsN = ridge(rN, nearC, 1, BH * 0.70, 40, 16, 0.019, 0.06, 6.9);
+      // rounded flat-vector trees poking above the near ridge (2-tone: shade body + lit cap)
+      var treeC = mixHex(nearC, 0x000000, meta.night ? 0.18 : 0.10);
+      var treeLit = mixHex(nearC, 0xffffff, meta.night ? 0.06 : 0.16);
+      for (var ti = 0; ti < ptsN.length; ti += 2) {
+        if (hash(ti * 3.1 + 2) < 0.42) continue;                 // deterministic gaps
+        var tx = ptsN[ti][0], ty = ptsN[ti][1];
+        var big = hash(ti * 1.7 + 5) > 0.6, R = big ? 22 : 15;
+        rN.fillStyle(treeC, 1); rN.fillCircle(tx, ty + R * 0.35, R);              // canopy body
+        if (big) rN.fillCircle(tx - R * 0.6, ty + R * 0.7, R * 0.62);             // side lobe (bigger trees)
+        rN.fillStyle(treeLit, meta.night ? 0.5 : 0.8);
+        rN.fillEllipse(tx - R * 0.3, ty - R * 0.05, R * 0.7, R * 0.42);           // soft lit cap
+      }
+      mistBand(rN, ptsN, haze);
+      this.parallax.push({ obj: rN, baseY: 0, factor: 0.16, noTile: true });
 
       // --- CLOUDS / BALLOONS / PETALS / BIRDS / BUTTERFLIES / FIREFLIES (drifting) ---
-      function cloud(obj, w) {
-        obj.fillStyle(0xffffff, meta.night ? 0.22 : 0.85);
-        obj.fillEllipse(0, 0, w, w * 0.42); obj.fillEllipse(-w * 0.32, w * 0.06, w * 0.5, w * 0.34); obj.fillEllipse(w * 0.32, w * 0.05, w * 0.55, w * 0.36);
-        obj.fillStyle(0xffffff, meta.night ? 0.1 : 0.5); obj.fillEllipse(-w * 0.1, -w * 0.14, w * 0.5, w * 0.2);
+      // FLAT-VECTOR cloud: soft white rounded lobes + one gentle cool-tinted underside. Clean, not
+      // outlined, not busy — a modern-illustration cloud. Distant clouds are a touch hazier.
+      function cloud(obj, w, far) {
+        var a = meta.night ? 0.20 : (far ? 0.75 : 0.95);
+        var body = far ? mixHex(0xffffff, haze, 0.4) : 0xffffff;
+        obj.fillStyle(meta.night ? 0x3a4668 : mixHex(0xdfeaf8, haze, far ? 0.5 : 0), a);   // soft underside
+        obj.fillRoundedRect(-w * 0.5, -w * 0.04, w, w * 0.34, w * 0.17);
+        obj.fillStyle(body, a);                                                            // white body lobes
+        obj.fillCircle(-w * 0.28, 0, w * 0.24); obj.fillCircle(0, -w * 0.06, w * 0.3); obj.fillCircle(w * 0.28, 0, w * 0.24);
+        obj.fillRoundedRect(-w * 0.5, -w * 0.06, w, w * 0.26, w * 0.13);
+      }
+      // castle landmark (stone keep + towers + red roofs + flags) — the reference's background focal
+      // point. Screen-fixed parallax like the hills; drawn to the RIGHT so it reads as a destination.
+      function castle(obj) {
+        var S = 0x9aa6b8, SD = 0x6c7688, SL = 0xc3cdda, ROOF = 0xd23a2e, ROOFD = 0x9a241c, DOOR = 0x3a2f52, FLAG = 0xe8433a;
+        // main keep
+        obj.fillStyle(SD, 1); obj.fillRect(-46, -70, 92, 70);
+        obj.fillStyle(S, 1); obj.fillRect(-44, -68, 88, 68);
+        obj.fillStyle(SL, 0.5); obj.fillRect(-44, -68, 10, 68);                 // left light face
+        // battlement crenellations on the keep top
+        obj.fillStyle(S, 1); for (var cxk = -44; cxk < 44; cxk += 16) obj.fillRect(cxk, -78, 9, 10);
+        // brick lines
+        obj.fillStyle(SD, 0.6); for (var by = -60; by < 0; by += 12) obj.fillRect(-44, by, 88, 2);
+        // door + windows
+        obj.fillStyle(DOOR, 1); obj.fillRect(-12, -26, 24, 26); obj.fillCircle(0, -26, 12);
+        obj.fillStyle(DOOR, 1); obj.fillRect(-30, -50, 10, 14); obj.fillRect(20, -50, 10, 14);
+        // side towers (2), each with a red conical roof + flag
+        [-56, 56].forEach(function (tx) {
+          obj.fillStyle(SD, 1); obj.fillRect(tx - 14, -92, 28, 92);
+          obj.fillStyle(S, 1); obj.fillRect(tx - 12, -90, 24, 90);
+          obj.fillStyle(SL, 0.5); obj.fillRect(tx - 12, -90, 6, 90);
+          obj.fillStyle(SD, 1); for (var tw = -78; tw < -10; tw += 16) obj.fillRect(tx - 5, tw, 10, 10); // windows col
+          // crenellation ring
+          obj.fillStyle(S, 1); for (var cc = tx - 12; cc < tx + 12; cc += 8) obj.fillRect(cc, -98, 5, 8);
+          // red conical roof
+          obj.fillStyle(ROOFD, 1); obj.fillTriangle(tx - 16, -98, tx + 16, -98, tx, -128);
+          obj.fillStyle(ROOF, 1); obj.fillTriangle(tx - 13, -98, tx + 10, -98, tx, -124);
+          // flag pole + pennant
+          obj.fillStyle(0x5a4a3a, 1); obj.fillRect(tx - 1, -146, 2, 22);
+          obj.fillStyle(FLAG, 1); obj.fillTriangle(tx + 1, -146, tx + 1, -136, tx + 16, -141);
+        });
+        // center tall tower behind keep
+        obj.fillStyle(SD, 1); obj.fillRect(-16, -118, 32, 50); obj.fillStyle(S, 1); obj.fillRect(-14, -116, 28, 48);
+        obj.fillStyle(ROOFD, 1); obj.fillTriangle(-20, -116, 20, -116, 0, -150);
+        obj.fillStyle(ROOF, 1); obj.fillTriangle(-16, -116, 15, -116, 0, -145);
+        obj.fillStyle(0x5a4a3a, 1); obj.fillRect(-1, -170, 2, 24); obj.fillStyle(FLAG, 1); obj.fillTriangle(1, -170, 1, -160, 18, -165);
       }
       function balloon(obj, col) { obj.fillStyle(col, 0.95); obj.fillEllipse(0, 0, 26, 32); obj.fillStyle(0xffffff, 0.45); obj.fillEllipse(-6, -8, 6, 10); obj.fillStyle(col, 1); obj.fillTriangle(-3, 15, 3, 15, 0, 20); obj.lineStyle(1, 0xffffff, 0.4); obj.lineBetween(0, 20, 0, 40); }
       function petal(obj, col) { obj.fillStyle(col, 0.9); obj.fillEllipse(0, 0, 12, 7); obj.fillStyle(0xffffff, 0.5); obj.fillEllipse(-2, -1, 5, 3); }
       function birdV(obj) { obj.lineStyle(2, meta.night ? 0x9aa8d0 : 0x556, 0.5); obj.beginPath(); obj.moveTo(-8, 4); obj.lineTo(0, 0); obj.lineTo(8, 4); obj.strokePath(); }
       function butterfly(obj, col) { obj.fillStyle(col, 0.9); obj.fillEllipse(-4, 0, 7, 9); obj.fillEllipse(4, 0, 7, 9); obj.fillStyle(0xffffff, 0.5); obj.fillEllipse(-4, -1, 3, 4); obj.fillEllipse(4, -1, 3, 4); obj.fillStyle(0x2f5a3a, 1); obj.fillRect(-0.7, -4, 1.4, 8); }
-      function firefly(obj) { obj.fillStyle(0xffe066, 0.9); obj.fillCircle(0, 0, 2); obj.fillStyle(0xfff6c0, 0.35); obj.fillCircle(0, 0, 4); }
+      function firefly(obj) { obj.setBlendMode(1); obj.fillStyle(0xfff2b0, 0.9); obj.fillCircle(0, 0, 2); obj.fillStyle(0xffe066, 0.28); obj.fillCircle(0, 0, 5); obj.fillCircle(0, 0, 8); }
+      // dreamy out-of-focus bokeh orb (ADD) — big + faint = far, small + brighter = near
+      function bokeh(obj, col, r, a) { obj.setBlendMode(1); for (var k = 3; k >= 0; k--) { obj.fillStyle(col, a * (0.25 + k * 0.02)); obj.fillCircle(0, 0, r * (0.5 + k * 0.22)); } obj.fillStyle(0xffffff, a * 0.5); obj.fillCircle(-r * 0.18, -r * 0.18, r * 0.28); }
       // spinning gold coin (Mario staple) — screen-decoration, not collectible
       function coin(obj) { obj.fillStyle(0xfbd000, 1); obj.fillEllipse(0, 0, 14, 18); obj.fillStyle(0xffe873, 1); obj.fillEllipse(0, 0, 8, 14); obj.fillStyle(0xc98a00, 1); obj.fillRect(-1, -6, 2, 12); obj.fillStyle(0xffffff, 0.7); obj.fillEllipse(-3, -4, 2, 5); }
 
+      // Cleaner drifting layer: dreamy far bokeh → hazy clouds → romantic accents (balloons, petals,
+      // butterflies/birds by day; fireflies + more bokeh at night). Restraint = classy.
+      var bokehCols = meta.night ? [0xbcd0ff, 0xd06fff, 0xffe066] : [0xffd6e6, 0xffe9a8, 0xffffff];
       var specs = [
-        { factor: 0.18, n: 4, make: function (o) { cloud(o, 120); }, drift: 8 },
-        { factor: 0.30, n: 3, make: function (o) { cloud(o, 80); }, drift: 14 },
-        { factor: 0.30, n: 2, make: birdV, drift: 26 },
-        { factor: 0.5, n: 3, make: function (o) { balloon(o, [0xe52521, 0xfbd000, 0x43b047][(rnd() * 3) | 0]); }, drift: 4 },   // Mario red/yellow/green balloons
-        { factor: 0.58, n: meta.night ? 0 : 3, make: coin, drift: 12 },                                                        // floating coins (day)
-        { factor: 0.62, n: meta.night ? 0 : 2, make: function (o) { butterfly(o, [0xfbd000, 0xff6f9c, 0xffffff][(rnd() * 3) | 0]); }, drift: 16 }, // butterflies (day)
-        { factor: 0.62, n: meta.night ? 8 : 0, make: firefly, drift: 10 },                                                     // fireflies (night)
-        { factor: 0.72, n: 5, make: function (o) { petal(o, [0xffffff, 0xfbd000, 0x8fe07a][(rnd() * 3) | 0]); }, drift: 20 }    // drifting confetti/leaves
+        { factor: 0.08, n: 4, make: function (o, i) { bokeh(o, bokehCols[i % 3], 30 + (i % 3) * 12, meta.night ? 0.16 : 0.13); }, drift: 3 },  // far dreamy bokeh
+        { factor: 0.12, n: 3, make: function (o) { cloud(o, 130, true); }, drift: 6 },   // far, hazy clouds
+        { factor: 0.22, n: 3, make: function (o) { cloud(o, 100, false); }, drift: 10 },  // mid clouds
+        { factor: 0.30, n: 2, make: birdV, drift: 24 },
+        { factor: 0.44, n: 2, make: function (o, i) { balloon(o, [0xff6f9c, 0xffd36b, 0x8fd3f0][i % 3]); }, drift: 4 },  // soft romantic balloons
+        { factor: 0.55, n: meta.night ? 0 : 2, make: function (o, i) { butterfly(o, [0xffd36b, 0xff6f9c, 0xffffff][i % 3]); }, drift: 14 },
+        { factor: 0.58, n: 3, make: function (o, i) { bokeh(o, bokehCols[i % 3], 14 + (i % 2) * 6, meta.night ? 0.22 : 0.18); }, drift: 8 },   // near bokeh (brighter/smaller)
+        { factor: 0.62, n: meta.night ? 12 : 0, make: firefly, drift: 10 },
+        { factor: 0.70, n: 7, make: function (o, i) { petal(o, [0xffffff, 0xffd6e6, 0xffe9a8][i % 3]); }, drift: 18 }   // drifting petals
       ];
       specs.forEach(function (L) {
         for (var i = 0; i < L.n; i++) {
           var obj = self.add.graphics().setDepth(-55 + Math.floor(L.factor * 8)).setScrollFactor(0);
-          L.make(obj);
-          obj.x = 20 + rnd() * (BW - 40); obj.y = rnd() * BH;
+          L.make(obj, i);
+          obj.x = (L.fixedX != null) ? L.fixedX : 20 + rnd() * (BW - 40);
+          obj.y = (L.fixedY != null) ? L.fixedY : rnd() * BH;
           self.parallax.push({ obj: obj, baseX: obj.x, baseY: obj.y, factor: L.factor, drift: (rnd() < 0.5 ? -1 : 1) * (L.drift || 0), ph: rnd() * 100 });
         }
       });
@@ -2212,14 +2659,10 @@
         backgroundColor: '#8fd3f0',
         physics: { default: 'arcade', arcade: { gravity: { y: CFG.GRAVITY_Y }, debug: false } },
         scale: { mode: P.Scale.FIT, autoCenter: P.Scale.CENTER_BOTH, width: BW, height: BH },
-        // smooth (NOT pixelArt): sprites are procedural vector-ish art with gradients, circles and
-        // soft shading — antialiasing + linear filtering keep the curved edges clean instead of
-        // stair-stepped. Textures are supersampled 2× (see buildTextures) so they stay crisp when
-        // the FIT scaler upsizes them on hi-DPI phones. This is what removes the "blocky" look.
-        // smooth rendering: antialias + linear filtering keep the procedural curves/gradients clean
-        // as the FIT scaler upsizes the 2×-baked textures. No mipmapFilter (our textures aren't POT;
-        // mipmaps on NPOT WebGL textures can render black) and no roundPixels (that re-introduces the
-        // stair-stepping we're removing). This is the switch that kills the blocky "asal jadi" look.
+        // FLAT-VECTOR MODERN: clean smooth shapes, no hard pixels. Antialias + linear filtering keep
+        // the crisp silhouettes and soft gradients that define the flat-illustration look. Textures
+        // are supersampled 2× (buildTextures) so curves stay sharp when the FIT scaler upsizes on
+        // hi-DPI phones. (This is the render mode flat-vector art needs — NOT pixelArt.)
         render: { pixelArt: false, antialias: true, antialiasGL: true, roundPixels: false },
         scene: [GameSceneClass]
       };
@@ -2324,14 +2767,22 @@
       // zone-select cell / inventory item / gallery clicks are wired at build time (dynamic),
       // so here we only handle the fixed control buttons keyed by id.
       var node = t.closest && t.closest('[id]');
-      if (node && CLICK_ACTIONS[node.id]) CLICK_ACTIONS[node.id]();
+      if (node && CLICK_ACTIONS[node.id]) {
+        // never let one action's runtime error silently kill the whole delegated handler (which
+        // would make EVERY button appear dead). Surface it on-screen so we can see the cause.
+        try { CLICK_ACTIONS[node.id](); }
+        catch (err) { try { toast('⚠️ ' + (err && err.message ? err.message : err), true, 6000); } catch (e2) {} showError('Error: ' + (err && err.message ? err.message : err)); }
+      }
     }, false);
 
-    // show the iOS tilt-permission button only where it's needed
+    // TILT IS OPT-IN ONLY — never auto-enable it. Auto-applying deviceorientation made the couple
+    // constantly drift sideways ("seperti ketiup angin") because a phone is never held perfectly
+    // level, so a nonzero gamma pushed the player every frame. The joystick is the default control;
+    // tilt only turns on when the guest taps the tilt button (which then calibrates a neutral).
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      show($('jw-tilt'), true);
+      show($('jw-tilt'), true);                 // iOS: needs a tap for permission anyway
     } else if (isTouch && window.DeviceOrientationEvent) {
-      enableTilt();
+      show($('jw-tilt'), true);                 // Android: offer the button, but DO NOT auto-enable
     }
 
     // ---- analog joystick steer (left) ----
@@ -2413,12 +2864,17 @@
     addGlobal(document, 'pause', function (e) { if (e.target && e.target.id === 'bg-music') musicWanted = false; }, true);
   }
 
-  var tiltHandler = null;
+  var tiltHandler = null, tiltNeutral = null;
   function enableTilt() {
     if (tiltHandler) return;
+    tiltNeutral = null;   // first reading becomes the "level" reference (the way the phone is held)
     tiltHandler = function (e) {
       var gamma = e.gamma || 0;
-      if (SCENE) SCENE.tilt = Math.max(-1, Math.min(1, gamma / 22));
+      if (tiltNeutral == null) { tiltNeutral = gamma; return; }   // calibrate: held angle = 0 drift
+      // dead-zone ±4° so tiny hand jitter doesn't nudge the couple; steer off the DELTA from neutral
+      var d = gamma - tiltNeutral;
+      if (Math.abs(d) < 4) d = 0;
+      if (SCENE) SCENE.tilt = Math.max(-1, Math.min(1, d / 22));
     };
     addGlobal(window, 'deviceorientation', tiltHandler);
   }
@@ -2432,8 +2888,9 @@
     selectDiff(STORE.diff, '#jw-diff');
     updateHUD();
     try { drawCoupleCanvas(); } catch (e) {}   // decorative canvas must never break init
-    // version
-    var v = $('jw-version'); if (v) v.textContent = 'v1.8.1 · ' + STORE.diff;
+    // version (keep this literal in sync with the static string in index.html so preview and the
+    // live invitation never disagree if the host re-injects the HTML after init)
+    var v = $('jw-version'); if (v) v.textContent = 'v2.4.1 · ' + STORE.diff;
 
     // auto-resume ONLY if cover & reveal not shown (Bible §Z.1)
     var coverUp = (($('jw-cover') || {}).classList || { contains: function () { return false; } }).contains('show');
@@ -2469,8 +2926,9 @@
     get SCENE() { return SCENE; }
   };
 
-  /* ---- go ---- */
-  if (document.readyState === 'loading') addGlobal(document, 'DOMContentLoaded', init);
-  else init();
+  /* ---- go (init wrapped so a synchronous throw surfaces as a banner, not a dead theme) ---- */
+  function safeInit() { try { init(); } catch (e) { jwErrBanner('init() failed: ' + (e && e.stack ? e.stack : e)); } }
+  if (document.readyState === 'loading') addGlobal(document, 'DOMContentLoaded', safeInit);
+  else safeInit();
 
 })();

@@ -297,7 +297,7 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                 </div>
 
                 {/* Column header */}
-                <div className="hidden sm:grid grid-cols-[auto_1fr_140px_92px] items-center gap-3 px-6 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
+                <div className="hidden sm:grid grid-cols-[auto_1fr_140px_168px] items-center gap-3 px-6 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
                     <span className="w-4" />
                     <span>Tema / Folder</span>
                     <span>Status</span>
@@ -326,7 +326,7 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                         return (
                             <div
                                 key={r.folder}
-                                className={`grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_140px_92px] items-center gap-3 px-3 py-2.5 rounded-xl transition border ${
+                                className={`grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_140px_168px] items-center gap-3 px-3 py-2.5 rounded-xl transition border ${
                                     isChecked
                                         ? 'bg-yellow-50/70 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/40'
                                         : 'bg-transparent border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -363,9 +363,10 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                                     )}
                                 </div>
 
-                                {/* Per-item check button (only when it exists in DB). Own column on sm+. */}
-                                <div className="hidden sm:flex justify-end">
-                                    {r.existsInDb ? (
+                                {/* Per-item actions (own column on sm+): Cek (compare, only
+                                    when it exists in DB) + Inject (this one folder only). */}
+                                <div className="hidden sm:flex justify-end items-center gap-1.5">
+                                    {r.existsInDb && (
                                         <button
                                             onClick={() => checkOne(r.folder)}
                                             className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition flex items-center gap-1"
@@ -373,9 +374,14 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                                         >
                                             <HiOutlineRefresh className="w-3.5 h-3.5" /> Cek
                                         </button>
-                                    ) : (
-                                        <span className="text-[11px] text-gray-300 dark:text-gray-600">—</span>
                                     )}
+                                    <button
+                                        onClick={() => onConfirm([r.folder])}
+                                        className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-lg text-white bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-sm transition flex items-center gap-1"
+                                        title={r.existsInDb ? 'Update tema ini sekarang' : 'Inject tema ini sekarang'}
+                                    >
+                                        <i className="ri-flashlight-fill text-[11px]"></i> Inject
+                                    </button>
                                 </div>
                             </div>
                         );
