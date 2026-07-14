@@ -1267,7 +1267,7 @@ export function InvitationContentPage() {
                         {/* STEP 2: GALERY */}
                         {currentStep === 2 && (
                             <div className="space-y-6 animate-slide-up">
-                                <div className="card p-6 border border-gray-100 dark:border-gray-800">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
                                             <HiOutlinePhotograph className="w-5 h-5" />
@@ -1430,7 +1430,7 @@ export function InvitationContentPage() {
                         {currentStep === 3 && (
                             <div className="space-y-6 animate-slide-up content-form-compact">
                                 {/* SECTION: MEDIA & AUDIO */}
-                                <div className="card p-6 border border-gray-100 dark:border-gray-800">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600">
                                             <HiOutlineMusicNote className="w-5 h-5" />
@@ -1445,7 +1445,7 @@ export function InvitationContentPage() {
                                 </div>
 
                                 {/* SECTION: LIVE STREAMING */}
-                                <div className="card p-6 border border-gray-100 dark:border-gray-800">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
                                             <HiOutlineVideoCamera className="w-5 h-5" />
@@ -1483,7 +1483,7 @@ export function InvitationContentPage() {
                         {/* STEP 4: TEMA */}
                         {currentStep === 4 && (
                             <div className="space-y-6 animate-slide-up">
-                                <div className="card p-6 border border-gray-100 dark:border-gray-800">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
                                             <HiOutlineColorSwatch className="w-5 h-5" />
@@ -1593,7 +1593,7 @@ export function InvitationContentPage() {
                                 </div>
 
                                 {/* QUOTES PICKER */}
-                                <div className="card p-6 border border-gray-100 dark:border-gray-800">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-rose-600">
                                             <HiOutlineChatAlt2 className="w-5 h-5" />

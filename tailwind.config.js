@@ -10,6 +10,28 @@ export default {
     theme: {
         extend: {
             colors: {
+                // Skala gray: shade TERANG (50–600) = default Tailwind (dipakai luas
+                // untuk teks/border/bg di LIGHT mode → JANGAN diubah). Shade GELAP
+                // (700–900) diberi TINT UNGU agar semua `dark:bg-gray-800/900` &
+                // `dark:border-gray-700/800` SENADA dengan shell retro ungu
+                // (--lp-ink #0e0e1a / --lp-panel #1b1530). Lightness dipertahankan
+                // mendekati aslinya, jadi `text-gray-800/900` di light mode tetap
+                // terbaca gelap (tint ungu tak kentara pada teks sekecil itu).
+                gray: {
+                    50: '#F9FAFB',
+                    100: '#F3F4F6',
+                    200: '#E5E7EB',
+                    300: '#D1D5DB',
+                    400: '#9CA3AF',
+                    500: '#6B7280',
+                    600: '#4B5563',
+                    700: '#2E2748',   // was #374151 → ungu-abu (border dark)
+                    750: '#241C3C',
+                    800: '#1B1530',   // was #1F2937 → = --lp-panel (surface kartu dark)
+                    850: '#151024',
+                    900: '#0E0E1A',   // was #111827 → = --lp-ink (bg gelap)
+                    950: '#090912',
+                },
                 gold: {
                     50: '#FBF7EF',
                     100: '#F5ECDA',
@@ -25,9 +47,12 @@ export default {
                 wedding: {
                     bg: '#FAFAF8',
                     card: '#FFFFFF',
-                    dark: '#1A1A2E',
-                    'dark-card': '#16213E',
-                    'dark-surface': '#0F3460',
+                    // Dark surfaces diselaraskan dengan shell retro ungu
+                    // (lihat --lp-ink / --lp-panel di RetroAuthChrome / DashboardLayout)
+                    // supaya kartu & tabel senada dengan rail + topbar.
+                    dark: '#0E0E1A',        // = --lp-ink  (page background)
+                    'dark-card': '#1B1530', // = --lp-panel (surface kartu)
+                    'dark-surface': '#241A44',
                     accent: '#C6A769',
                 }
             },

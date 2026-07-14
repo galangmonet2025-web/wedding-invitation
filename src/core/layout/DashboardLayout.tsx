@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import kosaIcon from '@/assets/img/kosa-icon.png';
 
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
+import { RetroAuthStyle } from '@/features/auth/components/RetroAuthChrome';
+import { UserMenu } from '@/shared/components/UserMenu';
 import { useEnterFullscreenOnLogin } from '@/shared/hooks/useEnterFullscreenOnLogin';
 import {
     HiOutlineHome,
@@ -43,7 +45,222 @@ import { useThemeStore } from '@/shared/hooks/useThemeStore';
 import { BackgroundTaskIndicator } from '@/shared/components/BackgroundTaskIndicator';
 import { ChangePasswordModal } from '@/shared/components/ChangePasswordModal';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
-import { ViewSwitchButton } from '@/shared/components/ViewSwitchButton';
+
+/**
+ * Gaya khusus SHELL admin klasik (/private) agar SENADA dengan landing/login/
+ * register (retro "world 1-1"). Hanya menata cangkang: rail sidebar, nav link,
+ * topbar, footer — TIDAK menyentuh isi halaman (Outlet). Semua di-scope ke
+ * `.rm-lp` supaya kelas global (mis. .sidebar-link untuk /admin) tak berubah.
+ * Token warna (--lp-*) berasal dari <RetroAuthStyle/> yang dirender berdampingan.
+ */
+function ShellRetroStyle() {
+    return (
+        <style>{`
+/* ============================================================
+   SHELL TOKENS — dua tema:
+   • LIGHT (default, .rm-lp)      : putih + aksen ORANGE
+   • DARK  (.rm-lp.dark)          : ink gelap + aksen KOIN (kuning), retro NES
+   Semua kelas .shell-* & .lp-logo-block memakai token ini, jadi satu set
+   aturan otomatis mengikuti mode. Kelas dark di-toggle host lewat useThemeStore.
+   ============================================================ */
+.rm-lp {
+    /* LIGHT — bersih & lembut: putih murni, border tipis netral, orange
+       hanya sebagai AKSEN (menu aktif, tombol, ikon). Bevel/shadow halus. */
+    --shell-surface: #ffffff;          /* rail / topbar / footer */
+    --shell-surface-2: #ffffff;        /* kartu / tombol chip */
+    --shell-main-bg: #f8fafc;          /* area konten (slate-50 netral) */
+    --shell-border: #e6e8ec;           /* border tipis abu netral */
+    --shell-border-w: 1px;             /* garis pemisah shell tipis */
+    --shell-comp-border-w: 1px;        /* border komponen (kartu/tombol) tipis */
+    --shell-border-soft: #eef0f3;
+    --shell-shadow: rgba(15,23,42,.06); /* shadow sangat halus */
+    --shell-bevel: 0 1px 2px rgba(15,23,42,.06); /* shadow komponen light: halus, tanpa offset keras */
+    --shell-bevel-active: 0 1px 1px rgba(15,23,42,.05);
+    --shell-accent: #ea580c;           /* ORANGE 600 */
+    --shell-accent-soft: #fff3ea;      /* hover/isi lembut (orange-50) */
+    --shell-accent-ink: #ffffff;       /* teks di atas aksen */
+    --shell-accent-deep: #c2410c;      /* orange 700 (bevel logo) */
+    --shell-text: #1f2937;             /* slate-800 */
+    --shell-text-soft: #64748b;        /* slate-500 */
+    --shell-eyebrow: #94a3b8;          /* slate-400 */
+    --shell-topbar-bg: rgba(255,255,255,.9);
+}
+.rm-lp.dark {
+    /* DARK — gaya retro ink ungu (SHELL = patokan). Warna konten (kartu/tabel)
+       diselaraskan ke warna ini lewat tailwind.config.js (wedding-dark /
+       wedding-dark-card diubah jadi ungu senada). Border tebal + bevel keras
+       (nuansa NES). */
+    --shell-surface: var(--lp-ink);    /* #0e0e1a */
+    --shell-surface-2: var(--lp-panel);/* #1b1530 */
+    --shell-main-bg: var(--lp-ink);
+    --shell-border: #000;
+    --shell-border-w: 4px;
+    --shell-comp-border-w: 3px;
+    --shell-border-soft: rgba(255,255,255,.08);
+    --shell-shadow: rgba(0,0,0,.45);
+    --shell-bevel: 3px 3px 0 rgba(0,0,0,.45);     /* NES hard offset */
+    --shell-bevel-active: 1px 1px 0 rgba(0,0,0,.45);
+    --shell-accent: var(--lp-coin);
+    --shell-accent-soft: rgba(255,255,255,.06);
+    --shell-accent-ink: #000;
+    --shell-accent-deep: var(--lp-coin-deep);
+    --shell-text: rgba(255,255,255,.92);
+    --shell-text-soft: rgba(255,255,255,.5);
+    --shell-eyebrow: rgba(255,255,255,.45);
+    --shell-topbar-bg: rgba(14,14,26,.86);        /* #0e0e1a @ .86 */
+}
+
+.rm-lp .shell-aside { background: var(--shell-surface); border-right: var(--shell-border-w) solid var(--shell-border); }
+.rm-lp .shell-topbar { background: var(--shell-topbar-bg); backdrop-filter: blur(10px); border-bottom: var(--shell-border-w) solid var(--shell-border); }
+.rm-lp .shell-footer { background: var(--shell-surface); border-top: var(--shell-border-w) solid var(--shell-border); }
+.rm-lp .shell-divider { border-color: var(--shell-border-soft); }
+
+/* rail brand + tenant/user chips */
+.rm-lp .shell-brand-title { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--shell-text); line-height: 1.6; }
+.rm-lp .shell-eyebrow { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 2px; color: var(--shell-eyebrow); text-transform: uppercase; }
+.rm-lp .shell-muted { color: var(--shell-text-soft); }
+.rm-lp .shell-text { color: var(--shell-text); }
+.rm-lp .shell-accent { color: var(--shell-accent); }
+.rm-lp .shell-card { background: var(--shell-surface-2); border: var(--shell-comp-border-w) solid var(--shell-border); border-radius: 10px; box-shadow: var(--shell-bevel); }
+.rm-lp.dark .shell-card { border-radius: 3px; }
+
+/* nav link — pixel-ish rail row (override global .sidebar-link only inside rm-lp) */
+.rm-lp .shell-aside .sidebar-link {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+    color: var(--shell-text-soft); font-weight: 700; font-size: 12.5px; letter-spacing: .3px;
+    background: transparent; border: 2px solid transparent; transition: background .15s, color .15s, border-color .15s;
+}
+.rm-lp.dark .shell-aside .sidebar-link { border-radius: 3px; }
+.rm-lp .shell-aside .sidebar-link:hover { color: var(--shell-accent); background: var(--shell-accent-soft); }
+.rm-lp.dark .shell-aside .sidebar-link:hover { color: var(--shell-text); }
+.rm-lp .shell-aside .sidebar-link.active {
+    color: var(--shell-accent-ink); background: var(--shell-accent); border-color: transparent;
+}
+.rm-lp.dark .shell-aside .sidebar-link.active {
+    border-color: var(--shell-border); box-shadow: var(--shell-bevel); border-right-width: 2px;
+}
+.rm-lp .shell-aside .sidebar-link.active:hover { color: var(--shell-accent-ink); background: var(--shell-accent); }
+
+/* mobile grid tiles */
+.rm-lp .shell-tile {
+    background: var(--shell-surface-2); border: var(--shell-comp-border-w) solid var(--shell-border);
+    color: var(--shell-text-soft); box-shadow: var(--shell-bevel); border-radius: 12px;
+}
+.rm-lp.dark .shell-tile { border-radius: 3px; }
+.rm-lp .shell-tile.active { background: var(--shell-accent); color: var(--shell-accent-ink); border-color: transparent; }
+.rm-lp.dark .shell-tile.active { border-color: var(--shell-border); }
+.rm-lp .shell-tile-ico { background: var(--shell-accent-soft); color: var(--shell-accent); }
+.rm-lp.dark .shell-tile-ico { background: rgba(0,0,0,.25); color: inherit; }
+.rm-lp .shell-tile-ico.is-active { background: rgba(255,255,255,.22); color: var(--shell-accent-ink); }
+.rm-lp.dark .shell-tile-ico.is-active { background: rgba(0,0,0,.15); }
+
+/* collapse handle */
+.rm-lp .shell-collapse {
+    background: var(--shell-accent); color: var(--shell-accent-ink); border: var(--shell-comp-border-w) solid var(--shell-border); border-radius: 999px;
+    box-shadow: var(--shell-bevel);
+}
+.rm-lp.dark .shell-collapse { border-radius: 3px; }
+.rm-lp .shell-collapse:active { transform: translate(1px,1px); box-shadow: var(--shell-bevel-active); }
+
+/* topbar icon buttons + badges */
+.rm-lp .shell-icon-btn { background: var(--shell-surface-2); border: var(--shell-comp-border-w) solid var(--shell-border); border-radius: 10px; color: var(--shell-text-soft); box-shadow: var(--shell-bevel); }
+.rm-lp.dark .shell-icon-btn { border-radius: 3px; color: var(--shell-text); }
+.rm-lp .shell-icon-btn:hover { color: var(--shell-accent); border-color: var(--shell-accent); }
+.rm-lp.dark .shell-icon-btn:hover { border-color: var(--shell-border); }
+.rm-lp .shell-icon-btn:active { transform: translate(1px,1px); box-shadow: var(--shell-bevel-active); }
+.rm-lp .shell-title { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--shell-text); line-height: 1.55; }
+.rm-lp.dark .shell-title { text-shadow: 2px 2px 0 var(--shell-shadow); }
+.rm-lp .shell-desc { color: var(--shell-text-soft); }
+.rm-lp .shell-role-badge { background: var(--shell-accent-soft); border: var(--shell-comp-border-w) solid transparent; border-radius: 999px; box-shadow: none; }
+.rm-lp.dark .shell-role-badge { background: var(--shell-surface-2); border-color: var(--shell-border); box-shadow: var(--shell-bevel); }
+.rm-lp .shell-role-badge span { color: var(--shell-accent); }
+
+/* main content area — light netral / ink di dark. Kartu/form halaman
+   (tak disentuh) tetap tampil di atasnya. */
+.rm-lp .shell-main { background: var(--shell-main-bg); }
+
+/* .lp-logo-block (koin kuning bawaan) dibuat ikut aksen shell agar oranye di
+   light mode; di dark tetap koin kuning + bevel keras. */
+.rm-lp .lp-logo-block {
+    background: var(--shell-accent); color: var(--shell-accent-ink);
+    border: none; border-radius: 10px;
+    box-shadow: var(--shell-bevel); animation: none;
+}
+.rm-lp.dark .lp-logo-block {
+    border: 3px solid var(--shell-border); border-radius: 3px;
+    box-shadow: inset 0 0 0 3px var(--shell-accent-deep), 3px 3px 0 var(--shell-shadow);
+    animation: lp-bob 2.4s steps(2) infinite;
+}
+
+/* make the shared LanguageSwitcher legible on either surface */
+.rm-lp .shell-topbar button[aria-label="Toggle language"] { background: var(--shell-surface-2); border: var(--shell-comp-border-w) solid var(--shell-border); border-radius: 10px; box-shadow: var(--shell-bevel); }
+.rm-lp.dark .shell-topbar button[aria-label="Toggle language"] { border-radius: 3px; }
+.rm-lp .shell-topbar button[aria-label="Toggle language"] span { color: var(--shell-text); }
+
+/* ---- UserMenu (dropdown identitas + aksi) ---- */
+.rm-lp .um-root { position: relative; }
+.rm-lp .um-root-sidebar { width: 100%; }
+.rm-lp .um-chev { width: 16px; height: 16px; color: var(--shell-text-soft); transition: transform .15s; flex-shrink: 0; }
+
+/* trigger topbar: avatar + chevron */
+.rm-lp .um-trigger-topbar {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px;
+    background: var(--shell-surface-2); border: var(--shell-comp-border-w) solid var(--shell-border);
+    border-radius: 10px; box-shadow: var(--shell-bevel); cursor: pointer; transition: border-color .15s;
+}
+.rm-lp.dark .um-trigger-topbar { border-radius: 6px; }
+.rm-lp .um-trigger-topbar:hover, .rm-lp .um-trigger-topbar.is-open { border-color: var(--shell-accent); }
+
+/* trigger sidebar: baris penuh avatar + nama/role + chevron */
+.rm-lp .um-trigger-sidebar {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px;
+    background: var(--shell-surface-2); border: var(--shell-comp-border-w) solid var(--shell-border);
+    border-radius: 10px; box-shadow: var(--shell-bevel); cursor: pointer; transition: border-color .15s;
+}
+.rm-lp.dark .um-trigger-sidebar { border-radius: 4px; }
+.rm-lp .um-trigger-sidebar:hover, .rm-lp .um-trigger-sidebar.is-open { border-color: var(--shell-accent); }
+.rm-lp .um-trigger-sidebar.is-collapsed { justify-content: center; padding: 8px 0; }
+
+.rm-lp .um-name { font-size: 12px; font-weight: 700; color: var(--shell-text); }
+.rm-lp .um-role { font-size: 10px; text-transform: capitalize; color: var(--shell-accent); }
+
+/* panel dropdown */
+.rm-lp .um-panel {
+    position: absolute; z-index: 60; width: 224px; padding: 8px;
+    background: var(--shell-surface); border: var(--shell-comp-border-w) solid var(--shell-border);
+    border-radius: 14px; box-shadow: 0 12px 32px rgba(15,23,42,.16), var(--shell-bevel);
+    animation: um-pop .12s ease-out;
+}
+.rm-lp.dark .um-panel { border-radius: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5), var(--shell-bevel); }
+.rm-lp .um-panel-topbar { top: calc(100% + 8px); right: 0; }
+.rm-lp .um-panel-sidebar { bottom: calc(100% + 8px); left: 0; min-width: 200px; }
+
+.rm-lp .um-head { display: flex; align-items: center; gap: 10px; padding: 6px 6px 10px; }
+.rm-lp .um-head .um-name { font-size: 13px; }
+.rm-lp .um-plan-row { padding: 0 6px 8px; }
+.rm-lp .um-plan-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; }
+.rm-lp .um-divider { height: 1px; background: var(--shell-border); margin: 2px 0 6px; opacity: .7; }
+
+.rm-lp .um-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 8px;
+    font-size: 12.5px; font-weight: 600; color: var(--shell-text); background: transparent; cursor: pointer;
+    transition: background .12s, color .12s;
+}
+.rm-lp.dark .um-item { border-radius: 4px; }
+.rm-lp .um-item:hover { background: var(--shell-accent-soft); color: var(--shell-accent); }
+.rm-lp .um-item-ico { color: var(--shell-accent); display: inline-flex; }
+/* item "Versi Mobile" — disorot dgn tint aksen supaya menonjol sbg aksi utama */
+.rm-lp .um-item-accent { background: var(--shell-accent-soft); color: var(--shell-accent); font-weight: 700; }
+.rm-lp .um-item-accent:hover { background: var(--shell-accent); color: var(--shell-accent-ink); }
+.rm-lp .um-item-accent:hover .um-item-ico { color: var(--shell-accent-ink); }
+.rm-lp .um-item-danger { color: #dc2626; }
+.rm-lp.dark .um-item-danger { color: #fca5a5; }
+.rm-lp .um-item-danger:hover { background: rgba(220,38,38,.1); color: #dc2626; }
+.rm-lp.dark .um-item-danger:hover { color: #fecaca; }
+@keyframes um-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        `}</style>
+    );
+}
 
 /**
  * Warna pill untuk badge jenis paket (basic/pro/premium) tenant. Casing dari
@@ -81,8 +298,8 @@ function MobileMenuOverlay({
 
     return (
         <div className={`fixed inset-0 z-[100] lg:hidden animate-fade-in overflow-hidden ${isDark ? 'dark' : ''}`}>
-            {/* Background with animated blur */}
-            <div className="absolute inset-0 bg-white/95 dark:bg-wedding-dark backdrop-blur-2xl" />
+            {/* Background — putih di light, ink di dark */}
+            <div className="absolute inset-0 shell-main" />
 
             {/* Decorative background elements */}
             <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-gold-400/10 rounded-full blur-3xl animate-pulse" />
@@ -96,22 +313,22 @@ function MobileMenuOverlay({
                             <img
                                 src={siteLogo}
                                 alt={siteName || 'Logo'}
-                                className="w-10 h-10 rounded-xl object-contain shadow-gold shrink-0 p-1 bg-gradient-to-br from-gold-400 to-gold-600"
+                                className="lp-logo-block !w-10 !h-10 overflow-hidden !p-1.5"
                             />
                         ) : (
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
-                                <span className="text-white font-display font-bold text-lg">
+                            <div className="lp-logo-block !w-10 !h-10 !text-lg">
+                                <span>
                                     {siteName ? siteName[0].toUpperCase() : 'W'}
                                 </span>
                             </div>
                         )}
-                        <h1 className="font-display font-bold text-lg text-gray-800 dark:text-white truncate">
-                            {siteName || <>Wedding<span className="text-gradient-gold">SaaS</span></>}
+                        <h1 className="shell-brand-title truncate !text-sm">
+                            {siteName || <>WEDDING<span style={{ color: 'var(--shell-accent)' }}>SAAS</span></>}
                         </h1>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-wedding-dark-card text-gray-500 active:scale-90 transition-transform"
+                        className="shell-icon-btn w-10 h-10 flex items-center justify-center transition-transform"
                     >
                         <HiOutlineX className="w-6 h-6" />
                     </button>
@@ -120,8 +337,8 @@ function MobileMenuOverlay({
                 {/* Tenant / User Welcome */}
                 <div className="mb-8 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                        <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-1">{t('dashboard.welcome_back', 'Selamat Datang Kembali')}</p>
-                        <h2 className="text-2xl font-display font-bold text-gray-800 dark:text-white leading-tight truncate">
+                        <p className="shell-eyebrow mb-1.5" style={{ color: 'var(--shell-accent)' }}>{t('dashboard.welcome_back', 'Selamat Datang Kembali')}</p>
+                        <h2 className="text-2xl font-display font-bold shell-text leading-tight truncate">
                             {tenant
                                 ? `${tenant.bride_nickname || tenant.bride_name.split(' ')[0]} & ${tenant.groom_nickname || tenant.groom_name.split(' ')[0]}`
                                 : user?.username
@@ -136,10 +353,10 @@ function MobileMenuOverlay({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={onClose}
-                            className="w-10 h-10 bg-white dark:bg-wedding-dark-card border border-gray-150 dark:border-gray-800 rounded-2xl text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                            className="shell-icon-btn w-10 h-10 flex items-center justify-center transition-transform shrink-0"
                             title={t('topbar.open_invitation', 'Buka Undangan')}
                         >
-                            <HiOutlineExternalLink className="w-5 h-5 text-gold-500" />
+                            <HiOutlineExternalLink className="w-5 h-5" style={{ color: 'var(--shell-accent)' }} />
                         </a>
                     )}
                 </div>
@@ -153,15 +370,13 @@ function MobileMenuOverlay({
                                 to={item.to}
                                 onClick={onClose}
                                 className={({ isActive }) =>
-                                    `flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 active:scale-95 ${isActive
-                                        ? 'bg-gold-500 text-white shadow-gold transform scale-105 z-10'
-                                        : 'bg-white dark:bg-wedding-dark-card border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-450 shadow-sm'
+                                    `shell-tile flex flex-col items-center gap-2 p-3 rounded transition-all duration-200 active:translate-y-[2px] ${isActive ? 'active scale-105 z-10' : ''
                                     }`
                                 }
                             >
                                 {({ isActive }) => (
                                     <>
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-wedding-dark'
+                                        <div className={`shell-tile-ico w-12 h-12 rounded flex items-center justify-center transition-colors ${isActive ? 'is-active' : ''
                                             }`}>
                                             <item.icon className="w-6 h-6" />
                                         </div>
@@ -178,7 +393,7 @@ function MobileMenuOverlay({
                 </div>
 
                 {/* Bottom Profile & Actions */}
-                <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
+                <div className="pt-6 border-t shell-divider space-y-4">
                     {/* Switch to the new mobile-first /admin UI */}
                     <button
                         onClick={() => { onClose(); switchToMobile(); }}
@@ -188,15 +403,15 @@ function MobileMenuOverlay({
                         {t('view_switch.to_mobile', 'Versi Mobile')}
                     </button>
 
-                    <div className="p-4 bg-gray-50 dark:bg-wedding-dark-card rounded-3xl border border-gray-100 dark:border-gray-800/50">
+                    <div className="shell-card p-4">
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
-                                    <span className="text-white font-bold text-xl">{user?.username?.[0]?.toUpperCase()}</span>
+                                <div className="lp-logo-block !w-12 !h-12 !text-xl">
+                                    <span>{user?.username?.[0]?.toUpperCase()}</span>
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
-                                    <p className="text-[10px] text-gold-600 font-bold uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
+                                    <p className="text-sm font-bold shell-text truncate">{user?.username}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--shell-accent)' }}>{user?.role?.replace('_', ' ')}</p>
                                 </div>
                             </div>
 
@@ -208,13 +423,13 @@ function MobileMenuOverlay({
                                 {/* Dark Mode Switcher for Mobile */}
                                 <button
                                     onClick={toggleTheme}
-                                    className="w-9 h-9 bg-white dark:bg-wedding-dark border border-gray-150 dark:border-gray-800 rounded-xl text-gray-500 hover:text-gold-500 shadow-sm flex items-center justify-center active:scale-90 transition-transform"
+                                    className="shell-icon-btn w-9 h-9 flex items-center justify-center transition-transform"
                                     aria-label="Toggle dark mode"
                                 >
                                     {isDark ? (
                                         <HiOutlineSun className="w-4.5 h-4.5 text-gold-400" />
                                     ) : (
-                                        <HiOutlineMoon className="w-4.5 h-4.5 text-gray-500" />
+                                        <HiOutlineMoon className="w-4.5 h-4.5" />
                                     )}
                                 </button>
                             </div>
@@ -224,14 +439,15 @@ function MobileMenuOverlay({
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => { onClose(); onChangePassword(); }}
-                            className="flex items-center justify-center gap-2 p-4 bg-white dark:bg-wedding-dark-card border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-400 active:scale-95 transition-all shadow-sm"
+                            className="shell-card shell-text flex items-center justify-center gap-2 p-4 text-xs font-bold active:translate-y-[2px] transition-transform"
                         >
-                            <HiOutlineKey className="w-5 h-5 text-gold-500" />
+                            <HiOutlineKey className="w-5 h-5" style={{ color: 'var(--shell-accent)' }} />
                             {t('sidebar.change_password')}
                         </button>
                         <button
                             onClick={onLogout}
-                            className="flex items-center justify-center gap-2 p-4 bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-950/20 rounded-2xl text-xs font-bold text-red-600 active:scale-95 transition-all shadow-sm"
+                            className="flex items-center justify-center gap-2 p-4 border-[3px] rounded text-xs font-bold text-white active:translate-y-[2px] transition-transform"
+                            style={{ background: 'rgba(229,37,33,.92)', borderColor: 'var(--shell-border)', boxShadow: '3px 3px 0 var(--shell-shadow)' }}
                         >
                             <HiOutlineLogout className="w-5 h-5" />
                             {t('sidebar.logout')}
@@ -352,6 +568,10 @@ export function DashboardLayout() {
         window.location.href = window.location.origin + window.location.pathname + '#/login';
     };
 
+    // Pindah ke UI mobile-first (/admin), pertahankan sub-path + query.
+    const switchToMobile = () =>
+        navigate(`${location.pathname.replace(/^\/private/, '/admin') || '/admin/dashboard'}${location.search}`);
+
     const navItems = !showTenantMenu
         ? [
             { to: '/private/global-dashboard', icon: HiOutlineChartBar, label: t('sidebar.global_dashboard'), roles: ['superadmin'], desc: t('sidebar.global_dashboard_desc', 'Statistik platform, estimasi pendapatan, dan fitur tertunda') },
@@ -387,7 +607,9 @@ export function DashboardLayout() {
         .filter((item) => !(isImpersonating && item.to === '/private/scanner'));
 
     return (
-        <div className={`min-h-screen flex ${isDark ? 'dark' : ''}`}>
+        <div className={`rm-lp min-h-screen flex ${isDark ? 'dark' : ''}`}>
+            <RetroAuthStyle />
+            <ShellRetroStyle />
             {/* Mobile Menu Overlay */}
             <MobileMenuOverlay
                 isOpen={sidebarOpen}
@@ -403,36 +625,36 @@ export function DashboardLayout() {
                 canOpenInvitation={showTenantMenu}
                 siteName={siteName}
                 siteLogo={siteLogo}
-                switchToMobile={() => navigate(`${location.pathname.replace(/^\/private/, '/admin') || '/admin/dashboard'}${location.search}`)}
+                switchToMobile={switchToMobile}
             />
 
             {/* Desktop Sidebar (Only visible on LG up) */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-700
+                className={`shell-aside fixed inset-y-0 left-0 z-50
         hidden lg:flex flex-col transition-[width] duration-300 ${collapsed ? 'w-16' : 'w-60'}`}
             >
                 {/* Logo + collapse toggle */}
-                <div className={`relative px-4 py-3.5 border-b border-gray-100 dark:border-gray-700 ${collapsed ? 'px-0' : ''}`}>
+                <div className={`shell-divider relative px-4 py-3.5 border-b ${collapsed ? 'px-0' : ''}`}>
                     <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
                         {siteLogo ? (
                             <img
                                 src={siteLogo}
                                 alt={siteName || 'Logo'}
-                                className="w-8 h-8 rounded-lg object-contain shadow-gold shrink-0 p-1 bg-gradient-to-br from-gold-400 to-gold-600"
+                                className="lp-logo-block !w-8 !h-8 overflow-hidden !p-1"
                             />
                         ) : (
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold shrink-0">
-                                <span className="text-white font-display font-bold text-base">
+                            <div className="lp-logo-block !w-8 !h-8 !text-base">
+                                <span>
                                     {siteName ? siteName[0].toUpperCase() : 'W'}
                                 </span>
                             </div>
                         )}
                         {!collapsed && (
                             <div className="min-w-0">
-                                <h1 className="font-display font-bold text-base text-gray-800 dark:text-white leading-tight truncate">
-                                    {siteName || <>Wedding<span className="text-gradient-gold">SaaS</span></>}
+                                <h1 className="shell-brand-title truncate !text-[11px]">
+                                    {siteName || <>WEDDING<span style={{ color: 'var(--shell-accent)' }}>SAAS</span></>}
                                 </h1>
-                                <p className="text-[10px] text-gray-400 leading-tight">Platform Management</p>
+                                <p className="shell-eyebrow leading-tight mt-1">Platform Management</p>
                             </div>
                         )}
                     </div>
@@ -441,38 +663,16 @@ export function DashboardLayout() {
                         onClick={toggleCollapsed}
                         title={collapsed ? t('sidebar.expand', 'Perlebar menu') : t('sidebar.collapse', 'Perkecil menu')}
                         aria-label={collapsed ? t('sidebar.expand', 'Perlebar menu') : t('sidebar.collapse', 'Perkecil menu')}
-                        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white dark:bg-wedding-dark-card border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-gold-600 hover:border-gold-400 shadow-sm flex items-center justify-center z-10 transition-colors"
+                        className="shell-collapse absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center z-10 transition-transform"
                     >
                         {collapsed ? <HiOutlineChevronDoubleRight className="w-3.5 h-3.5" /> : <HiOutlineChevronDoubleLeft className="w-3.5 h-3.5" />}
                     </button>
                 </div>
 
-                {/* Tenant Info */}
-                {tenant && showTenantMenu && !collapsed && (
-                    <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
-                        {isImpersonating && (
-                            <div className="mb-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-[10px] text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1">
-                                <span>👤</span> {t('sidebar.viewing_tenant', 'Viewing as Tenant')}
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-gold-100 dark:bg-gold-900/30 flex items-center justify-center shrink-0">
-                                <HiOutlineHeart className="w-4 h-4 text-gold-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">
-                                    {tenant.bride_name} & {tenant.groom_name}
-                                </p>
-                                <p className="text-[10px] text-gray-400 truncate">{tenant.domain_slug}</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Navigation */}
                 <nav className={`flex-1 py-2 space-y-0.5 overflow-y-auto overflow-x-hidden ${collapsed ? 'px-2' : 'px-2.5'}`}>
                     {!collapsed && (
-                        <p className="px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.menu')}</p>
+                        <p className="shell-eyebrow px-2.5 py-1.5">{t('sidebar.menu')}</p>
                     )}
                     {filteredNavItems.map((item) => (
                         <NavLink
@@ -490,71 +690,80 @@ export function DashboardLayout() {
                     ))}
                 </nav>
 
-                {/* User Info & Actions */}
-                <div className={`py-2.5 border-t border-gray-100 dark:border-gray-700 ${collapsed ? 'px-2' : 'px-2.5'}`}>
-                    <div className={`flex items-center gap-2.5 py-2 mb-1 ${collapsed ? 'justify-center px-0' : 'px-2.5'}`}>
-                        <div
-                            className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shrink-0"
-                            title={collapsed ? `${user?.username} • ${user?.role?.replace('_', ' ')}` : undefined}
-                        >
-                            <span className="text-white font-bold text-xs">{user?.username?.[0]?.toUpperCase()}</span>
-                        </div>
-                        {!collapsed && (
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{user?.username}</p>
-                                <p className="text-[10px] text-gold-500 capitalize truncate">{user?.role?.replace('_', ' ')}</p>
+                {/* Tenant Info — dipindah ke KAKI sidebar (dulu di atas) + info plan.
+                    Identitas/aksi user hanya di dropdown topbar. */}
+                {tenant && showTenantMenu && (
+                    <div className={`shell-divider border-t ${collapsed ? 'px-2 py-3' : 'px-4 py-3'}`}>
+                        {collapsed ? (
+                            <div
+                                className="w-9 h-9 mx-auto rounded border-2 flex items-center justify-center"
+                                style={{ background: 'var(--shell-border-soft)', borderColor: 'var(--shell-accent)' }}
+                                title={`${tenant.bride_name} & ${tenant.groom_name} • ${tenant.domain_slug}${tenant.plan_type ? ' • ' + String(tenant.plan_type).toUpperCase() : ''}`}
+                            >
+                                <HiOutlineHeart className="w-4 h-4 shell-accent" />
+                            </div>
+                        ) : (
+                            <div>
+                                {isImpersonating && (
+                                    <div className="mb-2 px-2 py-1 bg-orange-500/15 border-2 border-orange-500/40 rounded text-[10px] text-orange-600 dark:text-orange-300 font-bold flex items-center gap-1">
+                                        <span>👤</span> {t('sidebar.viewing_tenant', 'Viewing as Tenant')}
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded border-2 flex items-center justify-center shrink-0" style={{ background: 'var(--shell-border-soft)', borderColor: 'var(--shell-accent)' }}>
+                                        <HiOutlineHeart className="w-4 h-4 shell-accent" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold shell-text truncate">
+                                            {tenant.bride_name} & {tenant.groom_name}
+                                        </p>
+                                        <p className="text-[10px] shell-muted truncate">{tenant.domain_slug}</p>
+                                    </div>
+                                </div>
+                                {tenant.plan_type && (
+                                    <div className="mt-2.5">
+                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${planPillClass(tenant.plan_type)}`}>
+                                            <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
+                                            {tenant.plan_type}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={() => setPasswordModalOpen(true)}
-                        title={collapsed ? t('sidebar.change_password') : undefined}
-                        className={`sidebar-link w-full mb-0.5 text-gray-600 dark:text-gray-300 ${collapsed ? 'justify-center px-0' : ''}`}
-                    >
-                        <HiOutlineKey className="w-[18px] h-[18px]" />
-                        {!collapsed && <span>{t('sidebar.change_password')}</span>}
-                    </button>
-                    <button
-                        onClick={() => setLogoutConfirmOpen(true)}
-                        title={collapsed ? t('sidebar.logout') : undefined}
-                        className={`sidebar-link w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 ${collapsed ? 'justify-center px-0' : ''}`}
-                    >
-                        <HiOutlineLogout className="w-[18px] h-[18px]" />
-                        {!collapsed && <span>{t('sidebar.logout')}</span>}
-                    </button>
-                </div>
+                )}
             </aside>
 
             {/* Main Content */}
-            <div className={`flex-1 flex flex-col min-h-screen bg-wedding-bg dark:bg-wedding-dark overflow-hidden transition-[margin] duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-60'}`}>
+            <div className={`shell-main flex-1 flex flex-col min-h-screen overflow-hidden transition-[margin] duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-60'}`}>
                 {/* Topbar */}
-                <header className={`fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-wedding-dark-card/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-700 transition-[left] duration-300 ${collapsed ? 'lg:left-16' : 'lg:left-60'}`}>
+                <header className={`shell-topbar fixed top-0 left-0 right-0 z-30 transition-[left] duration-300 ${collapsed ? 'lg:left-16' : 'lg:left-60'}`}>
                     <div className="flex items-center justify-between px-4 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={() => setSidebarOpen(true)}
-                                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                className="shell-icon-btn lg:hidden p-2 transition-transform"
                             >
-                                <HiOutlineMenu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                                <HiOutlineMenu className="w-5 h-5" />
                             </button>
                             <div className="flex flex-col justify-center">
                                 {/* Breadcrumb / Context Badge */}
                                 {isImpersonating && (
-                                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider uppercase mb-0.5">
+                                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-300 tracking-wider uppercase mb-0.5">
                                         Viewing as Tenant: {tenant?.bride_name} & {tenant?.groom_name}
                                     </span>
                                 )}
                                 {user?.role === 'staff' && (
-                                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 tracking-wider uppercase mb-0.5">
+                                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-300 tracking-wider uppercase mb-0.5">
                                         Staff Receptionist: {tenant?.bride_name} & {tenant?.groom_name}
                                     </span>
                                 )}
 
-                                <h2 className="text-sm md:text-base font-black text-gray-800 dark:text-white leading-tight">
+                                <h2 className="shell-title text-[10px] md:text-[11px]">
                                     {getHeaderTitle()}
                                 </h2>
                                 {getHeaderDescription() && (
-                                    <p className="text-[9px] md:text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 hidden sm:block truncate max-w-[280px] md:max-w-[450px]">
+                                    <p className="shell-desc text-[9px] md:text-[11px] mt-1 hidden sm:block truncate max-w-[280px] md:max-w-[450px]">
                                         {getHeaderDescription()}
                                     </p>
                                 )}
@@ -563,8 +772,7 @@ export function DashboardLayout() {
 
                         <div className="flex items-center gap-3">
                             <div className="hidden lg:flex items-center gap-3">
-                                {/* Switch to the new mobile-first /admin UI */}
-                                <ViewSwitchButton variant="full" />
+                                {/* "Versi Mobile" kini ada di dalam UserMenu dropdown. */}
 
                                 {/* Open Invitation Shortcut */}
                                 {tenant?.domain_slug && showTenantMenu && (
@@ -572,7 +780,7 @@ export function DashboardLayout() {
                                         href={`${window.location.origin}${window.location.pathname}#/${tenant.domain_slug}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-gold-500 text-gray-500 hover:text-gold-600 transition-all flex items-center gap-2 group shadow-sm"
+                                        className="shell-icon-btn px-2.5 py-2 transition-transform flex items-center gap-2 group"
                                         title={t('topbar.open_invitation', 'Buka Undangan')}
                                     >
                                         <HiOutlineExternalLink className="w-5 h-5" />
@@ -589,31 +797,34 @@ export function DashboardLayout() {
                                 {/* Dark Mode Toggle */}
                                 <button
                                     onClick={toggleTheme}
-                                    className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
+                                    className="shell-icon-btn p-2.5 transition-transform"
                                     aria-label="Toggle dark mode"
                                 >
                                     {isDark ? (
                                         <HiOutlineSun className="w-5 h-5 text-gold-400" />
                                     ) : (
-                                        <HiOutlineMoon className="w-5 h-5 text-gray-500" />
+                                        <HiOutlineMoon className="w-5 h-5" />
                                     )}
                                 </button>
                             </div>
 
-                            {/* Badge jenis paket tenant — di pojok kanan topbar, sebelah badge role. */}
-                            {tenant && showTenantMenu && (
-                                <div className={`hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${planPillClass(tenant.plan_type)}`} title={`Paket: ${String(tenant.plan_type || '').toUpperCase()}`}>
-                                    <HiOutlineBadgeCheck className="w-4 h-4" />
-                                    {tenant.plan_type}
-                                </div>
-                            )}
-
-                            {/* User Badge */}
-                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gold-50 dark:bg-gold-900/20 rounded-full">
-                                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                                <span className="text-xs font-medium text-gold-700 dark:text-gold-400 capitalize">
-                                    {user?.role?.replace('_', ' ')}
-                                </span>
+                            {/* Identitas + aksi (role, paket, ganti password, logout)
+                                dikelompokkan ke dalam satu avatar-dropdown supaya
+                                topbar tidak ramai. Di layar sangat kecil (<sm)
+                                pakai hamburger + MobileMenuOverlay, jadi disembunyikan. */}
+                            <div className="hidden sm:block">
+                                <UserMenu
+                                    variant="topbar"
+                                    username={user?.username}
+                                    role={user?.role}
+                                    planType={showTenantMenu ? tenant?.plan_type : undefined}
+                                    planPillClass={planPillClass(tenant?.plan_type)}
+                                    onChangePassword={() => setPasswordModalOpen(true)}
+                                    onLogout={() => setLogoutConfirmOpen(true)}
+                                    onSwitchView={switchToMobile}
+                                    switchViewLabel={t('view_switch.to_mobile', 'Versi Mobile')}
+                                    switchViewIcon={<HiOutlineDeviceMobile className="w-[18px] h-[18px]" />}
+                                />
                             </div>
                         </div>
                     </div>
@@ -633,8 +844,8 @@ export function DashboardLayout() {
                 </main>
 
                 {/* Footer */}
-                <footer className="px-8 py-4 border-t border-gray-100 dark:border-gray-700">
-                    <p className="text-center text-xs text-gray-400">
+                <footer className="shell-footer px-8 py-4">
+                    <p className="lp-pixel shell-muted text-center text-[8px] leading-[1.8]">
                         © 2026 Wedding SaaS Platform. Built with ❤️
                     </p>
                 </footer>

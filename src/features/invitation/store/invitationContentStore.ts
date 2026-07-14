@@ -11,8 +11,8 @@ interface InvitationContentState {
     hasLoadedContent: boolean;
     hasLoadedImages: boolean;
     
-    fetchContent: (force?: boolean, tenantData?: any) => Promise<void>;
-    fetchImages: (force?: boolean) => Promise<void>;
+    fetchContent: (force?: boolean, tenantData?: any, silent?: boolean) => Promise<void>;
+    fetchImages: (force?: boolean, silent?: boolean) => Promise<void>;
     updateContent: (updates: Partial<InvitationContent>) => Promise<boolean>;
     setContent: (content: Partial<InvitationContent>) => void;
     addImage: (image: ImageRecord) => void;
@@ -64,12 +64,19 @@ export const useInvitationContentStore = create<InvitationContentState>((set, ge
 
     setContent: (content) => set({ content }),
 
-    fetchContent: async (force = false, tenantData = null) => {
+    fetchContent: async (force = false, tenantData = null, silent = false) => {
         if (get().hasLoadedContent && !force) return;
+
+        // Revalidasi diam-diam (stale-while-revalidate): kalau data lama sudah ada,
+        // JANGAN nyalakan block-loader global — tampilkan cache dulu, update di
+        // tempat saat data segar tiba. Cegah "loading screen" tiap buka menu ini.
+        const revalidateSilently = silent || get().hasLoadedContent;
 
         set({ loading: true });
         try {
-            const res = await invitationContentApi.getContent();
+            const res = await invitationContentApi.getContent(
+                revalidateSilently ? ({ skipLoader: true } as any) : undefined
+            );
             if (res.success && res.data) {
                 const data = { ...res.data };
                 
@@ -100,11 +107,14 @@ export const useInvitationContentStore = create<InvitationContentState>((set, ge
         }
     },
 
-    fetchImages: async (force = false) => {
+    fetchImages: async (force = false, silent = false) => {
         if (get().hasLoadedImages && !force) return;
-        
+
+        const revalidateSilently = silent || get().hasLoadedImages;
         try {
-            const res = await imageApi.getTenantImages();
+            const res = await imageApi.getTenantImages(
+                revalidateSilently ? ({ skipLoader: true } as any) : undefined
+            );
             if (res.success) {
                 set({ 
                     images: res.data, 

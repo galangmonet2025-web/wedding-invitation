@@ -8,7 +8,7 @@ interface ThemeState {
     loading: boolean;
     hasLoaded: boolean;
     
-    fetchThemes: (force?: boolean) => Promise<void>;
+    fetchThemes: (force?: boolean, silent?: boolean) => Promise<void>;
     addTheme: (theme: Theme) => void;
     updateTheme: (id: string, updates: Partial<Theme>) => void;
     deleteTheme: (id: string) => Promise<boolean>;
@@ -19,13 +19,18 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     loading: false,
     hasLoaded: false,
 
-    fetchThemes: async (force = false) => {
+    fetchThemes: async (force = false, silent = false) => {
         // Jika sudah pernah load dan tidak dipaksa refresh, gunakan cache
         if (get().hasLoaded && !force) return;
 
+        // Revalidasi diam: kalau daftar tema lama sudah ada, refresh tanpa block-
+        // loader global (stale-while-revalidate) supaya buka menu tak nge-block.
+        const revalidateSilently = silent || get().hasLoaded;
         set({ loading: true });
         try {
-            const res = await themeApi.getThemes();
+            const res = await themeApi.getThemes(
+                revalidateSilently ? ({ skipLoader: true } as any) : undefined
+            );
             if (res.success) {
                 set({ 
                     themes: res.data, 

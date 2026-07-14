@@ -252,8 +252,8 @@ export const activityApi = {
 // =============================================
 
 export const themeApi = {
-    getThemes: async (): Promise<ApiResponse<Theme[]>> => {
-        const res = await apiClient.post('', { action: 'getThemes' });
+    getThemes: async (config: any = {}): Promise<ApiResponse<Theme[]>> => {
+        const res = await apiClient.post('', { action: 'getThemes' }, config);
         return res.data;
     },
 
@@ -371,8 +371,8 @@ export async function chunkedSaveTheme(
 // =============================================
 
 export const invitationContentApi = {
-    getContent: async (): Promise<ApiResponse<InvitationContent | null>> => {
-        const res = await apiClient.post('', { action: 'getInvitationContent' });
+    getContent: async (config: any = {}): Promise<ApiResponse<InvitationContent | null>> => {
+        const res = await apiClient.post('', { action: 'getInvitationContent' }, config);
         return res.data;
     },
 
