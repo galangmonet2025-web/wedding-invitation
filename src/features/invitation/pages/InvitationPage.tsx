@@ -5,8 +5,8 @@ import { publicApi } from '@/core/api/endpoints';
 import type { Wish, InvitationContent, TimelineItem, ImageRecord, ThemeAssetMedia } from '@/types';
 import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode, HiOutlineMenu, HiOutlineX, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi';
 import { useTranslation } from 'react-i18next';
-import { Modal } from '@/shared/components/Modal';
-import { QRCodeSVG } from 'qrcode.react';
+import { GlassModal } from '../components/GlassModal';
+import { QrTicketCard } from '../components/QrTicketCard';
 import toast from 'react-hot-toast';
 import { ThemeWrapper } from '../components/ThemeWrapper';
 import { parseTemplate } from '@/utils/templateParser';
@@ -891,142 +891,129 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
 
     const guestQrModal = data?.guest ? (
-        <Modal
-            isOpen={showQRModal}
-            onClose={() => setShowQRModal(false)}
-            title={t('invitation.qr_modal_title')}
-            size="sm"
-        >
-            <div className="flex flex-col items-center gap-4 py-4 w-full text-center">
-                <div className="p-4 bg-white rounded-2xl shadow-lg inline-block">
-                    <QRCodeSVG
-                        value={data.guest.invitation_code}
-                        size={200}
-                        fgColor="#1A1A2E"
-                        bgColor="#FFFFFF"
-                        level="M"
-                    />
-                </div>
-                <div>
-                    <p className="font-semibold text-gray-800 dark:text-white text-lg">{data.guest.name}</p>
-                    <p className="text-gold-600 font-mono text-sm mt-1">{data.guest.invitation_code}</p>
-                </div>
-                <p className="text-sm text-gray-500 mt-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                    {t('invitation.qr_modal_desc')}
-                </p>
-            </div>
-        </Modal>
+        <GlassModal isOpen={showQRModal} onClose={() => setShowQRModal(false)}>
+            <QrTicketCard
+                title={t('invitation.qr_modal_title')}
+                name={data.guest.name}
+                qrValue={data.guest.invitation_code}
+                code={data.guest.invitation_code}
+                note={t('invitation.qr_modal_desc')}
+            />
+        </GlassModal>
     ) : null;
 
+    const glassInputClass =
+        "w-full px-4 py-2.5 text-sm rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200/70 dark:border-white/10 text-gray-800 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500 transition-all";
+
     const uninvitedGuestFormModal = (
-        <Modal
-            isOpen={showGuestForm}
-            onClose={() => setShowGuestForm(false)}
-            title={generatedUninvitedQR ? t('invitation.qr_modal_title') : t('invitation.uninvited_form_title')}
-        >
+        <GlassModal isOpen={showGuestForm} onClose={() => setShowGuestForm(false)}>
             {!generatedUninvitedQR ? (
-                <div className="py-4 space-y-4">
-                    <p className="text-sm text-gray-500 mb-4">
-                        {t('invitation.uninvited_form_desc')}
-                    </p>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t('invitation.full_name')}
-                        </label>
-                        <input
-                            type="text"
-                            value={tempGuestData.name}
-                            onChange={(e) => setTempGuestData({ ...tempGuestData, name: e.target.value })}
-                            className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                            placeholder={t('invitation.full_name_placeholder')}
-                        />
+                <div className="px-6 pt-7 pb-6">
+                    {/* Header */}
+                    <div className="text-center">
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gold-500/10 ring-1 ring-gold-500/20 text-gold-600 dark:text-gold-400">
+                            <HiOutlineQrcode className="w-5 h-5" />
+                        </span>
+                        <h3 className="mt-3 text-lg font-semibold tracking-tight text-gray-900 dark:text-white">
+                            {t('invitation.uninvited_form_title')}
+                        </h3>
+                        <p className="mt-1.5 mx-auto max-w-[280px] text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                            {t('invitation.uninvited_form_desc')}
+                        </p>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t('invitation.guest_category')}
-                        </label>
-                        <select
-                            value={tempGuestData.category}
-                            onChange={(e) => setTempGuestData({ ...tempGuestData, category: e.target.value })}
-                            className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                        >
-                            <option value="Keluarga Laki-laki">{t('invitation.guest_categories.groom_family')}</option>
-                            <option value="Keluarga Perempuan">{t('invitation.guest_categories.bride_family')}</option>
-                            <option value="Teman/Rekan Kerja">{t('invitation.guest_categories.work_friends')}</option>
-                            <option value="Tamu Undangan">{t('invitation.guest_categories.general_guest')}</option>
-                            <option value="VIP">{t('invitation.guest_categories.vip')}</option>
-                        </select>
+
+                    {/* Fields */}
+                    <div className="mt-6 space-y-4">
+                        <div>
+                            <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                                {t('invitation.full_name')}
+                            </label>
+                            <input
+                                type="text"
+                                value={tempGuestData.name}
+                                onChange={(e) => setTempGuestData({ ...tempGuestData, name: e.target.value })}
+                                className={glassInputClass}
+                                placeholder={t('invitation.full_name_placeholder')}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                                {t('invitation.guest_category')}
+                            </label>
+                            <select
+                                value={tempGuestData.category}
+                                onChange={(e) => setTempGuestData({ ...tempGuestData, category: e.target.value })}
+                                className={glassInputClass}
+                            >
+                                <option value="Keluarga Laki-laki">{t('invitation.guest_categories.groom_family')}</option>
+                                <option value="Keluarga Perempuan">{t('invitation.guest_categories.bride_family')}</option>
+                                <option value="Teman/Rekan Kerja">{t('invitation.guest_categories.work_friends')}</option>
+                                <option value="Tamu Undangan">{t('invitation.guest_categories.general_guest')}</option>
+                                <option value="VIP">{t('invitation.guest_categories.vip')}</option>
+                            </select>
+                        </div>
                     </div>
-                    <div className="pt-4 flex justify-end">
-                        <button
-                            onClick={async () => {
-                                if (tempGuestData.name.trim() === '') return;
-                                setIsCheckingGuest(true);
-                                try {
-                                    const res = await publicApi.checkGuest({
-                                        slug: tenant.domain_slug,
-                                        name: tempGuestData.name.trim()
-                                    });
 
-                                    if (!res.success) {
-                                        toast.error(res.message || 'Gagal mengecek nama tamu. Pastikan backend sudah di-deploy.', { duration: 4000 });
-                                        return;
-                                    }
+                    {/* CTA — full width, elegant */}
+                    <button
+                        onClick={async () => {
+                            if (tempGuestData.name.trim() === '') return;
+                            setIsCheckingGuest(true);
+                            try {
+                                const res = await publicApi.checkGuest({
+                                    slug: tenant.domain_slug,
+                                    name: tempGuestData.name.trim()
+                                });
 
-                                    if (res.data?.exists) {
-                                        toast.error(t('invitation.guest_exists_error', { name: tempGuestData.name.trim() }), { duration: 5000 });
-                                    } else {
-                                        setGeneratedUninvitedQR(`NEW_GUEST:${tempGuestData.name.trim()}:${tempGuestData.category}`);
-                                    }
-                                } catch (error) {
-                                    toast.error('Gagal mengecek nama tamu.');
-                                } finally {
-                                    setIsCheckingGuest(false);
+                                if (!res.success) {
+                                    toast.error(res.message || 'Gagal mengecek nama tamu. Pastikan backend sudah di-deploy.', { duration: 4000 });
+                                    return;
                                 }
-                            }}
-                            disabled={!tempGuestData.name.trim() || isCheckingGuest}
-                            className="px-6 py-2 bg-gold-600 hover:bg-gold-700 text-white rounded-lg transition-colors font-medium cursor-pointer disabled:opacity-50 flex items-center gap-2"
+
+                                if (res.data?.exists) {
+                                    toast.error(t('invitation.guest_exists_error', { name: tempGuestData.name.trim() }), { duration: 5000 });
+                                } else {
+                                    setGeneratedUninvitedQR(`NEW_GUEST:${tempGuestData.name.trim()}:${tempGuestData.category}`);
+                                }
+                            } catch (error) {
+                                toast.error('Gagal mengecek nama tamu.');
+                            } finally {
+                                setIsCheckingGuest(false);
+                            }
+                        }}
+                        disabled={!tempGuestData.name.trim() || isCheckingGuest}
+                        className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-white font-semibold text-sm shadow-lg shadow-gold-900/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isCheckingGuest ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                {t('invitation.checking')}
+                            </>
+                        ) : (
+                            t('invitation.generate_qr')
+                        )}
+                    </button>
+                </div>
+            ) : (
+                <div>
+                    <QrTicketCard
+                        title={t('invitation.qr_modal_title')}
+                        name={tempGuestData.name}
+                        qrValue={generatedUninvitedQR}
+                        subtitle={tempGuestData.category}
+                        note={t('invitation.qr_modal_desc')}
+                    />
+                    <div className="px-6 pb-6 -mt-1">
+                        <button
+                            onClick={() => setGeneratedUninvitedQR(null)}
+                            className="w-full py-2.5 rounded-xl bg-white/60 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-gray-200/70 dark:border-white/10 text-gray-600 dark:text-gray-300 font-medium text-sm transition-all active:scale-[0.98]"
                         >
-                            {isCheckingGuest ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    {t('invitation.checking')}
-                                </>
-                            ) : (
-                                t('invitation.generate_qr')
-                            )}
+                            {t('invitation.correct_data')}
                         </button>
                     </div>
                 </div>
-            ) : (
-                <div className="flex flex-col items-center gap-4 py-4 w-full text-center">
-                    <div className="p-4 bg-white rounded-2xl shadow-lg inline-block">
-                        <QRCodeSVG
-                            value={generatedUninvitedQR}
-                            size={200}
-                            fgColor="#1A1A2E"
-                            bgColor="#FFFFFF"
-                            level="M"
-                        />
-                    </div>
-                    <div>
-                        <p className="font-semibold text-gray-800 dark:text-white text-lg">{tempGuestData.name}</p>
-                        <p className="text-gold-600 text-sm mt-1">{tempGuestData.category}</p>
-                    </div>
-
-                    <button
-                        onClick={() => setGeneratedUninvitedQR(null)}
-                        className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-medium cursor-pointer text-sm w-full md:w-auto mt-2"
-                    >
-                        {t('invitation.correct_data')}
-                    </button>
-
-                    <p className="text-sm text-gray-500 mt-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                        {t('invitation.qr_modal_desc')}
-                    </p>
-                </div>
             )}
-        </Modal>
+        </GlassModal>
     );
 
     // THEME RENDERING - HOOKS MUST BE TOP LEVEL

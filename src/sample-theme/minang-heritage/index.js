@@ -1,5 +1,8 @@
 /* =========================================================================
-   CINEMA 35MM — theme JS
+   MINANG HERITAGE — theme JS
+   Warm Minangkabau palette (cream / gold / burgundy) with Rumah Gadang &
+   songket ornaments. Structure/host-wiring cloned from the "timeless" theme.
+
    Host contract (ThemeWrapper): this script is REMOVED and RE-EXECUTED every
    time its inputs change. So it must:
      - register a global cleanup hook and run it on entry (no stacked
@@ -13,11 +16,11 @@
     'use strict';
 
     // ---- Run previous instance's cleanup, then start a fresh registry -------
-    if (typeof window.__cineCleanup === 'function') {
-        try { window.__cineCleanup(); } catch (e) { /* noop */ }
+    if (typeof window.__minangCleanup === 'function') {
+        try { window.__minangCleanup(); } catch (e) { /* noop */ }
     }
     var cleanupFns = [];
-    window.__cineCleanup = function () {
+    window.__minangCleanup = function () {
         cleanupFns.forEach(function (fn) { try { fn(); } catch (e) { /* noop */ } });
         cleanupFns = [];
     };
@@ -61,17 +64,18 @@
     };
 
     // =====================================================================
-    // Countdown — reads the REAL wedding date from the DB (#tm-wed-date).
+    // Countdown — reads the REAL wedding date from the DB (#mg-wed-date).
+    // Self-contained + guards against stacked intervals on re-execution.
     // =====================================================================
     (function startCountdown() {
-        if (window.__cineCountdownTimer) {
-            clearInterval(window.__cineCountdownTimer);
-            window.__cineCountdownTimer = null;
+        if (window.__mgCountdownTimer) {
+            clearInterval(window.__mgCountdownTimer);
+            window.__mgCountdownTimer = null;
         }
 
         function resolveDay() {
             var holder = document.getElementById('wedding-calendar')
-                || document.getElementById('tm-wed-date');
+                || document.getElementById('mg-wed-date');
             var raw = holder ? (holder.getAttribute('data-wedding-date') || '').trim() : '';
             var m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
             if (m) return new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0);
@@ -80,7 +84,7 @@
         }
 
         function receptionEnd(day) {
-            var holder = document.getElementById('tm-jam-resepsi');
+            var holder = document.getElementById('mg-jam-resepsi');
             var txt = holder ? (holder.textContent || '') : '';
             var times = txt.match(/(\d{1,2}):(\d{2})/g) || [];
             var endH = 23, endM = 59;
@@ -113,17 +117,17 @@
                 set('minutes', Math.floor((dist % 36e5) / 6e4));
                 set('seconds', Math.floor((dist % 6e4) / 1000));
             } else if (Date.now() <= recEnd.getTime()) {
-                setStatus('Tirai telah dibuka — pemutaran sedang berlangsung 🎬');
-                clearInterval(window.__cineCountdownTimer); window.__cineCountdownTimer = null;
+                setStatus('Hari yang kami nantikan telah tiba 🤍');
+                clearInterval(window.__mgCountdownTimer); window.__mgCountdownTimer = null;
             } else {
-                setStatus('That’s a wrap! Terima kasih atas doa & restunya 🙏');
-                clearInterval(window.__cineCountdownTimer); window.__cineCountdownTimer = null;
+                setStatus('Acara kami telah selesai. Terima kasih atas doa & restunya 🙏');
+                clearInterval(window.__mgCountdownTimer); window.__mgCountdownTimer = null;
             }
         }
         tick();
-        window.__cineCountdownTimer = setInterval(tick, 1000);
+        window.__mgCountdownTimer = setInterval(tick, 1000);
         cleanupFns.push(function () {
-            if (window.__cineCountdownTimer) { clearInterval(window.__cineCountdownTimer); window.__cineCountdownTimer = null; }
+            if (window.__mgCountdownTimer) { clearInterval(window.__mgCountdownTimer); window.__mgCountdownTimer = null; }
         });
     })();
 
@@ -133,6 +137,7 @@
     (function scrollReveal() {
         var scope = document.querySelector('.mock-app-screen');
         if (!scope || !('IntersectionObserver' in window)) {
+            // Fallback: reveal everything so nothing stays blank.
             document.querySelectorAll('.reveal-item').forEach(function (el) { el.classList.add('is-visible'); });
             return;
         }
@@ -151,29 +156,26 @@
 
     // =====================================================================
     // Music icon mirroring — reflect #bg-music state ONLY.
+    // The host owns the actual Audio; we never call play()/pause() here.
     // =====================================================================
     (function musicMirror() {
         var audio = document.getElementById('bg-music');
         var btn = document.getElementById('btn-toggle-music');
         if (!audio) return;
 
-        var fab = document.getElementById('theme-fab-container');
         function sync() {
             var play = document.getElementById('play-icon');
             var pause = document.getElementById('pause-icon');
             if (!play || !pause) return;
-            var playing = !audio.paused;
-            if (playing) {
-                play.style.display = 'none';
-                pause.style.display = 'block';
-                if (btn) btn.classList.add('music-playing');
-            } else {
+            if (audio.paused) {
                 play.style.display = 'block';
                 pause.style.display = 'none';
                 if (btn) btn.classList.remove('music-playing');
+            } else {
+                play.style.display = 'none';
+                pause.style.display = 'block';
+                if (btn) btn.classList.add('music-playing');
             }
-            // Freeze/animate the player-bar equalizer with the music state.
-            if (fab) fab.classList.toggle('is-playing', playing);
         }
         audio.addEventListener('play', sync);
         audio.addEventListener('pause', sync);
@@ -187,7 +189,9 @@
     })();
 
     // =====================================================================
-    // Menu + QR modals + scroll-up — DOCUMENT-DELEGATED.
+    // Menu + QR modals + scroll-up — DOCUMENT-DELEGATED so a single set of
+    // listeners survives host HTML re-injection. We attach ONE delegated
+    // click handler on document and reference elements live at click time.
     // =====================================================================
     (function navAndModals() {
         var menu = document.getElementById('menu-modal');
@@ -196,14 +200,22 @@
         function openMenu() { if (menu) menu.classList.add('is-open'); }
         function closeMenu() { if (menu) menu.classList.remove('is-open'); }
         function closeQr() { if (qr) qr.classList.remove('is-open'); }
+        // Note: opening the QR is host-driven (host intercepts #btn-show-qr).
+        // We only provide the container + a close affordance.
 
         function onClick(e) {
-            var t = e.target.closest ? e.target.closest('[data-scroll], #btn-show-menu, #btn-close-menu, #btn-close-qr') : null;
+            var t = e.target.closest ? e.target.closest('[data-scroll], #btn-show-menu, #btn-close-menu, #btn-close-qr, #btn-scroll-up') : null;
             if (!t) return;
 
             if (t.id === 'btn-show-menu') { openMenu(); return; }
             if (t.id === 'btn-close-menu') { closeMenu(); return; }
             if (t.id === 'btn-close-qr') { closeQr(); return; }
+
+            if (t.id === 'btn-scroll-up') {
+                var scope = document.querySelector('.mock-app-screen');
+                if (scope) scope.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
 
             var target = t.getAttribute('data-scroll');
             if (target) {
@@ -215,6 +227,7 @@
         document.addEventListener('click', onClick);
         cleanupFns.push(function () { document.removeEventListener('click', onClick); });
 
+        // Close menu/qr overlays when clicking the dimmed backdrop.
         function onBackdrop(e) {
             if (e.target === menu) closeMenu();
             if (e.target === qr) closeQr();
@@ -224,145 +237,23 @@
     })();
 
     // =====================================================================
-    // Player-bar PREV / NEXT — jump section by section through the invitation.
+    // Scroll-up button visibility (scoped to the phone screen scroller)
     // =====================================================================
-    (function playerbarNav() {
+    (function scrollUpVisibility() {
         var scope = document.querySelector('.mock-app-screen');
-        var prev = document.getElementById('pb-prev');
-        var next = document.getElementById('pb-next');
-        if (!scope || (!prev && !next)) return;
-
-        // All navigable sections in document order.
-        var sections = Array.prototype.slice.call(
-            scope.querySelectorAll('section[id], section[data-menu-label]')
-        ).filter(function (el) {
-            // skip the cover (it's hidden once opened)
-            return el.id !== 'theme-cover';
-        });
-        if (!sections.length) return;
-
-        function scrollTo(el) {
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        // Index of the section whose top is nearest the current scroll position.
-        function currentIndex() {
-            var best = 0, bestDist = Infinity;
-            var top = scope.scrollTop;
-            sections.forEach(function (el, i) {
-                var d = Math.abs(el.offsetTop - top);
-                if (d < bestDist) { bestDist = d; best = i; }
-            });
-            return best;
-        }
-        function onPrev() { scrollTo(sections[Math.max(0, currentIndex() - 1)]); }
-        function onNext() { scrollTo(sections[Math.min(sections.length - 1, currentIndex() + 1)]); }
-
-        if (prev) prev.addEventListener('click', onPrev);
-        if (next) next.addEventListener('click', onNext);
-        cleanupFns.push(function () {
-            if (prev) prev.removeEventListener('click', onPrev);
-            if (next) next.removeEventListener('click', onNext);
-        });
+        var btn = document.getElementById('btn-scroll-up');
+        if (!scope || !btn) return;
+        function onScroll() { btn.style.display = scope.scrollTop > 500 ? 'flex' : 'none'; }
+        scope.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        cleanupFns.push(function () { scope.removeEventListener('scroll', onScroll); });
     })();
 
     // =====================================================================
-    // Player-bar now-playing — read the YouTube backsound's channel + video
-    // title from the host-mounted hidden iframe and show them (marquee if long).
-    // Falls back to the static template text when the backsound isn't YouTube.
-    // We only READ track metadata; the host owns real playback.
-    // =====================================================================
-    (function ytNowPlaying() {
-        var channelEl = document.getElementById('pb-np-channel');
-        var titleEl = document.getElementById('pb-np-title');
-        if (!titleEl) return;
-
-        function marqueeInner() { return titleEl.querySelector('.np-marquee-inner'); }
-
-        // Measure the title vs its viewport; scroll it only if it overflows.
-        function measure() {
-            var inner = marqueeInner();
-            if (!inner) return;
-            titleEl.classList.remove('is-marquee');
-            titleEl.style.removeProperty('--np-scroll');
-            titleEl.style.removeProperty('--np-scroll-dur');
-            var overflow = inner.scrollWidth - titleEl.clientWidth;
-            if (overflow > 6) {
-                titleEl.style.setProperty('--np-scroll', (-overflow - 24) + 'px');
-                var dur = Math.min(20, Math.max(7, overflow * 0.06));
-                titleEl.style.setProperty('--np-scroll-dur', dur.toFixed(1) + 's');
-                titleEl.classList.add('is-marquee');
-            }
-        }
-        function setTitle(text) {
-            var inner = marqueeInner();
-            if (!inner || !text || inner.textContent === text) return;
-            inner.textContent = text;
-            window.requestAnimationFrame(measure);
-        }
-        function setChannel(text) {
-            if (channelEl && text && channelEl.textContent !== text) channelEl.textContent = text;
-        }
-
-        var rzT;
-        function onResize() { clearTimeout(rzT); rzT = setTimeout(measure, 200); }
-        window.addEventListener('resize', onResize);
-        cleanupFns.push(function () { clearTimeout(rzT); window.removeEventListener('resize', onResize); });
-        window.requestAnimationFrame(measure);
-
-        // --- talk to the host's hidden YouTube backsound iframe ---
-        function findFrame() { return document.querySelector('iframe[title="YouTube Background Music"]'); }
-        var iframe = null;
-
-        function post(func) {
-            try {
-                iframe.contentWindow.postMessage(
-                    JSON.stringify({ event: 'command', func: func, args: [] }), '*');
-            } catch (e) { /* noop */ }
-        }
-        function subscribe() {
-            try {
-                iframe.contentWindow.postMessage(
-                    JSON.stringify({ event: 'listening', id: 'cine-np' }), '*');
-            } catch (e) { /* noop */ }
-        }
-        function onMessage(e) {
-            if (typeof e.data !== 'string' || e.origin.indexOf('youtube') === -1) return;
-            var msg;
-            try { msg = JSON.parse(e.data); } catch (_) { return; }
-            if (!msg || msg.event !== 'infoDelivery' || !msg.info) return;
-            var vd = msg.info.videoData;
-            if (vd && vd.title) setTitle(vd.title);
-            if (vd && vd.author) setChannel(vd.author);
-        }
-        window.addEventListener('message', onMessage);
-        cleanupFns.push(function () { window.removeEventListener('message', onMessage); });
-
-        function start(frame) {
-            iframe = frame;
-            subscribe();
-            [300, 800, 1600, 3000].forEach(function (d) {
-                var t = setTimeout(subscribe, d);
-                cleanupFns.push(function () { clearTimeout(t); });
-            });
-            var poll = setInterval(subscribe, 3000);
-            cleanupFns.push(function () { clearInterval(poll); });
-        }
-
-        var f = findFrame();
-        if (f) { start(f); return; }
-        // The host mounts the iframe only after "opened"; watch for it.
-        var mo = new MutationObserver(function () {
-            var frame = findFrame();
-            if (frame) { mo.disconnect(); start(frame); }
-        });
-        mo.observe(document.body, { childList: true, subtree: true });
-        cleanupFns.push(function () { mo.disconnect(); });
-        var moStop = setTimeout(function () { mo.disconnect(); }, 20000);
-        cleanupFns.push(function () { clearTimeout(moStop); });
-    })();
-
-    // =====================================================================
-    // Share-happiness story carousel (horizontal snap).
+    // Share-happiness story carousel (adapted from netflix).
+    // Horizontal snap; the centered slide becomes .is-active. Re-queries its
+    // own nodes each run (host swaps HTML on re-inject) and registers cleanup
+    // so scroll/click listeners never stack.
     // =====================================================================
     (function storyCarousel() {
         var carousel = document.getElementById('story-carousel');
@@ -413,6 +304,7 @@
             dotHandlers.push([dot, onDot]);
         });
 
+        // Center the first slide and mark it active.
         if (slides[0]) {
             carousel.scrollLeft = slides[0].offsetLeft - (carousel.clientWidth - slides[0].offsetWidth) / 2;
         }
@@ -425,8 +317,13 @@
     })();
 
     // =====================================================================
-    // Cover "open invitation" reveal — registered OUTSIDE cleanupFns on
-    // purpose (see memory: theme-intro-reexec-bug).
+    // Cover "open invitation" reveal.
+    // IMPORTANT: registered OUTSIDE cleanupFns intentionally. The host
+    // re-executes this script when isOpened flips; if the open animation lived
+    // in cleanupFns it would be torn down before it could run on the live
+    // invitation (see memory: theme-intro-reexec-bug). We also react to the
+    // host adding `.reveal-content` on re-injection so the cover hides even
+    // when the host — not our button — triggered the open.
     // =====================================================================
     (function coverReveal() {
         var screen = document.querySelector('.mock-app-screen');
@@ -439,6 +336,7 @@
         }
         if (btnOpen) btnOpen.addEventListener('click', reveal);
 
+        // If host already marked it opened (re-injection after open), reflect it.
         if (screen && screen.classList.contains('reveal-content') && fab) {
             fab.style.display = 'block';
         }

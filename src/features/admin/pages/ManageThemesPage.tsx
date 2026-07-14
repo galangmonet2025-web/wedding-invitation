@@ -14,6 +14,7 @@ import {
     HiOutlineViewList,
     HiOutlineViewGrid,
     HiOutlineSearch,
+    HiOutlineFilter,
     HiOutlineCheckCircle,
     HiOutlineXCircle,
     HiOutlineX,
@@ -80,6 +81,9 @@ export function ManageThemesPage() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedPreview, setSelectedPreview] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
+    // Mobile: keempat dropdown filter (plan/kategori/preview/status) dipindah ke
+    // dalam dialog yang dibuka lewat SATU ikon filter (search tetap terlihat).
+    const [showFilterModal, setShowFilterModal] = useState(false);
     const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
         const saved = safeGetItem('manageThemesViewMode');
         return saved === 'card' || saved === 'table' ? saved : 'table';
@@ -238,6 +242,20 @@ export function ManageThemesPage() {
 
         return matchesSearch && matchesPlan && matchesCategory && matchesPreview && matchesStatus;
     });
+
+    // Jumlah filter dropdown yang aktif (bukan 'all') — untuk badge di ikon filter mobile.
+    const activeFilterCount =
+        (selectedPlan !== 'all' ? 1 : 0) +
+        (selectedCategory !== 'all' ? 1 : 0) +
+        (selectedPreview !== 'all' ? 1 : 0) +
+        (selectedStatus !== 'all' ? 1 : 0);
+
+    const resetFilters = () => {
+        setSelectedPlan('all');
+        setSelectedCategory('all');
+        setSelectedPreview('all');
+        setSelectedStatus('all');
+    };
 
     // Kategori untuk filter diambil DINAMIS dari kategori yang benar-benar ada di
     // DB (bukan daftar hardcoded). Kategori kosong diabaikan, di-dedup & diurutkan.
@@ -451,6 +469,170 @@ export function ManageThemesPage() {
         }
     ];
 
+    // Keempat dropdown filter — dipakai bersama oleh grid desktop & dialog mobile.
+    const filterFields = (
+        <>
+            {/* Filter Plan */}
+            <select
+                value={selectedPlan}
+                onChange={(e) => setSelectedPlan(e.target.value)}
+                className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
+            >
+                <option value="all">Semua Plan</option>
+                <option value="basic">Basic</option>
+                <option value="pro">Pro</option>
+                <option value="premium">Premium</option>
+            </select>
+
+            {/* Filter Category */}
+            <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
+            >
+                <option value="all">Semua Kategori Style</option>
+                {availableCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                ))}
+            </select>
+
+            {/* Filter Preview */}
+            <select
+                value={selectedPreview}
+                onChange={(e) => setSelectedPreview(e.target.value)}
+                className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
+            >
+                <option value="all">Semua Status Preview</option>
+                <option value="uploaded">Sudah Upload Preview</option>
+                <option value="empty">Belum Upload Preview</option>
+            </select>
+
+            {/* Filter Status Draft/Publish */}
+            <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
+            >
+                <option value="all">Semua Status</option>
+                <option value="published">Publik</option>
+                <option value="draft">Draft</option>
+            </select>
+        </>
+    );
+
+    // Kartu tema khusus MOBILE (dipakai lewat DataTable.renderMobileCard) — layout
+    // thumbnail di kiri + nama/badge di kanan + baris aksi rapi di bawah. Menggantikan
+    // kartu generik yang menjejalkan 4 tombol mungil di header (terasa berantakan).
+    const renderThemeMobileCard = (item: Theme) => {
+        const hasPreview = !!item.preview_image;
+        const draft = isDraft(item);
+        const saving = savingDraftId === item.id;
+        const deleting = deletingId === item.id;
+        const planCls =
+            item.plan_type === 'basic'
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                : item.plan_type === 'pro'
+                    ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
+                    : 'bg-gold-50 dark:bg-gold-950/30 text-gold-700 dark:text-gold-400';
+        return (
+            <div className={`card p-3 border ${deleting ? 'opacity-60 pointer-events-none border-gray-100 dark:border-gray-800' : 'border-gray-100 dark:border-gray-800'}`}>
+                {/* Header: thumbnail + info */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => hasPreview && setSelectedThemeForLightbox(item)}
+                        className="shrink-0 w-14 h-[72px] rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                        title={hasPreview ? 'Lihat preview' : 'Belum ada preview'}
+                    >
+                        {hasPreview ? (
+                            <ProxyImage src={item.preview_image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        )}
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-bold text-gray-800 dark:text-white leading-tight line-clamp-2">
+                            {item.name}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${planCls}`}>
+                                {item.plan_type}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-150 dark:border-gray-700">
+                                {item.style_category || 'Lainnya'}
+                            </span>
+                        </div>
+                        {/* Status toggle (Draft/Publik) — beri ruang, bukan dijejalkan */}
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={!draft}
+                            disabled={saving}
+                            onClick={(e) => { e.stopPropagation(); handleToggleDraft(item); }}
+                            className="mt-2 inline-flex items-center gap-1.5 disabled:opacity-60"
+                            title={draft ? 'Ketuk untuk publikasikan' : 'Ketuk untuk jadikan draft'}
+                        >
+                            <span className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${draft ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-500 dark:bg-emerald-600'}`}>
+                                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${draft ? 'translate-x-1' : 'translate-x-[18px]'}`} />
+                            </span>
+                            {saving ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500">
+                                    <span className="w-3 h-3 border-2 border-gold-300 border-t-gold-600 rounded-full animate-spin" /> Menyimpan…
+                                </span>
+                            ) : (
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${draft ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                    {draft ? 'Draft' : 'Publik'}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Action bar: 4 tombol rapi, area tap besar */}
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 grid grid-cols-4 gap-1.5">
+                    <button
+                        onClick={(e) => openPreviewChoice(item, e)}
+                        disabled={deleting}
+                        className="flex flex-col items-center gap-1 py-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors disabled:opacity-40"
+                    >
+                        <HiOutlineEye className="w-[18px] h-[18px]" />
+                        <span className="text-[10px] font-semibold">Lihat</span>
+                    </button>
+                    <button
+                        onClick={() => navigate(`${base}/themes/editor/${item.id}`)}
+                        disabled={deleting}
+                        className="flex flex-col items-center gap-1 py-1.5 rounded-lg text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors disabled:opacity-40"
+                    >
+                        <HiOutlinePencilAlt className="w-[18px] h-[18px]" />
+                        <span className="text-[10px] font-semibold">Edit</span>
+                    </button>
+                    <button
+                        onClick={() => navigate(`${base}/themes/editor/new`, { state: { copiedTheme: item } })}
+                        disabled={deleting}
+                        className="flex flex-col items-center gap-1 py-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-40"
+                    >
+                        <HiOutlineDuplicate className="w-[18px] h-[18px]" />
+                        <span className="text-[10px] font-semibold">Salin</span>
+                    </button>
+                    <button
+                        onClick={() => setThemeToDelete(item)}
+                        disabled={deleting}
+                        className="flex flex-col items-center gap-1 py-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:cursor-not-allowed"
+                    >
+                        {deleting ? (
+                            <span className="w-[18px] h-[18px] border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                        ) : (
+                            <HiOutlineTrash className="w-[18px] h-[18px]" />
+                        )}
+                        <span className="text-[10px] font-semibold">Hapus</span>
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             {/* Page Header */}
@@ -516,9 +698,9 @@ export function ManageThemesPage() {
 
             {/* Filter and View Selection Panel */}
             <div className="bg-white dark:bg-wedding-dark-card p-4 rounded-2xl border border-gray-100 dark:border-gray-805 shadow-sm space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    {/* Search Input */}
-                    <div className="relative">
+                {/* Baris atas: Search selalu terlihat + (mobile) ikon filter → dialog */}
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1 min-w-0">
                         <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                             <HiOutlineSearch className="w-4 h-4" />
                         </span>
@@ -531,59 +713,25 @@ export function ManageThemesPage() {
                         />
                     </div>
 
-                    {/* Filter Plan */}
-                    <div>
-                        <select
-                            value={selectedPlan}
-                            onChange={(e) => setSelectedPlan(e.target.value)}
-                            className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
-                        >
-                            <option value="all">Semua Plan</option>
-                            <option value="basic">Basic</option>
-                            <option value="pro">Pro</option>
-                            <option value="premium">Premium</option>
-                        </select>
-                    </div>
+                    {/* Mobile-only: satu ikon filter (badge = jumlah filter aktif) → buka dialog */}
+                    <button
+                        onClick={() => setShowFilterModal(true)}
+                        className="sm:hidden relative shrink-0 p-2.5 bg-gray-50/50 dark:bg-gray-900 border border-gray-200/80 dark:border-gray-700 hover:border-gold-500 text-gray-500 hover:text-gold-500 rounded-xl transition-all flex items-center justify-center"
+                        title="Filter"
+                        aria-label="Filter"
+                    >
+                        <HiOutlineFilter className="w-4 h-4" />
+                        {activeFilterCount > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-gold-500 text-white text-[10px] font-bold leading-none">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </button>
+                </div>
 
-                    {/* Filter Category */}
-                    <div>
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
-                        >
-                            <option value="all">Semua Kategori Style</option>
-                            {availableCategories.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Filter Preview */}
-                    <div>
-                        <select
-                            value={selectedPreview}
-                            onChange={(e) => setSelectedPreview(e.target.value)}
-                            className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
-                        >
-                            <option value="all">Semua Status Preview</option>
-                            <option value="uploaded">Sudah Upload Preview</option>
-                            <option value="empty">Belum Upload Preview</option>
-                        </select>
-                    </div>
-
-                    {/* Filter Status Draft/Publish */}
-                    <div>
-                        <select
-                            value={selectedStatus}
-                            onChange={(e) => setSelectedStatus(e.target.value)}
-                            className="select-field text-xs py-2 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 focus:bg-white dark:focus:bg-gray-900 focus:ring-gold-500 rounded-xl w-full"
-                        >
-                            <option value="all">Semua Status</option>
-                            <option value="published">Publik</option>
-                            <option value="draft">Draft</option>
-                        </select>
-                    </div>
+                {/* Desktop: keempat dropdown filter inline (disembunyikan di mobile) */}
+                <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {filterFields}
                 </div>
 
                 {/* Result counter */}
@@ -591,6 +739,15 @@ export function ManageThemesPage() {
                     <span className="text-[10px] md:text-xs text-gray-405 font-bold uppercase tracking-wider">
                         Ditemukan {filteredThemes.length} tema
                     </span>
+                    {/* Mobile: chip "Hapus filter" muncul saat ada filter aktif */}
+                    {activeFilterCount > 0 && (
+                        <button
+                            onClick={resetFilters}
+                            className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-gold-600 dark:text-gold-400"
+                        >
+                            Hapus filter ({activeFilterCount})
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -748,8 +905,109 @@ export function ManageThemesPage() {
                         data={filteredThemes}
                         loading={loading}
                         emptyMessage="Tidak ada tema yang cocok dengan filter."
+                        renderMobileCard={renderThemeMobileCard}
                     />
                 </div>
+            )}
+
+            {/* MOBILE FILTER DIALOG — berisi keempat dropdown filter (bottom-sheet) */}
+            {showFilterModal && createPortal(
+                <div className="fixed inset-0 z-[9999] sm:hidden flex items-end justify-center">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowFilterModal(false)} />
+                    <div className="relative z-10 w-full bg-white dark:bg-wedding-dark-card rounded-t-3xl shadow-2xl border-t border-gray-100 dark:border-gray-800 max-h-[85vh] flex flex-col animate-slide-up">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                            <div className="flex items-center gap-2">
+                                <HiOutlineFilter className="w-5 h-5 text-gold-500" />
+                                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Filter Tema</h3>
+                                {activeFilterCount > 0 && (
+                                    <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-gold-500 text-white text-[10px] font-bold">
+                                        {activeFilterCount}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setShowFilterModal(false)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                aria-label="Tutup"
+                            >
+                                <HiOutlineX className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Body: dropdown filter dengan label */}
+                        <div className="px-5 py-4 space-y-4 overflow-y-auto">
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Plan</label>
+                                <select
+                                    value={selectedPlan}
+                                    onChange={(e) => setSelectedPlan(e.target.value)}
+                                    className="select-field text-xs py-2.5 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 rounded-xl w-full"
+                                >
+                                    <option value="all">Semua Plan</option>
+                                    <option value="basic">Basic</option>
+                                    <option value="pro">Pro</option>
+                                    <option value="premium">Premium</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Kategori Style</label>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="select-field text-xs py-2.5 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 rounded-xl w-full"
+                                >
+                                    <option value="all">Semua Kategori Style</option>
+                                    {availableCategories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Status Preview</label>
+                                <select
+                                    value={selectedPreview}
+                                    onChange={(e) => setSelectedPreview(e.target.value)}
+                                    className="select-field text-xs py-2.5 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 rounded-xl w-full"
+                                >
+                                    <option value="all">Semua Status Preview</option>
+                                    <option value="uploaded">Sudah Upload Preview</option>
+                                    <option value="empty">Belum Upload Preview</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Status Publikasi</label>
+                                <select
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    className="select-field text-xs py-2.5 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 rounded-xl w-full"
+                                >
+                                    <option value="all">Semua Status</option>
+                                    <option value="published">Publik</option>
+                                    <option value="draft">Draft</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Footer: Reset + Terapkan */}
+                        <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                            <button
+                                onClick={resetFilters}
+                                disabled={activeFilterCount === 0}
+                                className="flex-1 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                            >
+                                Reset
+                            </button>
+                            <button
+                                onClick={() => setShowFilterModal(false)}
+                                className="flex-1 py-2.5 text-xs font-semibold rounded-xl text-white bg-gradient-to-r from-gold-500 to-gold-600 shadow-md"
+                            >
+                                Terapkan{filteredThemes.length > 0 ? ` (${filteredThemes.length})` : ''}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
 
             <ThemeGuideModal

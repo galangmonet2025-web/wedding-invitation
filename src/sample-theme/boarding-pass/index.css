@@ -428,10 +428,28 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 90px 26px 36px;
+    padding: 78px 26px 36px;
     color: #fff;
-    background-color: var(--navy);
+    /* cabin wall: soft navy gradient the window sits in */
+    background: radial-gradient(120% 80% at 50% 0%, var(--sky) 0%, var(--navy) 55%, #0a1c30 100%);
     overflow: hidden;
+}
+
+/* ---- Cabin window: the photo sky lives INSIDE a rounded window pane ---- */
+.hero-window {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 132%; height: 116%;
+    border-radius: 46% 46% 44% 44% / 30% 30% 30% 30%;
+    overflow: hidden;
+    z-index: 0;
+    /* thick "window seal" ring + inner shadow so it reads as an aperture */
+    box-shadow:
+        0 0 0 14px #0a1c30,
+        0 0 0 24px #12304f,
+        inset 0 0 60px rgba(10, 28, 48, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.12);
 }
 .section-hero .hero-bg {
     position: absolute;
@@ -443,8 +461,88 @@
     z-index: 0;
     will-change: transform;
 }
+/* half-lowered window shade at the top of the pane */
+.hero-window-shade {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 12%;
+    z-index: 3;
+    background: linear-gradient(180deg, #0d2340 0%, rgba(13, 35, 64, 0.85) 60%, transparent 100%);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+/* drifting clouds inside the pane */
+.hero-cloud {
+    position: absolute;
+    z-index: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(255,255,255,0.5), rgba(255,255,255,0) 70%);
+    filter: blur(2px);
+    pointer-events: none;
+}
+.hero-cloud-1 { top: 34%; left: -30%; width: 60%; height: 90px; animation: cloudDrift 34s linear infinite; }
+.hero-cloud-2 { top: 58%; left: -50%; width: 46%; height: 70px; opacity: 0.7; animation: cloudDrift 46s linear infinite; }
+@keyframes cloudDrift {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(240%); }
+}
+/* a tiny plane crossing the window */
+.hero-flyby {
+    position: absolute;
+    top: 26%; left: -10%;
+    z-index: 2;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.85);
+    transform: rotate(8deg);
+    animation: flyby 26s linear infinite;
+    pointer-events: none;
+}
+@keyframes flyby {
+    0% { transform: translate(0, 0) rotate(8deg); opacity: 0; }
+    8% { opacity: 0.9; }
+    92% { opacity: 0.9; }
+    100% { transform: translate(130vw, -40px) rotate(8deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .hero-cloud, .hero-flyby { animation: none; }
+    .hero-flyby { opacity: 0.8; }
+}
+
+/* ---- Seat-back in-flight status strip ---- */
+.hero-status {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding: 7px 16px;
+    border-radius: 30px;
+    background: rgba(10, 28, 48, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(4px);
+}
+.hs-cell { display: inline-flex; align-items: baseline; gap: 6px; }
+.hs-key {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+.hs-val {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--amber);
+}
+.hs-plane { color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+
+.section-hero > .hero-status,
 .section-hero > .hero-header,
 .section-hero > .hero-bottom { position: relative; z-index: 2; width: 100%; flex: none; }
+.section-hero > .hero-status { width: auto; }
 
 @keyframes heroKenBurns {
     0% { transform: scale(1) translate(0, 0); }
@@ -939,6 +1037,125 @@
 }
 
 /* =========================================================================
+   LIVE STREAMING — in-flight entertainment (seat-back TV)
+   ========================================================================= */
+.ife-screen {
+    max-width: 380px;
+    margin: 28px auto 0;
+    background: var(--navy);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 16px 38px rgba(15, 42, 71, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+}
+.ife-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #0a1c30;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ife-chan {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: #fff;
+}
+.ife-live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+    animation: ifeLive 1.8s ease-in-out infinite;
+}
+@keyframes ifeLive {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+    70% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.ife-flight {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--amber);
+    background: rgba(242, 193, 78, 0.16);
+    padding: 3px 8px;
+    border-radius: 5px;
+}
+
+/* the "screen" itself: dark sky gradient + scanlines + play glyph */
+.ife-display {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background:
+        radial-gradient(120% 100% at 50% 0%, #1e5a8a 0%, #0f2a47 60%, #0a1c30 100%);
+    overflow: hidden;
+}
+.ife-scanline {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px);
+    animation: ifeScan 6s linear infinite;
+}
+@keyframes ifeScan {
+    0% { background-position-y: 0; }
+    100% { background-position-y: 60px; }
+}
+.ife-play {
+    position: relative;
+    z-index: 2;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--navy);
+    background: var(--amber);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+    animation: ifePulse 2.6s ease-in-out infinite;
+}
+@keyframes ifePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+}
+.ife-caption {
+    position: relative;
+    z-index: 2;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    padding: 0 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ife-scanline, .ife-play, .ife-live-dot { animation: none; }
+}
+
+/* controls panel below the screen (paper strip) */
+.ife-panel {
+    background: var(--paper);
+    padding: 20px 20px 22px;
+    text-align: center;
+}
+.ife-panel .muted-text { margin: 0 auto 6px; }
+
+/* =========================================================================
    FORMS + WISHES
    ========================================================================= */
 .pass-form {
@@ -1215,36 +1432,144 @@ select.custom-input {
 .arrival-icon { font-size: 15px; }
 
 /* =========================================================================
-   GALLERY — postcards
+   GALLERY — airmail postcards (paper card + stamp + postmark + par-avion edge)
    ========================================================================= */
 .gallery-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 16px 12px;
     margin-top: 30px;
 }
+/* Each item is a little postcard: cream paper, dashed edge, tilts on hover */
 .gallery-item {
+    position: relative;
+    display: block;
+    cursor: pointer;
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 8px 8px 22px;
+    box-shadow: 0 10px 24px rgba(15, 42, 71, 0.16);
+    transition: transform 0.4s cubic-bezier(0.22,0.61,0.36,1), box-shadow 0.4s ease;
+}
+/* even/odd tilt so the wall of postcards feels hand-placed */
+.gallery-item:nth-child(odd)  { transform: rotate(-1.4deg); }
+.gallery-item:nth-child(even) { transform: rotate(1.4deg); }
+.gallery-item:hover {
+    transform: rotate(0deg) translateY(-4px) scale(1.02);
+    box-shadow: 0 18px 38px rgba(15, 42, 71, 0.26);
+    z-index: 2;
+}
+/* dashed "par avion" inner border */
+.gallery-item::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px dashed var(--dash);
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+/* red/blue airmail stripe down the left edge */
+.postcard-airmail {
+    position: absolute;
+    top: 8px; bottom: 22px; left: 8px;
+    width: 6px;
+    border-radius: 3px 0 0 3px;
+    z-index: 3;
+    background: repeating-linear-gradient(
+        -45deg,
+        #c0392b 0 6px,
+        #fff 6px 12px,
+        #1e5a8a 12px 18px,
+        #fff 18px 24px
+    );
+    opacity: 0.9;
+}
+
+.postcard-photo {
     position: relative;
     overflow: hidden;
     aspect-ratio: 3 / 4;
-    cursor: pointer;
+    border-radius: 4px;
     border: 1px solid var(--line);
-    border-radius: 8px;
 }
-.gallery-item img {
+.postcard-photo img {
     width: 100%; height: 100%;
     object-fit: cover;
-    transition: transform 0.6s ease;
+    transition: transform 0.6s ease, filter 0.6s ease;
     display: block;
+    filter: saturate(0.94) contrast(1.02);
 }
-.gallery-item:hover img { transform: scale(1.06); }
+.gallery-item:hover .postcard-photo img { transform: scale(1.06); filter: none; }
+
+/* perforated "stamp" in the top-right corner */
+.postcard-stamp {
+    position: absolute;
+    top: 2px; right: 2px;
+    z-index: 4;
+    width: 34px; height: 42px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    color: var(--navy);
+    background:
+        radial-gradient(circle at 50% -3%, var(--paper-2) 25%, transparent 26%),
+        var(--paper);
+    border: 1px dashed var(--dash);
+    border-radius: 3px;
+    transform: rotate(6deg);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.14);
+}
+.postcard-stamp .ps-plane { font-size: 13px; line-height: 1; color: var(--amber-deep); }
+.postcard-stamp .ps-val {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 8px;
+    letter-spacing: 1px;
+}
+
+/* circular postmark, bottom-left, overlapping the stamp visual language */
+.postcard-postmark {
+    position: absolute;
+    bottom: 26px; left: 14px;
+    z-index: 4;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(30, 90, 138, 0.7);
+    border: 1.5px solid rgba(30, 90, 138, 0.55);
+    transform: rotate(-12deg);
+    text-align: center;
+    background: rgba(251, 250, 246, 0.6);
+    pointer-events: none;
+}
+.postcard-postmark .pm-top,
+.postcard-postmark .pm-bottom {
+    font-family: var(--mono);
+    font-size: 4px;
+    letter-spacing: 0.8px;
+    line-height: 1;
+    max-width: 34px;
+}
+.postcard-postmark .pm-plane { font-size: 9px; line-height: 1; margin: 1px 0; }
+
 .gallery-overlay {
     position: absolute;
-    inset: 0;
-    background: rgba(15, 42, 71, 0.4);
+    left: 8px; right: 8px;
+    bottom: 22px;
+    top: 8px;
+    z-index: 3;
+    border-radius: 4px;
+    background: rgba(15, 42, 71, 0.42);
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     color: #fff;
     opacity: 0;
     transition: opacity 0.4s ease;
@@ -1386,25 +1711,88 @@ select.custom-input {
     gap: 14px;
     flex-wrap: wrap;
 }
+/* Each gift card = an airline LUGGAGE TAG: punched hole + tag head + barcode.
+   A thick navy top border reads as the reinforced tag edge. */
 .gift-card {
+    position: relative;
     border: 1.5px solid var(--line);
-    background: var(--paper);
-    border-radius: 12px;
-    padding: 26px 22px;
+    border-top: 4px solid var(--navy);
+    background:
+        repeating-linear-gradient(0deg, rgba(15,42,71,0.02) 0 1px, transparent 1px 6px),
+        var(--paper);
+    border-radius: 4px 4px 12px 12px;
+    padding: 26px 22px 20px;
     max-width: 380px;
     width: 100%;
     margin: 0 auto;
-    box-shadow: 0 10px 26px rgba(15, 42, 71, 0.08);
+    box-shadow: 0 12px 28px rgba(15, 42, 71, 0.14);
+    text-align: center;
 }
 .gift-accounts.is-duo .gift-card {
     flex: 1 1 0;
     min-width: 0;
     max-width: 220px;
-    padding: 22px 16px;
+    padding: 24px 16px 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
+/* punched hole with a looped string, top-center of the tag */
+.gift-tag-hole {
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--paper-2);
+    border: 1.5px solid var(--dash);
+    z-index: 2;
+}
+.gift-tag-hole::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -14px;
+    transform: translateX(-50%);
+    width: 14px; height: 16px;
+    border: 1.5px solid var(--amber-deep);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    opacity: 0.75;
+}
+/* tag header: "Baggage Tag" + flight chip */
+.gift-tag-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 10px 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px dashed var(--dash);
+    text-align: left;
+}
+.gift-tag-key {
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.gift-tag-flight {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--amber-deep);
+    background: rgba(242, 193, 78, 0.18);
+    padding: 3px 8px;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+}
+.gift-accounts.is-duo .gift-tag-head { margin-bottom: 12px; }
+
 .gift-bank {
     font-family: var(--serif);
     font-size: 1.4rem;
@@ -1413,8 +1801,17 @@ select.custom-input {
     margin-bottom: 12px;
 }
 .gift-accounts.is-duo .gift-bank { font-size: 1.2rem; }
-.gift-qris img { max-width: 190px; margin: 0 auto 14px; display: block; }
-.gift-accounts.is-duo .gift-qris img { max-width: 150px; }
+.gift-qris img { max-width: 180px; margin: 0 auto 14px; display: block; border-radius: 6px; }
+.gift-accounts.is-duo .gift-qris img { max-width: 140px; }
+.gift-num-key {
+    display: block;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 3px;
+}
 .gift-number {
     font-family: var(--mono);
     font-weight: 700;
@@ -1426,6 +1823,16 @@ select.custom-input {
 .gift-accounts.is-duo .gift-number { font-size: 1rem; letter-spacing: 1px; }
 .gift-name { font-family: var(--sans); font-size: 12px; color: var(--ink-soft); margin: 6px 0 16px; }
 .gift-accounts.is-duo .btn-copy { margin-top: auto; }
+
+/* barcode strip at the very bottom of the tag */
+.gift-tag-barcode {
+    height: 24px;
+    margin-top: 18px;
+    background-image: repeating-linear-gradient(90deg, var(--navy) 0 2px, transparent 2px 4px, var(--navy) 4px 5px, transparent 5px 8px);
+    opacity: 0.5;
+    border-radius: 2px;
+}
+.gift-card-offline { max-width: 380px; }
 .btn-copy {
     display: inline-flex;
     align-items: center;

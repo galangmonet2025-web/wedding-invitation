@@ -1,5 +1,5 @@
 /* =========================================================================
-   CINEMA 35MM — theme JS
+   GOOGLE MAPS — theme JS
    Host contract (ThemeWrapper): this script is REMOVED and RE-EXECUTED every
    time its inputs change. So it must:
      - register a global cleanup hook and run it on entry (no stacked
@@ -13,11 +13,11 @@
     'use strict';
 
     // ---- Run previous instance's cleanup, then start a fresh registry -------
-    if (typeof window.__cineCleanup === 'function') {
-        try { window.__cineCleanup(); } catch (e) { /* noop */ }
+    if (typeof window.__gmapCleanup === 'function') {
+        try { window.__gmapCleanup(); } catch (e) { /* noop */ }
     }
     var cleanupFns = [];
-    window.__cineCleanup = function () {
+    window.__gmapCleanup = function () {
         cleanupFns.forEach(function (fn) { try { fn(); } catch (e) { /* noop */ } });
         cleanupFns = [];
     };
@@ -64,9 +64,9 @@
     // Countdown — reads the REAL wedding date from the DB (#tm-wed-date).
     // =====================================================================
     (function startCountdown() {
-        if (window.__cineCountdownTimer) {
-            clearInterval(window.__cineCountdownTimer);
-            window.__cineCountdownTimer = null;
+        if (window.__gmapCountdownTimer) {
+            clearInterval(window.__gmapCountdownTimer);
+            window.__gmapCountdownTimer = null;
         }
 
         function resolveDay() {
@@ -113,17 +113,17 @@
                 set('minutes', Math.floor((dist % 36e5) / 6e4));
                 set('seconds', Math.floor((dist % 6e4) / 1000));
             } else if (Date.now() <= recEnd.getTime()) {
-                setStatus('Tirai telah dibuka — pemutaran sedang berlangsung 🎬');
-                clearInterval(window.__cineCountdownTimer); window.__cineCountdownTimer = null;
+                setStatus('Anda telah tiba — acara sedang berlangsung 📍');
+                clearInterval(window.__gmapCountdownTimer); window.__gmapCountdownTimer = null;
             } else {
-                setStatus('That’s a wrap! Terima kasih atas doa & restunya 🙏');
-                clearInterval(window.__cineCountdownTimer); window.__cineCountdownTimer = null;
+                setStatus('You have arrived! Terima kasih atas doa & restunya 🙏');
+                clearInterval(window.__gmapCountdownTimer); window.__gmapCountdownTimer = null;
             }
         }
         tick();
-        window.__cineCountdownTimer = setInterval(tick, 1000);
+        window.__gmapCountdownTimer = setInterval(tick, 1000);
         cleanupFns.push(function () {
-            if (window.__cineCountdownTimer) { clearInterval(window.__cineCountdownTimer); window.__cineCountdownTimer = null; }
+            if (window.__gmapCountdownTimer) { clearInterval(window.__gmapCountdownTimer); window.__gmapCountdownTimer = null; }
         });
     })();
 
@@ -172,7 +172,7 @@
                 pause.style.display = 'none';
                 if (btn) btn.classList.remove('music-playing');
             }
-            // Freeze/animate the player-bar equalizer with the music state.
+            // Freeze/animate the nav-bar equalizer with the music state.
             if (fab) fab.classList.toggle('is-playing', playing);
         }
         audio.addEventListener('play', sync);
@@ -187,7 +187,7 @@
     })();
 
     // =====================================================================
-    // Menu + QR modals + scroll-up — DOCUMENT-DELEGATED.
+    // Menu + QR modals — DOCUMENT-DELEGATED (survive HTML re-injection).
     // =====================================================================
     (function navAndModals() {
         var menu = document.getElementById('menu-modal');
@@ -224,19 +224,17 @@
     })();
 
     // =====================================================================
-    // Player-bar PREV / NEXT — jump section by section through the invitation.
+    // Nav-bar PREV / NEXT — jump destination by destination (section by section).
     // =====================================================================
-    (function playerbarNav() {
+    (function navbarNav() {
         var scope = document.querySelector('.mock-app-screen');
         var prev = document.getElementById('pb-prev');
         var next = document.getElementById('pb-next');
         if (!scope || (!prev && !next)) return;
 
-        // All navigable sections in document order.
         var sections = Array.prototype.slice.call(
             scope.querySelectorAll('section[id], section[data-menu-label]')
         ).filter(function (el) {
-            // skip the cover (it's hidden once opened)
             return el.id !== 'theme-cover';
         });
         if (!sections.length) return;
@@ -244,7 +242,6 @@
         function scrollTo(el) {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        // Index of the section whose top is nearest the current scroll position.
         function currentIndex() {
             var best = 0, bestDist = Infinity;
             var top = scope.scrollTop;
@@ -266,7 +263,7 @@
     })();
 
     // =====================================================================
-    // Player-bar now-playing — read the YouTube backsound's channel + video
+    // Nav-bar now-playing — read the YouTube backsound's channel + video
     // title from the host-mounted hidden iframe and show them (marquee if long).
     // Falls back to the static template text when the backsound isn't YouTube.
     // We only READ track metadata; the host owns real playback.
@@ -278,7 +275,6 @@
 
         function marqueeInner() { return titleEl.querySelector('.np-marquee-inner'); }
 
-        // Measure the title vs its viewport; scroll it only if it overflows.
         function measure() {
             var inner = marqueeInner();
             if (!inner) return;
@@ -313,16 +309,10 @@
         function findFrame() { return document.querySelector('iframe[title="YouTube Background Music"]'); }
         var iframe = null;
 
-        function post(func) {
-            try {
-                iframe.contentWindow.postMessage(
-                    JSON.stringify({ event: 'command', func: func, args: [] }), '*');
-            } catch (e) { /* noop */ }
-        }
         function subscribe() {
             try {
                 iframe.contentWindow.postMessage(
-                    JSON.stringify({ event: 'listening', id: 'cine-np' }), '*');
+                    JSON.stringify({ event: 'listening', id: 'gmap-np' }), '*');
             } catch (e) { /* noop */ }
         }
         function onMessage(e) {
@@ -350,7 +340,6 @@
 
         var f = findFrame();
         if (f) { start(f); return; }
-        // The host mounts the iframe only after "opened"; watch for it.
         var mo = new MutationObserver(function () {
             var frame = findFrame();
             if (frame) { mo.disconnect(); start(frame); }

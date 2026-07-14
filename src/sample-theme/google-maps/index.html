@@ -1,0 +1,870 @@
+<div class="uk-grid-collapse uk-height-viewport" uk-grid="">
+
+    <!-- ===================== DESKTOP DECORATIVE SIDEBAR (Maps panel) ===================== -->
+    <div class="uk-width-expand uk-visible@m preview-sidebar" id="desktop-bg-container">
+        <!-- map canvas backdrop -->
+        <div class="side-map" aria-hidden="true">
+            <div class="side-map-grid"></div>
+            <div class="side-blob side-park"></div>
+            <div class="side-blob side-water"></div>
+            <div class="side-road side-road-1"></div>
+            <div class="side-road side-road-2"></div>
+            <div class="side-route" id="layer-bg"></div>
+            <div class="side-pin side-pin-a"><span class="pin-shape"></span></div>
+        </div>
+
+        <!-- floating Maps place-card that holds the hero photo -->
+        <div class="side-panel" id="layer-text">
+            <div class="side-card">
+                <div class="side-card-photo" style="background-image: url(&quot;{{photo_hero_cover}}&quot;);">
+                    <span class="side-card-badge"><span class="gm-pin-dot"></span> WEDDING DESTINATION</span>
+                    <span class="side-card-pin">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                    </span>
+                </div>
+                <div class="side-card-body">
+                    <h1 class="side-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h1>
+                    <div class="side-rating"><span class="stars">★★★★★</span> <span>5.0 · Wedding Venue</span></div>
+                    <div class="side-meta">
+                        <span class="side-open">Open</span> · 📍 A journey to forever
+                    </div>
+                    <div class="side-date-row">
+                        <span class="side-date-ic">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                        </span>
+                        {{wedding_date}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== PHONE / INVITATION BODY ===================== -->
+    <div class="phone-container" id="content-body"
+        style="background-image: url(&quot;{{photo_background}}&quot;);">
+        <div class="mock-app-screen">
+
+            <!-- ---------------- COVER = MAPS SEARCH / START ---------------- -->
+            <section id="theme-cover" class="section-cover">
+                <div class="cover-map" aria-hidden="true">
+                    <div class="cm-grid"></div>
+                    <div class="cm-route"></div>
+                    <div class="cm-blob cm-blob-1"></div>
+                    <div class="cm-blob cm-blob-2"></div>
+                    <div class="cm-park"></div>
+                    <div class="cm-pin cm-pin-a"><span class="pin-shape"></span></div>
+                    <div class="cm-pin cm-pin-b"><span class="pin-shape red"></span></div>
+                </div>
+
+                <div class="cover-inner">
+                    <div class="gm-searchcard">
+                        <div class="gm-searchbar">
+                            <span class="gm-search-ic">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                            </span>
+                            <span class="gm-search-text">The Wedding of…</span>
+                            <span class="gm-search-avatar">{{groom_nickname}}</span>
+                        </div>
+
+                        <div class="gm-place">
+                            <div class="gm-place-pin">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                            </div>
+                            <div class="gm-place-body">
+                                <div class="gm-place-name"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></div>
+                                <div class="gm-place-stars">
+                                    <span class="stars">★★★★★</span>
+                                    <span class="gm-place-cat">5.0 · Wedding Venue</span>
+                                </div>
+                                <div class="gm-place-meta">
+                                    <span class="gm-open">Open</span> · {{wedding_date}}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gm-guest-line">
+                            <span class="gm-guest-ic">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </span>
+                            Kepada Yth. <strong>{{nama_tamu}}</strong>
+                        </div>
+
+                        <div class="gm-cover-actions">
+                            <button class="gm-btn gm-btn-directions" id="btn-open-invitation">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21.71 11.29l-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42zM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5z"></path></svg>
+                                <span>Mulai Perjalanan</span>
+                            </button>
+                            <button class="gm-btn gm-btn-save" id="btn-show-qr" aria-label="QR Ticket" title="Tiket QR">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect><rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path><path d="M21 21v.01"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path><path d="M3 12h.01"></path><path d="M12 3h.01"></path><path d="M12 16v.01"></path><path d="M16 12h1"></path><path d="M21 12v.01"></path><path d="M12 21v-1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ---------------- HERO = LIVE MAP + YOU ARE HERE ---------------- -->
+            <section class="section-hero">
+                <div class="hero-map" aria-hidden="true">
+                    <div class="hm-grid"></div>
+                    <div class="hm-blob hm-blob-1"></div>
+                    <div class="hm-blob hm-blob-2"></div>
+                    <div class="hm-water"></div>
+                    <div class="hm-road hm-road-1"></div>
+                    <div class="hm-road hm-road-2"></div>
+                    <div class="hm-route"></div>
+                </div>
+                <div class="hero-photo" style="background-image: url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
+                <div class="hero-scrim"></div>
+
+                <div class="hero-content">
+                    <div class="gm-chip light"><span class="gm-pin-dot"></span> YOU ARE HERE</div>
+                    <div class="hero-pin">
+                        <div class="hero-pin-drop">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                        </div>
+                        <div class="hero-pin-pulse"></div>
+                    </div>
+                    <h1 class="hero-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></h1>
+                    <div class="hero-date">📍 The Wedding · {{wedding_date}}</div>
+
+                    <div class="hero-quote-card">
+                        <p class="hero-quote">
+                            “Dan di antara tanda-tanda (kebesaran)-Nya ialah Dia menciptakan pasangan-pasangan untukmu
+                            dari jenismu sendiri, agar kamu cenderung dan merasa tenteram kepadanya.”
+                            <span class="hero-verse-ref">— QS. Ar-Rum : 21</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="scroll-indicator">
+                    <div class="mouse"><div class="wheel"></div></div>
+                    <span>Scroll</span>
+                </div>
+            </section>
+
+            <!-- ---------------- COUPLE = PLACE CARDS ---------------- -->
+            <section id="couples" class="section" data-menu-label="Mempelai">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Saved Places</div>
+                    <div class="section-title">Mempelai</div>
+                    <div class="gm-rule"></div>
+                </div>
+
+                <!-- GROOM = place sheet -->
+                <div class="gm-sheet pc-sheet reveal-item">
+                    <div class="pc-photo">
+                        <img class="pc-img" src="{{photo_groom_photo}}" alt="{{groom_nickname}}">
+                        <span class="pc-pin"><svg width="20" height="20" viewBox="0 0 24 24" fill="#4285f4"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg></span>
+                        <span class="pc-badge">THE GROOM</span>
+                    </div>
+                    <div class="gm-sheet-handle"></div>
+                    <div class="gm-sheet-head">
+                        <span class="gm-sheet-cat"><svg width="14" height="14" viewBox="0 0 24 24" fill="#4285f4"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path></svg> The Groom · Mempelai Pria</span>
+                        <h3 class="gm-sheet-title">{{groom_name}}</h3>
+                        <div class="gm-sheet-sub">
+                            <span class="stars">★★★★★</span><span>5.0</span>
+                            <span class="gm-dot">·</span><span class="gm-open">Putra Kesayangan</span>
+                        </div>
+                    </div>
+                    <div class="gm-actionrow">
+                        {{#if flag_tampilkan_sosial_media_mempelai}}
+                        <a href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener noreferrer" class="gm-action primary">
+                            <span class="gm-action-ic"><span uk-icon="instagram"></span></span>
+                            Instagram
+                        </a>
+                        {{/if}}
+                        <button class="gm-action" type="button">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></span>
+                            Save
+                        </button>
+                        <button class="gm-action" type="button">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"></path></svg></span>
+                            Share
+                        </button>
+                    </div>
+                    {{#if flag_tampilkan_nama_orang_tua}}
+                    <div class="gm-tabs">
+                        <span class="gm-tab active">Overview</span>
+                        <span class="gm-tab">About</span>
+                    </div>
+                    <div class="gm-sheet-body">
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Putra dari</span><span class="gm-inforow-v">{{nama_bapak_laki_laki}} &amp; {{nama_ibu_laki_laki}}</span></div>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+
+                <div class="place-and">
+                    <span class="gm-dashline"></span>
+                    <span class="place-and-pin">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ea4335" stroke-width="2.5"><path d="M12 21s-6-5.6-6-10a6 6 0 0 1 12 0c0 4.4-6 10-6 10Z"></path></svg>
+                    </span>
+                    <span class="gm-dashline"></span>
+                </div>
+
+                <!-- BRIDE = place sheet -->
+                <div class="gm-sheet pc-sheet reveal-item">
+                    <div class="pc-photo">
+                        <img class="pc-img" src="{{photo_bride_photo}}" alt="{{bride_nickname}}">
+                        <span class="pc-pin"><svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg></span>
+                        <span class="pc-badge">THE BRIDE</span>
+                    </div>
+                    <div class="gm-sheet-handle"></div>
+                    <div class="gm-sheet-head">
+                        <span class="gm-sheet-cat"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path></svg> The Bride · Mempelai Wanita</span>
+                        <h3 class="gm-sheet-title">{{bride_name}}</h3>
+                        <div class="gm-sheet-sub">
+                            <span class="stars">★★★★★</span><span>5.0</span>
+                            <span class="gm-dot">·</span><span class="gm-open">Putri Kesayangan</span>
+                        </div>
+                    </div>
+                    <div class="gm-actionrow">
+                        {{#if flag_tampilkan_sosial_media_mempelai}}
+                        <a href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener noreferrer" class="gm-action primary">
+                            <span class="gm-action-ic"><span uk-icon="instagram"></span></span>
+                            Instagram
+                        </a>
+                        {{/if}}
+                        <button class="gm-action" type="button">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></span>
+                            Save
+                        </button>
+                        <button class="gm-action" type="button">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"></path></svg></span>
+                            Share
+                        </button>
+                    </div>
+                    {{#if flag_tampilkan_nama_orang_tua}}
+                    <div class="gm-tabs">
+                        <span class="gm-tab active">Overview</span>
+                        <span class="gm-tab">About</span>
+                    </div>
+                    <div class="gm-sheet-body">
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Putri dari</span><span class="gm-inforow-v">{{nama_bapak_perempuan}} &amp; {{nama_ibu_perempuan}}</span></div>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+
+            <!-- ---------------- SCHEDULE = DIRECTIONS CARDS ---------------- -->
+            <section id="schedule" class="section section-alt" data-menu-label="Waktu &amp; Tempat">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Directions</div>
+                    <div class="section-title">Waktu &amp; Tempat</div>
+                    <div class="gm-rule"></div>
+                </div>
+
+                <!-- AKAD = full Maps place sheet -->
+                <div class="gm-sheet dir-sheet reveal-item">
+                    <div class="dir-hero">
+                        <div class="dir-hero-map"><span class="dir-hero-route"></span></div>
+                        <span class="dir-hero-pin">
+                            <svg width="34" height="34" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                        </span>
+                        <span class="dir-hero-tag">Destinasi A</span>
+                    </div>
+                    <div class="gm-sheet-handle"></div>
+                    <div class="gm-sheet-head">
+                        <span class="gm-sheet-cat"><span class="gm-pin-dot"></span> Akad Nikah · Wedding Venue</span>
+                        <h3 class="gm-sheet-title">{{nama_lokasi_akad}}</h3>
+                        <div class="gm-sheet-sub">
+                            <span class="stars">★★★★★</span>
+                            <span>5.0</span><span class="gm-dot">·</span>
+                            <span class="gm-open">Open</span><span class="gm-dot">·</span>
+                            <span>{{jam_akad}}</span>
+                        </div>
+                    </div>
+                    <div class="gm-actionrow">
+                        <a href="{{akad_map}}" target="_blank" class="gm-action primary">
+                            <span class="gm-action-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21.71 11.29l-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42zM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5z"></path></svg></span>
+                            Directions
+                        </a>
+                        <a href="{{akad_map}}" target="_blank" class="gm-action">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></span>
+                            Save
+                        </a>
+                        <a href="{{akad_map}}" target="_blank" class="gm-action">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"></path></svg></span>
+                            Share
+                        </a>
+                    </div>
+                    <div class="gm-tabs">
+                        <span class="gm-tab active">Overview</span>
+                        <span class="gm-tab">About</span>
+                    </div>
+                    <div class="gm-sheet-body">
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Tanggal Acara</span><span class="gm-inforow-v">{{tanggal_akad}}</span></div>
+                        </div>
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Jam Buka</span><span class="gm-inforow-v">{{jam_akad}}</span></div>
+                        </div>
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Alamat</span><span class="gm-inforow-v">{{keterangan_lokasi_akad}}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                <!-- RESEPSI = full Maps place sheet -->
+                <div class="gm-sheet dir-sheet reveal-item">
+                    <div class="dir-hero dir-hero-b">
+                        <div class="dir-hero-map"><span class="dir-hero-route"></span></div>
+                        <span class="dir-hero-pin">
+                            <svg width="34" height="34" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                        </span>
+                        <span class="dir-hero-tag">Destinasi B</span>
+                    </div>
+                    <div class="gm-sheet-handle"></div>
+                    <div class="gm-sheet-head">
+                        <span class="gm-sheet-cat"><span class="gm-pin-dot"></span> Resepsi · Wedding Venue</span>
+                        <h3 class="gm-sheet-title">{{nama_lokasi_resepsi}}</h3>
+                        <div class="gm-sheet-sub">
+                            <span class="stars">★★★★★</span>
+                            <span>5.0</span><span class="gm-dot">·</span>
+                            <span class="gm-open">Open</span><span class="gm-dot">·</span>
+                            <span>{{jam_resepsi}}</span>
+                        </div>
+                    </div>
+                    <div class="gm-actionrow">
+                        <a href="{{resepsi_map}}" target="_blank" class="gm-action primary">
+                            <span class="gm-action-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21.71 11.29l-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42zM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5z"></path></svg></span>
+                            Directions
+                        </a>
+                        <a href="{{resepsi_map}}" target="_blank" class="gm-action">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></span>
+                            Save
+                        </a>
+                        <a href="{{resepsi_map}}" target="_blank" class="gm-action">
+                            <span class="gm-action-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"></path></svg></span>
+                            Share
+                        </a>
+                    </div>
+                    <div class="gm-tabs">
+                        <span class="gm-tab active">Overview</span>
+                        <span class="gm-tab">About</span>
+                    </div>
+                    <div class="gm-sheet-body">
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Tanggal Acara</span><span class="gm-inforow-v">{{tanggal_resepsi}}</span></div>
+                        </div>
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Jam Buka</span><span class="gm-inforow-v">{{jam_resepsi}}</span></div>
+                        </div>
+                        <div class="gm-inforow">
+                            <span class="gm-inforow-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+                            <div class="gm-inforow-body"><span class="gm-inforow-k">Alamat</span><span class="gm-inforow-v">{{keterangan_lokasi_resepsi}}</span></div>
+                        </div>
+                    </div>
+                </div>
+                {{/if}}
+            </section>
+
+            <!-- ---------------- COUNTDOWN + RSVP ---------------- -->
+            <section id="rsvp" class="section" data-menu-label="Konfirmasi Kehadiran">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Estimated Time of Arrival</div>
+                    <div class="section-title">Menuju Hari Bahagia</div>
+                    <div class="gm-rule"></div>
+                </div>
+
+                <div class="eta-banner reveal-item">
+                    <span class="eta-ic">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                    </span>
+                    <span class="eta-text">ETA menuju destinasi</span>
+                </div>
+
+                <div class="countdown" id="countdown">
+                    <div class="countdown-item"><div class="countdown-box" id="days">{{countdown_hari}}</div><div class="countdown-label">Hari</div></div>
+                    <div class="countdown-item"><div class="countdown-box" id="hours">{{countdown_jam}}</div><div class="countdown-label">Jam</div></div>
+                    <div class="countdown-item"><div class="countdown-box" id="minutes">{{countdown_menit}}</div><div class="countdown-label">Menit</div></div>
+                    <div class="countdown-item"><div class="countdown-box" id="seconds">{{countdown_detik}}</div><div class="countdown-label">Detik</div></div>
+                </div>
+                <div class="countdown-status" id="countdown-status" style="display:none"></div>
+                <span id="tm-wed-date" data-wedding-date="{{wedding_date_iso}}" style="display:none"></span>
+                <span id="tm-jam-resepsi" style="display:none">{{jam_resepsi}}</span>
+
+                <div id="rsvp-container">
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+
+                    {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+                    <div class="rsvp-card" id="rsvp-form">
+                        <div class="rsvp-head">
+                            <span class="rsvp-head-pin">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                            </span>
+                            <span>Save this place · Konfirmasi Kehadiran</span>
+                        </div>
+                        <input class="custom-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly tabindex="-1" placeholder="Kode Undangan">
+                        <input class="custom-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly tabindex="-1" placeholder="Nama Tamu">
+                        <select class="custom-input" id="rsvp-guests">
+                            <option value="" disabled selected>Jumlah Rombongan</option>
+                            <option value="1">1 Orang</option>
+                            <option value="2">2 Orang</option>
+                            <option value="3">3 Orang</option>
+                            <option value="4">4 Orang</option>
+                            <option value="5">5 Orang</option>
+                        </select>
+                        <select class="custom-input" id="rsvp-status">
+                            <option value="" disabled selected>Konfirmasi Kehadiran</option>
+                            <option value="hadir">Akan Hadir</option>
+                            <option value="tidak-hadir">Tidak Hadir</option>
+                        </select>
+                        <button class="gm-btn gm-btn-directions gm-btn-full" id="btn-submit-kehadiran">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>Simpan Kehadiran</span>
+                        </button>
+                    </div>
+                    {{/hidden}}
+
+                    {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+                    <div id="alert-submit-kehadiran" class="thank-you-message">
+                        {{^hidden is_hadir}}
+                        <div data-rsvp-branch="hadir">
+                            <div class="ty-icon">📍</div>
+                            Lokasi tersimpan, <strong>{{guest_name}}</strong>!<br>
+                            Sampai jumpa di destinasi hari bahagia kami.
+                        </div>
+                        {{/hidden}}
+                        {{#hidden is_hadir}}
+                        <div data-rsvp-branch="tidak">
+                            <div class="ty-icon">🙏</div>
+                            Terima kasih <strong>{{guest_name}}</strong>.<br>
+                            Kami mengerti Anda berhalangan hadir. Terima kasih atas doa restunya.
+                        </div>
+                        {{/hidden}}
+                    </div>
+                    {{/hidden}}
+
+                    {{/unless}}
+                </div>
+            </section>
+
+            <!-- ---------------- LIVE STREAMING ---------------- -->
+            {{#if is_fitur_live_streaming}}
+            <section class="section section-alt" data-menu-label="Live Streaming">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Street View · Live</div>
+                    <div class="section-title">Live Streaming</div>
+                    <div class="gm-rule"></div>
+                </div>
+                <div class="live-card reveal-item">
+                    <div class="live-screen">
+                        <span class="live-play">▶</span>
+                        <span class="live-live">● LIVE</span>
+                    </div>
+                    <div class="live-caption">
+                        <p class="muted-text">Bagi Bapak/Ibu/Saudara/i yang berhalangan hadir, saksikan acara kami secara langsung.</p>
+                        <a href="{{link_live_streaming}}" target="_blank" class="gm-btn gm-btn-directions">Tonton Sekarang</a>
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- ---------------- STORY = TRIP TIMELINE ---------------- -->
+            {{#if flag_pakai_timeline_kisah}}
+            <section class="section" data-menu-label="Kisah Kami">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Your Timeline</div>
+                    <div class="section-title">Kisah Kami</div>
+                    <div class="gm-rule"></div>
+                </div>
+                <div class="trip">
+                    {{#each timeline_kisah}}
+                    <div class="trip-stop reveal-item">
+                        <span class="trip-node"></span>
+                        <div class="trip-body">
+                            <div class="trip-date">📍 {{this.tanggal}}</div>
+                            <h4 class="trip-title">{{this.judul}}</h4>
+                            <p class="trip-text">{{this.deskripsi}}</p>
+                        </div>
+                    </div>
+                    {{/each}}
+                    <div class="trip-stop trip-end reveal-item">
+                        <span class="trip-node trip-node-final">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path></svg>
+                        </span>
+                        <div class="trip-body"><h4 class="trip-title">Destination Reached ♥</h4></div>
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- ---------------- GALLERY = PHOTOS TAB ---------------- -->
+            {{#if is_fitur_gallery}}
+            <section id="gallery" class="section section-alt" data-menu-label="Galeri">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Photos</div>
+                    <div class="section-title">Galeri</div>
+                    <div class="gm-rule"></div>
+                </div>
+                {{#if has_gallery}}
+                <div class="gallery-grid">
+                    {{#each galleries}}
+                    <a class="gallery-item reveal-item">
+                        <img src="{{this.url}}" alt="" class="lightbox-injection">
+                        <div class="gallery-overlay">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                        </div>
+                    </a>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </section>
+            {{/if}}
+
+            <!-- ---------------- SHARE HAPPINESS = STORIES ---------------- -->
+            {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+            <section id="happiness" class="section section-happiness" data-menu-label="Berbagi Bahagia">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Share your visit</div>
+                    <div class="section-title">Berbagi Kebahagiaan</div>
+                    <div class="gm-rule"></div>
+                </div>
+
+                <div class="story-carousel-wrapper reveal-item">
+                    <div class="story-carousel" id="story-carousel">
+                        <div class="story-slide">
+                            <div class="card-inner">
+                                <img src="{{sample_story_1}}" alt="Memory 1" class="card-photo">
+                                <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                <div class="card-progress"><span></span><span></span><span></span></div>
+                                <div class="card-badge">📍 Check-in</div>
+                                <div class="card-bottom">
+                                    <span class="card-caption">Tawa &amp; Ceria</span>
+                                    <span class="card-ep">Stop 1</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="story-slide">
+                            <div class="card-inner">
+                                <img src="{{sample_story_2}}" alt="Memory 2" class="card-photo">
+                                <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                <div class="card-progress"><span></span><span></span><span></span></div>
+                                <div class="card-badge">📍 Check-in</div>
+                                <div class="card-bottom">
+                                    <span class="card-caption">Langkah Bersama</span>
+                                    <span class="card-ep">Stop 2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="story-slide">
+                            <div class="card-inner">
+                                <img src="{{sample_story_3}}" alt="Memory 3" class="card-photo">
+                                <img src="{{frame_balasan_instagram}}" alt="Frame" class="card-frame">
+                                <div class="card-progress"><span></span><span></span><span></span></div>
+                                <div class="card-badge">📍 Check-in</div>
+                                <div class="card-bottom">
+                                    <span class="card-caption">Janji Suci</span>
+                                    <span class="card-ep">Stop 3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="story-dots" id="story-dots">
+                        <span class="story-dot-nav is-active"></span>
+                        <span class="story-dot-nav"></span>
+                        <span class="story-dot-nav"></span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 26px;">
+                    <a href="{{link_balasan_instagram}}" class="gm-btn gm-btn-directions" id="btn-share-instagram" target="_blank" style="min-width: 200px;">
+                        <span uk-icon="icon: instagram; ratio: 1.1"></span> Bagikan Momen
+                    </a>
+                    <p class="muted-text" style="margin-top: 16px;">
+                        Ambil tangkapan layar kartu kenangan di atas dan bagikan di Instagram Story Anda,
+                        tandai <strong>@{{ig_laki_laki}}</strong> &amp; <strong>@{{ig_perempuan}}</strong>.
+                    </p>
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- ---------------- WISHES = GOOGLE REVIEWS ---------------- -->
+            <section id="wishes" class="section" data-menu-label="Ucapan &amp; Doa">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Reviews</div>
+                    <div class="section-title">Ucapan &amp; Doa</div>
+                    <div class="gm-rule"></div>
+                </div>
+
+                <!-- aggregate rating banner -->
+                <div class="rating-summary reveal-item">
+                    <div class="rs-score">5.0</div>
+                    <div class="rs-body">
+                        <div class="rs-stars">★★★★★</div>
+                        <div class="rs-sub">Berdasarkan doa &amp; restu para tamu</div>
+                    </div>
+                </div>
+
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <div id="wish-container">
+                    {{#hidden is_sudah_isi_ucapan}}
+                    <form class="rsvp-card review-form" id="wish-form">
+                        <div class="rsvp-head">
+                            <span class="rsvp-head-pin">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            </span>
+                            <span>Tulis ulasan Anda</span>
+                        </div>
+                        <div class="review-stars-input">★★★★★</div>
+                        <input class="custom-input" type="text" id="wish-name" value="{{nama_tamu}}" readonly tabindex="-1" placeholder="Nama Anda">
+                        <textarea class="custom-input" rows="3" id="wish-message" placeholder="Tulis ulasan &amp; doa Anda..."></textarea>
+                        <button type="button" id="btn-submit-ucapan" class="gm-btn gm-btn-directions gm-btn-full">Kirim Ulasan</button>
+                    </form>
+                    {{/hidden}}
+
+                    {{^hidden is_sudah_isi_ucapan}}
+                    <div id="alert-submit-ucapan" class="thank-you-message">
+                        <div class="ty-icon">⭐</div>
+                        Terima kasih atas ulasan &amp; doanya!<br>
+                        Semoga kebaikan Anda kembali berlipat ganda.
+                    </div>
+                    {{/hidden}}
+                </div>
+                {{/unless}}
+
+                <div class="wishes-list" data-loop="wishes">
+                    {{#each wishes}}
+                    <div class="review-item reveal-item" data-wish-item>
+                        <div class="review-top">
+                            <span class="review-avatar" data-wish-field="initial">{{this.guest_initial}}</span>
+                            <div class="review-who">
+                                <span class="review-name" data-wish-field="name">{{this.guest_name}}</span>
+                                <span class="review-time" data-wish-field="time">{{this.guest_comment_time}}</span>
+                            </div>
+                            <span class="review-gmark">G</span>
+                        </div>
+                        <div class="review-stars">★★★★★</div>
+                        <div class="review-text" data-wish-field="message">{{this.guest_message}}</div>
+                    </div>
+                    {{/each}}
+                </div>
+            </section>
+
+            <!-- ---------------- GIFT = SUPPORT THIS PLACE ---------------- -->
+            {{#if tampilkan_amplop_online}}
+            <section id="gift" class="section section-alt" data-menu-label="Wedding Gift">
+                <div class="section-head reveal-item">
+                    <div class="gm-eyebrow"><span class="gm-pin-dot"></span> Support this place</div>
+                    <div class="section-title">Wedding Gift</div>
+                    <p class="muted-text">Doa restu Anda sudah lebih dari cukup. Namun bila berkenan memberi tanda kasih, kami sediakan fitur berikut.</p>
+                    <div class="gm-rule"></div>
+                </div>
+
+                <div class="gift-accounts{{#if flag_pakai_2_rekening}} is-duo{{/if}}">
+                    <div class="gift-card reveal-item">
+                        <div class="gift-card-head">
+                            <span class="gift-pin"><svg width="18" height="18" viewBox="0 0 24 24" fill="#4285f4"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path></svg></span>
+                            <span class="gift-bank">{{bank_1}}</span>
+                        </div>
+                        {{#if flag_pakai_qris_rekening_1}}
+                        <div class="gift-qris"><img src="{{gambar_qris_rekening_1}}" alt="QRIS"></div>
+                        {{/if}}
+                        <div class="gift-number" id="acc-1">{{rek_1}}</div>
+                        <div class="gift-name">a.n. {{nama_rek_1}}</div>
+                        <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
+                            <span uk-icon="copy"></span> Salin Nomor
+                        </button>
+                    </div>
+
+                    {{#if flag_pakai_2_rekening}}
+                    <div class="gift-card reveal-item">
+                        <div class="gift-card-head">
+                            <span class="gift-pin"><svg width="18" height="18" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path></svg></span>
+                            <span class="gift-bank">{{bank_2}}</span>
+                        </div>
+                        {{#if flag_pakai_qris_rekening_2}}
+                        <div class="gift-qris"><img src="{{gambar_qris_rekening_2}}" alt="QRIS"></div>
+                        {{/if}}
+                        <div class="gift-number" id="acc-2">{{rek_2}}</div>
+                        <div class="gift-name">a.n. {{nama_rek_2}}</div>
+                        <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
+                            <span uk-icon="copy"></span> Salin Nomor
+                        </button>
+                    </div>
+                    {{/if}}
+                </div>
+
+                {{#if flag_kirim_hadiah_offline}}
+                <div class="muted-text" style="margin-top: 22px;">Bagi yang ingin mengirim kado fisik, dapat dikirim ke alamat berikut:</div>
+                <div class="gift-card reveal-item" style="margin-top: 14px;">
+                    <div class="gift-card-head">
+                        <span class="gift-pin"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M9 22V12h6v10"></path></svg></span>
+                        <span class="gift-bank">{{nama_lokasi_kirim_hadiah_offline}}</span>
+                    </div>
+                    <div class="gift-name" id="gift-addr" style="margin-bottom: 16px;">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                    <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
+                        <span uk-icon="copy"></span> Salin Alamat
+                    </button>
+                </div>
+                {{/if}}
+            </section>
+            {{/if}}
+
+            <!-- ---------------- CLOSING = YOU HAVE ARRIVED ---------------- -->
+            <section class="section-closing">
+                <div class="closing-map" aria-hidden="true">
+                    <div class="cl-grid"></div>
+                    <div class="cl-route"></div>
+                </div>
+                <div class="closing-photo" style="background-image: linear-gradient(rgba(24,32,44,0.78), rgba(24,32,44,0.9)), url(&quot;{{#if photo_closing}}{{photo_closing}}{{else}}{{photo_hero_cover}}{{/if}}&quot;);"></div>
+
+                <div class="closing-inner reveal-item">
+                    <div class="closing-pin">
+                        <svg width="46" height="46" viewBox="0 0 24 24" fill="#ea4335"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+                    </div>
+                    <div class="closing-arrived">You have arrived</div>
+                    <div class="closing-couple"><span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span></div>
+                    <div class="closing-coords">📍 {{wedding_date}}</div>
+
+                    <p class="closing-quote">
+                        Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i
+                        berkenan hadir dan memberikan doa restu.
+                    </p>
+                    <div class="closing-thanks">Terima kasih telah menemukan jalan menuju kami ♥</div>
+                </div>
+
+                <footer class="invitation-footer">
+                    <div class="footer-name">{{site_name}}</div>
+                    <div class="footer-info">
+                        <a href="{{site_url}}" target="_blank">{{site_url}}</a><br>
+                        <span>Digital Wedding Invitation © 2026</span>
+                    </div>
+                    <div class="footer-social">
+                        {{#if flag_use_tiktok_webconfig}}
+                        <a aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_instagram_webconfig}}
+                        <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_youtube_webconfig}}
+                        <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                        </a>
+                        {{/if}}
+                        {{#if flag_use_whatsapp_webconfig}}
+                        <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        </a>
+                        {{/if}}
+                    </div>
+                </footer>
+            </section>
+
+            <!-- ---------------- FLOATING UI = MAPS NAVIGATION BAR ---------------- -->
+            <div id="theme-fab-container" class="gm-navbar-wrap" style="display: none;">
+                <div class="gm-navbar">
+                    <!-- now-playing strip: channel + video title (marquee if long) -->
+                    <div class="gm-np">
+                        <span class="gm-np-ic">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#1a73e8"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3z"></path></svg>
+                        </span>
+                        <span class="gm-np-text">
+                            <span class="gm-np-channel" id="pb-np-channel">Perjalanan Kita</span>
+                            <span class="gm-np-title np-marquee" id="pb-np-title">
+                                <span class="np-marquee-inner">Original Soundtrack</span>
+                            </span>
+                        </span>
+                        <span class="gm-np-eq" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                    </div>
+
+                    <!-- control row: QR · prev · play · next · menu -->
+                    <div class="gm-controls">
+                        <button id="btn-show-qr" class="gm-navbtn" aria-label="Tiket QR">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect><rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path><path d="M21 21v.01"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path><path d="M3 12h.01"></path><path d="M12 3h.01"></path><path d="M12 16v.01"></path><path d="M16 12h1"></path><path d="M21 12v.01"></path><path d="M12 21v-1"></path></svg>
+                        </button>
+
+                        <button id="pb-prev" class="gm-navbtn" aria-label="Destinasi sebelumnya">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"></path></svg>
+                        </button>
+
+                        <button class="gm-navbtn gm-navbtn-play" id="btn-toggle-music" aria-label="Putar / jeda musik">
+                            <span class="gm-play-ring" aria-hidden="true"></span>
+                            <span id="music-icon-container">
+                                <svg id="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="#fff" style="display: block;"><path d="M8 5v14l11-7z"></path></svg>
+                                <svg id="pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="#fff" style="display: none;"><path d="M6 5h4v14H6zm8 0h4v14h-4z"></path></svg>
+                            </span>
+                        </button>
+
+                        <button id="pb-next" class="gm-navbtn" aria-label="Destinasi berikutnya">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z"></path></svg>
+                        </button>
+
+                        <button id="btn-show-menu" class="gm-navbtn" aria-label="Menu">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ---------------- MENU MODAL ---------------- -->
+            <div id="menu-modal" class="menu-overlay">
+                <button class="menu-close" id="btn-close-menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div class="menu-eyebrow"><span class="gm-pin-dot"></span> Explore</div>
+                <div class="menu-couple">{{groom_nickname}} &amp; {{bride_nickname}}</div>
+                <div class="menu-date">📍 {{wedding_date}}</div>
+                <ul class="menu-list">
+                    <li><a data-scroll="couples">Mempelai</a></li>
+                    <li><a data-scroll="schedule">Waktu &amp; Tempat</a></li>
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <li><a data-scroll="rsvp">Konfirmasi Kehadiran</a></li>
+                    {{/unless}}
+                    <li><a data-scroll="gallery">Galeri</a></li>
+                    <li><a data-scroll="wishes">Ucapan &amp; Doa</a></li>
+                    <li><a data-scroll="gift">Wedding Gift</a></li>
+                </ul>
+            </div>
+
+            <!-- ---------------- QR MODAL ---------------- -->
+            <div id="qr-modal" class="qr-overlay">
+                <div class="qr-card">
+                    <button class="menu-close" id="btn-close-qr">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <div class="section-title" style="font-size:1.35rem;">Tiket Check-in</div>
+                    <p class="muted-text" style="max-width: 240px; margin: 6px auto 14px;">Tunjukkan QR ini kepada petugas saat tiba di lokasi.</p>
+                    <div class="qr-slot" id="qr-slot"></div>
+                </div>
+            </div>
+
+            <audio id="bg-music" loop="">
+                <source src="https://www.bensound.com/bensound-music/bensound-memories.mp3" type="audio/mpeg">
+            </audio>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
+<script src="index.js"></script>
+<script>
+    // Subtle desktop parallax on the decorative sidebar photo.
+    document.addEventListener('mousemove', function (e) {
+        const container = document.getElementById('desktop-bg-container');
+        if (!container || window.innerWidth < 960) return;
+        const x = (e.clientX / window.innerWidth) - 0.5;
+        const y = (e.clientY / window.innerHeight) - 0.5;
+        const bg = document.getElementById('layer-bg');
+        const text = document.getElementById('layer-text');
+        if (bg) bg.style.transform = `translate(${x * -24}px, ${y * -24}px)`;
+        if (text) text.style.transform = `translate(${x * -8}px, ${y * -8}px)`;
+    });
+</script>

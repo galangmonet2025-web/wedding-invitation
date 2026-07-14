@@ -140,12 +140,27 @@
                 </div>
             </section>
 
-            <!-- ---------------- HERO (airplane window / sky) ---------------- -->
+            <!-- ---------------- HERO (view from the airplane window) ---------------- -->
             <section class="section-hero">
-                <div class="hero-bg" style="background-image: linear-gradient(rgba(15,42,71,0.5), rgba(15,42,71,0.72)), url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
+                <!-- looking OUT the cabin window: photo sky behind a rounded window frame -->
+                <div class="hero-window">
+                    <div class="hero-bg" style="background-image: linear-gradient(rgba(15,42,71,0.42), rgba(15,42,71,0.7)), url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
+                    <!-- drifting clouds + a little plane crossing the pane -->
+                    <span class="hero-cloud hero-cloud-1" aria-hidden="true"></span>
+                    <span class="hero-cloud hero-cloud-2" aria-hidden="true"></span>
+                    <span class="hero-flyby" aria-hidden="true">✈</span>
+                    <span class="hero-window-shade" aria-hidden="true"></span>
+                </div>
+
+                <!-- in-flight status strip, like a seat-back display -->
+                <div class="hero-status" aria-hidden="true">
+                    <span class="hs-cell"><span class="hs-key">Alt</span><span class="hs-val">36,000 ft</span></span>
+                    <span class="hs-plane">✈</span>
+                    <span class="hs-cell"><span class="hs-key">Dest</span><span class="hs-val">FOREVER</span></span>
+                </div>
 
                 <div class="hero-header">
-                    <div class="mono-eyebrow">The Wedding Of</div>
+                    <div class="mono-eyebrow">Now Boarding · The Wedding Of</div>
                     <h1 class="hero-couple">
                         <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
                     </h1>
@@ -160,7 +175,7 @@
                     </div>
                     <div class="scroll-indicator">
                         <div class="mouse"><div class="wheel"></div></div>
-                        <span>Scroll</span>
+                        <span>Fasten Seatbelt · Scroll</span>
                     </div>
                 </div>
             </section>
@@ -442,18 +457,32 @@
                 </div>
             </section>
 
-            <!-- ---------------- LIVE STREAMING ---------------- -->
+            <!-- ---------------- LIVE STREAMING (in-flight entertainment screen) ---------------- -->
             {{#if is_fitur_live_streaming}}
             <section class="section section-alt" data-menu-label="Live Streaming">
                 <div class="section-head reveal-item">
-                    <div class="mono-eyebrow">In-Flight Broadcast</div>
+                    <div class="mono-eyebrow">In-Flight Entertainment</div>
                     <div class="section-title">Live Streaming</div>
                     <div class="dash-rule"></div>
                 </div>
-                <div class="pass-form reveal-item" style="text-align:center;">
-                    <div class="streaming-icon"><span uk-icon="icon: video-camera; ratio: 2.2"></span></div>
-                    <p class="muted-text">Bagi Bapak/Ibu/Saudara/i yang berhalangan hadir, saksikan momen bahagia kami secara langsung.</p>
-                    <a href="{{link_live_streaming}}" target="_blank" class="btn btn-primary">Buka Streaming</a>
+
+                <!-- a seat-back TV screen -->
+                <div class="ife-screen reveal-item">
+                    <div class="ife-topbar">
+                        <span class="ife-chan"><span class="ife-live-dot"></span> LIVE · CH.01</span>
+                        <span class="ife-flight">GD-2026</span>
+                    </div>
+                    <div class="ife-display">
+                        <span class="ife-scanline" aria-hidden="true"></span>
+                        <div class="ife-play"><span uk-icon="icon: play; ratio: 1.6"></span></div>
+                        <div class="ife-caption">Wedding Broadcast · Direct From The Gate</div>
+                    </div>
+                    <div class="ife-panel">
+                        <p class="muted-text" style="margin-top:0;">Bagi Bapak/Ibu/Saudara/i yang berhalangan hadir, saksikan momen bahagia kami secara langsung.</p>
+                        <a href="{{link_live_streaming}}" target="_blank" class="btn btn-primary btn-full">
+                            <span uk-icon="icon: play-circle; ratio: 1"></span> Tonton Siaran
+                        </a>
+                    </div>
                 </div>
             </section>
             {{/if}}
@@ -494,20 +523,33 @@
             </section>
             {{/if}}
 
-            <!-- ---------------- GALLERY (postcards) ---------------- -->
+            <!-- ---------------- GALLERY (airmail postcards) ---------------- -->
             {{#if is_fitur_gallery}}
             <section id="gallery" class="section section-alt" data-menu-label="Galeri">
                 <div class="section-head reveal-item">
-                    <div class="mono-eyebrow">Postcards</div>
-                    <div class="section-title">Galeri Momen</div>
+                    <div class="mono-eyebrow">Par Avion · Postcards</div>
+                    <div class="section-title">Kartu Pos Kenangan</div>
                     <div class="dash-rule"></div>
+                    <p class="muted-text">Setiap momen kami kirim untukmu — bak kartu pos dari perjalanan cinta ini.</p>
                 </div>
                 {{#if has_gallery}}
                 <div class="gallery-grid">
                     {{#each galleries}}
                     <a class="gallery-item reveal-item">
-                        <img src="{{this.url}}" alt="" class="lightbox-injection">
-                        <div class="gallery-overlay">Lihat</div>
+                        <span class="postcard-airmail" aria-hidden="true"></span>
+                        <div class="postcard-photo">
+                            <img src="{{this.url}}" alt="" class="lightbox-injection">
+                        </div>
+                        <span class="postcard-stamp" aria-hidden="true">
+                            <span class="ps-plane">✈</span>
+                            <span class="ps-val">GD</span>
+                        </span>
+                        <span class="postcard-postmark" aria-hidden="true">
+                            <span class="pm-top">WEDDING · AIRLINES</span>
+                            <span class="pm-plane">✈</span>
+                            <span class="pm-bottom">GD-2026</span>
+                        </span>
+                        <div class="gallery-overlay"><span uk-icon="icon: search; ratio: 0.9"></span> Lihat</div>
                     </a>
                     {{/each}}
                 </div>
@@ -631,53 +673,73 @@
                 </div>
             </section>
 
-            <!-- ---------------- GIFT (baggage / duty free) ---------------- -->
+            <!-- ---------------- GIFT (luggage tags / baggage claim) ---------------- -->
             {{#if tampilkan_amplop_online}}
             <section id="gift" class="section section-alt" data-menu-label="Wedding Gift">
                 <div class="section-head reveal-item">
-                    <div class="mono-eyebrow">Extra Baggage</div>
-                    <div class="section-title">Wedding Gift</div>
-                    <p class="muted-text">Doa restu Anda sudah lebih dari cukup. Namun bila berkenan memberi tanda kasih, kami sediakan fitur berikut.</p>
+                    <div class="mono-eyebrow">Baggage Claim · Extra Baggage</div>
+                    <div class="section-title">Tanda Kasih</div>
+                    <p class="muted-text">Doa restu Anda sudah lebih dari cukup. Namun bila berkenan menitipkan "bagasi tambahan", kami sediakan gerbang berikut.</p>
                     <div class="dash-rule"></div>
                 </div>
 
                 <div class="gift-accounts{{#if flag_pakai_2_rekening}} is-duo{{/if}}">
                     <div class="gift-card reveal-item">
+                        <span class="gift-tag-hole" aria-hidden="true"></span>
+                        <div class="gift-tag-head">
+                            <span class="gift-tag-key">Baggage Tag</span>
+                            <span class="gift-tag-flight">GD·01</span>
+                        </div>
                         <div class="gift-bank">{{bank_1}}</div>
                         {{#if flag_pakai_qris_rekening_1}}
                         <div class="gift-qris"><img src="{{gambar_qris_rekening_1}}" alt="QRIS"></div>
                         {{/if}}
+                        <span class="gift-num-key">Account No.</span>
                         <div class="gift-number" id="acc-1">{{rek_1}}</div>
                         <div class="gift-name">a.n. {{nama_rek_1}}</div>
                         <button class="btn-copy" onclick="copyToClipboard('acc-1', this)">
                             <span uk-icon="copy"></span> Salin Nomor
                         </button>
+                        <div class="gift-tag-barcode" aria-hidden="true"></div>
                     </div>
 
                     {{#if flag_pakai_2_rekening}}
                     <div class="gift-card reveal-item">
+                        <span class="gift-tag-hole" aria-hidden="true"></span>
+                        <div class="gift-tag-head">
+                            <span class="gift-tag-key">Baggage Tag</span>
+                            <span class="gift-tag-flight">GD·02</span>
+                        </div>
                         <div class="gift-bank">{{bank_2}}</div>
                         {{#if flag_pakai_qris_rekening_2}}
                         <div class="gift-qris"><img src="{{gambar_qris_rekening_2}}" alt="QRIS"></div>
                         {{/if}}
+                        <span class="gift-num-key">Account No.</span>
                         <div class="gift-number" id="acc-2">{{rek_2}}</div>
                         <div class="gift-name">a.n. {{nama_rek_2}}</div>
                         <button class="btn-copy" onclick="copyToClipboard('acc-2', this)">
                             <span uk-icon="copy"></span> Salin Nomor
                         </button>
+                        <div class="gift-tag-barcode" aria-hidden="true"></div>
                     </div>
                     {{/if}}
                 </div>
 
                 {{#if flag_kirim_hadiah_offline}}
-                <div class="muted-text" style="margin-top: 22px;">Bagi yang ingin mengirim kado fisik, dapat dikirim ke alamat berikut:</div>
-                <div class="gift-card reveal-item" style="margin-top: 14px;">
-                    <div class="streaming-icon" style="margin-bottom: 10px;"><span uk-icon="icon: home; ratio: 1.4"></span></div>
-                    <div class="gift-bank" style="font-size: 1.1rem;">{{nama_lokasi_kirim_hadiah_offline}}</div>
-                    <div class="gift-name" id="gift-addr" style="margin-bottom: 16px;">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+                <div class="muted-text" style="margin-top: 22px;">Bagi yang ingin mengirim kado fisik, dapat dikirim ke "terminal kedatangan" berikut:</div>
+                <div class="gift-card gift-card-offline reveal-item">
+                    <span class="gift-tag-hole" aria-hidden="true"></span>
+                    <div class="gift-tag-head">
+                        <span class="gift-tag-key">Arrival · Kirim Hadiah</span>
+                        <span class="gift-tag-flight"><span uk-icon="icon: home; ratio: 0.8"></span></span>
+                    </div>
+                    <div class="gift-bank" style="font-size: 1.15rem;">{{nama_lokasi_kirim_hadiah_offline}}</div>
+                    <span class="gift-num-key">Delivery Address</span>
+                    <div class="gift-name" id="gift-addr" style="margin: 4px 0 16px; font-size: 13px; line-height: 1.7;">{{alamat_lokasi_kirim_hadiah_offline}}</div>
                     <button class="btn-copy" onclick="copyToClipboard('gift-addr', this)">
                         <span uk-icon="copy"></span> Salin Alamat
                     </button>
+                    <div class="gift-tag-barcode" aria-hidden="true"></div>
                 </div>
                 {{/if}}
             </section>

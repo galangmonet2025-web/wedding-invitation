@@ -1631,49 +1631,142 @@ select.custom-input {
 /* =========================================================================
    FLOATING UI + MODALS
    ========================================================================= */
-.floating-ui-container {
+/* Cinema player bar — a single pill docked at the bottom (spotify-style),
+   re-skinned to the theatre palette: dark reel bar, gold play, maroon accents. */
+.cine-playerbar-wrap {
     position: fixed;
-    inset: 0;
-    width: 100%; height: 100%;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    width: calc(100% - 24px);
+    max-width: 456px;
     z-index: 120;
-    padding: 20px;
     pointer-events: none;
 }
 @media (min-width: 960px) {
-    .floating-ui-container { left: auto; right: 0; width: 480px; }
+    .cine-playerbar-wrap {
+        left: auto;
+        right: 12px;
+        transform: none;
+        width: 456px;
+    }
 }
-.btn-menu {
-    position: absolute;
-    top: 20px; right: 24px;
-    width: 50px; height: 50px;
-    background: var(--maroon);
-    color: var(--paper);
-    border-color: var(--maroon);
-}
-.bottom-controls {
-    position: absolute;
-    bottom: 24px; right: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+.cine-playerbar {
     pointer-events: auto;
+    background: linear-gradient(180deg, #241812, #14100c);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 10px 12px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(230, 180, 80, 0.06);
 }
-.floating-btn {
-    width: 46px; height: 46px;
-    border-radius: 50%;
-    border: 1.5px solid var(--maroon);
-    background: var(--paper);
-    color: var(--maroon);
+
+/* now-playing strip */
+.pb-nowplaying {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 4px 10px;
+    border-bottom: 1px solid rgba(230, 180, 80, 0.22);
+    margin-bottom: 10px;
+}
+.pb-reel { font-size: 18px; }
+#theme-fab-container.is-playing .pb-reel { animation: reelSpin 4s linear infinite; }
+@keyframes reelSpin { to { transform: rotate(360deg); } }
+.pb-np-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+/* channel name (top, small caps) */
+.pb-np-channel {
+    font-family: var(--cond);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-size: 8.5px;
+    color: #d97a5a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* video title (bottom) — marquee viewport when it overflows */
+.pb-np-title {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--paper);
+    overflow: hidden;
+    white-space: nowrap;
+}
+.np-marquee { position: relative; }
+.np-marquee-inner { display: inline-block; white-space: nowrap; }
+/* only scroll when JS adds .is-marquee (title wider than the strip) */
+.np-marquee.is-marquee .np-marquee-inner {
+    animation: npScroll var(--np-scroll-dur, 12s) linear infinite alternate;
+}
+@keyframes npScroll {
+    0%, 12% { transform: translateX(0); }
+    88%, 100% { transform: translateX(var(--np-scroll, 0)); }
+}
+
+/* little equalizer bars — FROZEN by default, animate only while playing */
+.pb-np-eq { display: flex; align-items: flex-end; gap: 2px; height: 14px; flex: 0 0 auto; }
+.pb-np-eq span {
+    width: 3px;
+    background: var(--gold-bright);
+    border-radius: 1px;
+    transform: scaleY(0.35);
+    transform-origin: bottom;
+}
+.pb-np-eq span:nth-child(1) { height: 40%; animation-delay: 0s; }
+.pb-np-eq span:nth-child(2) { height: 100%; animation-delay: 0.2s; }
+.pb-np-eq span:nth-child(3) { height: 60%; animation-delay: 0.4s; }
+.pb-np-eq span:nth-child(4) { height: 85%; animation-delay: 0.1s; }
+/* the wrapper gets .is-playing from JS when the music is actually playing */
+#theme-fab-container.is-playing .pb-np-eq span {
+    animation: eq 0.9s ease-in-out infinite;
+}
+@keyframes eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+
+/* control row */
+.pb-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 8px;
+}
+.pb-btn {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: none;
+    border: none;
+    color: var(--paper);
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(28, 16, 12, 0.25);
-    transition: all 0.3s ease;
-    pointer-events: auto;
+    padding: 6px;
+    border-radius: 50%;
+    transition: color 0.25s ease, background 0.25s ease, transform 0.2s ease;
 }
-.floating-btn:hover { background: var(--maroon); color: var(--paper); }
-.floating-btn.music-playing { background: var(--gold); border-color: var(--gold); color: var(--bg-deep); }
+.pb-btn:hover { color: var(--gold-bright); transform: scale(1.08); }
+.pb-side { opacity: 0.9; }
+/* center play button — gold disc like a film reel hub */
+.pb-play {
+    position: relative;
+    width: 54px; height: 54px;
+    background: var(--gold-bright);
+    color: var(--bg-deep);
+    box-shadow: 0 6px 16px rgba(230, 180, 80, 0.4);
+}
+.pb-play:hover { color: var(--bg-deep); background: var(--gold); transform: scale(1.05); }
+.pb-play-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(230, 180, 80, 0.5);
+    pointer-events: none;
+}
+#music-icon-container { display: flex; align-items: center; justify-content: center; }
+.pb-play.music-playing { background: var(--gold); }
+
+@media (prefers-reduced-motion: reduce) {
+    .pb-reel, .pb-np-eq span { animation: none; }
+}
 
 .menu-overlay {
     position: fixed;
