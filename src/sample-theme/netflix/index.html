@@ -1022,6 +1022,9 @@
                         <ul class="uk-nav uk-nav-primary uk-nav-center menu-list">
                             <li><a href="#couples" uk-scroll="" uk-toggle="target: #menu-modal">Pemeran Utama</a></li>
                             <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Episodes</a></li>
+                            {{#unless is_link_umum_and_not_for_spesific_guest}}
+                            <li><a href="#rsvp" uk-scroll="" uk-toggle="target: #menu-modal">Konfirmasi Kehadiran</a></li>
+                            {{/unless}}
                             <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Gallery</a></li>
                             <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Reviews</a></li>
                             <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Wedding Gift</a></li>

@@ -184,7 +184,7 @@
             </section>
 
             <!-- ---------------- COUNTDOWN + RSVP ---------------- -->
-            <section class="section">
+            <section id="rsvp" class="section" data-menu-label="Konfirmasi Kehadiran">
                 <div class="section-head reveal-item">
                     <div class="eyebrow">Menuju Hari Bahagia</div>
                     <div class="display-name" style="font-size: 2.4rem;">Hitung Mundur</div>
@@ -556,6 +556,9 @@
                 <ul class="menu-list">
                     <li><a data-scroll="couples">Mempelai</a></li>
                     <li><a data-scroll="schedule">Waktu &amp; Tempat</a></li>
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <li><a data-scroll="rsvp">Konfirmasi Kehadiran</a></li>
+                    {{/unless}}
                     <li><a data-scroll="gallery">Galeri</a></li>
                     <li><a data-scroll="wishes">Ucapan &amp; Doa</a></li>
                     <li><a data-scroll="gift">Wedding Gift</a></li>

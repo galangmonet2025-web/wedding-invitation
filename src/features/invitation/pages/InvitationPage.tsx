@@ -527,15 +527,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             const guestid = searchParams.get('guestid') || searchParams.get('guestId');
             console.log("Fetching invitation for slug:", slug, "guestid:", guestid, "themeCode:", themeCode);
 
-            // SPLIT LOAD (perf): tembak DUA request PARALEL.
+            // SPLIT LOAD (perf) — HANYA untuk undangan publik biasa, BUKAN preview.
+            // Path preview (/#/preview/:themeCode/:slug) memaksa satu tema & dipakai admin;
+            // di sana kita AMBIL GAMBAR INLINE (skip_images=false, tanpa request kedua),
+            // supaya gambar tidak hilang. Kalau split diaktifkan di preview, request-1
+            // mengembalikan images:[] TAPI request-2 di-skip → gambar tak pernah muncul.
+            const useSplit = !themeCode;
             //  - getInvitation: data teks + KODE TEMA (badan undangan) TANPA gambar →
-            //    balik lebih cepat → undangan langsung muncul.
+            //    balik lebih cepat → undangan langsung muncul (mode split).
             //  - getInvitationImages: daftar gambar tenant → di-merge ke data.images
-            //    saat tiba, lalu di-resolve ke base64 progresif (gambar nyusul sambil
-            //    berjalan). Tak menunggu request gambar untuk menampilkan undangan.
-            const invPromise = publicApi.getInvitation(slug!, guestid, themeCode, /* skipImages */ true);
-            // Preview (themeCode) memakai path tema paksa; split gambar tak relevan di sana.
-            const imgPromise = themeCode ? null : publicApi.getInvitationImages(slug!).catch(() => null);
+            //    saat tiba, lalu di-resolve ke base64 progresif (gambar nyusul sambil jalan).
+            const invPromise = publicApi.getInvitation(slug!, guestid, themeCode, /* skipImages */ useSplit);
+            const imgPromise = useSplit ? publicApi.getInvitationImages(slug!).catch(() => null) : null;
 
             const res = await invPromise;
             console.log("Response from getInvitation:", res);

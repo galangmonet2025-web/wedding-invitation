@@ -178,15 +178,15 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(15,42,71,0.7), rgba(15,42,71,0.92));
+    background: linear-gradient(180deg, rgba(15,42,71,0.74), rgba(15,42,71,0.6) 45%, rgba(15,42,71,0.94));
     z-index: 1;
 }
 .cover-inner {
     position: relative;
     z-index: 2;
     width: 100%;
-    max-width: 380px;
-    padding: 0 26px;
+    max-width: 440px;
+    padding: 0 12px;
 }
 
 .reveal-content .section-cover {
@@ -214,14 +214,24 @@
 .cover-strip-top .cover-strip-track { animation: coverSlideL 30s linear infinite; }
 .cover-strip-bottom .cover-strip-track { animation: coverSlideR 30s linear infinite; }
 .cover-photo {
+    position: relative;
     flex: 0 0 auto;
-    width: 92px;
-    height: 66px;
-    border-radius: 8px;
+    width: 132px;
+    height: 96px;
+    border-radius: 10px;
     background-size: cover;
     background-position: center;
-    border: 2px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+/* navy tint layer over each photo so the strip reads as one cohesive band
+   and the ticket in the middle stays the focal point */
+.cover-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15, 42, 71, 0.28), rgba(15, 42, 71, 0.55));
 }
 /* the track holds two identical halves → translate one half for a seamless loop */
 @keyframes coverSlideL {
@@ -246,7 +256,7 @@
     text-align: left;
 }
 
-.ticket-main { flex: 1 1 auto; padding: 20px 18px; min-width: 0; }
+.ticket-main { flex: 1 1 auto; padding: 26px 22px; min-width: 0; }
 
 .ticket-head {
     display: flex;
@@ -293,7 +303,7 @@
 .route-code {
     font-family: var(--serif);
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     color: var(--navy);
     line-height: 1.05;
     word-break: break-word;
@@ -346,10 +356,10 @@
 /* Torn perforated stub */
 .ticket-stub {
     position: relative;
-    flex: 0 0 96px;
+    flex: 0 0 108px;
     background: var(--navy);
     color: #fff;
-    padding: 20px 12px;
+    padding: 24px 14px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -392,7 +402,20 @@
     color: #fff;
 }
 .btn-icon:hover { background: var(--amber); border-color: var(--amber); color: var(--navy); }
-.cover-actions .btn-primary { margin: 0; }
+
+/* On the navy cover, make the primary CTA match the QR glass button:
+   translucent white fill, white border/text, shared amber hover. */
+.cover-actions .btn-primary {
+    margin: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+}
+.cover-actions .btn-primary:hover {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--navy);
+}
 
 /* =========================================================================
    HERO

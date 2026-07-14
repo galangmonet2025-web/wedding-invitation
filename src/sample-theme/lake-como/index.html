@@ -890,6 +890,9 @@
                         <ul class="uk-nav uk-nav-primary uk-nav-center menu-list">
                             <li><a href="#couples" uk-scroll="" uk-toggle="target: #menu-modal">Mempelai</a></li>
                             <li><a href="#schedule" uk-scroll="" uk-toggle="target: #menu-modal">Waktu &amp; Tempat</a></li>
+                            {{#unless is_link_umum_and_not_for_spesific_guest}}
+                            <li><a href="#rsvp" uk-scroll="" uk-toggle="target: #menu-modal">Konfirmasi Kehadiran</a></li>
+                            {{/unless}}
                             <li><a href="#gallery" uk-scroll="" uk-toggle="target: #menu-modal">Gallery</a></li>
                             <li><a href="#wishes" uk-scroll="" uk-toggle="target: #menu-modal">Ucapan &amp; Doa</a></li>
                             <li><a href="#gift" uk-scroll="" uk-toggle="target: #menu-modal">Amplop &amp; Gift</a></li>

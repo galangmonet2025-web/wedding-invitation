@@ -2114,9 +2114,13 @@
       var previewCode = (payload.theme_code || '').toString().trim();
       var theme = null;
       if (previewCode) {
-        // Path preview jarang dipakai (admin); resolve code -> id lalu ambil via cache tema.
-        var previewTheme = DB.findOne('Themes', 'code', previewCode);
-        theme = previewTheme ? this._prepareTheme(previewTheme) : null;
+        // Preview by code. DULU: DB.findOne('Themes','code',...) = baca SELURUH sheet
+        // Themes (tiap baris berisi HTML/CSS/JS ratusan KB) TANPA cache tiap buka →
+        // buka preview terasa lama. Sekarang resolve code -> id via cache ringkas
+        // (hanya kolom code+id, TTL panjang), lalu ambil tema besar via _getThemeCached
+        // yang chunked & dibagi antar-buka. Buka preview ke-2 dst jadi cepat.
+        var previewId = this._resolveThemeIdByCode(previewCode);
+        theme = previewId ? this._getThemeCached(previewId) : null;
       } else if (staticBlock.theme_id) {
         theme = this._getThemeCached(staticBlock.theme_id);
       }
@@ -2288,6 +2292,42 @@
       theme = this._prepareTheme(theme);
       PublicCache.putJSON(key, theme, this.THEME_TTL);
       return theme;
+    },
+
+    // Resolve theme_code -> theme_id secara MURAH untuk path preview.
+    // Hanya membaca 2 kolom (id, code) dari sheet Themes — BUKAN seluruh baris
+    // HTML/CSS/JS yang berat — lalu di-cache sebagai map kecil (TTL panjang).
+    // Dengan ini preview tak lagi menembak getAll('Themes') penuh tiap buka; tema
+    // besarnya sendiri diambil via _getThemeCached (chunked, dibagi antar-buka).
+    _resolveThemeIdByCode: function(code) {
+      var wanted = (code || '').toString().trim().toLowerCase();
+      if (!wanted) return null;
+
+      var key = PublicCache.refKey('theme_code_map');
+      var map = PublicCache.getJSON(key);
+      if (!map) {
+        map = {};
+        try {
+          var sheet = DB.getSheet('Themes');
+          var lastRow = sheet.getLastRow();
+          if (lastRow > 1) {
+            var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+            var idCol = headers.indexOf('id');
+            var codeCol = headers.indexOf('code');
+            // Hanya baca kolom id & code (2 kolom), bukan seluruh sheet yang berat.
+            if (idCol !== -1 && codeCol !== -1) {
+              var ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues();
+              var codes = sheet.getRange(2, codeCol + 1, lastRow - 1, 1).getValues();
+              for (var i = 0; i < ids.length; i++) {
+                var c = (codes[i][0] == null ? '' : codes[i][0]).toString().trim().toLowerCase();
+                if (c) map[c] = ids[i][0];
+              }
+            }
+          }
+        } catch (e) { map = {}; }
+        PublicCache.putJSON(key, map, this.REF_TTL);
+      }
+      return map[wanted] || null;
     },
 
     // Parse kolom JSON tema menjadi array (dipakai baik untuk path cache maupun preview).
@@ -2815,6 +2855,9 @@
 
       DB.insert('Themes', theme);
 
+      // Tema baru (code baru) -> buang cache map code->id preview.
+      PublicCache.del(PublicCache.refKey('theme_code_map'));
+
       // Return combined representation so response matches client expectations
       theme.html_template = html_template;
       theme.css_template = css_template;
@@ -2957,6 +3000,10 @@
       }
       // Kode/tema berubah -> buang cache tema per-id (dipakai bersama semua tamu).
       PublicCache.invalidateTheme(payload.id);
+      // Kalau kolom `code` ikut berubah, map code->id preview jadi basi -> buang.
+      if (updates.code !== undefined) {
+        PublicCache.del(PublicCache.refKey('theme_code_map'));
+      }
       return ResponseHelper.success(null, 'Theme updated successfully');
     },
 
@@ -2993,6 +3040,9 @@
       if (!success) {
         return ResponseHelper.error('Theme not found', 404);
       }
+      // Tema dihapus -> map code->id preview & cache tema per-id jadi basi.
+      PublicCache.invalidateTheme(payload.id);
+      PublicCache.del(PublicCache.refKey('theme_code_map'));
       return ResponseHelper.success(null, 'Theme deleted successfully');
     }
   };
