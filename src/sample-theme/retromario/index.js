@@ -33,7 +33,10 @@
         window.__rmCleanup = function () { cleanupFns.forEach(function (f) { try { f(); } catch (e) {} }); cleanupFns = []; };
 
         // Theme/game version — shown bottom-center of the stage (like metalslug-wedding).
-        var RM_VERSION = 'v1.3.7';   // v1.3.7: fix desktop sidebar showing ONLY the sky (no Mario+bride tableau) on the
+        var RM_VERSION = 'v1.3.8';   // v1.3.8: FREEZE the RAF game loop while ANY dialog is open (piece modal, gallery
+                                     //         lightbox, reset-confirm, stage-select, invitation reveal) via a new
+                                     //         anyDialogOpen() gate — Mario no longer dies / the timer no longer drains
+                                     //         behind a popup. PREV v1.3.7: fix desktop sidebar showing ONLY the sky (no Mario+bride tableau) on the
                                      //         LIVE invitation. The side canvas was captured ONCE and never healed, so after
                                      //         host re-injection it kept painting the detached node while the on-screen
                                      //         canvas stayed blank (CSS sky gradient showed through). Added sideReacquire()
@@ -3676,6 +3679,16 @@
             // MAIN LOOP
             // ============================================================
             var rafId = null, lastT = 0;
+            // Any non-gameplay dialog/popup that should freeze the run while it's open. Queried live
+            // (host may re-inject the DOM) so a stale cached ref never keeps the game running.
+            var _DIALOG_IDS = ['rm-modal-root', 'rm-lightbox', 'rm-stagesel-root', 'rm-confirm-root', 'rm-invitation'];
+            function anyDialogOpen() {
+                for (var i = 0; i < _DIALOG_IDS.length; i++) {
+                    var el = document.getElementById(_DIALOG_IDS[i]);
+                    if (el && el.classList.contains('show')) return true;
+                }
+                return false;
+            }
             function loop(ts) {
                 rafId = requestAnimationFrame(loop);
                 // Heal a host-swapped canvas EVERY frame (even while an overlay is up),
@@ -3686,6 +3699,14 @@
                 // empty source markup (cheap: early-returns unless actually stale).
                 if (window.__rmHealInventory) { try { window.__rmHealInventory(); } catch (e) {} }
                 if (!running) return;
+                // FREEZE gameplay whenever ANY dialog/popup is open — piece modal, gallery lightbox,
+                // reset-confirm, stage-select, or the full invitation reveal. These open straight from
+                // `classList.add('show')` without touching `running`, so without this gate Mario would
+                // keep dying / the timer keep counting down behind the popup while the guest reads. The
+                // 5 game-flow OVERLAYS already set running=false; this covers the remaining dialogs.
+                // Keep lastT current so the first frame AFTER the dialog closes doesn't see a huge dt
+                // (which would instantly drain the `time` countdown via timeAcc += dt).
+                if (anyDialogOpen()) { lastT = ts; render(); return; }
                 // If the stage wasn't laid out when we started (0×0 → black screen),
                 // keep retrying every frame until it measures a real size, then do
                 // one clean render. Until then, don't advance physics against a bad

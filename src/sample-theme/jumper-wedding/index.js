@@ -256,6 +256,11 @@
     // blocking overlay closes mid-run, hand pointers back to the canvas for drag-steer.
     if (yes) setStagePlayable(false);
     else if (RUN && RUN.started && !RUN.autoFly && !anyBlockingOverlayShown()) setStagePlayable(true);
+    // FREEZE gameplay while ANY blocking overlay (dialog / clear / all-pieces / reunion / zone-select /
+    // reset) is up, so the guest never dies, falls out, or has enemies advance behind a popup. Resume
+    // only when the LAST blocking overlay closes. The invitation reveal is handled by setInvView().
+    if (anyBlockingOverlayShown()) pauseGame();
+    else if (!_invView) resumeGame();
   }
   function anyBlockingOverlayShown() {
     var ids = ['jw-cover', 'jw-loading', 'jw-briefing', 'jw-clear', 'jw-allpieces', 'jw-win', 'jw-zonesel', 'jw-resetconfirm'];
@@ -2890,7 +2895,7 @@
     try { drawCoupleCanvas(); } catch (e) {}   // decorative canvas must never break init
     // version (keep this literal in sync with the static string in index.html so preview and the
     // live invitation never disagree if the host re-injects the HTML after init)
-    var v = $('jw-version'); if (v) v.textContent = 'v2.4.1 · ' + STORE.diff;
+    var v = $('jw-version'); if (v) v.textContent = 'v2.4.2 · ' + STORE.diff;
 
     // auto-resume ONLY if cover & reveal not shown (Bible §Z.1)
     var coverUp = (($('jw-cover') || {}).classList || { contains: function () { return false; } }).contains('show');

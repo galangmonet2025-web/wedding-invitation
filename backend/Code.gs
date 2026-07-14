@@ -471,6 +471,113 @@
 
 
   // =====================================================================
+  // PUBLIC CACHE  (CacheService wrapper for slow public reads)
+  // =====================================================================
+  //
+  // Kenapa ada ini: PublicService.getInvitation membaca 10+ sheet penuh setiap
+  // kali undangan dibuka (Themes yang besar termasuk), tanpa cache -> tiap buka
+  // tetap lambat. Wrapper ini menyimpan hasil baca yang mahal di
+  // CacheService.getScriptCache() supaya buka berikutnya tidak menembak Sheets.
+  //
+  // Batas CacheService: ~100KB per value. Tema (HTML/CSS/JS) sering >100KB, jadi
+  // getJSON/putJSON otomatis MEMECAH value besar menjadi beberapa chunk
+  // (<key>__c<i>) dan menyatukannya lagi saat baca. Kalau salah satu chunk hilang
+  // (LRU eviction), cache dianggap miss dan sumber dibaca ulang -> aman.
+  var PublicCache = {
+    _cache: null,
+    _c: function() {
+      if (!this._cache) this._cache = CacheService.getScriptCache();
+      return this._cache;
+    },
+    CHUNK_SIZE: 95000,      // < 100KB CacheService per-value limit, sisakan margin
+    MAX_CHUNKS: 40,         // 40 * 95KB ~ 3.8MB; cukup untuk tema terbesar
+
+    // Ambil objek JSON dari cache. Mengembalikan null saat miss / rusak.
+    getJSON: function(key) {
+      try {
+        var meta = this._c().get(key);
+        if (!meta) return null;
+        // Nilai kecil disimpan langsung dengan prefix 'J:'.
+        if (meta.charAt(0) === 'J') {
+          return JSON.parse(meta.substring(2));
+        }
+        // Nilai besar: meta = 'C:<n>' lalu baca n chunk.
+        if (meta.charAt(0) === 'C') {
+          var n = parseInt(meta.substring(2), 10);
+          if (!n || n < 1) return null;
+          var chunkKeys = [];
+          for (var i = 0; i < n; i++) chunkKeys.push(key + '__c' + i);
+          var parts = this._c().getAll(chunkKeys); // 1 panggilan untuk semua chunk
+          var joined = '';
+          for (var j = 0; j < n; j++) {
+            var piece = parts[key + '__c' + j];
+            if (piece === null || piece === undefined) return null; // chunk hilang -> miss
+            joined += piece;
+          }
+          return JSON.parse(joined);
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    },
+
+    // Simpan objek JSON ke cache dengan TTL (detik). Memecah bila > CHUNK_SIZE.
+    putJSON: function(key, obj, ttlSeconds) {
+      try {
+        var str = JSON.stringify(obj);
+        var ttl = ttlSeconds || 300;
+        if (str.length <= this.CHUNK_SIZE) {
+          this._c().put(key, 'J:' + str, ttl);
+          return true;
+        }
+        var n = Math.ceil(str.length / this.CHUNK_SIZE);
+        if (n > this.MAX_CHUNKS) return false; // terlalu besar untuk di-cache; skip
+        var map = {};
+        for (var i = 0; i < n; i++) {
+          map[key + '__c' + i] = str.substring(i * this.CHUNK_SIZE, (i + 1) * this.CHUNK_SIZE);
+        }
+        this._c().putAll(map, ttl);
+        // Tulis meta TERAKHIR supaya reader tidak pernah lihat meta tanpa chunk.
+        this._c().put(key, 'C:' + n, ttl);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // Hapus key (dan kemungkinan chunk-nya). Aman dipanggil walau key tak ada.
+    del: function(key) {
+      try {
+        var meta = this._c().get(key);
+        var toRemove = [key];
+        if (meta && meta.charAt(0) === 'C') {
+          var n = parseInt(meta.substring(2), 10) || 0;
+          for (var i = 0; i < n && i < this.MAX_CHUNKS; i++) toRemove.push(key + '__c' + i);
+        }
+        this._c().removeAll(toRemove);
+      } catch (e) {}
+    },
+
+    // ---- Key builders (versi prefix 'v1' agar mudah bump saat format berubah) ----
+    themeKey: function(themeId) { return 'pub_theme_v1_' + themeId; },
+    // Data statis undangan per slug (tanpa theme/wishes/guest).
+    staticKey: function(slug) { return 'pub_inv_static_v1_' + slug; },
+    // Referensi global yang jarang berubah.
+    refKey: function(name) { return 'pub_ref_v1_' + name; },
+
+    // Buang cache statis milik sebuah slug (dipakai saat konten/foto berubah).
+    invalidateSlug: function(slug) {
+      if (slug) this.del(this.staticKey(slug));
+    },
+    // Buang cache tema (dipakai saat tema diedit).
+    invalidateTheme: function(themeId) {
+      if (themeId) this.del(this.themeKey(themeId));
+    }
+  };
+
+
+  // =====================================================================
   // DATABASE HELPER
   // =====================================================================
 
@@ -1178,6 +1285,15 @@
       if (payload.wedding_date !== undefined) updates.wedding_date = payload.wedding_date;
 
       DB.update('Tenants', payload.id, updates);
+
+      // Ganti tema / nama / tanggal -> semuanya ikut blok statis undangan; buang cache slug.
+      if (updates.theme_id !== undefined || updates.bride_name !== undefined
+          || updates.groom_name !== undefined || updates.wedding_date !== undefined) {
+        try {
+          var updTenant = DB.findOne('Tenants', 'id', payload.id);
+          if (updTenant) PublicCache.invalidateSlug(updTenant.domain_slug);
+        } catch (eInv) {}
+      }
 
       return ResponseHelper.success(null, 'Tenant updated successfully');
     },
@@ -1918,7 +2034,7 @@
         // Update
         DB.update('InvitationContent', existing.id, sanitized);
         var updated = DB.findOne('InvitationContent', 'id', existing.id);
-        
+
         // Inject tenant data back for the response
         var tenant = DB.findOne('Tenants', 'id', tenantId);
         if (tenant) {
@@ -1928,6 +2044,8 @@
           if (!updated.tanggal_akad) {
             updated.tanggal_akad = tenant.wedding_date;
           }
+          // Konten berubah -> buang cache statis undangan slug ini.
+          PublicCache.invalidateSlug(tenant.domain_slug);
         }
 
         ActivityLogService.log(tenantId, auth.user_id, 'update_invitation_content');
@@ -1937,7 +2055,7 @@
         sanitized.id = DB.generateId();
         sanitized.tenant_id = tenantId;
         var inserted = DB.insert('InvitationContent', sanitized);
-        
+
         // Inject tenant data back for the response
         var tenant = DB.findOne('Tenants', 'id', tenantId);
         if (tenant) {
@@ -1945,6 +2063,7 @@
           inserted.groom_name = tenant.groom_name;
           inserted.wedding_date = tenant.wedding_date;
           inserted.tanggal_akad = tenant.wedding_date;
+          PublicCache.invalidateSlug(tenant.domain_slug);
         }
 
         ActivityLogService.log(tenantId, auth.user_id, 'create_invitation_content');
@@ -1959,27 +2078,91 @@
   // =====================================================================
 
   var PublicService = {
+    // PERF: getInvitation dulu membaca 10+ sheet penuh setiap buka undangan tanpa
+    // cache -> "tiap buka tetap lambat". Sekarang bagian yang mahal & jarang berubah
+    // di-cache di CacheService:
+    //   1. blok STATIS per-slug (tenant subset + content + images + quotes + resolved
+    //      theme_id) — TTL 5 menit; di-invalidate saat konten/foto/tema tenant berubah.
+    //   2. TEMA per theme_id (chunked, bisa >100KB) — dibaca via _getThemeCached().
+    //   3. referensi GLOBAL (MstAdditionalFeature/TenantActiveFeature-scoped, WebsiteConfig).
+    // wishes & guest SELALU dibaca fresh (tak di-cache) supaya ucapan/RSVP baru dan
+    // data tamu tak pernah basi.
+    STATIC_TTL: 300,   // detik — blok statis undangan
+    THEME_TTL: 900,    // detik — kode tema (dibagi banyak tamu)
+    REF_TTL: 1800,     // detik — referensi global yang jarang berubah
+
     getInvitation: function(payload) {
       Validator.required(payload, ['slug']);
-      var tenant = DB.findOne('Tenants', 'domain_slug', payload.slug);
-      if (!tenant || tenant.status_account !== 'active') {
+
+      // ---- 1) Blok STATIS (cacheable) ----
+      var staticKey = PublicCache.staticKey(payload.slug);
+      var staticBlock = PublicCache.getJSON(staticKey);
+      if (!staticBlock) {
+        staticBlock = this._buildStaticBlock(payload.slug);
+        if (staticBlock && staticBlock.__error) {
+          return ResponseHelper.error(staticBlock.__error.message, staticBlock.__error.code);
+        }
+        if (staticBlock) PublicCache.putJSON(staticKey, staticBlock, this.STATIC_TTL);
+      }
+      if (!staticBlock) {
         return ResponseHelper.error('Invitation not found', 404);
       }
 
-      var wishes = DB.getByTenant('Wishes', tenant.id);
-      wishes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-
-      var content = DB.findOne('InvitationContent', 'tenant_id', tenant.id);
-      if (!content) {
-        content = {};
+      // ---- 2) TEMA. Preview URL memaksa tema tertentu; jika tidak, pakai theme_id tenant. ----
+      var previewCode = (payload.theme_code || '').toString().trim();
+      var theme = null;
+      if (previewCode) {
+        // Path preview jarang dipakai (admin); resolve code -> id lalu ambil via cache tema.
+        var previewTheme = DB.findOne('Themes', 'code', previewCode);
+        theme = previewTheme ? this._prepareTheme(previewTheme) : null;
+      } else if (staticBlock.theme_id) {
+        theme = this._getThemeCached(staticBlock.theme_id);
       }
 
-      // Check Instagram Story Reply Additional Feature (ADD_FTR_STORY_IG)
+      // ---- 3) Data FRESH (tak pernah di-cache): wishes & guest ----
+      var wishes = DB.getByTenant('Wishes', staticBlock.__tenant_id);
+      wishes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+      var guest = null;
+      if (payload.guestid) {
+        var allGuests = DB.getByTenant('Guests', staticBlock.__tenant_id);
+        for (var i = 0; i < allGuests.length; i++) {
+          if (allGuests[i].invitation_code === payload.guestid) {
+            guest = allGuests[i];
+            break;
+          }
+        }
+      }
+
+      return ResponseHelper.success({
+        tenant: staticBlock.tenant,
+        wishes: wishes.slice(0, 50),
+        content: staticBlock.content || {},
+        guest: guest,
+        theme: theme,
+        images: staticBlock.images || [],
+        quotes: staticBlock.quotes
+      }, 'Invitation data retrieved');
+    },
+
+    // Bangun blok statis undangan dari Sheets (dipanggil hanya saat cache miss).
+    // Mengembalikan objek dengan __tenant_id & theme_id (untuk resolusi tema), atau
+    // { __error: {message, code} } bila undangan tak valid.
+    _buildStaticBlock: function(slug) {
+      var tenant = DB.findOne('Tenants', 'domain_slug', slug);
+      if (!tenant || tenant.status_account !== 'active') {
+        return { __error: { message: 'Invitation not found', code: 404 } };
+      }
+
+      var content = DB.findOne('InvitationContent', 'tenant_id', tenant.id);
+      if (!content) content = {};
+
+      // Instagram Story Reply Additional Feature (ADD_FTR_STORY_IG)
       var flag_pakai_ig_story = false;
       var frame_balasan_instagram = '';
       var link_balasan_instagram = '';
 
-      var allMstFeatures = DB.getAll('MstAdditionalFeature') || [];
+      var allMstFeatures = this._getRefSheet('MstAdditionalFeature');
       var igStoryFeature = null;
       for (var k = 0; k < allMstFeatures.length; k++) {
         if (allMstFeatures[k].feature_code === 'ADD_FTR_STORY_IG') {
@@ -2012,7 +2195,7 @@
       content.link_balasan_instagram = link_balasan_instagram;
 
       // Social media configurations based on WebsiteConfig sheet
-      var allConfigs = DB.getAll('WebsiteConfig') || [];
+      var allConfigs = this._getRefSheet('WebsiteConfig');
       var websiteConfig = allConfigs.length > 0 ? allConfigs[0] : {};
       var site_tiktok = websiteConfig.site_tiktok || '';
       var site_youtube = websiteConfig.site_youtube || '';
@@ -2035,41 +2218,12 @@
       content.url_instagram_webconfig = site_instagram;
       content.url_whatsapp_webconfig = wa_number !== '' ? ('https://wa.me/' + wa_number) : '';
 
-      // Theme resolution. Normally the tenant's selected theme (theme_id) is used.
-      // For the THEME PREVIEW URL (/#/preview/<theme_code>/<slug>), the frontend
-      // sends payload.theme_code to FORCE a specific theme regardless of what the
-      // tenant has chosen — letting an admin preview any theme on real tenant data.
-      var theme = null;
-      var previewCode = (payload.theme_code || '').toString().trim();
-      if (previewCode) {
-        theme = DB.findOne('Themes', 'code', previewCode);
-      }
-      if (!theme && tenant.theme_id) {
-        theme = DB.findOne('Themes', 'id', tenant.theme_id);
-      }
-      if (theme) {
-        try { theme.image_types = JSON.parse(theme.image_types); } catch(e) { theme.image_types = []; }
-        try { theme.asset_media_list = JSON.parse(theme.asset_media_list); } catch(e) { theme.asset_media_list = []; }
-      }
-
-      var guest = null;
-      if (payload.guestid) {
-        var allGuests = DB.getByTenant('Guests', tenant.id);
-        for (var i = 0; i < allGuests.length; i++) {
-          if (allGuests[i].invitation_code === payload.guestid) {
-            guest = allGuests[i];
-            break;
-          }
-        }
-      }
-
-      // Fetch all images for this tenant
       var tenantImages = DB.getByTenant('Images', tenant.id) || [];
-
-      // Resolve quotes: use Tenants.quotes_id, fallback to default/top quote
       var quotes = QuotesVariantService.resolveQuotes(tenant.quotes_id);
 
-      return ResponseHelper.success({
+      return {
+        __tenant_id: tenant.id,
+        theme_id: tenant.theme_id || '',
         tenant: {
           bride_name: tenant.bride_name,
           bride_nickname: tenant.bride_nickname,
@@ -2081,13 +2235,41 @@
           theme_id: tenant.theme_id,
           status_payment: tenant.status_payment
         },
-        wishes: wishes.slice(0, 50),
-        content: content || {},
-        guest: guest,
-        theme: theme,
+        content: content,
         images: tenantImages,
         quotes: quotes
-      }, 'Invitation data retrieved');
+      };
+    },
+
+    // Ambil tema (dengan image_types/asset_media_list sudah di-parse) via cache
+    // per theme_id. Tema sering >100KB -> PublicCache otomatis chunking.
+    _getThemeCached: function(themeId) {
+      if (!themeId) return null;
+      var key = PublicCache.themeKey(themeId);
+      var cached = PublicCache.getJSON(key);
+      if (cached) return cached;
+      var theme = DB.findOne('Themes', 'id', themeId);
+      if (!theme) return null;
+      theme = this._prepareTheme(theme);
+      PublicCache.putJSON(key, theme, this.THEME_TTL);
+      return theme;
+    },
+
+    // Parse kolom JSON tema menjadi array (dipakai baik untuk path cache maupun preview).
+    _prepareTheme: function(theme) {
+      try { theme.image_types = JSON.parse(theme.image_types); } catch(e) { theme.image_types = []; }
+      try { theme.asset_media_list = JSON.parse(theme.asset_media_list); } catch(e) { theme.asset_media_list = []; }
+      return theme;
+    },
+
+    // Baca sheet referensi global (jarang berubah) via cache bersama antar-slug.
+    _getRefSheet: function(name) {
+      var key = PublicCache.refKey(name);
+      var cached = PublicCache.getJSON(key);
+      if (cached) return cached;
+      var rows = DB.getAll(name) || [];
+      PublicCache.putJSON(key, rows, this.REF_TTL);
+      return rows;
     },
 
     checkGuest: function(payload) {
@@ -2298,6 +2480,12 @@
 
         DB.insert('Images', record);
 
+        // Foto tenant berubah -> buang cache statis undangan slug ini.
+        try {
+          var upTenant = DB.findOne('Tenants', 'id', tenantId);
+          if (upTenant) PublicCache.invalidateSlug(upTenant.domain_slug);
+        } catch (eInv) {}
+
         return ResponseHelper.success({
           id: imageId,
           file_name: payload.file_name,
@@ -2335,6 +2523,12 @@
 
       // Delete record from DB
       DB.deleteRow('Images', existingImage.id);
+
+      // Foto tenant berubah -> buang cache statis undangan slug ini.
+      try {
+        var delTenant = DB.findOne('Tenants', 'id', existingImage.tenant_id);
+        if (delTenant) PublicCache.invalidateSlug(delTenant.domain_slug);
+      } catch (eInv) {}
 
       return ResponseHelper.success(null, 'Image deleted successfully');
     },
@@ -2407,6 +2601,14 @@
 
       // Remove all confirmed rows in a single rewrite.
       DB.deleteRowsByIds('Images', rowIdsToDelete);
+
+      // Foto tenant berubah -> buang cache statis undangan slug ini (semua row milik tenant ini).
+      if (rowIdsToDelete.length > 0) {
+        try {
+          var batchTenant = DB.findOne('Tenants', 'id', tenantId);
+          if (batchTenant) PublicCache.invalidateSlug(batchTenant.domain_slug);
+        } catch (eInv) {}
+      }
 
       return ResponseHelper.success(
         { deleted: deletedInputIds, failed: failed },
@@ -2718,6 +2920,8 @@
       if (!success) {
         return ResponseHelper.error('Theme not found', 404);
       }
+      // Kode/tema berubah -> buang cache tema per-id (dipakai bersama semua tamu).
+      PublicCache.invalidateTheme(payload.id);
       return ResponseHelper.success(null, 'Theme updated successfully');
     },
 
@@ -2810,7 +3014,10 @@
 
       var success = DB.update('MstAdditionalFeature', payload.id, updates);
       if (!success) return ResponseHelper.error('Feature not found', 404);
-      
+
+      // Master fitur berubah -> buang cache ref (blok statis per-slug refresh saat TTL habis).
+      PublicCache.del(PublicCache.refKey('MstAdditionalFeature'));
+
       return ResponseHelper.success(null, 'Feature updated successfully');
     },
 
@@ -2818,12 +3025,14 @@
       Validator.required(payload, ['id']);
       var success = DB.deleteRow('MstAdditionalFeature', payload.id);
       if (!success) return ResponseHelper.error('Feature not found', 404);
-      
+
       // Also delete associated TenantActiveFeatures
       var tenantFeatures = DB.getAll('TenantActiveFeature').filter(function(f) { return f.additional_feature_id === payload.id; });
       tenantFeatures.forEach(function(f) {
         DB.deleteRow('TenantActiveFeature', f.id);
       });
+
+      PublicCache.del(PublicCache.refKey('MstAdditionalFeature'));
 
       return ResponseHelper.success(null, 'Feature deleted successfully');
     },
@@ -2909,6 +3118,12 @@
         DB.insert('TenantActiveFeature', newFeature);
       }
 
+      // Fitur tambahan (mis. IG-story) ikut blok statis undangan -> buang cache slug.
+      try {
+        var featTenant = DB.findOne('Tenants', 'id', targetTenantId);
+        if (featTenant) PublicCache.invalidateSlug(featTenant.domain_slug);
+      } catch (eInv) {}
+
       return ResponseHelper.success(null, 'Tenant feature updated successfully');
     },
 
@@ -2929,6 +3144,12 @@
 
       var success = DB.deleteRow('TenantActiveFeature', existing.id);
       if (!success) return ResponseHelper.error('Failed to delete feature assignment', 500);
+
+      // Fitur tambahan dicabut -> buang cache statis undangan slug ini.
+      try {
+        var delFeatTenant = DB.findOne('Tenants', 'id', targetTenantId);
+        if (delFeatTenant) PublicCache.invalidateSlug(delFeatTenant.domain_slug);
+      } catch (eInv) {}
 
       return ResponseHelper.success(null, 'Feature removed from tenant successfully');
     }
@@ -2990,11 +3211,14 @@
           existing = DB.getAll('WebsiteConfig')[0];
         }
         DB.update('WebsiteConfig', existing.id, sanitized);
+        // Referensi global berubah -> buang cache ref (slug statis akan refresh saat TTL habis, maks 5 mnt).
+        PublicCache.del(PublicCache.refKey('WebsiteConfig'));
         ActivityLogService.log(auth.tenant_id, auth.user_id, 'update_website_config');
         return ResponseHelper.success(DB.getAll('WebsiteConfig')[0], 'Website config updated');
       } else {
         sanitized.id = DB.generateId();
         DB.insert('WebsiteConfig', sanitized);
+        PublicCache.del(PublicCache.refKey('WebsiteConfig'));
         ActivityLogService.log(auth.tenant_id, auth.user_id, 'create_website_config');
         return ResponseHelper.success(sanitized, 'Website config created');
       }

@@ -39,7 +39,7 @@
     };
 
     var BUILD = 'spacewar-wedding';
-    var VERSION = 'v1.4.0';   // FIXES: stage-1 instant-clear guard (_sectorReady); boss approach
+    var VERSION = 'v1.4.1';   // v1.4.1: PAUSE the run while the piece-info modal is open (openPieceModal/closeModal → pauseGame/resumeGame) so the guest can't die behind the popup. PREV v1.4.0 FIXES: stage-1 instant-clear guard (_sectorReady); boss approach
     // enemies spread across the whole climb (no ~20s empty gap); boss core auto-opens after
     // activation so HP actually drops (phase 1→2 was unreachable); capsule beacon 💌→★ (was
     // mistaken for the collectible); side-menu re-paint on host re-injection (MutationObserver).
@@ -438,11 +438,13 @@
         rewireHostFormsInside(body);
         rewireGalleryInside(body);
         $('sw-modal-root').classList.add('show');
+        pauseGame();   // freeze the shmup while the guest reads a piece — no dying behind the modal
     }
     function closeModal() {
         $('sw-modal-root').classList.remove('show');
         var body = $('sw-modal-body'); if (body) body.innerHTML = '';
         setSourceHostIds(true);            // restore IDs so a later clone gets them
+        resumeGame();  // un-freeze on close (no-op if a reveal/other view is still up or game finished)
     }
 
     function revealFullInvitation() {
