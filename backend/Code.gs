@@ -85,7 +85,7 @@
       }
 
       // Public endpoints (no auth required)
-      var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug', 'handleMidtransWebhook', 'getPublicThemes', 'getPublicPlanTypes', 'getPublicPlanFeatures'];
+      var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'getPublicInvitationImages', 'submitPublicRSVP', 'submitPublicWish', 'submitPublicGift', 'checkPublicGuest', 'getWebsiteConfig', 'checkSlug', 'handleMidtransWebhook', 'getPublicThemes', 'getPublicPlanTypes', 'getPublicPlanFeatures'];
       if (publicActions.indexOf(action) !== -1) {
         return routeAction(action, payload, null);
       }
@@ -270,6 +270,8 @@
       // Public Invitation
       case 'getPublicInvitation':
         return PublicService.getInvitation(payload);
+      case 'getPublicInvitationImages':
+        return PublicService.getInvitationImages(payload);
       case 'submitPublicRSVP':
         return PublicService.submitRSVP(payload);
       case 'submitPublicWish':
@@ -2134,15 +2136,48 @@
         }
       }
 
+      // SPLIT LOAD (perf): agar undangan muncul secepatnya, klien baru mengirim
+      // skip_images=true → response pertama membawa data teks + KODE TEMA (yang
+      // memang wajib untuk render badan undangan) TANPA daftar gambar tenant. Gambar
+      // diambil terpisah lewat getInvitationImages() dan di-merge saat tiba (gambar
+      // "berjalan sambil dimuat"). Klien lama (tanpa flag) tetap dapat images inline.
+      var skipImages = (payload.skip_images === true || payload.skip_images === 'true');
+
       return ResponseHelper.success({
         tenant: staticBlock.tenant,
         wishes: wishes.slice(0, 50),
         content: staticBlock.content || {},
         guest: guest,
         theme: theme,
-        images: staticBlock.images || [],
+        images: skipImages ? [] : (staticBlock.images || []),
+        images_deferred: skipImages ? true : false,
         quotes: staticBlock.quotes
       }, 'Invitation data retrieved');
+    },
+
+    // Request KEDUA dari split-load: hanya daftar gambar tenant untuk sebuah slug.
+    // Murah — memakai blok statis yang sama (biasanya sudah hangat di cache setelah
+    // getInvitation), tak pernah membaca ulang sheet Themes yang besar. wishes/guest
+    // TIDAK disentuh di sini. Frontend memanggil ini paralel dengan getInvitation.
+    getInvitationImages: function(payload) {
+      Validator.required(payload, ['slug']);
+
+      var staticKey = PublicCache.staticKey(payload.slug);
+      var staticBlock = PublicCache.getJSON(staticKey);
+      if (!staticBlock) {
+        staticBlock = this._buildStaticBlock(payload.slug);
+        if (staticBlock && staticBlock.__error) {
+          return ResponseHelper.error(staticBlock.__error.message, staticBlock.__error.code);
+        }
+        if (staticBlock) PublicCache.putJSON(staticKey, staticBlock, this.STATIC_TTL);
+      }
+      if (!staticBlock) {
+        return ResponseHelper.error('Invitation not found', 404);
+      }
+
+      return ResponseHelper.success({
+        images: staticBlock.images || []
+      }, 'Invitation images retrieved');
     },
 
     // Bangun blok statis undangan dari Sheets (dipanggil hanya saat cache miss).

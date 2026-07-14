@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { themeApi } from '@/core/api/endpoints';
-import { Theme } from '@/types';
+import { Theme, Guest } from '@/types';
 import { DataTable } from '@/shared/components';
 import { Button } from '@/shared/components/Button';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -19,7 +19,11 @@ import {
     HiOutlineX,
     HiOutlineChevronLeft,
     HiOutlineChevronRight,
-    HiOutlineEye
+    HiOutlineEye,
+    HiOutlineGlobeAlt,
+    HiOutlineUserGroup,
+    HiOutlineChatAlt2,
+    HiOutlineExternalLink
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -27,9 +31,11 @@ import { ThemeGuideModal } from '../components/ThemeGuideModal';
 import { ThemeInjectModal } from '../components/ThemeInjectModal';
 import { injectSampleThemes } from '../utils/injectSampleThemes';
 import { useThemeStore } from '../store/themeStore';
+import { useDemoGuestStore } from '../store/demoGuestStore';
 import { ProxyImage } from '@/shared/components/ProxyImage';
 import { createPortal } from 'react-dom';
 import { useBasePath } from '@/shared/hooks/useBasePath';
+import { safeGetItem, safeSetItem } from '@/shared/utils/safeStorage';
 
 // Demo tenant slug used by the theme-preview URL (/#/preview/<theme_code>/<slug>).
 // Forces the chosen theme onto this demo tenant's real invitation data so admins
@@ -51,6 +57,23 @@ export function ManageThemesPage() {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectedThemeForLightbox, setSelectedThemeForLightbox] = useState<Theme | null>(null);
 
+    // "Lihat Tema" sekarang menawarkan 2 pilihan (dropdown kecil): link umum
+    // atau link tamu. previewChoice = tema + posisi tombol pemicunya (null = tutup).
+    // Dropdown di-render via portal & diposisikan di koordinat tombol supaya
+    // bekerja sama di tabel, kartu (hover overlay), maupun lightbox (portal).
+    const [previewChoice, setPreviewChoice] = useState<{ theme: Theme; x: number; y: number } | null>(null);
+    // Dropdown daftar tamu (mode "Buka Link Tamu"): tema + posisi anchor.
+    const [guestList, setGuestList] = useState<{ theme: Theme; x: number; y: number } | null>(null);
+    // Daftar tamu tenant demo di-cache di store (pola sama seperti themeStore):
+    // di-load saat halaman mount, bertahan selama sesi tab.
+    const {
+        guests: demoGuests,
+        loading: demoGuestsLoading,
+        error: demoGuestsError,
+        fetchDemoGuests,
+    } = useDemoGuestStore();
+    const [guestSearch, setGuestSearch] = useState('');
+
     // Filters and View State
     const [search, setSearch] = useState('');
     const [selectedPlan, setSelectedPlan] = useState('all');
@@ -58,16 +81,21 @@ export function ManageThemesPage() {
     const [selectedPreview, setSelectedPreview] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
-        const saved = localStorage.getItem('manageThemesViewMode');
+        const saved = safeGetItem('manageThemesViewMode');
         return saved === 'card' || saved === 'table' ? saved : 'table';
     });
 
     useEffect(() => {
-        localStorage.setItem('manageThemesViewMode', viewMode);
+        // Persisting a cosmetic view preference must never crash the page —
+        // safeSetItem swallows QuotaExceededError / disabled storage.
+        safeSetItem('manageThemesViewMode', viewMode);
     }, [viewMode]);
 
     useEffect(() => {
         fetchThemes();
+        // Muat daftar tamu tenant demo sejak halaman dibuka (cache di store,
+        // sama seperti tema) supaya dropdown "Buka Link Tamu" langsung siap.
+        fetchDemoGuests();
     }, []);
 
     const handleDelete = async () => {
@@ -95,6 +123,44 @@ export function ManageThemesPage() {
         const url = `${window.location.origin}${window.location.pathname}#/preview/${themeCode}/${PREVIEW_DEMO_SLUG}`;
         window.open(url, '_blank', 'noopener');
     };
+
+    // Buka preview tema untuk SATU tamu spesifik: sama seperti link umum tapi
+    // dengan ?guestid=<invitation_code>, sehingga undangan ter-personalisasi
+    // (nama tamu, RSVP, dsb.) sambil tetap memaksa tema yang dipilih.
+    const handlePreviewThemeForGuest = (theme: Theme, guest: Guest) => {
+        const themeCode = (theme.code || '').trim();
+        if (!themeCode) {
+            toast.error('Tema belum punya kode. Isi kolom "Kode Tema" lewat Edit untuk melihat preview.');
+            return;
+        }
+        const url = `${window.location.origin}${window.location.pathname}#/preview/${themeCode}/${PREVIEW_DEMO_SLUG}?guestid=${encodeURIComponent(guest.invitation_code)}`;
+        window.open(url, '_blank', 'noopener');
+    };
+
+    // Buka dropdown 2-pilihan (Link Umum / Link Tamu) di bawah tombol pemicu.
+    const openPreviewChoice = (theme: Theme, e: React.MouseEvent) => {
+        const themeCode = (theme.code || '').trim();
+        if (!themeCode) {
+            toast.error('Tema belum punya kode. Isi kolom "Kode Tema" lewat Edit untuk melihat preview.');
+            return;
+        }
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setPreviewChoice({ theme, x: rect.left, y: rect.bottom });
+    };
+
+    // Pilih "Buka Link Tamu": tutup dropdown pilihan, buka dropdown daftar tamu
+    // di posisi anchor yang sama, lalu fetch (sekali) daftar tamunya.
+    const openGuestList = (theme: Theme, x: number, y: number) => {
+        setPreviewChoice(null);
+        setGuestSearch('');
+        setGuestList({ theme, x, y });
+        void fetchDemoGuests();
+    };
+
+    // Normalisasi flag boolean-ish dari backend (bisa true / 'TRUE' / 'true').
+    const isFlagTrue = (v: unknown) => v === true || v === 'true' || v === 'TRUE';
+    // "Sudah isi kehadiran" = status RSVP bukan 'pending' (confirmed / declined).
+    const hasFilledRsvp = (g: Guest) => g.status === 'confirmed' || g.status === 'declined';
 
     const isDraft = (theme: Theme) =>
         theme.flag_draft === true || theme.flag_draft === 'true' || theme.flag_draft === 'TRUE';
@@ -132,10 +198,10 @@ export function ManageThemesPage() {
 
     // Kick off the non-blocking inject/edit queue for the chosen sample-theme folders.
     // Progress shows in the header background-task indicator; we don't block the screen.
-    const handleInjectThemes = (folders: string[]) => {
+    const handleInjectThemes = (folders: string[], asDraft: boolean) => {
         setIsInjectOpen(false);
         if (folders.length === 0) return;
-        toast.success(`Memproses ${folders.length} tema di latar belakang...`);
+        toast.success(`Memproses ${folders.length} tema di latar belakang (${asDraft ? 'draft' : 'release'})...`);
         // Fire-and-forget: the background task store drives the UI. Refresh the list when done.
         injectSampleThemes(folders, themes, (result) => {
             fetchThemes(true);
@@ -148,7 +214,7 @@ export function ManageThemesPage() {
                     `Inject selesai dengan ${result.failCount} gagal. Lihat detail di panel tugas.`
                 );
             }
-        }).catch((err) => {
+        }, { asDraft }).catch((err) => {
             toast.error(err?.message || 'Gagal menjalankan inject tema.');
         });
     };
@@ -338,7 +404,7 @@ export function ManageThemesPage() {
                 return (
                     <div className="flex items-center gap-1.5">
                         <button
-                            onClick={() => handlePreviewTheme(item)}
+                            onClick={(e) => openPreviewChoice(item, e)}
                             disabled={deleting}
                             className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 transition-colors tooltip tooltip-top disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Lihat Tema"
@@ -554,8 +620,18 @@ export function ManageThemesPage() {
                         return (
                             <div
                                 key={item.id}
-                                className={`group relative aspect-[3/4] box-content pb-[190px] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${planHover} ${deleting ? 'opacity-60 pointer-events-none' : ''}`}
+                                className={`group relative aspect-[3/4] box-content pb-[190px] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${planHover} ${deleting ? 'pointer-events-none' : ''}`}
                             >
+                                {/* Deleting overlay — selalu terlihat (tidak bergantung hover),
+                                    karena saat menghapus kartu diberi pointer-events-none
+                                    sehingga overlay hover tidak pernah muncul. */}
+                                {deleting && (
+                                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm rounded-2xl pointer-events-auto">
+                                        <span className="w-9 h-9 border-[3px] border-white/30 border-t-red-500 rounded-full animate-spin" />
+                                        <span className="text-xs font-bold uppercase tracking-wider text-white/90">Menghapus…</span>
+                                    </div>
+                                )}
+
                                 {/* Full-bleed preview image */}
                                 <div
                                     className="absolute inset-0 bg-gray-100 dark:bg-gray-800 cursor-pointer"
@@ -626,7 +702,7 @@ export function ManageThemesPage() {
                                         {/* Action Row */}
                                         <div className="pt-2 mt-1 border-t border-white/15 flex items-center gap-1.5">
                                             <button
-                                                onClick={() => handlePreviewTheme(item)}
+                                                onClick={(e) => openPreviewChoice(item, e)}
                                                 className="p-2 rounded-lg bg-white/15 hover:bg-emerald-500 text-white transition-colors"
                                                 title="Lihat Tema"
                                             >
@@ -793,7 +869,7 @@ export function ManageThemesPage() {
                             {/* Actions Footer */}
                             <div className="pt-6 mt-6 border-t border-white/10 space-y-2">
                                 <button
-                                    onClick={() => handlePreviewTheme(selectedThemeForLightbox)}
+                                    onClick={(e) => openPreviewChoice(selectedThemeForLightbox, e)}
                                     className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
                                 >
                                     <HiOutlineEye className="w-4 h-4" />
@@ -836,6 +912,170 @@ export function ManageThemesPage() {
                     </div>
                 </div>,
                 document.getElementById('lightbox-root') || document.body
+            )}
+
+            {/* Dropdown pilihan preview: Buka Link Umum vs Buka Link Tamu.
+                Di-render via portal, diposisikan di bawah tombol pemicu. Backdrop
+                transparan menutup dropdown saat klik di luar. */}
+            {previewChoice && createPortal(
+                <div
+                    className="fixed inset-0 z-[999998]"
+                    onClick={() => setPreviewChoice(null)}
+                >
+                    <div
+                        className="absolute w-52 bg-white dark:bg-wedding-dark-card border border-gray-150 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in py-1"
+                        style={{
+                            top: Math.min(previewChoice.y + 6, window.innerHeight - 110),
+                            left: Math.min(previewChoice.x, window.innerWidth - 220),
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => {
+                                const t = previewChoice.theme;
+                                setPreviewChoice(null);
+                                handlePreviewTheme(t);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors text-gray-700 dark:text-gray-200"
+                        >
+                            <HiOutlineGlobeAlt className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-sm font-semibold">Buka Link Umum</span>
+                        </button>
+                        <button
+                            onClick={() => openGuestList(previewChoice.theme, previewChoice.x, previewChoice.y)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors text-gray-700 dark:text-gray-200"
+                        >
+                            <HiOutlineUserGroup className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                            <span className="text-sm font-semibold">Buka Link Tamu</span>
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Dropdown daftar tamu (mode Buka Link Tamu). Portal + anchored,
+                dengan search di atas dan area list yang scroll di dalamnya. */}
+            {guestList && createPortal(
+                <div
+                    className="fixed inset-0 z-[999998]"
+                    onClick={() => setGuestList(null)}
+                >
+                    <div
+                        className="absolute w-80 max-w-[calc(100vw-1rem)] bg-white dark:bg-wedding-dark-card border border-gray-150 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col"
+                        style={{
+                            top: Math.min(guestList.y + 6, window.innerHeight - 400),
+                            left: Math.min(guestList.x, window.innerWidth - 336),
+                            maxHeight: 'min(70vh, 460px)',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header + search */}
+                        <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2.5">
+                            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
+                                <HiOutlineUserGroup className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-bold">Pilih Tamu</span>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                                    <HiOutlineSearch className="w-4 h-4" />
+                                </span>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Cari nama / kode tamu..."
+                                    value={guestSearch}
+                                    onChange={(e) => setGuestSearch(e.target.value)}
+                                    className="input-field pl-8 text-xs py-1.5 bg-gray-50/50 dark:bg-gray-900 border-gray-200/80 rounded-lg w-full"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                            {demoGuestsLoading ? (
+                                <div className="flex flex-col items-center justify-center gap-2.5 py-10 text-gray-400">
+                                    <span className="w-7 h-7 border-2 border-gold-300 border-t-gold-600 rounded-full animate-spin" />
+                                    <span className="text-xs font-medium">Memuat daftar tamu…</span>
+                                </div>
+                            ) : demoGuestsError ? (
+                                <div className="flex flex-col items-center justify-center gap-2.5 py-10 text-center px-3">
+                                    <HiOutlineXCircle className="w-8 h-8 text-red-400" />
+                                    <p className="text-xs text-red-500 dark:text-red-400">{demoGuestsError}</p>
+                                    <button
+                                        onClick={() => { void fetchDemoGuests(true); }}
+                                        className="px-3 py-1 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        Coba lagi
+                                    </button>
+                                </div>
+                            ) : (() => {
+                                const q = guestSearch.trim().toLowerCase();
+                                const list = (demoGuests || []).filter((g) =>
+                                    !q ||
+                                    g.name.toLowerCase().includes(q) ||
+                                    (g.invitation_code || '').toLowerCase().includes(q)
+                                );
+                                if (list.length === 0) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center gap-2 py-10 text-gray-400">
+                                            <HiOutlineUserGroup className="w-8 h-8 opacity-40" />
+                                            <span className="text-xs font-medium text-center px-3">
+                                                {(demoGuests || []).length === 0 ? 'Tenant demo belum punya tamu.' : 'Tidak ada tamu yang cocok.'}
+                                            </span>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div className="space-y-1.5">
+                                        {list.map((g) => {
+                                            const rsvp = hasFilledRsvp(g);
+                                            const wished = isFlagTrue(g.flag_sudah_isi_ucapan);
+                                            return (
+                                                <button
+                                                    key={g.id}
+                                                    onClick={() => handlePreviewThemeForGuest(guestList.theme, g)}
+                                                    className="w-full flex items-center gap-2.5 p-2 rounded-lg border border-transparent hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all text-left group"
+                                                >
+                                                    {/* Avatar bulat inisial */}
+                                                    <span className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-white flex items-center justify-center font-bold text-xs uppercase">
+                                                        {(g.name || '?').charAt(0)}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block text-xs font-semibold text-gray-800 dark:text-gray-100 truncate">
+                                                            {g.name}
+                                                        </span>
+                                                        <span className="block text-[10px] text-gray-400 font-mono truncate">
+                                                            {g.invitation_code}
+                                                        </span>
+                                                        {/* Status badges */}
+                                                        <span className="flex flex-wrap gap-1 mt-1">
+                                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold border
+                                                                ${rsvp
+                                                                    ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30'
+                                                                    : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700'}`}>
+                                                                {rsvp ? <HiOutlineCheckCircle className="w-2.5 h-2.5" /> : <HiOutlineXCircle className="w-2.5 h-2.5" />}
+                                                                {rsvp ? 'Isi Kehadiran' : 'Belum Kehadiran'}
+                                                            </span>
+                                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold border
+                                                                ${wished
+                                                                    ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30'
+                                                                    : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700'}`}>
+                                                                <HiOutlineChatAlt2 className="w-2.5 h-2.5" />
+                                                                {wished ? 'Isi Ucapan' : 'Belum Ucapan'}
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                    <HiOutlineExternalLink className="shrink-0 w-3.5 h-3.5 text-gray-300 group-hover:text-emerald-500 transition-colors" />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
 
             {/* Modal Konfirmasi Hapus */}

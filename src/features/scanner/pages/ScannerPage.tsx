@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { guestApi } from '@/core/api/endpoints';
 import {
@@ -26,6 +27,7 @@ interface ManualGuest {
 export function ScannerPage() {
     const { user, tenant } = useAuthStore();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [scanResult, setScanResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -51,7 +53,7 @@ export function ScannerPage() {
     useEffect(() => {
         if (user?.role !== 'staff' && user?.role !== 'tenant_admin') {
             navigate('/dashboard');
-            toast.error('Unauthorized access to Scanner.');
+            toast.error(t('scanner.toast_unauthorized'));
         }
     }, [user, navigate]);
 
@@ -95,27 +97,27 @@ export function ScannerPage() {
             if (res.success && res.data) {
                 setScanResult({
                     success: true,
-                    message: res.message || 'Check-in Berhasil',
+                    message: res.message || t('scanner.checkin_success'),
                     data: {
                         name: res.data.name,
                         category: res.data.category,
                         pax: res.data.number_of_guests
                     }
                 });
-                toast.success(`Berhasil Check-in: ${res.data.name}`);
+                toast.success(t('scanner.toast_checkin_success', { name: res.data.name }));
             } else {
                 setScanResult({
                     success: false,
-                    message: res.message || 'QR Code Tidak Valid'
+                    message: res.message || t('scanner.invalid_qr')
                 });
-                toast.error(res.message || 'Invalid QR Code');
+                toast.error(res.message || t('scanner.toast_invalid_qr'));
             }
         } catch (error: any) {
             setScanResult({
                 success: false,
-                message: error.response?.data?.message || 'Error processing QR Code'
+                message: error.response?.data?.message || t('scanner.error_processing')
             });
-            toast.error('Terjadi kesalahan saat check-in');
+            toast.error(t('scanner.toast_checkin_error'));
         } finally {
             isProcessingRef.current = false;
         }
@@ -139,7 +141,7 @@ export function ScannerPage() {
             );
             setIsScanning(true);
         } catch (err) {
-            toast.error('Could not access camera. Please check permissions.');
+            toast.error(t('scanner.toast_camera_error'));
         }
     };
 
@@ -159,7 +161,7 @@ export function ScannerPage() {
                     const decodedText = await scannerRef.current.scanFile(file, true);
                     processQRCode(decodedText);
                 } catch (err) {
-                    toast.error('Tidak dapat membaca QR Code dari gambar yang diunggah.');
+                    toast.error(t('scanner.toast_read_upload_failed'));
                 }
             }
         }
@@ -182,7 +184,7 @@ export function ScannerPage() {
                     const decodedText = await scannerRef.current.scanFile(file, true);
                     processQRCode(decodedText);
                 } catch (err) {
-                    toast.error('Tidak dapat membaca QR Code dari gambar yang ditarik.');
+                    toast.error(t('scanner.toast_read_drop_failed'));
                 }
             }
         }
@@ -200,7 +202,7 @@ export function ScannerPage() {
                                 const decodedText = await scannerRef.current.scanFile(file, true);
                                 processQRCode(decodedText);
                             } catch (err) {
-                                toast.error('Tidak dapat membaca QR Code dari gambar yang di-paste.');
+                                toast.error(t('scanner.toast_read_paste_failed'));
                             }
                         }
                     }
@@ -242,7 +244,7 @@ export function ScannerPage() {
         // Validate
         const invalid = drafts.find(g => !g.name.trim() || !g.category.trim());
         if (invalid) {
-            toast.error("Nama dan Kategori harus diisi untuk semua baris yang belum tersimpan.");
+            toast.error(t('scanner.validation_name_category'));
             return;
         }
 
@@ -250,7 +252,7 @@ export function ScannerPage() {
         const taskId = `manual-guest-${Date.now()}`;
         addTask({
             id: taskId,
-            name: `Simpan Kehadiran Manual (${drafts.length} Tamu)`,
+            name: t('scanner.task_save_manual', { count: drafts.length }),
             total: drafts.length
         });
 
@@ -288,7 +290,7 @@ export function ScannerPage() {
                 failCount,
                 progress,
                 status: isFinished ? (failCount === 0 ? 'success' : 'error') : 'running',
-                details: isFinished ? `Selesai: ${successCount} berhasil, ${failCount} gagal` : undefined
+                details: isFinished ? t('scanner.task_done', { success: successCount, fail: failCount }) : undefined
             });
         }
 
@@ -323,8 +325,8 @@ export function ScannerPage() {
                             {!isScanning && (
                                 <div className="z-10 text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 w-full h-full absolute inset-0 pointer-events-none">
                                     <HiOutlineQrcode className="w-16 h-16 mb-2 opacity-50" />
-                                    <p>Kamera Nonaktif</p>
-                                    <p className="text-xs mt-1">Atau Seret/Paste gambar QR ke halaman ini</p>
+                                    <p>{t('scanner.camera_inactive')}</p>
+                                    <p className="text-xs mt-1">{t('scanner.camera_hint')}</p>
                                 </div>
                             )}
                         </div>
@@ -335,14 +337,14 @@ export function ScannerPage() {
                                     onClick={startCamera}
                                     className="w-full sm:w-auto px-6 py-3 bg-gold-600 hover:bg-gold-700 text-white rounded-xl transition-colors font-medium shadow-md shadow-gold-500/20"
                                 >
-                                    Aktifkan Kamera Scanner
+                                    {t('scanner.start_camera')}
                                 </button>
                             ) : (
                                 <button
                                     onClick={stopCamera}
                                     className="w-full sm:w-auto px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium shadow-md shadow-red-500/20"
                                 >
-                                    Tutup Kamera
+                                    {t('scanner.stop_camera')}
                                 </button>
                             )}
 
@@ -351,7 +353,7 @@ export function ScannerPage() {
                                 className="w-full sm:w-auto px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-white rounded-xl transition-colors font-medium flex items-center justify-center gap-2"
                             >
                                 <HiOutlineUpload className="w-5 h-5" />
-                                Upload Gambar QR
+                                {t('scanner.upload_qr')}
                             </button>
                             <input
                                 type="file"
@@ -385,10 +387,10 @@ export function ScannerPage() {
                                                     {scanResult.data.name}
                                                 </p>
                                                 <p className="text-sm">
-                                                    Kategori: <span className="font-semibold">{scanResult.data.category}</span>
+                                                    {t('scanner.category_label')}: <span className="font-semibold">{scanResult.data.category}</span>
                                                 </p>
                                                 <p className="text-sm">
-                                                    Status check-in tercatat pada sistem.
+                                                    {t('scanner.checkin_recorded')}
                                                 </p>
                                             </div>
                                         )}
@@ -407,7 +409,7 @@ export function ScannerPage() {
                                         : 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-700'
                                         }`}
                                 >
-                                    Scan Tamu Berikutnya
+                                    {t('scanner.scan_next')}
                                 </button>
                             </div>
                         )}
@@ -422,24 +424,24 @@ export function ScannerPage() {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full min-h-[500px] min-w-0">
                 <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50 dark:bg-gray-800/50">
                     <div>
-                        <h2 className="font-semibold text-lg text-gray-800 dark:text-white">Input Manual</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Catat tamu yang hadir tanpa QR Code</p>
+                        <h2 className="font-semibold text-lg text-gray-800 dark:text-white">{t('scanner.manual_title')}</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{t('scanner.manual_desc')}</p>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
                         <button
                             onClick={() => setSortBy(sortBy === 'name' ? 'time' : 'name')}
                             className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                            title="Ganti Urutan (Nama / Waktu)"
+                            title={t('scanner.sort_toggle_title')}
                         >
                             <HiOutlineSwitchVertical className="w-4 h-4" />
-                            Sort: {sortBy === 'name' ? 'Nama' : 'Waktu'}
+                            {t('scanner.sort_label')}: {sortBy === 'name' ? t('scanner.sort_by_name') : t('scanner.sort_by_time')}
                         </button>
                         <button
                             onClick={handleAddRow}
                             className="flex-1 sm:flex-none px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors shadow-sm"
                         >
                             <HiOutlinePlus className="w-4 h-4" />
-                            Tambah Baris
+                            {t('scanner.add_row')}
                         </button>
                     </div>
                 </div>
@@ -449,28 +451,28 @@ export function ScannerPage() {
                     <table className="w-full text-left border-collapse min-w-[500px]">
                         <thead>
                             <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
-                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama (Wajib)</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No. Telp</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Jumlah Tamu</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10 text-center">Aksi</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scanner.col_status')}</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scanner.col_name_required')}</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scanner.col_category')}</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scanner.col_phone')}</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">{t('scanner.col_pax')}</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10 text-center">{t('scanner.col_action')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                             {sortedManualGuests.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                                        Belum ada data manual.<br />Klik <b>Tambah Baris</b> untuk mencatat tamu.
+                                        {t('scanner.empty_desktop_line1')}<br /><Trans i18nKey="scanner.empty_desktop_line2"><b>Add Row</b></Trans>
                                     </td>
                                 </tr>
                             ) : (
                                 sortedManualGuests.map((guest) => (
                                     <tr key={guest.id} className={`${guest.status === 'saved' ? 'bg-emerald-50/30 dark:bg-emerald-900/10' : 'bg-white dark:bg-gray-800'}`}>
                                         <td className="px-4 py-2 whitespace-nowrap">
-                                            {guest.status === 'saved' && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">Tersimpan</span>}
-                                            {guest.status === 'saving' && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">Menyimpan..</span>}
-                                            {guest.status === 'draft' && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">Belum Disimpan</span>}
+                                            {guest.status === 'saved' && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">{t('scanner.status_saved')}</span>}
+                                            {guest.status === 'saving' && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">{t('scanner.status_saving')}</span>}
+                                            {guest.status === 'draft' && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">{t('scanner.status_draft')}</span>}
                                         </td>
                                         <td className="px-4 py-2">
                                             <input
@@ -478,7 +480,7 @@ export function ScannerPage() {
                                                 value={guest.name}
                                                 onChange={(e) => handleUpdateRow(guest.id, 'name', e.target.value)}
                                                 disabled={guest.status === 'saved' || guest.status === 'saving'}
-                                                placeholder="Nama Tamu"
+                                                placeholder={t('scanner.name_placeholder')}
                                                 className="w-full min-w-[120px] px-2 py-1 text-sm bg-transparent border-b border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-0 disabled:opacity-75 disabled:border-transparent"
                                             />
                                         </td>
@@ -489,11 +491,11 @@ export function ScannerPage() {
                                                 disabled={guest.status === 'saved' || guest.status === 'saving'}
                                                 className="w-full min-w-[140px] px-2 py-1 text-sm bg-transparent border-b border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-0 disabled:opacity-75 disabled:border-transparent"
                                             >
-                                                <option value="Keluarga Laki-laki">Keluarga Laki-laki</option>
-                                                <option value="Keluarga Perempuan">Keluarga Perempuan</option>
-                                                <option value="Teman/Rekan Kerja">Teman/Rekan Kerja</option>
-                                                <option value="Tamu Undangan Umum">Tamu Undangan Umum</option>
-                                                <option value="VIP">VIP</option>
+                                                <option value="Keluarga Laki-laki">{t('scanner.cat_family_male')}</option>
+                                                <option value="Keluarga Perempuan">{t('scanner.cat_family_female')}</option>
+                                                <option value="Teman/Rekan Kerja">{t('scanner.cat_friends_work')}</option>
+                                                <option value="Tamu Undangan Umum">{t('scanner.cat_general')}</option>
+                                                <option value="VIP">{t('scanner.cat_vip')}</option>
                                             </select>
                                         </td>
                                         <td className="px-4 py-2">
@@ -502,7 +504,7 @@ export function ScannerPage() {
                                                 value={guest.phone}
                                                 onChange={(e) => handleUpdateRow(guest.id, 'phone', e.target.value)}
                                                 disabled={guest.status === 'saved' || guest.status === 'saving'}
-                                                placeholder="Opsional"
+                                                placeholder={t('scanner.phone_placeholder')}
                                                 className="w-full min-w-[100px] px-2 py-1 text-sm bg-transparent border-b border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-0 disabled:opacity-75 disabled:border-transparent"
                                             />
                                         </td>
@@ -531,7 +533,7 @@ export function ScannerPage() {
                                                     onClick={() => handleRemoveRow(guest.id)}
                                                     disabled={guest.status === 'saving'}
                                                     className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                                    title="Hapus baris"
+                                                    title={t('scanner.delete_row')}
                                                 >
                                                     <HiOutlineTrash className="w-4 h-4" />
                                                 </button>
@@ -548,7 +550,7 @@ export function ScannerPage() {
                 <div className="block md:hidden flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
                     {sortedManualGuests.length === 0 ? (
                         <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Belum ada data manual.<br />Ketuk <b>Tambah Baris</b> untuk mencatat tamu.
+                            {t('scanner.empty_desktop_line1')}<br /><Trans i18nKey="scanner.empty_mobile_line2"><b>Add Row</b></Trans>
                         </div>
                     ) : (
                         sortedManualGuests.map((guest) => {
@@ -564,17 +566,17 @@ export function ScannerPage() {
                                 >
                                     {/* Header: status pill + delete */}
                                     <div className="flex items-center justify-between gap-2 mb-3">
-                                        {guest.status === 'saved' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">✓ Tersimpan</span>}
-                                        {guest.status === 'saving' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Menyimpan…</span>}
-                                        {guest.status === 'draft' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Belum Disimpan</span>}
+                                        {guest.status === 'saved' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">✓ {t('scanner.status_saved')}</span>}
+                                        {guest.status === 'saving' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{t('scanner.status_saving')}</span>}
+                                        {guest.status === 'draft' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">{t('scanner.status_draft')}</span>}
 
                                         {guest.status !== 'saved' && (
                                             <button
                                                 onClick={() => handleRemoveRow(guest.id)}
                                                 disabled={guest.status === 'saving'}
                                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 bg-red-50 dark:bg-red-900/20 active:scale-90 transition-transform disabled:opacity-50"
-                                                title="Hapus baris"
-                                                aria-label="Hapus baris"
+                                                title={t('scanner.delete_row')}
+                                                aria-label={t('scanner.delete_row')}
                                             >
                                                 <HiOutlineTrash className="w-4 h-4" />
                                             </button>
@@ -583,49 +585,49 @@ export function ScannerPage() {
 
                                     {/* Nama */}
                                     <div className="mb-2.5">
-                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama (Wajib)</label>
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('scanner.col_name_required')}</label>
                                         <input
                                             type="text"
                                             value={guest.name}
                                             onChange={(e) => handleUpdateRow(guest.id, 'name', e.target.value)}
                                             disabled={locked}
-                                            placeholder="Nama Tamu"
+                                            placeholder={t('scanner.name_placeholder')}
                                             className="w-full px-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:opacity-75"
                                         />
                                     </div>
 
                                     {/* Kategori */}
                                     <div className="mb-2.5">
-                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kategori</label>
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('scanner.col_category')}</label>
                                         <select
                                             value={guest.category}
                                             onChange={(e) => handleUpdateRow(guest.id, 'category', e.target.value)}
                                             disabled={locked}
                                             className="w-full px-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:opacity-75"
                                         >
-                                            <option value="Keluarga Laki-laki">Keluarga Laki-laki</option>
-                                            <option value="Keluarga Perempuan">Keluarga Perempuan</option>
-                                            <option value="Teman/Rekan Kerja">Teman/Rekan Kerja</option>
-                                            <option value="Tamu Undangan Umum">Tamu Undangan Umum</option>
-                                            <option value="VIP">VIP</option>
+                                            <option value="Keluarga Laki-laki">{t('scanner.cat_family_male')}</option>
+                                            <option value="Keluarga Perempuan">{t('scanner.cat_family_female')}</option>
+                                            <option value="Teman/Rekan Kerja">{t('scanner.cat_friends_work')}</option>
+                                            <option value="Tamu Undangan Umum">{t('scanner.cat_general')}</option>
+                                            <option value="VIP">{t('scanner.cat_vip')}</option>
                                         </select>
                                     </div>
 
                                     {/* No. Telp + Jumlah Tamu */}
                                     <div className="flex items-end gap-3">
                                         <div className="flex-1 min-w-0">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">No. Telp</label>
+                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('scanner.col_phone')}</label>
                                             <input
                                                 type="text"
                                                 value={guest.phone}
                                                 onChange={(e) => handleUpdateRow(guest.id, 'phone', e.target.value)}
                                                 disabled={locked}
-                                                placeholder="Opsional"
+                                                placeholder={t('scanner.phone_placeholder')}
                                                 className="w-full px-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:opacity-75"
                                             />
                                         </div>
                                         <div className="shrink-0">
-                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 text-center">Jml Tamu</label>
+                                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 text-center">{t('scanner.col_pax_short')}</label>
                                             <div className="flex items-center gap-1.5">
                                                 <button
                                                     onClick={() => handleUpdateRow(guest.id, 'pax', Math.max(1, guest.pax - 1))}
@@ -650,7 +652,7 @@ export function ScannerPage() {
                 {/* Footer / Save Button */}
                 <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
                     <p className="text-xs text-gray-500 flex-1">
-                        {manualGuests.filter(g => g.status === 'draft').length} baris belum disimpan.
+                        {t('scanner.unsaved_count', { count: manualGuests.filter(g => g.status === 'draft').length })}
                     </p>
                     <button
                         onClick={handleSaveManual}
@@ -662,7 +664,7 @@ export function ScannerPage() {
                         ) : (
                             <HiOutlineSave className="w-4 h-4" />
                         )}
-                        Simpan ke Database
+                        {t('scanner.save_to_db')}
                     </button>
                 </div>
             </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { websiteConfigApi } from '@/core/api/endpoints';
 import { WebsiteConfig } from '@/types';
 import { Button } from '@/shared/components/Button';
+import { safeGetItem, safeSetItem } from '@/shared/utils/safeStorage';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { 
     HiOutlineSave, 
@@ -68,7 +69,7 @@ export function WebsiteConfigPage() {
     const [activeCodeTab, setActiveCodeTab] = useState<CodeTab>('html');
     const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
     const [showPreview, setShowPreview] = useState(() => {
-        const saved = localStorage.getItem('website-config-show-preview');
+        const saved = safeGetItem('website-config-show-preview');
         return saved !== 'false';
     });
     const [isFocusMode, setIsFocusMode] = useState(false);
@@ -95,7 +96,7 @@ export function WebsiteConfigPage() {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     useEffect(() => {
-        localStorage.setItem('website-config-show-preview', String(showPreview));
+        safeSetItem('website-config-show-preview', String(showPreview));
     }, [showPreview]);
 
     const fetchCodeImages = async () => {

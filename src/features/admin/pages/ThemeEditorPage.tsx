@@ -4,6 +4,7 @@ import imageCompression from 'browser-image-compression';
 import { Theme, PlanType, Tenant, InvitationContent, ImageRecord, ThemeAssetMedia } from '@/types';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useBasePath } from '@/shared/hooks/useBasePath';
+import { safeGetItem, safeSetItem } from '@/shared/utils/safeStorage';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineEye, HiOutlineInformationCircle, HiOutlineRefresh, HiOutlineX, HiOutlineTrash, HiOutlineUpload, HiCheck, HiOutlineExternalLink } from 'react-icons/hi';
 import { Button } from '@/shared/components/Button';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -153,7 +154,7 @@ export function ThemeEditorPage() {
     const [showCover, setShowCover] = useState(true);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [showPreview, setShowPreview] = useState(() => {
-        const saved = localStorage.getItem('theme-editor-show-preview');
+        const saved = safeGetItem('theme-editor-show-preview');
         return saved !== 'false';
     });
     // Split ratio between editor (left) and live preview (right) on desktop:
@@ -161,7 +162,7 @@ export function ThemeEditorPage() {
     //  - 'balanced' : sama lebar (50 / 50) — kondisi default
     //  - 'mobile'   : editor lebih besar dari preview (60 / 40)
     const [layoutMode, setLayoutMode] = useState<'desktop' | 'balanced' | 'mobile'>(() => {
-        const saved = localStorage.getItem('theme-editor-layout-mode');
+        const saved = safeGetItem('theme-editor-layout-mode');
         return saved === 'desktop' || saved === 'mobile' ? saved : 'balanced';
     });
     const [isCapturing, setIsCapturing] = useState(false);
@@ -488,11 +489,11 @@ export function ThemeEditorPage() {
     }, [allTenants, selectedPreviewTenantId]);
 
     useEffect(() => {
-        localStorage.setItem('theme-editor-show-preview', String(showPreview));
+        safeSetItem('theme-editor-show-preview', String(showPreview));
     }, [showPreview]);
 
     useEffect(() => {
-        localStorage.setItem('theme-editor-layout-mode', layoutMode);
+        safeSetItem('theme-editor-layout-mode', layoutMode);
     }, [layoutMode]);
 
     // When the selected preview tenant changes, fetch their real content + images

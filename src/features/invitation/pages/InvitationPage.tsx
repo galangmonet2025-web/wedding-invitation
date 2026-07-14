@@ -526,11 +526,46 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             // Accept both ?guestid= and ?guestId= (the preview URL uses guestId)
             const guestid = searchParams.get('guestid') || searchParams.get('guestId');
             console.log("Fetching invitation for slug:", slug, "guestid:", guestid, "themeCode:", themeCode);
-            const res = await publicApi.getInvitation(slug!, guestid, themeCode);
+
+            // SPLIT LOAD (perf): tembak DUA request PARALEL.
+            //  - getInvitation: data teks + KODE TEMA (badan undangan) TANPA gambar →
+            //    balik lebih cepat → undangan langsung muncul.
+            //  - getInvitationImages: daftar gambar tenant → di-merge ke data.images
+            //    saat tiba, lalu di-resolve ke base64 progresif (gambar nyusul sambil
+            //    berjalan). Tak menunggu request gambar untuk menampilkan undangan.
+            const invPromise = publicApi.getInvitation(slug!, guestid, themeCode, /* skipImages */ true);
+            // Preview (themeCode) memakai path tema paksa; split gambar tak relevan di sana.
+            const imgPromise = themeCode ? null : publicApi.getInvitationImages(slug!).catch(() => null);
+
+            const res = await invPromise;
             console.log("Response from getInvitation:", res);
             if (res.success) {
-                setData(res.data);
+                setData(res.data);           // ← undangan tampil di sini (tanpa nunggu gambar)
                 setWishes(res.data.wishes || []);
+
+                // Gambar menyusul: merge saat request kedua tiba. Preview (themeCode)
+                // memakai data preview, jadi tak perlu merge untuk path itu.
+                if (res.data?.images_deferred && imgPromise) {
+                    void imgPromise.then(async imgRes => {
+                        if (imgRes && imgRes.success && Array.isArray(imgRes.data?.images)) {
+                            setData(prev => prev ? { ...prev, images: imgRes.data.images } : prev);
+                            return;
+                        }
+                        // FALLBACK: request gambar terpisah gagal (mis. backend belum
+                        // di-deploy ulang / aksi belum di-whitelist / error jaringan).
+                        // Jangan biarkan undangan tanpa gambar — ambil ulang undangan
+                        // secara penuh (dengan gambar inline) sebagai jaring pengaman.
+                        console.warn('Deferred images fetch failed, refetching inline:', imgRes?.message);
+                        try {
+                            const full = await publicApi.getInvitation(slug!, guestid, themeCode /* skipImages: false */);
+                            if (full?.success && Array.isArray(full.data?.images)) {
+                                setData(prev => prev ? { ...prev, images: full.data.images } : prev);
+                            }
+                        } catch (e) {
+                            console.error('Inline image refetch also failed:', e);
+                        }
+                    });
+                }
             } else {
                 setError(res.message || 'Invitation not found');
             }

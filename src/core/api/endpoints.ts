@@ -412,12 +412,24 @@ const publicClient = axios.create({
 });
 
 export const publicApi = {
-    getInvitation: async (slug: string, guestid?: string | null, themeCode?: string | null) => {
+    // skipImages=true → SPLIT LOAD (perf): response pertama TANPA daftar gambar tenant
+    // supaya undangan (teks + tema) muncul secepatnya; gambar diambil paralel via
+    // getInvitationImages() lalu di-merge (lihat InvitationPage). Default false agar
+    // pemanggil lain (mis. preview Theme Editor) tetap dapat images inline.
+    getInvitation: async (slug: string, guestid?: string | null, themeCode?: string | null, skipImages?: boolean) => {
         const payload: any = { action: 'getPublicInvitation', slug };
         if (guestid) payload.guestid = guestid;
         // Theme preview: force a specific theme by its code (see backend getInvitation)
         if (themeCode) payload.theme_code = themeCode;
+        if (skipImages) payload.skip_images = true;
         const res = await publicClient.post('', JSON.stringify(payload));
+        return res.data;
+    },
+
+    // Request KEDUA split-load: hanya daftar gambar tenant (image_type + cdn_url).
+    // Dipanggil paralel dengan getInvitation; hasilnya di-merge ke data.images.
+    getInvitationImages: async (slug: string) => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'getPublicInvitationImages', slug }));
         return res.data;
     },
 

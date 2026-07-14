@@ -80,12 +80,18 @@ function toTemplates(bundle: SampleThemeBundle): { html: string; css: string; js
  * @param existingThemes  currently-loaded themes (to match by `code`); the injector
  *                        re-checks by code so ordering is deterministic.
  * @param onDone  called after the whole run finishes (e.g. to refresh the theme list)
+ * @param options.asDraft  true → simpan hasil inject sebagai DRAFT (flag_draft:true,
+ *                         belum tampil ke tenant); false → langsung RELEASE
+ *                         (flag_draft:false). Berlaku untuk tema baru MAUPUN edit tema
+ *                         yang sudah ada. Default true (draft) demi aman.
  */
 export async function injectSampleThemes(
     folders: string[],
     existingThemes: Theme[],
-    onDone?: (result: InjectResult) => void
+    onDone?: (result: InjectResult) => void,
+    options?: { asDraft?: boolean }
 ): Promise<InjectResult> {
+    const asDraft = options?.asDraft !== false; // default: draft
     const { addTask, updateTask } = (useBackgroundTaskStore as any).getState();
 
     const allBundles = getSampleThemeBundles();
@@ -165,7 +171,12 @@ export async function injectSampleThemes(
                         name: folder,
                         code: folder,
                         plan_type: 'premium',
-                        flag_draft: true,
+                        // Draft vs release dipilih admin di dialog inject.
+                        flag_draft: asDraft,
+                        // Inject selalu mematikan Floating Action Button bawaan sistem:
+                        // tema sample punya tombol/kontrolnya sendiri, jadi FAB host
+                        // tidak dipakai. (lihat juga meta chunkedSaveTheme di bawah).
+                        flag_use_system_action_button: false,
                     } as any,
                     { skipLoader: true } as any
                 );
@@ -179,9 +190,16 @@ export async function injectSampleThemes(
             }
 
             // Stream html/css/js in chunks. onProgress fires per batch -> advance the bar.
+            // Metadata: paksa Floating Action Button = false pada SETIAP inject
+            // (baik tema baru maupun edit tema yang sudah ada), sehingga tombol aksi
+            // bawaan sistem selalu mati untuk tema hasil inject. Metadata ini ikut
+            // pada request chunk pertama (lihat chunkedSaveTheme).
             await chunkedSaveTheme(
                 themeId,
-                {}, // no metadata change on inject (name/plan already set on create)
+                // flag_draft dipilih admin (draft/release). Dikirim di request chunk
+                // PERTAMA sehingga berlaku untuk tema baru maupun edit tema lama —
+                // untuk edit, ini yang mengubah status draft/release tema tsb.
+                { flag_use_system_action_button: false, flag_draft: asDraft },
                 { html: job.templates.html, css: job.templates.css, js: job.templates.js },
                 (chunkDone, chunkTotal) => {
                     // Convert this folder's chunk progress into global units, one unit per

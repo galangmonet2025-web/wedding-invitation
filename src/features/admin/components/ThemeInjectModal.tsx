@@ -16,8 +16,12 @@ interface ThemeInjectModalProps {
     /** Currently-loaded themes (carry full html/css/js), used to match & diff by code. */
     existingThemes: Theme[];
     onClose: () => void;
-    /** Called with the selected folder names when the admin confirms. */
-    onConfirm: (folders: string[]) => void;
+    /**
+     * Called with the selected folder names when the admin confirms.
+     * `asDraft` = true → simpan hasil inject sebagai DRAFT (belum tampil ke tenant);
+     * false → langsung RELEASE (flag_draft = false).
+     */
+    onConfirm: (folders: string[], asDraft: boolean) => void;
 }
 
 function formatChars(n: number): string {
@@ -83,6 +87,10 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
     );
 
     const [selected, setSelected] = useState<Set<string>>(() => new Set(rows.map((r) => r.folder)));
+
+    // Simpan hasil inject sebagai DRAFT (default) atau langsung RELEASE.
+    // Draft = flag_draft:true (tema belum tampil ke tenant). Release = flag_draft:false.
+    const [asDraft, setAsDraft] = useState(true);
 
     // Per-folder check result. Absent => belum dicek (status 'unchecked' shown).
     // A folder that is 'new' (not in DB) is always known without a diff, so we seed it.
@@ -376,7 +384,7 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => onConfirm([r.folder])}
+                                        onClick={() => onConfirm([r.folder], asDraft)}
                                         className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-lg text-white bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-sm transition flex items-center gap-1"
                                         title={r.existsInDb ? 'Update tema ini sekarang' : 'Inject tema ini sekarang'}
                                     >
@@ -386,6 +394,37 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                             </div>
                         );
                     })}
+                </div>
+
+                {/* Draft vs Release toggle — berlaku untuk SEMUA aksi inject (per-item & massal). */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-900/30">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        Simpan sebagai
+                    </span>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                            type="radio"
+                            name="inject-save-mode"
+                            checked={asDraft}
+                            onChange={() => setAsDraft(true)}
+                            className="w-4 h-4 border-gray-300 text-yellow-600 focus:ring-yellow-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            Draft <span className="text-gray-400 dark:text-gray-500 font-normal">(belum tampil ke tenant)</span>
+                        </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                            type="radio"
+                            name="inject-save-mode"
+                            checked={!asDraft}
+                            onChange={() => setAsDraft(false)}
+                            className="w-4 h-4 border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            Langsung release <span className="text-gray-400 dark:text-gray-500 font-normal">(tampil ke tenant)</span>
+                        </span>
+                    </label>
                 </div>
 
                 {/* Footer */}
@@ -409,12 +448,13 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                             Batal
                         </button>
                         <button
-                            onClick={() => onConfirm(selectedFolders)}
+                            onClick={() => onConfirm(selectedFolders, asDraft)}
                             disabled={selected.size === 0}
                             className="px-5 py-2 text-xs font-medium rounded-xl text-white bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <i className="ri-flashlight-fill"></i>
                             Inject {selected.size > 0 ? `(${selected.size})` : ''}
+                            <span className="opacity-80">· {asDraft ? 'Draft' : 'Release'}</span>
                         </button>
                     </div>
                 </div>
