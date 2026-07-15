@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { HiX, HiCheckCircle, HiCalendar, HiLocationMarker, HiClock } from 'react-icons/hi';
+import { HiCheck, HiCalendar, HiLocationMarker, HiClock } from 'react-icons/hi';
 import { useTranslation } from 'react-i18next';
+import { GlassModal } from './GlassModal';
 
 interface RSVPSuccessModalProps {
     isOpen: boolean;
@@ -15,6 +15,14 @@ interface RSVPSuccessModalProps {
     } | null;
 }
 
+/**
+ * RSVP-success dialog with the "save to Google Calendar" action.
+ *
+ * Styled to match the guest-facing glass dialogs (QR card / "isi data kehadiran"):
+ * frosted GlassModal shell + centered header + gold hairline + glass detail rows.
+ * The old heavy green gradient header band was replaced by a soft emerald success
+ * badge so the dialog reads as the same family as the rest of the invitation UI.
+ */
 export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProps) {
     const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
@@ -26,76 +34,66 @@ export function RSVPSuccessModal({ isOpen, onClose, data }: RSVPSuccessModalProp
 
     if (!isOpen || !data || !mounted || typeof document === 'undefined' || !document.body) return null;
 
-    return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-white/20 transform transition-all animate-in zoom-in-95 duration-300">
-                {/* Header with Success Icon */}
-                <div className="relative h-32 flex items-center justify-center bg-gradient-to-br from-green-500 to-emerald-600">
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                    >
-                        <HiX className="w-5 h-5" />
-                    </button>
-                    <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm border border-white/30">
-                        <HiCheckCircle className="w-12 h-12 text-white" />
-                    </div>
+    const rows = [
+        { Icon: HiCalendar, label: t('modals.rsvp_success.event'), value: data.title },
+        { Icon: HiClock, label: t('modals.rsvp_success.time'), value: `${data.date}, ${data.time}` },
+        { Icon: HiLocationMarker, label: t('modals.rsvp_success.location'), value: data.location },
+    ];
+
+    return (
+        <GlassModal isOpen={isOpen} onClose={onClose}>
+            <div className="px-6 pt-7 pb-6 flex flex-col items-center text-center">
+                {/* Success badge */}
+                <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/25">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-900/20">
+                        <HiCheck className="w-5 h-5 text-white" />
+                    </span>
+                </span>
+
+                {/* Header */}
+                <h3 className="mt-4 text-lg font-semibold tracking-tight text-gray-900 dark:text-white">
+                    {t('modals.rsvp_success.title')}
+                </h3>
+                <p className="mt-1.5 max-w-[280px] text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                    {t('modals.rsvp_success.description')}
+                </p>
+                <span className="mt-4 h-px w-10 bg-gradient-to-r from-transparent via-gold-500/60 to-transparent" />
+
+                {/* Event details — glass rows */}
+                <div className="mt-5 w-full rounded-2xl bg-white/50 dark:bg-white/5 ring-1 ring-gray-200/70 dark:ring-white/10 divide-y divide-gray-200/60 dark:divide-white/10 text-left overflow-hidden">
+                    {rows.map(({ Icon, label, value }) => (
+                        <div key={label} className="flex items-start gap-3 px-4 py-3">
+                            <Icon className="w-4 h-4 text-gold-500 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                                    {label}
+                                </p>
+                                <p className="mt-0.5 text-[13px] font-semibold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2">
+                                    {value}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
-                {/* Content */}
-                <div className="p-8 flex flex-col items-center text-center">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('modals.rsvp_success.title')}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">
-                        {t('modals.rsvp_success.description')}
-                    </p>
+                {/* Google Calendar CTA */}
+                <a
+                    href={data.calendarUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-5 w-full py-3 rounded-xl bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 ring-1 ring-[#4285F4]/40 text-[#4285F4] dark:text-blue-300 font-semibold text-sm shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                    <HiCalendar className="w-[18px] h-[18px]" />
+                    {t('modals.rsvp_success.save_calendar')}
+                </a>
 
-                    {/* Event Detail Box */}
-                    <div className="w-full mt-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 text-left space-y-4">
-                        <div className="flex items-start gap-3">
-                            <HiCalendar className="w-5 h-5 text-gold-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">{t('modals.rsvp_success.event')}</p>
-                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{data.title}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                            <HiClock className="w-5 h-5 text-gold-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">{t('modals.rsvp_success.time')}</p>
-                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{data.date}, {data.time}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                            <HiLocationMarker className="w-5 h-5 text-gold-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">{t('modals.rsvp_success.location')}</p>
-                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 line-clamp-2">{data.location}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Action Button */}
-                    <a
-                        href={data.calendarUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full mt-8 flex items-center justify-center gap-3 py-4 px-6 bg-white border-2 border-[#4285F4] text-[#4285F4] rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-lg shadow-blue-500/10 active:scale-[0.98]"
-                    >
-                        <HiCalendar className="w-6 h-6" />
-                        {t('modals.rsvp_success.save_calendar')}
-                    </a>
-
-                    <button
-                        onClick={onClose}
-                        className="mt-6 text-sm text-gray-400 hover:text-gray-600 font-medium transition-all"
-                    >
-                        {t('common.close')}
-                    </button>
-                </div>
+                <button
+                    onClick={onClose}
+                    className="mt-3 text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                    {t('common.close')}
+                </button>
             </div>
-        </div>,
-        document.body
+        </GlassModal>
     );
 }

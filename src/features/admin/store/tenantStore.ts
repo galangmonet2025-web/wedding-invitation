@@ -9,7 +9,8 @@ interface TenantState {
     hasLoaded: boolean;
     tenantFeaturesCache: Record<string, any[]>; // Cache for features per tenant
     
-    fetchTenants: (force?: boolean) => Promise<void>;
+    // silent=true -> pakai skipLoader (tanpa block-screen loader global).
+    fetchTenants: (force?: boolean, silent?: boolean) => Promise<void>;
     addTenant: (tenant: Tenant) => void;
     updateTenant: (id: string, updates: Partial<Tenant>) => void;
     setTenantFeatures: (tenantId: string, features: any[]) => void;
@@ -21,12 +22,17 @@ export const useTenantStore = create<TenantState>((set, get) => ({
     hasLoaded: false,
     tenantFeaturesCache: {},
 
-    fetchTenants: async (force = false) => {
+    fetchTenants: async (force = false, silent = false) => {
         if (get().hasLoaded && !force) return;
 
+        // Revalidasi diam: kalau daftar tenant lama sudah ada (atau pemanggil minta
+        // silent), refresh tanpa block-loader global — sama seperti themeStore.
+        const revalidateSilently = silent || get().hasLoaded;
         set({ loading: true });
         try {
-            const res = await tenantApi.getTenants();
+            const res = await tenantApi.getTenants(
+                revalidateSilently ? ({ skipLoader: true } as any) : undefined
+            );
             if (res.success) {
                 set({ 
                     tenants: Array.isArray(res.data) ? res.data : [], 

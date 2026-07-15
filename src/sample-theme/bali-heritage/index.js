@@ -1,5 +1,9 @@
 /* =========================================================================
-   TIMELESS — theme JS
+   BALI HERITAGE — theme JS
+   Balinese palette (ivory / gold / plum-mauve) with the Meru (pura) tower,
+   orchid botanicals & gold damask bands. Structure/host-wiring cloned from
+   the "minang-heritage" theme (itself cloned from "timeless").
+
    Host contract (ThemeWrapper): this script is REMOVED and RE-EXECUTED every
    time its inputs change. So it must:
      - register a global cleanup hook and run it on entry (no stacked
@@ -13,11 +17,11 @@
     'use strict';
 
     // ---- Run previous instance's cleanup, then start a fresh registry -------
-    if (typeof window.__timelessCleanup === 'function') {
-        try { window.__timelessCleanup(); } catch (e) { /* noop */ }
+    if (typeof window.__baliCleanup === 'function') {
+        try { window.__baliCleanup(); } catch (e) { /* noop */ }
     }
     var cleanupFns = [];
-    window.__timelessCleanup = function () {
+    window.__baliCleanup = function () {
         cleanupFns.forEach(function (fn) { try { fn(); } catch (e) { /* noop */ } });
         cleanupFns = [];
     };
@@ -61,18 +65,18 @@
     };
 
     // =====================================================================
-    // Countdown — reads the REAL wedding date from the DB (#tm-wed-date).
+    // Countdown — reads the REAL wedding date from the DB (#bl-wed-date).
     // Self-contained + guards against stacked intervals on re-execution.
     // =====================================================================
     (function startCountdown() {
-        if (window.__tlCountdownTimer) {
-            clearInterval(window.__tlCountdownTimer);
-            window.__tlCountdownTimer = null;
+        if (window.__blCountdownTimer) {
+            clearInterval(window.__blCountdownTimer);
+            window.__blCountdownTimer = null;
         }
 
         function resolveDay() {
             var holder = document.getElementById('wedding-calendar')
-                || document.getElementById('tm-wed-date');
+                || document.getElementById('bl-wed-date');
             var raw = holder ? (holder.getAttribute('data-wedding-date') || '').trim() : '';
             var m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
             if (m) return new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0);
@@ -81,7 +85,7 @@
         }
 
         function receptionEnd(day) {
-            var holder = document.getElementById('tm-jam-resepsi');
+            var holder = document.getElementById('bl-jam-resepsi');
             var txt = holder ? (holder.textContent || '') : '';
             var times = txt.match(/(\d{1,2}):(\d{2})/g) || [];
             var endH = 23, endM = 59;
@@ -115,16 +119,16 @@
                 set('seconds', Math.floor((dist % 6e4) / 1000));
             } else if (Date.now() <= recEnd.getTime()) {
                 setStatus('Hari yang kami nantikan telah tiba 🤍');
-                clearInterval(window.__tlCountdownTimer); window.__tlCountdownTimer = null;
+                clearInterval(window.__blCountdownTimer); window.__blCountdownTimer = null;
             } else {
                 setStatus('Acara kami telah selesai. Terima kasih atas doa & restunya 🙏');
-                clearInterval(window.__tlCountdownTimer); window.__tlCountdownTimer = null;
+                clearInterval(window.__blCountdownTimer); window.__blCountdownTimer = null;
             }
         }
         tick();
-        window.__tlCountdownTimer = setInterval(tick, 1000);
+        window.__blCountdownTimer = setInterval(tick, 1000);
         cleanupFns.push(function () {
-            if (window.__tlCountdownTimer) { clearInterval(window.__tlCountdownTimer); window.__tlCountdownTimer = null; }
+            if (window.__blCountdownTimer) { clearInterval(window.__blCountdownTimer); window.__blCountdownTimer = null; }
         });
     })();
 
@@ -158,11 +162,11 @@
     // sendiri saat isPlaying berubah: #play-icon/#pause-icon display + class
     // .music-playing pada #btn-toggle-music.
     //
-    // Versi lama memasang listener 'play'/'pause' pada <audio id="bg-music">
-    // lalu membaca `audio.paused` untuk menentukan ikon. Itu SALAH dan bikin
-    // ikon seolah tidak berfungsi:
-    //   - Host TIDAK memutar <audio> milik tema — host punya player sendiri
-    //     (InvitationPage: new Audio(musicLink)), jadi `audio.paused` SELALU true.
+    // Tema versi lama (warisan "timeless") memasang listener 'play'/'pause'
+    // pada <audio id="bg-music"> lalu membaca `audio.paused` untuk menentukan
+    // ikon. Itu SALAH dan bikin ikon seolah tidak berfungsi:
+    //   - Host TIDAK memutar <audio> milik tema — host punya player sendiri,
+    //     jadi `audio.paused` SELALU true.
     //   - Host tetap MENGIRIM event 'play'/'pause' ke #bg-music, sehingga
     //     handler tema ikut jalan, membaca paused===true, lalu MENIMPA ikon
     //     yang barusan di-set host kembali ke "play".
@@ -300,28 +304,101 @@
     })();
 
     // =====================================================================
-    // Cover "open invitation" reveal.
-    // IMPORTANT: this is registered OUTSIDE cleanupFns intentionally. The host
+    // Couple hashtag on the opening screen — built from the two nicknames,
+    // e.g. "Anita" + "Olga" → "#OLGAnITAtogether"-style tag. Runs every
+    // execution; safe/idempotent. Falls back to the raw "#GroomBride" text
+    // already in the HTML if names are missing.
+    // =====================================================================
+    (function buildHashtag() {
+        var el = document.getElementById('opening-hashtag');
+        if (!el) return;
+        var groom = (el.getAttribute('data-groom') || '').replace(/[^A-Za-z0-9]/g, '');
+        var bride = (el.getAttribute('data-bride') || '').replace(/[^A-Za-z0-9]/g, '');
+        if (!groom && !bride) return;
+        el.textContent = '#' + groom + bride + 'together';
+    })();
+
+    // =====================================================================
+    // Opening video screen + cover "open invitation" reveal.
+    // IMPORTANT: registered OUTSIDE cleanupFns intentionally. The host
     // re-executes this script when isOpened flips; if the open animation lived
     // in cleanupFns it would be torn down before it could run on the live
     // invitation (see memory: theme-intro-reexec-bug). We also react to the
-    // host adding `.reveal-content` on re-injection so the cover hides even
-    // when the host — not our button — triggered the open.
+    // host adding `.reveal-content` on re-injection so the flow reflects the
+    // opened state even when the host — not our button — triggered the open.
     // =====================================================================
     (function coverReveal() {
         var screen = document.querySelector('.mock-app-screen');
         var fab = document.getElementById('theme-fab-container');
         var btnOpen = document.getElementById('btn-open-invitation');
+        var opening = document.getElementById('theme-opening');
+        var openingVideo = document.getElementById('opening-video');
+        var openingCard = document.getElementById('opening-card');
+
+        // Reveal the couple text + scroll hint (called when the video is near
+        // its end, on ended, or immediately if the video can't play). Idempotent.
+        function revealOpeningText() {
+            if (openingCard) openingCard.classList.add('is-shown');
+            if (opening) opening.classList.add('opening-revealed');
+        }
+
+        // How early (seconds before the end) the text should start appearing.
+        var TEXT_LEAD = 1.6;
+
+        // Play the opening video ONCE (muted → allowed to autoplay; never plays
+        // audio, so the host's music player is untouched). Text is shown as the
+        // clip approaches its end. If the video is already finished (e.g. host
+        // re-injected after it played), show the text right away and don't
+        // restart it.
+        function playOpeningVideo() {
+            if (!openingVideo) { revealOpeningText(); return; }
+            openingVideo.muted = true;
+            try { openingVideo.playbackRate = 1.5; } catch (e) { /* noop */ }
+
+            // Already played through → keep it on the last frame, show text.
+            if (openingVideo.ended) { revealOpeningText(); return; }
+
+            // Reveal text a little before the end.
+            openingVideo.ontimeupdate = function () {
+                var dur = openingVideo.duration;
+                if (isFinite(dur) && dur > 0 && dur - openingVideo.currentTime <= TEXT_LEAD) {
+                    revealOpeningText();
+                }
+            };
+            openingVideo.onended = function () { revealOpeningText(); };
+
+            var p = openingVideo.play();
+            if (p && typeof p.catch === 'function') {
+                // Autoplay blocked / no source → don't hide the copy, show text.
+                p.catch(function () { revealOpeningText(); });
+            }
+            // Safety net: if the video stalls or has no valid duration, reveal
+            // the text after a bounded wait so the screen never stays textless.
+            setTimeout(function () {
+                if (opening && !opening.classList.contains('opening-revealed')) {
+                    if (!openingVideo.duration || openingVideo.readyState < 2) revealOpeningText();
+                }
+            }, 9000);
+        }
 
         function reveal() {
             if (screen) screen.classList.add('reveal-content');
             if (fab) fab.style.display = 'block';
+            // Pin the scroller to the top so the HERO (first section in the flow:
+            // Cover → Hero → Video → …) is what the guest sees first.
+            if (screen) screen.scrollTop = 0;
+            // Start the opening video immediately on open (it plays through in the
+            // background at 1.5×; the guest reaches it after scrolling past the hero,
+            // and the last frame + text stay put once it ends).
+            playOpeningVideo();
         }
         if (btnOpen) btnOpen.addEventListener('click', reveal);
 
-        // If host already marked it opened (re-injection after open), reflect it.
-        if (screen && screen.classList.contains('reveal-content') && fab) {
-            fab.style.display = 'block';
+        // If host already marked it opened (re-injection after open), reflect it:
+        // restore the FAB and resume/complete the opening video.
+        if (screen && screen.classList.contains('reveal-content')) {
+            if (fab) fab.style.display = 'block';
+            playOpeningVideo();
         }
     })();
 

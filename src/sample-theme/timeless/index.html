@@ -536,10 +536,15 @@
                     <button id="btn-show-qr" class="floating-btn">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect><rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path><path d="M21 21v.01"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path><path d="M3 12h.01"></path><path d="M12 3h.01"></path><path d="M12 16v.01"></path><path d="M16 12h1"></path><path d="M21 12v.01"></path><path d="M12 21v-1"></path></svg>
                     </button>
+                    <!-- Ikon musik: host (ThemeWrapper) satu-satunya yang meng-update
+                         display kedua SVG ini + class .music-playing. Nilai awal HARUS
+                         cocok dengan state awal host (isPlaying = false → musik diam),
+                         yaitu play TAMPIL & pause TERSEMBUNYI. Kalau dibalik, ikon
+                         terlihat "pause" padahal musik belum jalan sampai user klik. -->
                     <button class="floating-btn" id="btn-toggle-music">
                         <div id="music-icon-container">
-                            <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M8 5v14l11-7z"></path></svg>
-                            <svg id="pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                            <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M8 5v14l11-7z"></path></svg>
+                            <svg id="pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
                         </div>
                     </button>
                 </div>

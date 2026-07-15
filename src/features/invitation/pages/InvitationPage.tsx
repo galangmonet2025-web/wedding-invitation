@@ -215,12 +215,27 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         if (ytMatch && ytMatch[1]) {
             setYoutubeId(ytMatch[1]);
 
-            // Send command to the existing iframe
-            if (ytIframeRef.current && ytIframeRef.current.contentWindow) {
-                if (isPlaying) {
-                    ytIframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+            // Send command to the existing iframe.
+            //
+            // Iframe-nya sudah di-mount & di-buffer sejak halaman dibuka (lihat
+            // komentar di bagian render iframe), dalam kondisi MUTED + PAUSED.
+            // Jadi di sini tinggal unMute + play → musik langsung bunyi tanpa
+            // jeda load/buffer YouTube.
+            const win = ytIframeRef.current?.contentWindow;
+            if (win) {
+                // Syarat `isOpened` disamakan dengan jalur <audio> di bawah:
+                // selama cover belum dibuka musik TIDAK boleh bunyi, apa pun
+                // nilai isPlaying. (Dulu cabang YouTube ini cuma cek isPlaying,
+                // jadi berpotensi bunyi sebelum "Buka Undangan" diklik — dan
+                // bertabrakan dengan effect pre-buffer yang menahannya pause.)
+                if (isPlaying && isOpened) {
+                    // unMute dulu: iframe sengaja di-mute saat preload supaya
+                    // browser mengizinkan autoplay (syarat autoplay policy).
+                    win.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+                    win.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+                    win.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
                 } else {
-                    ytIframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                    win.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
                 }
             }
             return;
@@ -247,6 +262,46 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             }
         };
     }, []);
+
+    // ---- PRE-BUFFER backsound YouTube (hilangkan jeda saat "Buka Undangan") ----
+    // Dulu <iframe> baru di-mount SAAT isOpened jadi true, jadi setelah diklik
+    // browser masih harus konek ke YouTube + load player + buffer → jeda beberapa
+    // detik sebelum lagu bunyi.
+    //
+    // Sekarang iframe di-mount SEJAK AWAL dengan autoplay=1&mute=1:
+    //   - mute=1 WAJIB. Autoplay policy browser hanya mengizinkan autoplay tanpa
+    //     interaksi kalau MUTED. Tanpa itu, autoplay diblokir dan preload-nya
+    //     percuma (player tak pernah benar-benar siap).
+    //   - autoplay=1 + muted membuat YouTube benar-benar men-download & mem-buffer
+    //     video. Kalau kita mount dengan autoplay=0, player cuma diam dan buffer
+    //     baru jalan saat play → jedanya tetap ada.
+    // Begitu player siap, kita langsung pauseVideo + seekTo(0) supaya TIDAK ada
+    // suara/bocor sebelum tamu klik "Buka Undangan". Saat dibuka, effect musik di
+    // atas cukup unMute + playVideo → instan, tanpa load lagi.
+    useEffect(() => {
+        if (!youtubeId || isOpened) return;   // hanya selama cover masih tampil
+
+        let cancelled = false;
+        const primePaused = () => {
+            if (cancelled) return;
+            const win = ytIframeRef.current?.contentWindow;
+            if (!win) return;
+            // Tahan di awal & diam. Tetap muted supaya kalau ada frame yang
+            // sempat lolos main, tamu tidak mendengar apa pun.
+            win.postMessage('{"event":"command","func":"mute","args":""}', '*');
+            win.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+            win.postMessage('{"event":"command","func":"seekTo","args":[0, true]}', '*');
+        };
+
+        // Iframe/player butuh waktu siap; ulangi beberapa kali (ramp) seperti
+        // pola startListening di effect loop bawah.
+        primePaused();
+        const timers = [200, 600, 1200, 2500].map((d) => setTimeout(primePaused, d));
+        return () => {
+            cancelled = true;
+            timers.forEach(clearTimeout);
+        };
+    }, [youtubeId, isOpened]);
 
     // Auto-restart the YouTube backsound when it finishes.
     // The iframe URL already carries loop=1&playlist=<id>, but YouTube's built-in
@@ -285,9 +340,17 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     : payload?.info?.playerState;
             if (state === 0) {
                 const win = getFrame()?.contentWindow;
-                if (win) {
-                    win.postMessage('{"event":"command","func":"seekTo","args":[0, true]}', '*');
+                if (!win) return;
+                // Selalu balik ke awal…
+                win.postMessage('{"event":"command","func":"seekTo","args":[0, true]}', '*');
+                // …tapi HANYA lanjut main kalau memang sedang diputar & undangan
+                // sudah dibuka. Sejak iframe di-preload (muted) sebelum cover
+                // dibuka, video bisa saja "ENDED" dalam keadaan diam; tanpa
+                // penjaga ini kita malah menghidupkannya lagi di belakang cover.
+                if (isPlaying && isOpened) {
                     win.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                } else {
+                    win.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
                 }
             }
         };
@@ -298,7 +361,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             clearTimeout(t1);
             clearTimeout(t2);
         };
-    }, [youtubeId, isOpened]);
+        // isPlaying WAJIB ikut: onMessage membacanya, kalau tidak listener-nya
+        // menutup nilai lama (stale closure) dan penjaga di atas salah menilai.
+    }, [youtubeId, isOpened, isPlaying]);
 
     // RSVP State
     const [rsvpCode, setRsvpCode] = useState('');
@@ -1433,12 +1498,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 >
                     {guestQrModal}
                     {uninvitedGuestFormModal}
-                    {youtubeId && isOpened && (
+                    {/* Backsound YouTube — di-mount SEJAK AWAL (tidak menunggu isOpened)
+                        supaya player sudah ter-load & ter-buffer sebelum tamu klik
+                        "Buka Undangan" → begitu diklik, langsung bunyi tanpa jeda.
+                        `mute=1` WAJIB: autoplay policy browser hanya mengizinkan
+                        autoplay tanpa interaksi kalau muted; effect pre-buffer di atas
+                        langsung mem-pause-nya, lalu saat dibuka baru unMute + play. */}
+                    {youtubeId && (
                         <iframe
                             ref={ytIframeRef}
                             width="0"
                             height="0"
-                            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
+                            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
                             title="YouTube Background Music"
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -1984,13 +2055,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 <p className="inv-footer-powered">Wedding SaaS Platform</p>
             </footer>
 
-            {/* HIDDEN YOUTUBE PLAYER */}
-            {youtubeId && isPlaying && (
+            {/* HIDDEN YOUTUBE PLAYER — di-mount SEJAK AWAL (bukan saat isPlaying).
+                Kalau kondisinya `isPlaying`, iframe ikut UNMOUNT tiap kali musik
+                di-pause, jadi menyalakannya lagi harus load+buffer dari nol (jeda).
+                Dengan mount permanen, play/pause cukup lewat postMessage → instan.
+                `mute=1` = syarat autoplay policy; effect pre-buffer langsung
+                mem-pause-nya, dan effect musik yang unMute saat benar-benar main. */}
+            {youtubeId && (
                 <iframe
                     ref={ytIframeRef}
                     width="0"
                     height="0"
-                    src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
+                    src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
                     title="YouTube Background Music"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

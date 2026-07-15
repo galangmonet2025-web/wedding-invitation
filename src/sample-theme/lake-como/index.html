@@ -851,15 +851,20 @@
                             <path d="M12 21v-1"></path>
                         </svg>
                     </button>
+                    <!-- Ikon musik: host (ThemeWrapper) satu-satunya yang meng-update
+                         display kedua SVG ini + class .music-playing. Nilai awal HARUS
+                         cocok dengan state awal host (isPlaying = false → musik diam),
+                         yaitu play TAMPIL & pause TERSEMBUNYI. Kalau dibalik, ikon
+                         terlihat "pause" padahal musik belum jalan sampai user klik. -->
                     <button class="floating-btn btn-music" id="btn-toggle-music">
                         <div id="music-icon-container">
                             <i>
                                 <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
-                                    style="display: none;">
+                                    style="display: block;">
                                     <path d="M8 5v14l11-7z"></path>
                                 </svg>
                                 <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
-                                    style="display: block;">
+                                    style="display: none;">
                                     <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
                                 </svg>
                             </i>

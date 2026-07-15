@@ -142,8 +142,10 @@ export const guestApi = {
 // =============================================
 
 export const tenantApi = {
-    getTenants: async (): Promise<ApiResponse<Tenant[]>> => {
-        const res = await apiClient.post('', { action: 'getTenants' });
+    // config opsional (mis. { skipLoader: true }) supaya pemanggil latar belakang
+    // tak memicu block-screen loader global — lihat tenantStore.fetchTenants(silent).
+    getTenants: async (config: any = {}): Promise<ApiResponse<Tenant[]>> => {
+        const res = await apiClient.post('', { action: 'getTenants' }, config);
         return res.data;
     },
 

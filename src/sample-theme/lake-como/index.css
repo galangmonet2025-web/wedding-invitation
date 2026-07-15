@@ -73,9 +73,15 @@ body {
 }
 
 /* Cover masih tampil → kunci scroll sampai "Buka Undangan" diklik.
-   (scroll dilepas via JS dengan men-set overflow-y inline) */
+   (JS: lockScroll() menambah .is-locked, unlockScroll() melepasnya)
+
+   WAJIB `overflow-y`, BUKAN shorthand `overflow`: shorthand di-expand jadi
+   overflow-x + overflow-y, lalu `overflow-y: auto` milik .phone-container di
+   atas MENANG → aturan ini jadi mubazir. Dulu kuncinya "seolah jalan" hanya
+   karena lockScroll() juga menulis style.overflowY inline; aturan CSS-nya
+   sendiri mati. Sekarang kuncinya benar-benar berfungsi dari CSS. */
 .phone-container.is-locked {
-    overflow: hidden;
+    overflow-y: hidden;
 }
 
 @media (min-width: 960px) {

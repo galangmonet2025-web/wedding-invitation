@@ -456,42 +456,23 @@ function initLakeComoTheme() {
     }
 
     // ---- 5. Music state UI ----
-    const btnMusic = document.getElementById('btn-toggle-music');
-    const bgMusic = document.getElementById('bg-music');
-
-    function updateMusicUI() {
-        const playIcon = document.getElementById('play-icon');
-        const pauseIcon = document.getElementById('pause-icon');
-        if (!playIcon || !pauseIcon || !bgMusic) return;
-
-        if (bgMusic.paused) {
-            if (btnMusic) btnMusic.classList.remove('music-playing');
-            playIcon.style.display = 'none';
-            pauseIcon.style.display = 'block';
-        } else {
-            if (btnMusic) btnMusic.classList.add('music-playing');
-            playIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-        }
-    }
-
-    if (bgMusic) {
-        bgMusic.addEventListener('play', updateMusicUI);
-        bgMusic.addEventListener('pause', updateMusicUI);
-        bgMusic.addEventListener('playing', updateMusicUI);
-        // Sinkronkan ikon dengan state lagu yang sebenarnya sejak awal.
-        updateMusicUI();
-    }
-
-    if (btnMusic && bgMusic) {
-        btnMusic.addEventListener('click', function () {
-            if (bgMusic.paused) {
-                bgMusic.play().catch(() => {});
-            } else {
-                bgMusic.pause();
-            }
-        });
-    }
+    // SENGAJA KOSONG — jangan tambahkan mirror/handler musik di sini lagi.
+    //
+    // Host (ThemeWrapper) memegang state musik dan SUDAH:
+    //   - meng-intercept klik #btn-toggle-music  -> setIsPlaying(!isPlaying)
+    //   - menulis ikon sendiri: #play-icon/#pause-icon display + .music-playing
+    //
+    // Versi lama tema ini melakukan 3 hal yang salah sekaligus:
+    //   1. `bgMusic.play()` / `.pause()` -> MELANGGAR kontrak: host memutar
+    //      audio-nya sendiri (InvitationPage: new Audio(musicLink)), jadi
+    //      <audio id="bg-music"> milik tema tak pernah dipakai host. Memutarnya
+    //      di sini bisa membuat lagu dobel / tak sinkron dengan tombol host.
+    //   2. Baca `bgMusic.paused` untuk menentukan ikon -> SELALU true (host tak
+    //      pernah memutar elemen itu). Host tetap mengirim event 'play'/'pause'
+    //      ke #bg-music, jadi handler ini jalan SETELAH host lalu MENIMPA ikon.
+    //   3. Logikanya TERBALIK: saat paused (musik diam) malah menampilkan ikon
+    //      PAUSE, dan saat main menampilkan ikon PLAY.
+    // Hasil akhirnya: ikon tak pernah benar. Host = satu-satunya penulis ikon.
 
     // ---- 6. Open Invitation ----
     const btnOpen = document.getElementById('btn-open-invitation');
@@ -509,10 +490,10 @@ function initLakeComoTheme() {
             }, 1000);
 
             if (floatingUI) floatingUI.style.display = 'block';
-            if (bgMusic) {
-                bgMusic.play().catch(() => console.log("Auto-play blocked"));
-                updateMusicUI();
-            }
+            // CATATAN: tema TIDAK memutar musik di sini. Host yang memutar
+            // backsound tenant saat (isPlaying && isOpened) memakai player-nya
+            // sendiri, lalu meng-update ikon play/pause. Memanggil
+            // bgMusic.play() di sini dulunya melanggar kontrak itu.
         };
     }
 }

@@ -1,24 +1,48 @@
 /* =========================================================================
-   TIMELESS — an evergreen wedding invitation theme
-   Ivory paper, warm gold, classic serif + clean sans. Deliberately
-   trend-neutral so it reads as tasteful across every generation and
-   won't date the way a "trendy" aesthetic does.
+   BALI HERITAGE — a Balinese wedding invitation theme.
+
+   Cloned in structure from "minang-heritage" (itself cloned from "timeless")
+   and re-skinned to the Bali reference invitation: ivory paper, antique gold
+   damask bands, plum/mauve panels, the Meru (pura) tower silhouette and
+   orchid + gold-fern botanicals.
+
+   The artwork lives in asset/ and is wired via {{asset_image_N}} INLINE
+   STYLES in index.html — the host does NOT template-parse CSS, and a large
+   base64 CSS overflows the Sheets 50K-per-cell chunking. See asset/ASSET.md.
+
+   PALETTE — copied verbatim from the source (post-5145.css), NOT invented:
+     radial-gradient(at center center, #AD7E99 0%, #633750 80%)  -> plum panel
+     #633750 + BALI-PATTERN @150px, opacity .3, mix-blend-mode: multiply
+     linear-gradient(90deg, #D7BB83 0%, #A38C5E 100%)            -> gold
+     fonts: Poppins + Cormorant Infant (both used by the source)
    ========================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Poppins:wght@300;400;500;600&display=swap');
 
 :root {
-    --paper: #fbf8f1;
-    --paper-2: #f4eee1;
-    --ink: #2f2a24;
-    --ink-soft: #5b5348;
-    --gold: #b08d57;
-    --gold-deep: #8a6d3f;
-    --gold-soft: #d9c7a6;
-    --line: rgba(176, 141, 87, 0.35);
-    --serif: 'Cormorant Garamond', 'Times New Roman', serif;
+    /* --- Palette copied from the reference (Bali Heritage, post-5145.css) --- */
+    --paper: #fbf6f2;          /* warm cream page */
+    --paper-2: #f3e7ee;        /* deeper ivory-pink (alt sections) */
+    --ink: #33202c;            /* near-black plum ink */
+    --ink-soft: #6b3f59;       /* soft plum ink */
+    --gold: #c2a568;           /* antique gold */
+    --gold-deep: #a38c5e;      /* burnt gold */
+    --gold-soft: #d7bb83;      /* pale gold / tan */
+    --saga: #ad7e99;           /* mauve (radial centre) */
+    --saga-deep: #633750;      /* deep plum (radial edge) */
+    --line: rgba(163, 140, 94, 0.42);
+    --serif: 'Cormorant Infant', 'Times New Roman', serif;
     --sans: 'Poppins', system-ui, sans-serif;
-    --shadow: 0 18px 45px rgba(70, 55, 30, 0.14);
+    --shadow: 0 18px 45px rgba(99, 55, 80, 0.18);
+
+    /* NOTE: the Bali artwork (Meru tower, orchid sprays) is NOT embedded as
+       base64 here any more. It lives in asset/ and is wired via {{asset_image_N}}
+       inline styles in index.html — CSS is not template-parsed by the host, and a
+       232KB CSS overflowed the Sheets 50K-per-cell chunking (a chunk starting with
+       "=" was eaten as a formula → corrupt save). See asset/ASSET.md. */
+
+    /* Balinese gold damask diamond band, pure SVG (echoes BALI-MOTIF-*.webp) */
+    --damask-band: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='16' viewBox='0 0 40 16'%3E%3Cpath d='M10 1L19 8L10 15L1 8Z M30 1L39 8L30 15L21 8Z' fill='none' stroke='%23c2a568' stroke-width='1.3'/%3E%3Cpath d='M10 5.5L12.5 8L10 10.5L7.5 8Z M30 5.5L32.5 8L30 10.5L27.5 8Z' fill='%23ad7e99' opacity='.75'/%3E%3C/svg%3E");
 }
 
 * {
@@ -28,11 +52,27 @@
 
 /* ---- Desktop split: decorative sidebar + phone frame --------------------- */
 .preview-sidebar {
-    background: var(--paper-2);
+    background: var(--saga-deep);
+}
+
+/* Meru (pura) tower silhouette pinned to the base of the desktop sidebar */
+.bl-sidebar-meru {
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    bottom: -2%;
+    height: 46%;
+    background-repeat: no-repeat;
+    background-position: bottom center;
+    background-size: contain;
+    opacity: 0.9;
+    filter: drop-shadow(0 -6px 24px rgba(0, 0, 0, 0.4));
+    pointer-events: none;
 }
 
 #layer-text .sidebar-couple-name {
     font-family: var(--serif);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
 }
 
 .phone-container {
@@ -40,7 +80,7 @@
     display: flex;
     justify-content: center;
     align-items: stretch;
-    background: var(--paper-2);
+    background: var(--saga-deep);
     background-size: cover;
     background-position: center;
     max-height: 100vh;
@@ -68,7 +108,7 @@
 }
 
 /* KUNCI SCROLL SELAMA COVER MASIH TAMPIL.
-   .section-cover memang position:absolute (overlay penuh), TAPI section di
+   .section-cover memang position:absolute (overlay penuh), TAPI 14 section di
    belakangnya tetap mengisi flow → scroller-nya tetap tinggi dan guest bisa
    menggulir "di balik" cover. Host menambahkan .reveal-content ke elemen ini
    saat "Buka Undangan" diklik (ThemeWrapper: appScreen.classList.add(
@@ -82,11 +122,265 @@
     overflow-y: hidden;
 }
 
+/* Rich Balinese damask background (asset image 1). Fixed inside the phone
+   scroller so the motif stays put while the content scrolls over it. The
+   content sections are translucent (see .section / .section-couple etc.
+   below), so this reads through the WHOLE invitation → the "kental" look. */
+/* FIXED backdrop — completely out of flow, so it adds ZERO scrollable height
+   (a sticky/absolute layer here stretched the scroller and made the cover
+   scrollable). Clamped to the 480px phone column on desktop, like the FAB. */
+.bl-page-bg {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+@media (min-width: 960px) {
+    .bl-page-bg {
+        left: auto;
+        width: 480px;
+    }
+}
+
+/* The damask layer (.bl-page-bg, z-index:0) is the FIRST child of the scroller;
+   every section that follows in the DOM paints above it automatically (they're
+   position:relative via .section / .section-hero / etc). We deliberately do NOT
+   add a blanket `.mock-app-screen > section` rule here — it would override the
+   cover's position:absolute / z-index:60 and break the full-screen overlay. */
+
 @media (min-width: 960px) {
     .phone-container {
         max-width: 480px;
         flex: none;
     }
+}
+
+/* =========================================================================
+   BALI DECORATIVE ELEMENTS (copied from the reference invitation)
+   ========================================================================= */
+
+/* Real gold damask motif borders (asset images 2 & 3). Placed as HTML divs that
+   span the FULL height of the section; the top image anchors to the top edge
+   and the bottom image to the bottom edge. The source art fades toward its
+   inner edge, so together they frame the section top & bottom without covering
+   the middle. */
+/* Border bands. Sizing copied from the source (background-position top/bottom
+   center; no-repeat; background-size:100% auto) — the art spans the full width
+   and keeps its aspect. We span the full section height so each band anchors to
+   its own edge; the middle stays clear for the red pattern ground + content. */
+.bl-motif {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: 100% auto;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 1;
+}
+
+.bl-motif-top { background-position: top center; }
+.bl-motif-bottom { background-position: bottom center; }
+
+/* Content must clear the two bands. The art is ~1.5:1, so at the 480px phone
+   width each band is ~150px tall → pad generously top & bottom. */
+.has-motif { padding-top: 165px; padding-bottom: 165px; }
+
+/* =========================================================================
+   PLUM PATTERNED SECTIONS — a 3-layer "damask panel": BALI-MOTIF-ATAS
+   (top border) + a DOMINANT DEEP-PLUM damask fill (BALI-PATTERN tiled over
+   deep plum) + BALI-MOTIF-BAWAH (bottom border). Matches the reference sample.
+   ========================================================================= */
+/* EXACT recipe copied from the source theme (Elementor element-36f2df56):
+   base = plum radial gradient (#AD7E99 center → #633750 edge); overlay =
+   BALI-PATTERN tiled at 150px, opacity 0.3, mix-blend-mode: multiply, over a
+   #633750 fill. That multiply overlay is what produces the dominant deep-red
+   damask ground in the reference image. */
+.section.section-red {
+    background: radial-gradient(at center center, #AD7E99 0%, #633750 80%);
+    color: #fdf5fa;
+}
+
+/* the damask-pattern multiply overlay (matches the source 1:1) */
+.bl-red-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-color: #633750;
+    background-repeat: repeat;
+    background-position: center center;
+    background-size: 150px auto;
+    opacity: 0.3;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+}
+
+/* Stacking inside a plum section: pattern ground (0) → motif bands (1) → content (2).
+   NOTE: the decorative layers are excluded — they position themselves absolutely and
+   a blanket `position: relative` here would knock them back into the flow (that bug
+   dumped both orchid sprays on top of each other at the top-left). */
+.section-red > *:not(.bl-red-bg):not(.bl-motif):not(.bl-spray) { position: relative; z-index: 2; }
+
+/* light text on the plum ground */
+.section-red .eyebrow { color: var(--gold-soft); }
+.section-red .display-name,
+.section-red .schedule-venue { color: #fff6fb; }
+.section-red .ornament .bl-diamond { fill: var(--gold-soft); stroke: var(--gold-soft); }
+.section-red .gift-instruction { color: rgba(253, 245, 250, 0.85); }
+
+/* cards on the plum ground → warm translucent panels with gold edges */
+.section-red .schedule-card,
+.section-red .gift-card,
+.section-red .streaming-card {
+    background: rgba(251, 246, 242, 0.94);
+    border-color: var(--gold);
+}
+
+/* text inside those cream cards stays dark (the section-level light colour
+   would otherwise wash it out). */
+.section-red .schedule-card .schedule-address,
+.section-red .gift-card .schedule-address,
+.section-red .streaming-card .schedule-address {
+    color: var(--ink-soft);
+}
+
+/* …but a bare .schedule-address sitting directly on the plum ground goes light */
+.section-red > .schedule-address { color: rgba(253, 245, 250, 0.85); }
+
+/* Orchid + gold-fern spray corner accents (asset image 4). */
+.bl-spray {
+    position: absolute;
+    width: 128px;
+    height: 168px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.95;
+    filter: drop-shadow(0 6px 12px rgba(99, 55, 80, 0.25));
+}
+
+/* Tucked into the section's TOP CORNERS, just under the motif band. The source art
+   leans right, so the RIGHT corner uses it as-is and the LEFT corner mirrors it. */
+.bl-spray-l { top: 118px; left: -30px; transform: scaleX(-1); }
+.bl-spray-r { top: 118px; right: -30px; }
+
+/* Meru tower — the tiered pura silhouette, used as a "crown"
+   on the cover, hero, closing & menu. */
+.bl-meru {
+    position: absolute;
+    background-repeat: no-repeat;
+    background-position: top center;
+    background-size: contain;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.bl-meru-cover {
+    top: 4%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 190px;
+    height: 96px;
+    z-index: 2;
+    opacity: 0.92;
+    filter: drop-shadow(0 6px 14px rgba(99, 55, 80, 0.25));
+    animation: blFloat 6s ease-in-out infinite alternate;
+}
+
+.bl-meru-hero {
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 168px;
+    height: 84px;
+    opacity: 0.85;
+    z-index: 2;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+}
+
+/* The Meru now flows INSIDE the closing stack (not pinned to the top), so
+   it sits directly above the "Terima Kasih" card with no gap. The whole
+   meru + card group is nudged up 30px (see .closing-inner). */
+.bl-meru-closing {
+    position: static;
+    display: block;
+    width: 150px;
+    height: 76px;
+    /* margin-top:auto pushes the meru + card GROUP down together; the tiny
+       bottom margin keeps the card "pepet" (tight) right under the meru. */
+    margin: auto auto 6px;
+    opacity: 0.8;
+    z-index: 2;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.bl-meru-menu {
+    position: static;
+    display: block;
+    width: 160px;
+    height: 80px;
+    margin: 0 auto 12px;
+    opacity: 0.9;
+}
+
+/* Meru crown that flows INSIDE a section head (not absolute). */
+.bl-meru-inline {
+    position: static;
+    display: block;
+    width: 150px;
+    height: 76px;
+    margin: 0 auto 14px;
+    opacity: 0.95;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+}
+
+@keyframes blFloat {
+    0% { transform: translateX(-50%) translateY(0); }
+    100% { transform: translateX(-50%) translateY(-6px); }
+}
+
+/* Orchid botanical sprays — corner accents. */
+.bl-flower {
+    position: absolute;
+    width: 118px;
+    height: 150px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.95;
+    filter: drop-shadow(0 6px 12px rgba(99, 55, 80, 0.22));
+}
+
+/* top-left of the cover frame */
+.bl-flower-tl {
+    top: -46px;
+    left: -30px;
+    width: 108px;
+    height: 138px;
+    transform: rotate(-8deg);
+}
+
+/* bottom-right of the cover frame (alternate spray, mirrored) */
+.bl-flower-br {
+    bottom: -50px;
+    right: -30px;
+    width: 108px;
+    height: 138px;
+    transform: scaleX(-1) rotate(-8deg);
 }
 
 /* ---- Shared type & ornaments -------------------------------------------- */
@@ -114,6 +408,8 @@
     color: var(--ink-soft);
 }
 
+/* Damask divider: gold hairlines flanking a mauve rhombus (a nod to the
+   gold damask diamond weave). */
 .ornament {
     display: flex;
     align-items: center;
@@ -134,16 +430,24 @@
     background: linear-gradient(90deg, var(--gold-soft), transparent);
 }
 
-.ornament svg {
-    width: 22px;
-    height: 22px;
+.ornament svg,
+.ornament .bl-diamond {
+    width: 20px;
+    height: 20px;
     flex: none;
+    fill: var(--saga);
+    stroke: var(--gold-deep);
+    stroke-width: 0.6;
 }
 
 .section {
     padding: 90px 34px;
     text-align: center;
     position: relative;
+    overflow: hidden;
+    /* translucent cream panel so the damask background reads through while the
+       text stays legible ("kental" but readable). */
+    background: rgba(251, 246, 242, 0.82);
 }
 
 .section-head {
@@ -154,6 +458,10 @@
     font-size: 2.6rem;
     margin: 6px 0 0;
 }
+
+/* (Removed the SVG diamond "damask band" on .section::before — the real
+   BALI motif image (.bl-motif) now provides that border on sections that
+   have it, so the drawn triangle band is redundant.) */
 
 /* ---- Reveal-on-scroll (host re-asserts .is-visible after re-inject) ------ */
 .reveal-item {
@@ -182,6 +490,7 @@
     padding: 40px 30px;
     background: var(--paper);
     transition: opacity 1.1s ease, transform 1.1s ease;
+    overflow: hidden;
 }
 
 .section-cover .cover-bg {
@@ -197,7 +506,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(251, 248, 241, 0.35), rgba(251, 248, 241, 0.9));
+    background: linear-gradient(180deg, rgba(251, 246, 242, 0.55), rgba(251, 246, 242, 0.92));
     z-index: 1;
 }
 
@@ -208,17 +517,21 @@
 }
 
 .cover-frame {
-    border: 1px solid var(--line);
-    padding: 46px 26px;
+    position: relative;
+    border: 1px solid var(--gold);
+    outline: 1px solid var(--line);
+    outline-offset: 5px;
+    padding: 50px 26px;
     max-width: 360px;
     margin: 0 auto;
-    background: rgba(251, 248, 241, 0.55);
+    background: rgba(251, 246, 242, 0.66);
     backdrop-filter: blur(2px);
 }
 
 .cover-frame .display-name {
     font-size: 3.6rem;
     margin: 8px 0;
+    color: var(--saga-deep);
 }
 
 .cover-frame .cover-date {
@@ -228,6 +541,20 @@
     font-size: 12px;
     color: var(--ink-soft);
     margin-top: 6px;
+}
+
+/* Kalimat pembuka (Master Quotes quote_1) — di dalam frame cover, di bawah tanggal.
+   Tanpa "quote by" (permintaan: quotes-nya saja). */
+.cover-frame .cover-quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.98rem;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    margin: 16px auto 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    max-width: 280px;
 }
 
 .cover-guest {
@@ -253,6 +580,180 @@
     pointer-events: none;
 }
 
+/* =========================================================================
+   OPENING VIDEO — a NORMAL in-flow section that sits ABOVE the hero (it's the
+   first section the guest scrolls through after opening the cover, not an
+   overlay over the hero). Full height of the phone container. The Bali
+   motion video plays once; the couple text reveals near the clip's end.
+   ========================================================================= */
+.section-opening {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 26px;
+    background: #000;
+    overflow: hidden;
+}
+
+.section-opening::before { display: none; }
+
+.section-opening .opening-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+/* darkening scrim → keeps the gold/cream card text readable over the video */
+.section-opening .opening-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+        radial-gradient(120% 90% at 50% 35%, rgba(60,31,48,0.28) 0%, rgba(60,31,48,0.62) 70%, rgba(60,31,48,0.82) 100%);
+    pointer-events: none;
+}
+
+.opening-inner {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 360px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* nudge the whole overlay (text + scroll hint) 40px up */
+    transform: translateY(-40px);
+}
+
+/* Text overlay (no frame/border). Hidden while the video plays; the JS adds
+   .is-shown near the end of the clip → fades/rises in. */
+.opening-card {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    padding: 20px;
+    margin: auto 0;
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 1.1s ease, transform 1.1s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.opening-card.is-shown {
+    opacity: 1;
+    transform: none;
+}
+
+.opening-eyebrow {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.35rem;
+    color: var(--gold-soft);
+    margin-bottom: 10px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.opening-names {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.opening-name {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 3.1rem;
+    line-height: 1.05;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fdf5fa;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
+}
+
+.opening-amp {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--gold-soft);
+    margin: 2px 0;
+}
+
+.opening-hashtag {
+    margin-top: 16px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--gold-soft);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.opening-date {
+    margin-top: 8px;
+    font-family: var(--sans);
+    font-weight: 500;
+    letter-spacing: 4px;
+    font-size: 13px;
+    color: #fdf5fa;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.opening-continue {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold-soft);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+    /* hidden until the text is revealed (video near its end) */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.8s ease, visibility 0s linear 0.8s;
+}
+
+.section-opening.opening-revealed .opening-continue {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.8s ease;
+    animation: openingBounce 1.8s ease-in-out infinite;
+}
+
+.opening-continue svg { display: block; }
+
+@keyframes openingBounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .opening-continue { animation: none; }
+}
+
 /* ---- Buttons ------------------------------------------------------------- */
 .btn {
     display: inline-flex;
@@ -265,10 +766,10 @@
     text-transform: uppercase;
     font-size: 12px;
     padding: 13px 30px;
-    border: 1px solid var(--gold);
+    border: 1px solid var(--saga-deep);
     border-radius: 40px;
-    background: var(--gold);
-    color: #fff;
+    background: var(--saga-deep);
+    color: #fff6fb;
     cursor: pointer;
     transition: all 0.35s ease;
     text-decoration: none;
@@ -276,13 +777,14 @@
 }
 
 .btn:hover {
-    background: var(--gold-deep);
-    border-color: var(--gold-deep);
+    background: var(--saga);
+    border-color: var(--saga);
 }
 
 .btn-ghost {
     background: transparent;
-    color: var(--gold-deep);
+    color: var(--saga-deep);
+    border-color: var(--gold);
 }
 
 .btn-ghost:hover {
@@ -297,9 +799,7 @@
 }
 
 /* =========================================================================
-   HERO — full-screen photo, Ken Burns zoom + floating gold glow.
-   Styling adapted from the black-gold theme (couple name centered up top,
-   verse anchored at the bottom), re-tinted to the ivory/gold palette.
+   HERO — full-screen photo, Ken Burns zoom + warm glow, Meru tower crown.
    ========================================================================= */
 .section-hero {
     position: relative;
@@ -310,11 +810,13 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 90px 24px 36px;
-    color: #f7f3ea;
-    background-color: #2a231b;
+    padding: 120px 24px 36px;
+    color: #fdf5fa;
+    background-color: var(--saga-deep);
     overflow: hidden;
 }
+
+.section-hero::before { display: none; }
 
 /* Background photo with a slow Ken Burns drift */
 .section-hero .hero-bg {
@@ -330,34 +832,28 @@
     will-change: transform;
 }
 
-/* Soft floating gold glow overlay */
+/* Soft floating warm glow overlay */
 .section-hero::after {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 1;
     background:
-        radial-gradient(circle at 22% 28%, rgba(217, 199, 166, 0.22) 0%, transparent 26%),
-        radial-gradient(circle at 78% 72%, rgba(176, 141, 87, 0.16) 0%, transparent 30%);
+        radial-gradient(circle at 22% 28%, rgba(231, 183, 145, 0.24) 0%, transparent 26%),
+        radial-gradient(circle at 78% 72%, rgba(173, 126, 153, 0.20) 0%, transparent 30%);
     filter: blur(28px);
     animation: heroGlow 14s ease-in-out infinite alternate;
     pointer-events: none;
 }
 
-/* Everything above the photo/glow */
 .section-hero > .hero-header,
 .section-hero > .hero-bottom {
     position: relative;
-    z-index: 2;
+    z-index: 3;
     width: 100%;
     flex: none;
 }
 
-/* Header pinned to the TOP (it's the first flex child, no top auto-margin). */
-
-/* Bottom cluster pinned to the BASE: margin-top:auto pushes the verse +
-   scroll indicator all the way down, leaving the entire middle open so the
-   photo of the couple is the focus. */
 .hero-bottom {
     margin-top: auto;
     display: flex;
@@ -377,7 +873,6 @@
     100% { transform: translate(-2%, -3%); opacity: 0.45; }
 }
 
-/* Couple name block (top) */
 .section-hero .hero-header {
     width: 100%;
 }
@@ -393,12 +888,18 @@
     line-height: 1.05;
     color: #fff;
     margin: 12px 0 4px;
-    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
 }
 
 .hero-ornament {
-    color: var(--gold-soft);
     margin: 14px auto 12px;
+}
+
+.hero-ornament span {
+    background: linear-gradient(90deg, transparent, var(--gold-soft));
+}
+.hero-ornament span:last-child {
+    background: linear-gradient(90deg, var(--gold-soft), transparent);
 }
 
 .hero-date {
@@ -409,7 +910,6 @@
     color: var(--gold-soft);
 }
 
-/* Verse flows in the centre (flex handles spacing — no absolute overlap) */
 .hero-quote {
     padding: 0 16px;
     max-width: 380px;
@@ -418,8 +918,8 @@
     font-style: italic;
     font-size: 1.05rem;
     line-height: 1.7;
-    color: rgba(255, 255, 255, 0.92);
-    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
+    color: rgba(255, 248, 252, 0.94);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
 }
 
 .hero-verse-ref {
@@ -436,10 +936,11 @@
 @media (prefers-reduced-motion: reduce) {
     .section-hero .hero-bg { animation: none; }
     .section-hero::after { animation: none; }
+    .bl-meru-cover { animation: none; }
 }
 
 .scroll-indicator {
-    z-index: 2;
+    z-index: 3;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -480,7 +981,13 @@
 /* =========================================================================
    COUPLE
    ========================================================================= */
+.section-couple {
+    background: rgba(251, 246, 242, 0.86);
+}
+
 .couple-row {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -488,21 +995,29 @@
     margin-top: 40px;
 }
 
+/* Round photo framed with a gold ring + mauve hairline (damask medallion). */
+.couple-photo-wrap {
+    position: relative;
+    padding: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--paper) 65%, transparent 66%);
+    box-shadow: 0 0 0 1px var(--gold), 0 0 0 6px var(--paper), 0 0 0 7px var(--line);
+}
+
 .couple-photo {
-    width: 200px;
-    height: 200px;
+    width: 196px;
+    height: 196px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid var(--gold-soft);
-    padding: 8px;
-    background: var(--paper);
+    display: block;
+    border: 3px solid var(--paper);
 }
 
 .couple-name {
     font-family: var(--serif);
     font-size: 2rem;
     font-weight: 500;
-    color: var(--ink);
+    color: var(--saga-deep);
     margin: 4px 0 0;
 }
 
@@ -535,7 +1050,7 @@
     font-family: var(--serif);
     font-style: italic;
     font-size: 2.4rem;
-    color: var(--gold);
+    color: var(--saga);
     margin: 26px 0;
 }
 
@@ -543,7 +1058,7 @@
    SCHEDULE
    ========================================================================= */
 .section-schedule {
-    background: var(--paper-2);
+    background: rgba(243, 231, 238, 0.84);
 }
 
 .schedule-grid {
@@ -554,14 +1069,27 @@
 }
 
 .schedule-card {
+    position: relative;
     border: 1px solid var(--line);
     background: var(--paper);
     padding: 34px 26px;
     text-align: center;
 }
 
+/* corner ticks — a small damask-frame flourish on each card */
+.schedule-card::before,
+.schedule-card::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--gold);
+}
+.schedule-card::before { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
+.schedule-card::after { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
+
 .schedule-card .schedule-icon {
-    color: var(--gold);
+    color: var(--saga);
     margin-bottom: 8px;
 }
 
@@ -569,7 +1097,7 @@
     font-family: var(--serif);
     font-size: 1.7rem;
     font-weight: 500;
-    color: var(--ink);
+    color: var(--saga-deep);
     margin: 0 0 12px;
 }
 
@@ -597,10 +1125,8 @@
     font-size: 12px;
     color: var(--ink-soft);
     line-height: 1.6;
-    margin: 6px 0 18px;
+    margin: 6px auto 18px;
     max-width: 260px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 /* =========================================================================
@@ -624,14 +1150,15 @@
     font-family: var(--serif);
     font-size: 2.4rem;
     font-weight: 500;
-    color: var(--gold-deep);
+    color: #fff6fb;
     width: 66px;
     height: 66px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--line);
-    background: var(--paper);
+    border: 1px solid var(--gold);
+    background: var(--saga-deep);
+    box-shadow: inset 0 0 0 3px rgba(194, 165, 104, 0.25);
 }
 
 .countdown-label {
@@ -646,13 +1173,13 @@
     font-family: var(--serif);
     font-style: italic;
     font-size: 1.15rem;
-    color: var(--gold-deep);
+    color: var(--saga-deep);
     margin-top: 10px;
     line-height: 1.6;
 }
 
 /* =========================================================================
-   FORMS (RSVP + WISHES) — glass-free, paper-styled
+   FORMS (RSVP + WISHES) — paper-styled
    ========================================================================= */
 .paper-form {
     border: 1px solid var(--line);
@@ -684,13 +1211,13 @@
 }
 
 .custom-input:focus {
-    border-color: var(--gold);
+    border-color: var(--saga);
 }
 
 select.custom-input {
     appearance: none;
     -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%238a6d3f' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23a5713f' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
 }
@@ -709,7 +1236,7 @@ select.custom-input {
 }
 
 .thank-you-message strong {
-    color: var(--gold-deep);
+    color: var(--saga-deep);
     font-weight: 600;
 }
 
@@ -742,7 +1269,7 @@ select.custom-input {
     font-family: var(--serif);
     font-size: 1.15rem;
     font-weight: 500;
-    color: var(--ink);
+    color: var(--saga-deep);
 }
 
 .wish-time {
@@ -794,7 +1321,7 @@ select.custom-input {
     height: 11px;
     border-radius: 50%;
     background: var(--paper);
-    border: 2px solid var(--gold);
+    border: 2px solid var(--saga);
 }
 
 .story-date {
@@ -809,7 +1336,7 @@ select.custom-input {
     font-family: var(--serif);
     font-size: 1.4rem;
     font-weight: 500;
-    color: var(--ink);
+    color: var(--saga-deep);
     margin: 4px 0;
 }
 
@@ -822,12 +1349,10 @@ select.custom-input {
 }
 
 /* =========================================================================
-   SHARE HAPPINESS — story carousel (adapted from netflix, re-styled to
-   the ivory/gold "Timeless" palette). Horizontal snap "stories" with
-   segmented progress bars, play button, caption + chapter, dot nav.
+   SHARE HAPPINESS — story carousel
    ========================================================================= */
 .section-happiness {
-    background: var(--paper-2);
+    background: rgba(243, 231, 238, 0.84);
 }
 
 .story-carousel-wrapper {
@@ -867,14 +1392,14 @@ select.custom-input {
     border-radius: 10px;
     overflow: hidden;
     aspect-ratio: 9 / 16;
-    box-shadow: 0 16px 34px rgba(70, 55, 30, 0.28);
+    box-shadow: 0 16px 34px rgba(99, 55, 80, 0.3);
     border: 1px solid var(--line);
     transition: border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .story-slide.is-active .card-inner {
     border-color: var(--gold);
-    box-shadow: 0 18px 42px rgba(70, 55, 30, 0.34), 0 0 0 1px var(--gold-soft);
+    box-shadow: 0 18px 42px rgba(99, 55, 80, 0.36), 0 0 0 1px var(--gold-soft);
 }
 
 .card-photo,
@@ -889,17 +1414,15 @@ select.custom-input {
 .card-photo { z-index: 1; }
 .card-frame { z-index: 2; }
 
-/* Readability gradient over the photo */
 .card-inner::after {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 3;
-    background: linear-gradient(rgba(47,42,36,0.28) 0%, rgba(47,42,36,0) 26%, rgba(47,42,36,0) 48%, rgba(47,42,36,0.8) 100%);
+    background: linear-gradient(rgba(60,31,48,0.28) 0%, rgba(60,31,48,0) 26%, rgba(60,31,48,0) 48%, rgba(60,31,48,0.82) 100%);
     pointer-events: none;
 }
 
-/* Segmented progress bars at the top */
 .card-progress {
     position: absolute;
     top: 8px;
@@ -922,7 +1445,6 @@ select.custom-input {
     background: var(--gold-soft);
 }
 
-/* "I STORY" badge (monogram uses initials-friendly serif) */
 .card-badge {
     position: absolute;
     top: 18px;
@@ -947,7 +1469,6 @@ select.custom-input {
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
-/* Bottom info: caption + chapter tag */
 .card-bottom {
     position: absolute;
     left: 0;
@@ -998,7 +1519,7 @@ select.custom-input {
 }
 
 .story-dot-nav.is-active {
-    background: var(--gold);
+    background: var(--saga);
     opacity: 1;
     width: 22px;
     border-radius: 5px;
@@ -1037,7 +1558,7 @@ select.custom-input {
 .gallery-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(47, 42, 36, 0.35);
+    background: rgba(60, 31, 48, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1057,8 +1578,6 @@ select.custom-input {
 /* =========================================================================
    GIFT
    ========================================================================= */
-/* 1 rekening → satu kartu besar & terpusat (default).
-   2 rekening → dua kartu berdampingan (side by side). */
 .gift-accounts {
     display: flex;
     flex-direction: column;
@@ -1084,7 +1603,6 @@ select.custom-input {
     margin: 0 auto;
 }
 
-/* Side-by-side cards: narrower, equal height, tighter type. */
 .gift-accounts.is-duo .gift-card {
     flex: 1 1 0;
     min-width: 0;
@@ -1117,7 +1635,7 @@ select.custom-input {
     font-family: var(--serif);
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--gold-deep);
+    color: var(--saga-deep);
     margin-bottom: 12px;
 }
 
@@ -1149,7 +1667,7 @@ select.custom-input {
     font-size: 11px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--gold-deep);
+    color: var(--saga-deep);
     background: transparent;
     border: 1px solid var(--gold);
     border-radius: 30px;
@@ -1185,16 +1703,13 @@ select.custom-input {
 }
 
 .streaming-card .streaming-icon {
-    color: var(--gold);
+    color: var(--saga);
     margin-bottom: 14px;
 }
 
 /* =========================================================================
    CLOSING + FOOTER
    ========================================================================= */
-/* Full-height dark closing with a photo backdrop. It intentionally mirrors the
-   dark hero so the invitation is "bookended" — a clear break from the light
-   ivory sections above it. */
 .section-closing {
     position: relative;
     min-height: 100vh;
@@ -1203,23 +1718,22 @@ select.custom-input {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 60px 34px 32px;
-    color: #f7f3ea;
-    background-color: #2a231b;
+    padding: 130px 34px 32px;
+    color: #fdf5fa;
+    background-color: var(--saga-deep);
     overflow: hidden;
 }
 
-/* Gold hairline at the very top → visual divider from the previous section */
 .section-closing::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 120px;
-    height: 2px;
+    left: 0;
+    right: 0;
+    height: 16px;
+    background: var(--damask-band) repeat-x top center;
+    opacity: 0.6;
     z-index: 3;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
 }
 
 .section-closing .closing-bg {
@@ -1230,15 +1744,29 @@ select.custom-input {
     z-index: 0;
 }
 
+/* No margin-top:auto here — the meru above owns the auto margin so the two
+   stay tight together. The group's -30px lift lives on .bl-meru-closing's
+   margin-top; we must NOT use `transform` on this element because it carries
+   .reveal-item, whose .is-visible state resets `transform` to none and would
+   cancel the lift. */
 .closing-inner {
     position: relative;
     z-index: 2;
-    margin-top: auto;
+    /* Lifts the meru + card group 30px: this extra bottom margin eats into
+       the footer's auto-margin space, shifting the group upward. Uses margin
+       (not transform) because .reveal-item.is-visible resets transform. */
+    margin-bottom: 30px;
 }
 
 .closing-ornament {
-    color: var(--gold-soft);
     margin: 0 auto 18px;
+}
+
+.closing-ornament span {
+    background: linear-gradient(90deg, transparent, var(--gold-soft));
+}
+.closing-ornament span:last-child {
+    background: linear-gradient(90deg, var(--gold-soft), transparent);
 }
 
 .section-closing .eyebrow {
@@ -1252,7 +1780,7 @@ select.custom-input {
     color: #fff;
     line-height: 1.2;
     margin: 8px 0 18px;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.45);
 }
 
 .closing-quote {
@@ -1260,7 +1788,7 @@ select.custom-input {
     font-style: italic;
     font-size: 1.15rem;
     line-height: 1.7;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 248, 252, 0.92);
     max-width: 320px;
     margin: 0 auto;
 }
@@ -1271,7 +1799,7 @@ select.custom-input {
     font-weight: 500;
     color: var(--gold-soft);
     margin-top: 28px;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.45);
 }
 
 .invitation-footer {
@@ -1281,6 +1809,7 @@ select.custom-input {
     padding-top: 40px;
     text-align: center;
     font-family: var(--sans);
+    transform: translateY(-50px);   /* lifted 50px off the bottom edge */
 }
 
 .footer-name {
@@ -1291,7 +1820,7 @@ select.custom-input {
 
 .footer-info {
     font-size: 11px;
-    color: rgba(247, 243, 234, 0.7);
+    color: rgba(253, 245, 250, 0.72);
     line-height: 1.8;
     margin-top: 6px;
 }
@@ -1317,9 +1846,6 @@ select.custom-input {
 /* =========================================================================
    FLOATING UI (FAB) + MODALS
    ========================================================================= */
-/* Full-viewport overlay so buttons anchor to real corners (black-gold pattern).
-   On desktop it's clamped to the 480px phone column on the right so the FAB
-   never floats out over the decorative sidebar. */
 .floating-ui-container {
     position: fixed;
     inset: 0;
@@ -1338,18 +1864,17 @@ select.custom-input {
     }
 }
 
-/* Menu button → top-right corner */
 .btn-menu {
     position: absolute;
     top: 20px;
     right: 24px;
     width: 50px;
     height: 50px;
-    background: var(--gold);
-    color: #fff;
+    background: var(--saga-deep);
+    color: #fff6fb;
+    border-color: var(--gold);
 }
 
-/* Playback/QR controls → stacked vertically at the bottom-right corner */
 .bottom-controls {
     position: absolute;
     bottom: 24px;
@@ -1366,24 +1891,24 @@ select.custom-input {
     border-radius: 50%;
     border: 1px solid var(--gold);
     background: var(--paper);
-    color: var(--gold-deep);
+    color: var(--saga-deep);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(70, 55, 30, 0.18);
+    box-shadow: 0 8px 20px rgba(99, 55, 80, 0.22);
     transition: all 0.3s ease;
     pointer-events: auto;
 }
 
 .floating-btn:hover {
-    background: var(--gold);
-    color: #fff;
+    background: var(--saga-deep);
+    color: #fff6fb;
 }
 
 .floating-btn.music-playing {
-    background: var(--gold);
-    color: #fff;
+    background: var(--saga-deep);
+    color: #fff6fb;
 }
 
 /* Menu modal */
@@ -1391,7 +1916,7 @@ select.custom-input {
     position: fixed;
     inset: 0;
     z-index: 200;
-    background: rgba(244, 238, 225, 0.97);
+    background: rgba(243, 231, 238, 0.97);
     backdrop-filter: blur(4px);
     display: none;
     flex-direction: column;
@@ -1418,7 +1943,7 @@ select.custom-input {
 .menu-couple {
     font-family: var(--serif);
     font-size: 2.2rem;
-    color: var(--ink);
+    color: var(--saga-deep);
     margin: 6px 0;
 }
 
@@ -1450,7 +1975,7 @@ select.custom-input {
 }
 
 .menu-list a:hover {
-    color: var(--gold);
+    color: var(--saga);
 }
 
 /* QR modal (host injects the QR into #qr-modal .qr-slot) */
@@ -1458,7 +1983,7 @@ select.custom-input {
     position: fixed;
     inset: 0;
     z-index: 200;
-    background: rgba(47, 42, 36, 0.6);
+    background: rgba(60, 31, 48, 0.62);
     display: none;
     align-items: center;
     justify-content: center;
@@ -1471,7 +1996,7 @@ select.custom-input {
 
 .qr-card {
     background: var(--paper);
-    border: 1px solid var(--line);
+    border: 1px solid var(--gold);
     padding: 30px;
     text-align: center;
     max-width: 320px;
@@ -1480,6 +2005,7 @@ select.custom-input {
 .qr-card .display-name {
     font-size: 1.4rem;
     margin-bottom: 14px;
+    color: var(--saga-deep);
 }
 
 /* Utility */
