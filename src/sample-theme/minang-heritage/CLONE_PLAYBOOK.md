@@ -474,3 +474,379 @@ Prefix `mg-` → `bl-`, plus:
   (ketemu sisa `#fff8ef` di sidebar).
 - **Cek kata di komentar**: rename `Minang`→`Bali` tidak kena `Minangkabau`.
   Komentar yang bohong lebih berbahaya daripada tidak ada komentar.
+
+---
+
+## 11. Bukti pakai: `jawa-heritage` (klon ke-3, 2026-07-15)
+
+Source **"Java Heritage"** → `src/sample-theme/jawa-heritage/`. **Semua cek §7 +
+§10.4 hijau di percobaan pertama**, tanpa satu pun jebakan terulang. Palet §10.1
+terbukti lagi (inviee): tinggal tukar 2 warna + aset.
+
+| | Minang | Bali | **Jawa** |
+|---|---|---|---|
+| radial | `#8D4A4A`→`#471C1C` | `#AD7E99`→`#633750` | `#8B5B43`→`#472A1C` |
+| overlay | `#471C1C` | `#633750` | **`#5C4324`** ← beda! |
+| emas | `#c79369` | `#D7BB83`→`#A38C5E` | `#D7BB83`→`#A38C5E` |
+
+### 11.1. BARU: jangan asumsikan aset klon berikutnya SAMA PERANNYA
+
+§10.1 bilang klon inviee "nyaris mekanis" — **itu benar untuk resep CSS, TIDAK
+untuk peta aset.** Di Jawa tiga hal berbeda dan cuma ketahuan karena tiap gambar
+benar-benar **dilihat** (§2 langkah 2):
+
+1. **Tidak ada `JAWA-ICON.webp`.** Peran "mahkota" dipegang `JAWA-GUNUNGAN.webp`
+   (nama file baru, tak ada padanannya di Minang/Bali).
+2. **`JAWA-COUPLE-1` BUKAN bunga** — itu gunungan miring. Yang bunga justru
+   `COUPLE-2`. Kalau menyalin peta slot Bali mentah-mentah, aksen sudut jadi
+   bunga dan frame cover jadi gunungan — tertukar.
+3. **`COUPLE-1` + `COUPLE-3` = PASANGAN CERMIN ASLI** (miring kiri & kanan).
+   Minang/Bali cuma punya 1 gambar lalu dicerminkan CSS `scaleX(-1)`.
+   → Jawa pakai **8 slot** (bukan 7), dan `.jw-spray-l` **wajib TANPA**
+   `scaleX(-1)` — kalau tidak, artwork yang sudah benar malah terbalik.
+
+> **Aturan: resep CSS boleh disalin, peta slot WAJIB diverifikasi ulang per
+> source.** Nama file yang mirip ≠ peran yang sama.
+
+### 11.2. BARU: awas CSS mepet 50K setelah reskin
+
+Reskin **menambah** ukuran (komentar penjelasan + nama kelas lebih panjang):
+`index.css` sempat **49.816** — cuma **184 char** dari batas §1.2. Satu edit kecil
+berikutnya → 2 chunk → jebakan `#ERROR!` hidup lagi.
+
+**Cek headroom, bukan cuma "1 chunk aman":**
+```bash
+node -e 'const s=require("fs").readFileSync("index.css","utf8");
+console.log(s.length, "| headroom:", 50000-s.length)'
+```
+Kalau < ~1000 char, buang komentar yang mubazir (mis. blok NOTE base64 yang sudah
+diulang di header). Di sini dipangkas → 49.418 (headroom 582).
+
+### 11.3. §10.3 terbukti lagi: source Jawa juga TIDAK pakai istilah daerah (lihat juga §12.3)
+
+`grep` (panggih/siraman/midodareni/pawiwahan) → **nihil**. Copy-nya Islami/Indonesia
+persis Minang & Bali (QS. Ar-Rum 21, "Akad Nikah"), eyebrow-nya cuma **"mempelai"**.
+Jadi tiga source inviee ini **seragam**: yang "kedaerahan" hanya **dekorasinya**.
+Untuk source inviee berikutnya, **anggap default-nya begitu** — tetap `grep` untuk
+memastikan, tapi jangan mulai dengan mengarang istilah.
+
+---
+
+## 12. Bukti pakai: `sunda-heritage` (klon ke-4, 2026-07-15)
+
+Source **"Sunda Heritage"** → `src/sample-theme/sunda-heritage/`. Skeleton di-clone
+dari **`jawa-heritage`** (bukan Minang) karena Jawa sudah memecahkan masalah
+"pasangan cermin asli" yang juga dipunyai Sunda. Semua cek §7 + §10.4 hijau.
+
+| | Minang | Bali | Jawa | **Sunda** |
+|---|---|---|---|---|
+| radial | `#8D4A4A`→`#471C1C` | `#AD7E99`→`#633750` | `#8B5B43`→`#472A1C` | `#CFA476`→`#997949` |
+| overlay | `#471C1C` | `#633750` | `#5C4324` | `#997949` (= tepi radial) |
+| pattern | 150px / .3 | 150px / .3 | 150px / .3 | **200px / .35** ← beda! |
+| slot | 7 | 7 | 8 | **9** |
+
+### 12.1. BARU: "resep rumah inviee" TIDAK sepenuhnya konstan — cek angkanya
+
+§10.1 menyimpulkan `150px auto` + `opacity .3` + `multiply` itu "resep rumah
+inviee, bukan kebetulan". **Untuk Sunda itu SALAH**: source-nya
+`background-size: 200px auto` + `opacity: 0.35`. `multiply`-nya tetap sama.
+
+> Yang konstan cuma **bentuk** resepnya (radial ground + overlay pattern
+> multiply), **bukan angkanya**. Tetap `grep` resep tiap source (§3) — jangan
+> menyalin angka dari tema saudara. Ini kembaran §11.1, tapi untuk **CSS**:
+> §11.1 = peta slot wajib diverifikasi, §12.1 = angka resep wajib diverifikasi.
+
+### 12.2. BARU: skema nama file inviee bisa berganti total antar-angkatan
+
+Minang/Bali/Jawa = upload **2024/12**, pola `<DAERAH>-BACKGROUND/PATTERN/MOTIF-*`.
+Sunda = upload **2025/08**, polanya **beda total** — tak ada satu pun nama yang
+sepadan:
+
+| Peran | Minang/Bali/Jawa | **Sunda** |
+|---|---|---|
+| latar halaman | `<D>-BACKGROUND.webp` | `MOTION-SUNDA-1-FIXED-BG.webp` |
+| band atas/bawah | `<D>-MOTIF-ATAS/BAWAH.webp` | `Sunda-Heritage-Top-6/Bottom-6.webp` |
+| pattern | `<D>-PATTERN.webp` | `SUNDA-PATTERN-**2**.webp` |
+| aksen sudut | `<D>-COUPLE-N.webp` | `Sunda-1-Couple-Depan/Belakang(-Flip).webp` |
+
+→ **Jangan tebak URL aset dari pola tema sebelumnya** (semua akan 404). Selalu
+mulai dari §2 langkah 1b (`grep url(...)` di file `.css` source).
+
+### 12.3. §11.1 terbukti lagi, malah DUA pasang cermin
+
+Sunda menyediakan artwork kiri & kanan asli untuk **dua** peran sekaligus →
+**9 slot** (Jawa 8, Minang/Bali 7). Jadi `.sn-flower-br` **wajib dibuang**
+`scaleX(-1)`-nya (warisan Jawa yang cuma punya 1 gambar untuk peran itu) —
+kalau tidak, artwork `-Depan.webp` yang sudah benar malah terbalik.
+
+`Depan` vs `Belakang` = **dua rangkaian bunga berbeda** (Depan lebih besar &
+rapat), bukan duplikat. Ketahuan cuma karena tiap gambar **dilihat**.
+
+`SUNDA-ICON.webp` = **siger + bendo** (mahkota pengantin) — perannya sama dengan
+`JAWA-GUNUNGAN` (mahkota cover/hero/closing/menu + siluet sidebar).
+
+### 12.4. BARU: rename `Jawa`→`Sunda` MENINGGALKAN istilah budaya di komentar
+
+§10.5 sudah mewanti "cek kata di komentar", tapi di sini skalanya besar: setelah
+sed `Jawa`→`Sunda`, komentar **masih** berisi `gunungan`, `kawung`, `wayang`,
+`sogan`, `joglo`, `tree-of-life`, `pink-lily` — semuanya istilah **Jawa** yang
+salah untuk Sunda, dan beberapa **membohongi** pembaca berikutnya (mis. komentar
+"overlay sengaja BEDA dari tepi radial" — untuk Sunda keduanya **sama**).
+
+Daftar sapuan yang perlu (di luar prefix & hook):
+```bash
+grep -inE 'jawa|javanese|kawung|wayang|gunungan|sogan|joglo|tree-of-life|lily|batik' index.*
+```
+Padanan Sunda: gunungan→**siger**, kawung/batik band→**motif band**,
+joglo→**imah panggung**, sogan→**gold/emas**, pink-lily→**marigold-anggrek**.
+Sisakan sebutan "Jawa/Minang/Bali" **hanya** kalau memang komentar pembanding.
+
+### 12.5. BARU: `#btn-show-qr` DUPLIKAT itu normal — jangan "diperbaiki"
+
+Harness §10.4-ku melaporkan `#btn-show-qr` 2× sebagai pelanggaran (mengira kasus
+memory `game-theme-clone-invsource-duplicate-id`). **Alarm palsu** — sudah
+dibuktikan di kode host, bukan diasumsikan:
+
+- Host **mendelegasikan** tombol: `target.closest('#btn-show-qr')`
+  (`ThemeWrapper.tsx:521` & `:809`) → dua tombol dua-duanya jalan.
+- Yang **wajib unik** cuma elemen yang dibaca host **by value** via
+  `getElementById`: `wish-name`, `wish-message`, `rsvp-status`, `rsvp-guests`,
+  `rsvp-code`, `bg-music`, `play-icon`, `pause-icon`. Di situlah duplikat bikin
+  host membaca **salinan kosong**.
+- Minang & Jawa juga 2× dan **hidup di produksi**.
+
+Tombol inline + tombol floating memang sengaja berbagi ID. **Aturan: pisahkan
+cek "unik" (by-value) dari cek "ada" (delegated).**
+
+### 12.6. Catatan harness §10.4 (dua alarm palsu lagi)
+
+Konsisten dengan §7 & §10.4 — **harness-nya** yang salah, bukan temanya:
+
+1. **`{{...}}` di dalam komentar CSS** dilaporkan "CSS ikut ke-parse". Itu cuma
+   dokumentasi. **Buang komentar dulu** sebelum cek (persis §7 koreksi 2, tapi
+   untuk CSS).
+2. **`.mock-app-screen` dobel**: `index.html` tema **sudah** punya elemen itu;
+   harness-ku membungkusnya lagi → cek "`.sn-page-bg` anak pertama" gagal padahal
+   benar. Render `index.html` **apa adanya**, jangan dibungkus.
+3. Hitungan tag `{{#hidden}}`/`{{/hidden}}` **terlihat timpang (3 vs 6)** →
+   **normal**: parser asli (`templateParser.ts:56`) memakai regex
+   `\{\{\s*([#\^])(if|each|unless|hidden)\s+...` — `#` **dan** `^` sama-sama
+   pembuka. Jadi 3 `#` + 3 `^` = 6 `/` **seimbang**. Identik dengan §10.4.
+
+**Yang terbukti manjur:** jangan bikin parser tiruan — **transpile
+`templateParser.ts` asli** dengan `typescript` milik repo lalu render:
+```js
+const ts = require('<repo>/node_modules/typescript');
+const js = ts.transpileModule(src, {compilerOptions:{module: ts.ModuleKind.CommonJS}}).outputText;
+const mod = {exports:{}}; new Function('exports','module','require', js)(mod.exports, mod, require);
+mod.exports.parseTemplate(html, data);   // lalu assert pakai jsdom
+```
+(Mesin ini **tidak punya** `python`, `tsx`, atau `--experimental-strip-types`;
+`require` dari scratchpad harus pakai path absolut ke `node_modules` repo.)
+
+### 12.7. Video motion: URL ikut ter-rename otomatis — pastikan hidup
+
+Pola §10.1 (`assets.inviee.id/heritage/<Daerah>-Motion-HD.mp4`) **masih berlaku**
+di angkatan 2025 walau nama aset lain berubah total. sed `Jawa`→`Sunda` kebetulan
+menghasilkan URL yang benar; **tetap buktikan**, jangan diandalkan:
+```bash
+curl -sIL -o /dev/null -w "%{http_code} %{content_type}\n" \
+  "https://assets.inviee.id/heritage/Sunda-Motion-HD.mp4"   # -> 200 video/mp4
+```
+`MOTION-SUNDA-1-FALLBACK.webp` = poster/fallback video, **bukan** slot aset.
+
+---
+
+## 13. Bukti pakai: 6 tema sekaligus (klon ke-5..10, 2026-07-15)
+
+`banjar`, `batak`, `betawi`, `bugis`, `dayak`, `palembang` — dibuat **paralel**
+(6 builder + 6 reviewer adversarial), skeleton = `sunda-heritage`. Semua lolos
+§7 + §10.4 + harness render independen.
+
+| tema | prefix | radial center → edge | overlay | slot |
+|---|---|---|---|---|
+| banjar | `bj-` | `#722C2C` → `#361111` | `#361111` | 7 |
+| batak | `bt-` | `#B3534F` → `#98121C` | `#98121C` | 8 |
+| betawi | `bw-` | `#5D946C` → `#2A623A` | `#2A623A` | 7 |
+| bugis | `bu-` | `#6A9951` → `#29421C` | `#29421C` | 8 |
+| dayak | `dy-` | `#727272` → `#1B1B1B` | `#1B1B1B` | 7 |
+| palembang | `pl-` | `#8A1B26` → `#4C030A` | `#4C030A` | 7 |
+
+**Keenamnya `150px auto` / `opacity .3` / `multiply`** → §12.1 makin kuat:
+Sunda (200px/.35) memang **satu-satunya** pengecualian sejauh ini. Tetap `grep`.
+
+### 13.1. BARU: inviee punya (minimal) TIGA angkatan, bukan dua
+
+| angkatan | contoh | skema nama |
+|---|---|---|
+| 2024/12 | minang, bali, jawa, **batak**, **bugis** | `<DAERAH>-BACKGROUND/PATTERN/MOTIF-ATAS/COUPLE-N.webp` (UPPERCASE) |
+| 2025/02 | **banjar**, **betawi**, **dayak**, **palembang** | `<Daerah>-Background/Seamless-Pattern/Motif-Atas/Couple-Belakang-N.webp` (Titlecase) |
+| 2025/07-08 | sunda, chinese | nama bebas (`MOTION-SUNDA-1-FIXED-BG`, `chinese-bg-all-<hash>`) |
+
+Konsekuensi penomoran slot:
+- **2024/12 punya `COUPLE-2`** (bunga terpisah) → **8 slot**; frame cover pakai
+  slot 8 **dua kali** → `.flower-br` **WAJIB** `scaleX(-1)`.
+- **2025/02 TIDAK punya** padanan `COUPLE-2` → **7 slot**; frame cover memakai
+  ulang pasangan cermin slot 4/5 → **TANPA** `scaleX(-1)`.
+
+> Jadi aturan scaleX bukan "selalu jangan": **1 gambar dipakai 2× → PERLU
+> scaleX; 2 artwork cermin asli → JANGAN scaleX.** Cek dulu tema ini punya
+> berapa artwork untuk peran itu.
+
+### 13.2. BARU (PENTING): nomor `COUPLE-N` TIDAK konsisten antar-tema
+
+Source CSS membuktikan slot kiri/kanan **terbalik** antara dua tema seangkatan:
+
+| tema | KIRI (25% 60%) | KANAN (75% 60%) |
+|---|---|---|
+| batak | `BATAK-COUPLE-3` | `BATAK-COUPLE-1` |
+| **bugis** | **`BUGIS-COUPLE-1`** | **`BUGIS-COUPLE-3`** |
+| banjar/betawi/dayak/palembang | `…-Couple-Belakang-2` | `…-Couple-Belakang-1` |
+
+Dan `BUGIS-COUPLE-1` **byte-identik** dengan `BATAK-COUPLE-3` (83.228 bytes) —
+artwork sama, penomoran beda. **Menyalin peta slot antar-tema = artwork
+terbalik.** Selalu ambil dari `background-position` di CSS source tema itu.
+
+### 13.3. BARU: aset bisa ngumpet di HTML, bukan cuma CSS (§2 langkah 1b kurang)
+
+`<Daerah>-Icon.webp` (mahkota) **tidak muncul** di sapuan `grep url(...) *.css` —
+di angkatan 2025/02 ikon dipasang sebagai `<img src=...>` di **HTML**. Nyaris
+terlewat; ketahuan karena curiga "kok tema lain punya ICON". Sapu **dua-duanya**:
+```bash
+grep -rhoiE '[A-Za-z0-9-]+\.(webp|png)' "Nama Situs.html" | sort -u   # <img src>
+```
+Lalu **buktikan** URL tebakan hidup (`curl -sIL -w '%{http_code}'`) **dan**
+file-nya benar gambar — 404 WordPress balasnya **HTTP 200 + halaman HTML**, jadi
+`http_code` saja menipu. Cek magic bytes:
+```bash
+head -c 4 file.webp   # harus RIFF; kalau '<!DO' itu halaman 404
+```
+Ini kejadian: `Betawi-Background.webp` (tebakan) → 404 HTML, sedangkan nama
+**asli**-nya `Betawi-Backgroud.webp` — **typo milik source**. Jangan "betulkan"
+nama file source.
+
+### 13.4. Nama file source yang menyimpang (jangan diseragamkan)
+
+| tema | menyimpang |
+|---|---|
+| betawi | `Betawi-Backgroud.webp` (typo asli) |
+| palembang | `Palembang-Motif-Bawah-**1**.webp`, `Palembang-**Pattern-Seamless**.webp` (dibalik dari `Seamless-Pattern`) |
+
+### 13.5. Prefix: awas bentrok dengan ID host
+
+Prefix bugis **tidak boleh** `bg-` → bentrok `#bg-music` (ID host) dan
+`.<p>-red-bg`. Dipakai `bu-`. Cek prefix baru terhadap daftar ID host §1.3.
+
+### 13.6. Harness §10.4: DUA alarm palsu baru (punyaku sendiri, lagi)
+
+Konsisten dengan §7/§10.4/§12.6 — kalau alarm menyala, **buktikan dulu**:
+
+1. **"leftover sunda"** — 6 tema kena, semuanya **PALSU**. Yang ke-match itu
+   komentar *lineage/pembanding* yang justru **diminta** §12.4 (mis. `Cloned in
+   structure from "sunda-heritage"`, `150px/.3 di sini — Sunda yang 200px/.35`).
+   → cek leftover **hanya pada KODE**: buang komentar CSS/JS **dan** `<!-- -->`
+   HTML dulu, lalu match identifier saja (`__sundaCleanup`, `sn-`, `snFloat`).
+2. **`getElementById` "hilang"** (`wedding-calendar`, `story-carousel`):
+   - `wedding-calendar` itu **cabang pertama rantai `||`**:
+     `getElementById('wedding-calendar') || getElementById('<p>-wed-date')`
+     (memory `theme-countdown-sources`). Absen **memang desainnya** di keluarga
+     `timeless`; ada di `black-gold`/`netflix`/dll. Cukup **rantainya** resolve.
+   - `story-carousel` ada di balik `{{#if flag_pakai_additional_feature_story_balasan_instagram}}`
+     → fixture render harus **menyalakan flag**-nya, kalau tidak elemennya tak
+     pernah ada. **Ambil nama flag dari tema** (`grep '{{#if' index.html`),
+     jangan mengarang (`flag_use_story` dsb **tidak ada**).
+
+**Kalibrasi harness: uji dulu ke tema yang SUDAH benar** (`sunda`, `jawa`) —
+kalau di situ merah, harness-nya yang salah. Tapi **jangan** samakan parameter:
+`minang`/`bali` (7 slot) **memang** 1 gambar + `scaleX(-1)`, jadi "gagal" di cek
+pasangan-cermin = benar, bukan bug (§13.1).
+
+### 13.7. Cara kerja yang terbukti untuk batch besar
+
+6 builder paralel + **6 reviewer adversarial** (1:1 per tema) + **harness
+independen** milik sendiri. Reviewer meloloskan semuanya, dan harness-ku juga —
+setelah 2 alarm palsu **milik harness** dikoreksi. Kunci: SPEC ditulis **sekali**
+dari source (§13.2/§13.4 di dalamnya), lalu builder **dilarang** menurunkan
+angka sendiri.
+
+---
+
+## 14. Bukti pakai: `jawa-blue-heritage` ("Blue Javanese", klon ke-11, 2026-07-15)
+
+Angkatan **2025/07-08** (seangkatan `chinese`). Ini klon pertama yang **BUKAN**
+keluarga resep 3-layer — jadi §4 **tidak berlaku**. Lolos §7 + harness render.
+
+### 14.1. BARU: cek folder source LAGI sebelum bilang "tinggal N tema"
+
+User menambah `jawa-blue` **di tengah sesi**, setelah listing awalku. Untung
+user menyuruh cek ulang. **Sebelum menyimpulkan sisa pekerjaan, `ls` ulang** —
+folder source itu hidup, bukan snapshot.
+
+### 14.2. BARU: angkatan 2025/07-08 = struktur beda, bukan sekadar tukar warna
+
+| | heritage (minang..palembang) | **jawa-blue** |
+|---|---|---|
+| panel | `radial-gradient` + pattern `multiply` | **flat `#4E647A`**, teks putih |
+| pattern | `<D>-PATTERN` 150px/.3/**multiply** | `batik-overlay3` **35% auto**, **opacity .15**, **TANPA** `mix-blend-mode` |
+| motif band | 2 aset (atas/bawah) | **TIDAK ADA** |
+| mahkota/ICON | ada | **TIDAK ADA** |
+| aksen sudut | pasangan cermin | **TIDAK ADA** |
+| video | `assets.inviee.id/**heritage**/<D>-Motion-HD.mp4` | `assets.inviee.id/**motion**/Blue-Javanese-HD-1.mp4` |
+| slot | 7–9 | **5** |
+
+**Konsekuensi yang gampang terlewat:** menghapus band = **wajib** buang
+`.has-motif { padding: 165px }` juga; kalau tidak, tersisa lubang kosong 165px
+atas-bawah. Menghapus mahkota = ada `margin-top:auto` yang **berpindah pemilik**
+(§6 "dua elemen renggang") — di sini `.closing-inner` yang mengambil alih.
+
+> `chinese` (seangkatan) bahkan lebih jauh: tak ada Akad/Resepsi, tak ada QS
+> Ar-Rum, ada "Our Story". jawa-blue **masih** punya Akad/Resepsi/QS Ar-Rum 21 →
+> copy skeleton heritage tetap cocok. **Cek copy-nya, jangan asumsi per angkatan.**
+
+### 14.3. §13.1 dikonfirmasi dari sisi sebaliknya
+
+jawa-blue cuma punya **1** artwork bunga (`bunga-jawa-biru.webp`) untuk 2 sudut
+→ `.jb-flower-br` **WAJIB** `scaleX(-1)`. Jadi aturannya tetap:
+**1 gambar dipakai 2× → PERLU scaleX; 2 artwork cermin asli → JANGAN scaleX.**
+Hitung dulu asetnya, jangan hafal "jangan pakai scaleX".
+
+### 14.4. BARU: reskin lintas-palet meninggalkan warna di tempat yang tak ter-`grep`
+
+Setelah agen menyapu, **masih tersisa** coklat hangat warisan sunda:
+- `rgba(46,26,16,...)` di **2 scrim** (`.opening-scrim`, `.card-inner::after`) →
+  video & kartu cover ke-tint **coklat** di tema **biru**. Lolos karena yang
+  disapu cuma `--var` + hex, sedangkan ini `rgba()` literal.
+- `#fff9f2` di **inline style HTML** sidebar (§10.5 persis terulang).
+
+**Sapuan yang benar** (bukan cuma hex):
+```bash
+# rgba() hangat: R jelas > B
+grep -onE 'rgba\([0-9]+, ?[0-9]+, ?[0-9]+' index.css \
+ | awk -F'[(,]' '{gsub(/ /,"",$2);gsub(/ /,"",$3);gsub(/ /,"",$4);
+                  if ($2>$4+12 && $3>=$4 && $2>40) print $0}'
+# hex hangat di HTML **dan** CSS (inline style tak kena --var)
+grep -noiE '#(fbf6f0|f2e7dc|33241a|6b4a33|c2a568|c79369|e7b791|cfa476|997949|fff8f0|fdf6ee|fff9f2)' index.css index.html
+```
+
+### 14.5. Harness §10.4: 1 bug NYATA + 2 assert yang terlalu kaku
+
+Agen builder menemukan **bug asli di harness-ku** (bukan alarm palsu):
+- Nama hook diturunkan dari argumen CLI → tema ber-tanda-hubung menghasilkan
+  `__jawa-blueCleanup`, **mustahil** jadi identifier JS. Cek itu cuma "lulus"
+  untuk tema satu-kata — **kebetulan**, bukan karena benar.
+  **Perbaikan:** assert **bentuknya**, lalu pastikan hook itu **dipanggil**:
+  ```js
+  const hook = (jsSrc.match(/window\.__(\w+)Cleanup\s*=/) || [])[1];   // temukan
+  ok(!!hook, 'registers a global cleanup hook');
+  ok(new RegExp('window\.__'+hook+'Cleanup\(\)').test(jsNoC), 'dipanggil saat entry');
+  ```
+- Cek `.spray-l/-r` & urutan motif band **mengasumsikan** tiap tema punya
+  keduanya → jawa-blue "gagal" padahal memang tak punya. Jadikan **kondisional**
+  (SKIP + alasan), jangan paksa tema menyesuaikan harness.
+
+> **Uji harness-nya sendiri.** Cek yang tak bisa gagal = tak berguna. Sabotase
+> sengaja lalu pastikan MERAH (mis. ganti panggilan hook → harus FAIL), **dan
+> kembalikan filenya** (`cp` pakai path absolut — `cp` relatif setelah `cd`
+> sempat gagal senyap dan file sabotase **hampir tertinggal**). Lalu jalankan
+> **regresi ke semua tema lama** setelah mengendurkan assert, buktikan tidak ada
+> yang jadi longgar.

@@ -844,6 +844,16 @@ export function ManageThemesPage() {
                                         <h3 className={`font-bold text-white text-center text-base group-hover:text-xl leading-snug line-clamp-3 drop-shadow-lg scale-95 group-hover:scale-100 transition-all duration-300 ${planAccent.nameGlow}`}>
                                             {item.name}
                                         </h3>
+                                        {/* Kode tema — muncul saat hover, di bawah nama. */}
+                                        {item.code ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/40 ring-1 ring-inset ring-white/20 backdrop-blur-sm font-mono text-[10px] font-semibold tracking-wider text-white/90 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-75 max-w-full truncate">
+                                                {item.code}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-black/30 ring-1 ring-inset ring-white/10 font-mono text-[10px] italic text-white/50 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-75">
+                                                tanpa kode
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="space-y-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
