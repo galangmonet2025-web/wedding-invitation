@@ -27,6 +27,34 @@
  cleanupFns.forEach(function (fn) { try { fn(); } catch (e) { /* noop */ } });
  cleanupFns = [];
  };
+    // =====================================================================
+    // Card-style copy toast (matches the QR dialog). Reused by the Salin
+    // buttons instead of the default UIkit notification. Idempotent + self
+    // cleaning; survives host JS re-injection (it only touches document.body).
+    // =====================================================================
+    function showHeritageToast(text) {
+        var host = document.querySelector('.mock-app-screen') || document.body;
+        var prev = document.getElementById('heritage-copy-toast');
+        if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+        var t = document.createElement('div');
+        t.id = 'heritage-copy-toast';
+        t.className = 'heritage-toast';
+        t.innerHTML = '<span class="heritage-toast-check">'
+            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" '
+            + 'stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            + '</span><span></span>';
+        t.lastChild.textContent = text;
+        (host === document.body ? document.body : host).appendChild(t);
+        // force reflow so the enter transition runs
+        void t.offsetWidth;
+        t.classList.add('is-shown');
+        clearTimeout(showHeritageToast._h);
+        showHeritageToast._h = setTimeout(function () {
+            t.classList.remove('is-shown');
+            setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 320);
+        }, 1900);
+    }
+
 
  // =====================================================================
  // Copy-to-clipboard (used by inline onclick in the gift section)
@@ -39,16 +67,10 @@
  var original = btn.innerHTML;
 
  function done() {
- if (typeof UIkit !== 'undefined') {
- UIkit.notification({
- message: '<span uk-icon="icon: check"></span> Berhasil disalin!',
- status: 'success', pos: 'top-center', timeout: 2000
- });
- } else {
- btn.innerHTML = '<span uk-icon="check"></span> Tersalin';
- setTimeout(function () { btn.innerHTML = original; }, 2000);
- }
- }
+            showHeritageToast('Berhasil disalin!');
+            btn.innerHTML = '<span uk-icon="check"></span> Tersalin';
+            setTimeout(function () { btn.innerHTML = original; }, 2000);
+        }
  function fallback() {
  var ta = document.createElement('textarea');
  ta.value = text;

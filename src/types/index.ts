@@ -162,6 +162,13 @@ export interface Theme {
     preview_image?: string;
     flag_draft?: boolean | string;
     flag_use_system_action_button?: boolean | string;
+    /**
+     * Tenant contoh untuk preview di landing page (id tenant). Kosong = pakai
+     * demo slug default. Diisi di tab Setup theme editor. Publik tidak menerima id ini.
+     */
+    sample_tenant_id?: string;
+    /** domain_slug hasil resolve dari sample_tenant_id oleh backend; dipakai membangun URL preview. */
+    sample_tenant_slug?: string;
     image_types?: string[];
     asset_media_list?: ThemeAssetMedia[];
     created_at: string;

@@ -205,6 +205,9 @@ export function ThemeEditorPage() {
     const [initialJsCode, setInitialJsCode] = useState('');
     const [flagDraft, setFlagDraft] = useState(true);
     const [flagUseSystemActionButton, setFlagUseSystemActionButton] = useState(true);
+    // Tenant contoh untuk preview di landing page (id tenant). '' = pakai demo slug default.
+    // Berbeda dari selectedPreviewTenantId (yang hanya bantuan live-preview di editor ini).
+    const [sampleTenantId, setSampleTenantId] = useState('');
     const [imageTypes, setImageTypes] = useState<string[]>([]);
 
     // Static theme asset media (images/videos that belong to the theme design itself)
@@ -388,6 +391,7 @@ export function ThemeEditorPage() {
                     setInitialJsCode(theme.js_template || '');
                     setFlagDraft(isDraftFlag(theme.flag_draft));
                     setFlagUseSystemActionButton(theme.flag_use_system_action_button !== false && theme.flag_use_system_action_button !== 'false');
+                    setSampleTenantId(theme.sample_tenant_id || '');
 
                     // Robust image_types parsing
                     let imgTypes = theme.image_types || [];
@@ -415,6 +419,7 @@ export function ThemeEditorPage() {
                         setInitialJsCode(refetchedTheme.js_template || '');
                         setFlagDraft(isDraftFlag(refetchedTheme.flag_draft));
                         setFlagUseSystemActionButton(refetchedTheme.flag_use_system_action_button !== false && refetchedTheme.flag_use_system_action_button !== 'false');
+                        setSampleTenantId(refetchedTheme.sample_tenant_id || '');
 
                         // Robust image_types parsing
                         let imgTypes = refetchedTheme.image_types || [];
@@ -440,6 +445,8 @@ export function ThemeEditorPage() {
                 setJsCode(copiedTheme.js_template || '');
                 setFlagDraft(true); // Default copies to draft
                 setFlagUseSystemActionButton(copiedTheme.flag_use_system_action_button !== false && copiedTheme.flag_use_system_action_button !== 'false');
+                // Clone tak mewarisi tenant contoh — biar admin memilih ulang (mirip `code` & asset media).
+                setSampleTenantId('');
 
                 // Robust image_types parsing
                 let imgTypes = copiedTheme.image_types || [];
@@ -1514,6 +1521,7 @@ export function ThemeEditorPage() {
                 preview_image: finalPreviewUrl,
                 flag_draft: isDraft,
                 flag_use_system_action_button: flagUseSystemActionButton,
+                sample_tenant_id: sampleTenantId,
                 image_types: imageTypes,
                 asset_media_list: assetMediaList
             };
@@ -2581,6 +2589,39 @@ export function ThemeEditorPage() {
                                             </span>
                                         </label>
                                     </div>
+                                </div>
+
+                                {/* Tenant Contoh untuk Preview Landing Page.
+                                    Kalau diisi, tombol "Preview" tema di landing page memakai data
+                                    tenant ini (/#/preview/<kode>/<slug tenant>). Kalau kosong, landing
+                                    page tetap pakai demo slug default seperti sekarang.
+                                    CATATAN: ini BEDA dari selektor tenant di panel live-preview editor —
+                                    yang itu cuma bantuan melihat hasil di sini, tidak disimpan. */}
+                                <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                                    <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Tenant Contoh (Preview Landing Page)
+                                        <span className="tooltip tooltip-bottom cursor-help">
+                                            <HiOutlineInformationCircle className="w-3.5 h-3.5 text-gray-400" />
+                                            <span className="tooltip-text w-72 whitespace-normal normal-case text-left leading-snug">
+                                                Jika diisi, tombol Preview tema ini di landing page memakai data undangan tenant tersebut. Kosongkan untuk memakai tenant demo default.
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <select
+                                        value={sampleTenantId}
+                                        onChange={e => setSampleTenantId(e.target.value)}
+                                        className="input-field sm:max-w-md"
+                                    >
+                                        <option value="">— Default (tenant demo) —</option>
+                                        {allTenants.map(t => (
+                                            <option key={t.id} value={t.id}>
+                                                {(t.domain_slug || t.id)}{t.bride_nickname || t.groom_nickname ? ` — ${t.bride_nickname || ''}${t.bride_nickname && t.groom_nickname ? ' & ' : ''}${t.groom_nickname || ''}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                        Kosong = preview landing page pakai cara default. Terisi = pakai data tenant ini.
+                                    </p>
                                 </div>
 
                                 {/* ===== Pratinjau Tema + Asset Media (side by side) ===== */}

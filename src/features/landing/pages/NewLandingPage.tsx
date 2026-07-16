@@ -465,7 +465,9 @@ export function NewLandingPage() {
                                     <div className="absolute inset-x-0 bottom-0 p-3 flex justify-center lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
                                         {theme.code ? (
                                             <a
-                                                href={`#/preview/${theme.code}/${PREVIEW_DEMO_SLUG}`}
+                                                // Tema dengan tenant contoh -> preview pakai slug tenant itu.
+                                                // Kalau kosong, jatuh ke demo slug default seperti biasa.
+                                                href={`#/preview/${theme.code}/${(theme.sample_tenant_slug || '').trim() || PREVIEW_DEMO_SLUG}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className={`lp-btn text-[7px] px-3 py-2 ${isPlayable ? 'lp-btn-green' : 'lp-btn-coin'}`}

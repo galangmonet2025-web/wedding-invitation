@@ -2717,10 +2717,25 @@
   var ThemeService = {
     getThemes: function(auth) {
       var themes = DB.getAll('Themes');
+      // Resolve sample_tenant_id -> domain_slug once for the whole list. The landing
+      // page builds its preview URL by SLUG (/#/preview/<code>/<slug>), not by id, so
+      // we expose sample_tenant_slug alongside. Map built once to avoid N lookups.
+      var isPublic = (!auth || auth.role !== 'superadmin') && !auth;
+      var tenantSlugById = {};
+      var allTenants = DB.getAll('Tenants');
+      for (var ti = 0; ti < allTenants.length; ti++) {
+        tenantSlugById[allTenants[ti].id] = allTenants[ti].domain_slug || '';
+      }
       themes.forEach(function(t) {
         t.code = t.code || '';
         t.style_category = t.style_category || '';
         t.flag_use_system_action_button = (t.flag_use_system_action_button === undefined || t.flag_use_system_action_button === null || t.flag_use_system_action_button === '' ? true : (t.flag_use_system_action_button === true || t.flag_use_system_action_button === 'true' || t.flag_use_system_action_button === 'TRUE' || t.flag_use_system_action_button === 1 || t.flag_use_system_action_button === '1'));
+        var sampleId = t.sample_tenant_id || '';
+        t.sample_tenant_id = sampleId;
+        // '' bila tenant tak ditemukan/terhapus -> landing page fallback ke cara default.
+        t.sample_tenant_slug = sampleId ? (tenantSlugById[sampleId] || '') : '';
+        // Jangan bocorkan id tenant internal ke publik; slug sudah cukup untuk preview.
+        if (isPublic) t.sample_tenant_id = '';
         try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
         try { t.asset_media_list = JSON.parse(t.asset_media_list); } catch(e) { t.asset_media_list = []; }
       });
@@ -2848,6 +2863,8 @@
         preview_image: sanitized.preview_image || '',
         flag_draft: payload.hasOwnProperty('flag_draft') ? payload.flag_draft : true,
         flag_use_system_action_button: payload.hasOwnProperty('flag_use_system_action_button') ? (payload.flag_use_system_action_button === true || payload.flag_use_system_action_button === 'true' || payload.flag_use_system_action_button === 'TRUE') : true,
+        // Tenant contoh untuk preview di landing page. Default kosong; disimpan sebagai id tenant.
+        sample_tenant_id: sanitized.sample_tenant_id || '',
         image_types: payload.image_types ? JSON.stringify(payload.image_types) : '[]',
         asset_media_list: payload.asset_media_list ? JSON.stringify(payload.asset_media_list) : '[]',
         created_at: new Date().toISOString()
@@ -2987,6 +3004,8 @@
       if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
       if (payload.style_category !== undefined) updates.style_category = Validator.sanitizeObject({s: payload.style_category}).s;
       if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
+      // Tenant contoh untuk preview landing page (id tenant; '' = pakai cara preview default).
+      if (payload.sample_tenant_id !== undefined) updates.sample_tenant_id = Validator.sanitizeObject({s: payload.sample_tenant_id || ''}).s;
       if (payload.flag_draft !== undefined) updates.flag_draft = payload.flag_draft;
       if (payload.image_types !== undefined) updates.image_types = JSON.stringify(payload.image_types);
       if (payload.asset_media_list !== undefined) updates.asset_media_list = JSON.stringify(payload.asset_media_list);
@@ -3683,7 +3702,7 @@
     // Order matters: setupSpreadsheet overwrites row 1 headers, so any mismatch
     // would misalign existing data underneath. Keep these in sync with the sheet.
     var sheets = {
-      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'html_extra_3', 'html_extra_4', 'html_extra_5', 'html_extra_6', 'html_extra_7', 'html_extra_8', 'html_extra_9', 'html_extra_10', 'css_template', 'css_extra_1', 'css_extra_2', 'css_extra_3', 'css_extra_4', 'css_extra_5', 'css_extra_6', 'css_extra_7', 'css_extra_8', 'css_extra_9', 'css_extra_10', 'js_template', 'js_extra_1', 'js_extra_2', 'js_extra_3', 'js_extra_4', 'js_extra_5', 'js_extra_6', 'js_extra_7', 'js_extra_8', 'js_extra_9', 'js_extra_10', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
+      'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'html_extra_3', 'html_extra_4', 'html_extra_5', 'html_extra_6', 'html_extra_7', 'html_extra_8', 'html_extra_9', 'html_extra_10', 'css_template', 'css_extra_1', 'css_extra_2', 'css_extra_3', 'css_extra_4', 'css_extra_5', 'css_extra_6', 'css_extra_7', 'css_extra_8', 'css_extra_9', 'css_extra_10', 'js_template', 'js_extra_1', 'js_extra_2', 'js_extra_3', 'js_extra_4', 'js_extra_5', 'js_extra_6', 'js_extra_7', 'js_extra_8', 'js_extra_9', 'js_extra_10', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'sample_tenant_id', 'created_at'],
       'Tenants': ['id', 'bride_nickname', 'bride_name', 'groom_nickname', 'groom_name', 'religion', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
       'QuotesVariant': ['id', 'religion_enum', 'quotes_slug', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],

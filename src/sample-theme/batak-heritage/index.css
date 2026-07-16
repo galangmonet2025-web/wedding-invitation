@@ -1280,20 +1280,25 @@ select.custom-input {
        empty, so .wishes-list is NOT :empty and that selector would never match.
    ========================================================================= */
 #wishes:has(.wishes-list > [data-wish-item]) {
-    min-height: 100vh;
-    min-height: 100dvh;
+    /* Exactly one screen tall — the list scrolls INSIDE, so the page never
+       becomes a mile-long wall of wishes. */
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    overflow: hidden;
 }
 
 /* The list eats the remaining height instead of the fixed 340px box, so more
    wishes fit on screen. min-height:0 is required for a flex child to be allowed
    to shrink and scroll internally. */
 #wishes:has(.wishes-list > [data-wish-item]) .wishes-list {
+    /* Fill the leftover height under the heading/form and scroll internally. */
     flex: 1 1 auto;
     min-height: 0;
     max-height: none;
+    overflow-y: auto;
 }
 
 /* The decorative motif bands are absolutely positioned; keep them out of the
@@ -2059,6 +2064,66 @@ select.custom-input {
  margin-bottom: 14px;
  color: var(--saga-deep);
 }
+
+/* =========================================================================
+   COPY TOAST — shown by the Salin buttons (Rekening & Alamat Kirim Paket).
+   Deliberately mirrors the QR dialog (.qr-card): warm --paper panel, thin
+   --gold border, theme serif — so the "Berhasil disalin!" confirmation looks
+   native to the invitation instead of the default grey UIkit notification.
+   ========================================================================= */
+.heritage-toast {
+    position: fixed;
+    left: 50%;
+    top: 26px;
+    transform: translateX(-50%) translateY(-14px);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    max-width: calc(100% - 48px);
+    padding: 12px 20px;
+    background: var(--paper);
+    color: var(--saga-deep);
+    border: 1px solid var(--gold);
+    border-radius: 2px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* On desktop the invitation is clamped to the 480px phone column — keep the
+   toast centred over that column, like the FAB / page background do. */
+@media (min-width: 960px) {
+    .heritage-toast { left: calc(50% + 240px); }
+}
+
+.heritage-toast.is-shown {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+@media (min-width: 960px) {
+    .heritage-toast.is-shown { transform: translateX(-50%) translateY(0); }
+}
+
+.heritage-toast .heritage-toast-check {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--paper);
+}
+
+.heritage-toast .heritage-toast-check svg { width: 13px; height: 13px; }
 
 /* Utility */
 .hidden { display: none !important; }
