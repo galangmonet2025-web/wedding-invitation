@@ -92,7 +92,7 @@ export async function injectSampleThemes(
     options?: { asDraft?: boolean }
 ): Promise<InjectResult> {
     const asDraft = options?.asDraft !== false; // default: draft
-    const { addTask, updateTask } = (useBackgroundTaskStore as any).getState();
+    const { addTask, updateTask, updateStep } = (useBackgroundTaskStore as any).getState();
 
     const allBundles = getSampleThemeBundles();
     const bundleByFolder = new Map(allBundles.map((b) => [b.folder, b]));
@@ -127,6 +127,13 @@ export async function injectSampleThemes(
         id: taskId,
         name: `Inject ${jobs.length} Tema Premium`,
         total: totalUnits,
+        // Satu langkah per folder, semuanya 'pending' di awal supaya user langsung
+        // lihat antrean lengkapnya begitu baris task di-expand.
+        steps: jobs.map((j) => ({
+            id: j.bundle.folder,
+            label: j.bundle.folder,
+            status: 'pending' as const,
+        })),
     });
 
     const result: InjectResult = {
@@ -138,7 +145,9 @@ export async function injectSampleThemes(
     };
 
     let doneUnits = 0;
-    const bump = (folder: string, phase: string) => {
+    // `api` = action backend yang sedang dipanggil untuk fase ini, supaya kalau gagal
+    // kelihatan API mana yang error (createTheme vs saveTheme/chunk).
+    const bump = (folder: string, phase: string, api?: string) => {
         const progress = totalUnits > 0 ? Math.round((doneUnits / totalUnits) * 100) : 0;
         updateTask(taskId, {
             successCount: result.successCount,
@@ -147,6 +156,7 @@ export async function injectSampleThemes(
             status: 'running',
             details: `${folder}: ${phase}`,
         });
+        updateStep(taskId, folder, { status: 'running', phase, ...(api ? { api } : {}) });
     };
 
     for (const job of jobs) {
@@ -161,11 +171,11 @@ export async function injectSampleThemes(
             if (existing) {
                 // EDIT: overwrite only templates; leave name/plan/preview/draft as-is.
                 themeId = existing.id;
-                bump(folder, 'menyiapkan edit');
+                bump(folder, 'menyiapkan edit', 'saveTheme');
             } else {
                 // INSERT: create a lightweight DRAFT premium row first (empty templates),
                 // then chunked-fill it. code + name = folder name.
-                bump(folder, 'membuat tema baru');
+                bump(folder, 'membuat tema baru', 'createTheme');
                 const createRes = await themeApi.createTheme(
                     {
                         name: folder,
@@ -186,7 +196,7 @@ export async function injectSampleThemes(
                 themeId = createRes.data.id;
                 doneUnits += 1; // create step done
                 jobDone += 1;
-                bump(folder, 'tema dibuat, mengirim kode');
+                bump(folder, 'tema dibuat, mengirim kode', 'saveTheme');
             }
 
             // Stream html/css/js in chunks. onProgress fires per batch -> advance the bar.
@@ -209,7 +219,7 @@ export async function injectSampleThemes(
                         Math.min(job.chunkUnits, chunkDone - 1);
                     doneUnits += advance;
                     jobDone += advance;
-                    bump(folder, `mengirim potongan ${chunkDone}/${chunkTotal}`);
+                    bump(folder, `mengirim potongan ${chunkDone}/${chunkTotal}`, 'saveTheme');
                 },
                 { skipLoader: true } // background queue: never trigger the global loader
             );
@@ -217,9 +227,17 @@ export async function injectSampleThemes(
             result.successCount += 1;
             if (existing) result.edited.push(folder);
             else result.inserted.push(folder);
+            updateStep(taskId, folder, {
+                status: 'success',
+                phase: existing ? 'tema diperbarui' : 'tema baru dibuat',
+            });
         } catch (err: any) {
+            const errMsg = err?.message || String(err);
             result.failCount += 1;
-            result.failed.push({ folder, error: err?.message || String(err) });
+            result.failed.push({ folder, error: errMsg });
+            // Simpan error DI langkah folder ini — inilah yang bikin user tahu
+            // folder + API mana yang gagal, bukan cuma "1 Gagal" di rekap.
+            updateStep(taskId, folder, { status: 'error', error: errMsg, phase: undefined });
             // Top up exactly this folder's remaining budget so the bar still reaches 100%
             // without double-counting units already added above.
             doneUnits += Math.max(0, jobBudget - jobDone);

@@ -143,7 +143,7 @@ export function ThemeEditorPage() {
     const { themes, addTheme, updateTheme, fetchThemes } = useThemeStore();
     const { tenants: allTenants, fetchTenants } = useTenantStore();
     const previewStore = usePreviewStore();
-    const { addTask, updateTask } = useBackgroundTaskStore();
+    const { addTask, updateTask, updateStep } = useBackgroundTaskStore();
 
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
@@ -922,7 +922,18 @@ export function ThemeEditorPage() {
         // mirroring the gallery upload flow (ImageUpload.tsx).
         const total = arr.length;
         const taskId = `upload-theme-asset-${Date.now()}`;
-        addTask({ id: taskId, name: total > 1 ? `Upload ${total} Asset Tema` : 'Upload Asset Tema', total });
+        addTask({
+            id: taskId,
+            name: total > 1 ? `Upload ${total} Asset Tema` : 'Upload Asset Tema',
+            total,
+            // Satu langkah per file asset.
+            steps: arr.map((f, i) => ({
+                id: `asset-${i}`,
+                label: f.name,
+                status: 'pending' as const,
+                api: 'uploadImage',
+            }))
+        });
         const failedFiles: string[] = [];
 
         // Work on a local working copy so sequential codes stay sequential within this batch
@@ -930,11 +941,14 @@ export function ThemeEditorPage() {
         let success = 0;
         let failCount = 0;
         try {
-            for (const file of arr) {
+            for (let i = 0; i < arr.length; i++) {
+                const file = arr[i];
+                const stepId = `asset-${i}`;
                 if (!file.type.startsWith('image/')) {
                     toast.error(`"${file.name}" bukan gambar.`);
                     failCount++;
                     failedFiles.push(file.name);
+                    updateStep(taskId, stepId, { status: 'error', error: 'Bukan file gambar' });
                     updateTask(taskId, { failCount, failedFiles, progress: Math.round(((success + failCount) / total) * 100) });
                     continue;
                 }
@@ -942,9 +956,12 @@ export function ThemeEditorPage() {
                     toast.error(`"${file.name}" terlalu besar (Max 5MB).`);
                     failCount++;
                     failedFiles.push(file.name);
+                    updateStep(taskId, stepId, { status: 'error', error: 'Ukuran melebihi 5MB' });
                     updateTask(taskId, { failCount, failedFiles, progress: Math.round(((success + failCount) / total) * 100) });
                     continue;
                 }
+
+                updateStep(taskId, stepId, { status: 'running', phase: 'mengompres...' });
 
                 const isPng = file.type === 'image/png';
                 let uploadBlob: File | Blob = file;
@@ -970,6 +987,7 @@ export function ThemeEditorPage() {
                 const code = nextAssetCode(working, 'image');
                 const safeName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.' + extension;
 
+                updateStep(taskId, stepId, { status: 'running', phase: 'mengunggah...' });
                 const res = await imageApi.uploadImage({
                     tenant_id: 'system',
                     image_type: 'theme_asset',
@@ -995,10 +1013,16 @@ export function ThemeEditorPage() {
                     }];
                     setAssetMediaList(working);
                     success++;
+                    updateStep(taskId, stepId, { status: 'success', phase: `terunggah (kode ${code})` });
                 } else {
                     toast.error(`Gagal upload "${file.name}": ${res.message || ''}`);
                     failCount++;
                     failedFiles.push(file.name);
+                    updateStep(taskId, stepId, {
+                        status: 'error',
+                        phase: undefined,
+                        error: res.message || 'Upload ditolak server'
+                    });
                 }
                 updateTask(taskId, { successCount: success, failCount, failedFiles, progress: Math.round(((success + failCount) / total) * 100) });
             }

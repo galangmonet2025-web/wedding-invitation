@@ -47,7 +47,7 @@ export function ImageUpload({
     const [deleting, setDeleting] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
-    const { tasks, addTask, updateTask } = useBackgroundTaskStore();
+    const { tasks, addTask, updateTask, updateStep } = useBackgroundTaskStore();
 
 
     // Compression constraints based on design
@@ -127,7 +127,14 @@ export function ImageUpload({
         addTask({
             id: taskId,
             name: total > 1 ? `Upload ${total} Foto: ${title}` : `Upload Foto: ${title}`,
-            total: total
+            total: total,
+            // Satu langkah per file: nama file + fase (kompres/kirim) + error spesifik.
+            steps: filesArray.map((f, i) => ({
+                id: `file-${i}`,
+                label: f.name,
+                status: 'pending' as const,
+                api: 'uploadImage',
+            }))
         });
 
         let successCount = 0;
@@ -137,6 +144,7 @@ export function ImageUpload({
         for (let i = 0; i < total; i++) {
             if (i > 0) await sleep(1000); // Beri jeda 1 detik antar upload agar lebih stabil
             let file = filesArray[i];
+            const stepId = `file-${i}`;
             setUploadProgress({ current: i + 1, total });
 
             // Record a failure with a device-specific reason so it's diagnosable.
@@ -144,12 +152,15 @@ export function ImageUpload({
                 toast.error(msg);
                 failCount++;
                 failedFiles.push(file.name);
+                updateStep(taskId, stepId, { status: 'error', phase: undefined, error: msg });
                 updateTask(taskId, {
                     failCount,
                     failedFiles,
                     progress: Math.round(((successCount + failCount) / total) * 100)
                 });
             };
+
+            updateStep(taskId, stepId, { status: 'running', phase: 'menyiapkan file...' });
 
             // Basic validation — accept HEIC/HEIF too (empty/odd MIME is common
             // for iPhone photos, so also allow by extension).
@@ -171,6 +182,7 @@ export function ImageUpload({
                 //    canvas compression step, which would otherwise fail.
                 if (isHeic(file)) {
                     try {
+                        updateStep(taskId, stepId, { status: 'running', phase: 'konversi HEIC → JPEG...' });
                         file = await convertHeicToJpeg(file);
                     } catch (heicErr) {
                         console.error('HEIC convert error:', heicErr);
@@ -184,6 +196,7 @@ export function ImageUpload({
                 //    file so the upload still goes through instead of hard-failing.
                 let uploadFile: File = file;
                 try {
+                    updateStep(taskId, stepId, { status: 'running', phase: 'mengompres...' });
                     const options = getCompressionOptions();
                     const compressed = await imageCompression(file, options);
                     // Guard against a degenerate/empty result from a flaky encoder.
@@ -227,6 +240,10 @@ export function ImageUpload({
 
                 while (retries <= maxRetries) {
                     try {
+                        updateStep(taskId, stepId, {
+                            status: 'running',
+                            phase: retries === 0 ? 'mengunggah...' : `mengunggah (percobaan ${retries + 1})...`
+                        });
                         response = await imageApi.uploadImage({
                             tenant_id: tenantId || 'system', // Use provided tenantId if any
                             image_type: imageType,
@@ -271,9 +288,15 @@ export function ImageUpload({
                         created_at: new Date().toISOString()
                     };
                     onUploadSuccess(newRecord);
+                    updateStep(taskId, stepId, { status: 'success', phase: 'terunggah' });
                 } else {
                     failCount++;
                     failedFiles.push(originalName);
+                    updateStep(taskId, stepId, {
+                        status: 'error',
+                        phase: undefined,
+                        error: response?.message || 'Upload ditolak server'
+                    });
                 }
 
             } catch (error: any) {
@@ -284,6 +307,13 @@ export function ImageUpload({
                 if (isTimeout) {
                     toast.error(`Upload "${originalName}" gagal: koneksi terlalu lambat / timeout. Coba lagi dengan sinyal lebih stabil.`);
                 }
+                updateStep(taskId, stepId, {
+                    status: 'error',
+                    phase: undefined,
+                    error: isTimeout
+                        ? 'Timeout: koneksi terlalu lambat'
+                        : (error?.message || String(error))
+                });
                 console.error('Upload Error:', error);
             }
 

@@ -6,14 +6,12 @@
         <div id="layer-bg"
             style="position: absolute; top: -4%; left: -4%; width: 108%; height: 108%; background-image: url(&quot;{{photo_hero_cover}}&quot;); background-size: cover; background-position: center; z-index: 1; transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94);">
         </div>
-        <div style="position: absolute; inset: 0; background: linear-gradient(160deg, rgba(76,3,10,0.35), rgba(46,8,10,0.72)); z-index: 2;"></div>
-        <!-- Aesan gede (mahkota pengantin Palembang) silhouette anchored bottom of the sidebar -->
-        <div class="pl-sidebar-crown" style="z-index: 3; background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
+        <div style="position: absolute; inset: 0; background: linear-gradient(160deg, rgba(116,28,27,0.35), rgba(16,15,15,0.72)); z-index: 2;"></div>
         <div id="layer-text"
             style="position: absolute; bottom: 0; left: 0; padding: 60px; z-index: 4; width: 100%; transition: transform 0.1s ease;">
             <div class="eyebrow" style="color: var(--gold-soft);">The Wedding Of</div>
             <h1 class="sidebar-couple-name display-name"
-                style="font-size: 5rem; margin: 10px 0 0; color: #fff4f0;">
+                style="font-size: 5rem; margin: 10px 0 0; color: #ffffff;">
                 <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
             </h1>
             <div style="margin-top: 14px; letter-spacing: 2px; font-size: 12px; text-transform: uppercase; font-family: 'Poppins', sans-serif; color: var(--gold-soft);">
@@ -27,33 +25,30 @@
         style="background-image: url(&quot;{{photo_background}}&quot;);">
         <div class="mock-app-screen">
 
-            <!-- Rich Palembang BACKGROUND (asset image 1 = Palembang-Background.webp,
-                 rumah limas + jembatan + rangkaian bunga).
-                 Fixed behind every section; the content sits on translucent panels
-                 above it so the motif reads through the whole invitation. -->
-            <div class="pl-page-bg" style="background-image: url(&quot;{{asset_image_1}}&quot;);"></div>
+            <!-- Latar penuh halaman (asset 1 = chinese-bg-all.webp: burung bangau,
+                 peony, lampion & matahari merah). Fixed di belakang SEMUA section;
+                 kontennya duduk di panel semi-transparan supaya lukisannya tembus. -->
+            <div class="cn-page-bg" style="background-image: url(&quot;{{asset_image_1}}&quot;);"></div>
 
             <!-- ---------------- COVER ---------------- -->
             <section id="theme-cover" class="section-cover">
                 <div class="cover-bg" style="background-image: url(&quot;{{#if photo_cover}}{{photo_cover}}{{else}}{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}{{/if}}&quot;);"></div>
-                <!-- Aesan gede crowning the cover -->
-                <div class="pl-crown pl-crown-cover" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
+                <!-- Frame cover (asset 2 = chinese-bg-cover.webp: bingkai arch/lengkung
+                     merah — lampion, peony & bangau di tepinya, TENGAHNYA sengaja PUCAT
+                     supaya teks terbaca). Layer dekoratif di atas foto tenant, di bawah
+                     konten. Ini SATU-SATUNYA bingkai cover: source chinese tidak
+                     menyediakan aset bunga sudut sama sekali, jadi tema ini memang tak
+                     punya aksen sudut (beda dari saudara heritage-nya). -->
+                <div class="cn-cover-art" style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
                 <div class="cover-inner">
                     <div class="cover-frame">
-                        <!-- Untaian bunga frame cover: angkatan Palembang TIDAK punya aset
-                             bunga terpisah untuk frame cover, jadi frame ini MEMAKAI ULANG
-                             pasangan cermin slot 4 & 5 (Belakang-2 = condong kiri, Belakang-1
-                             = condong kanan). CSS-nya TANPA scaleX(-1) — artwork-nya sudah
-                             saling cermin. Tema ini 7 slot; slot 8/9 tidak ada. -->
-                        <div class="pl-flower pl-flower-tl" style="background-image: url(&quot;{{asset_image_4}}&quot;);"></div>
-                        <div class="pl-flower pl-flower-br" style="background-image: url(&quot;{{asset_image_5}}&quot;);"></div>
                         <div class="eyebrow">The Wedding Of</div>
                         <div class="display-name">
                             <span>{{groom_nickname}}</span> &amp; <span>{{bride_nickname}}</span>
                         </div>
                         <div class="ornament motif-divider">
                             <span></span>
-                            <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                            <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                             <span></span>
                         </div>
                         <div class="cover-date">{{wedding_date}}</div>
@@ -81,16 +76,18 @@
 
             <!-- ---------------- OPENING VIDEO (FIRST section the guest sees after
                  opening the invitation: Cover → Video → Hero → Couple → …).
-                 Full height of the phone container. The Palembang motion video plays
+                 Full height of the phone container. The Chinese Heritage motion video plays
                  ONCE at 1.5× as soon as the invitation is opened; the couple text
                  reveals near the end. No colour scrim — the clip is shown clean
                  and the card text carries its own text-shadow for legibility.
                  <video> is muted (visual only) so it never conflicts with the
                  host's real music player. -->
             <section id="theme-opening" class="section-opening">
+                <!-- poster = asset 4 (chinese-fallback.webp), frame diam milik klip
+                     motion di source. Kalau slotnya kosong → jatuh ke foto tenant. -->
                 <video class="opening-video" id="opening-video" muted playsinline preload="auto"
-                    poster="{{#if photo_cover}}{{photo_cover}}{{else}}{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}{{/if}}">
-                    <source src="https://assets.inviee.id/heritage/Palembang-Motion-HD.mp4#t=0.5" type="video/mp4">
+                    poster="{{#if asset_image_4}}{{asset_image_4}}{{else}}{{#if photo_cover}}{{photo_cover}}{{else}}{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}{{/if}}{{/if}}">
+                    <source src="https://assets.inviee.id/motion/Chinese-Heritage-HD-1.mp4#t=0.5" type="video/mp4">
                 </video>
 
                 <div class="opening-inner">
@@ -116,10 +113,9 @@
                 </div>
             </section>
 
-            <!-- ---------------- HERO (full-screen photo, Ken Burns + aesan gede crown) ---------------- -->
+            <!-- ---------------- HERO (full-screen photo, Ken Burns) ---------------- -->
             <section class="section-hero">
-                <div class="hero-bg" style="background-image: linear-gradient(rgba(46,8,10,0.5), rgba(46,8,10,0.78)), url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
-                <div class="pl-crown pl-crown-hero" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
+                <div class="hero-bg" style="background-image: linear-gradient(rgba(16,15,15,0.5), rgba(16,15,15,0.78)), url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
 
                 <div class="hero-header">
                     <div class="eyebrow">The Wedding Of</div>
@@ -128,19 +124,26 @@
                     </h1>
                     <div class="ornament hero-ornament motif-divider">
                         <span></span>
-                        <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                        <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                         <span></span>
                     </div>
                     <div class="hero-date">{{wedding_date}}</div>
                 </div>
 
                 <div class="hero-bottom">
+                    <!-- Kutipan hero. Source chinese adalah undangan KRISTEN: sitasinya
+                         "~ 1 Corinthians 13:4-8 ~", dan BUNYI ayatnya datang dari tenant
+                         (Master Quotes quote_1) — persis seperti di source. Karena itu
+                         teksnya SENGAJA tidak di-hardcode di sini: mengarang terjemahan
+                         kitab suci di template = salah dan tak bisa diverifikasi.
+                         Kalau tenant belum mengisi quote_1, sitasi ikut disembunyikan
+                         supaya tidak ada rujukan ayat yang menggantung tanpa isi. -->
+                    {{#if quote_1}}
                     <div class="hero-quote">
-                        “Dan di antara tanda-tanda (kebesaran)-Nya ialah Dia menciptakan pasangan-pasangan untukmu
-                        dari jenismu sendiri, agar kamu cenderung dan merasa tenteram kepadanya, dan Dia menjadikan
-                        di antaramu rasa kasih dan sayang.”
-                        <span class="hero-verse-ref">QS. Ar-Rum : 21</span>
+                        {{quote_1}}
+                        <span class="hero-verse-ref">~ 1 Corinthians 13:4-8 ~</span>
                     </div>
+                    {{/if}}
 
                     <div class="scroll-indicator">
                         <div class="mouse"><div class="wheel"></div></div>
@@ -151,19 +154,13 @@
 
 
             <!-- ---------------- COUPLE ---------------- -->
-            <section id="couples" class="section section-couple has-motif" data-menu-label="Mempelai">
-                <!-- real songket motif borders (asset 2 = Motif-Atas, asset 3 = Motif-Bawah-1) -->
-                <div class="pl-motif pl-motif-top" style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
-                <div class="pl-motif pl-motif-bottom" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
-                <!-- untaian bunga aksen sudut (asset 4 = kiri, asset 5 = kanan; pasangan cermin) -->
-                <div class="pl-spray pl-spray-l" style="background-image: url(&quot;{{asset_image_4}}&quot;);"></div>
-                <div class="pl-spray pl-spray-r" style="background-image: url(&quot;{{asset_image_5}}&quot;);"></div>
+            <section id="couples" class="section section-couple" data-menu-label="Mempelai">
                 <div class="section-head reveal-item">
                     <div class="eyebrow">Mempelai</div>
                     <div class="display-name" style="font-size: 2.4rem;">Kedua Mempelai</div>
                     <div class="ornament motif-divider">
                         <span></span>
-                        <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                        <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                         <span></span>
                     </div>
                 </div>
@@ -210,20 +207,16 @@
             </section>
 
             <!-- ---------------- SCHEDULE ---------------- -->
-            <section id="schedule" class="section section-red has-motif" data-menu-label="Waktu &amp; Tempat">
-                <!-- motif pattern overlay (asset 6 = Palembang-Pattern-Seamless.webp) -->
-                <div class="pl-red-bg" style="background-image: url(&quot;{{asset_image_6}}&quot;);"></div>
-                <div class="pl-motif pl-motif-top" style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
-                <div class="pl-motif pl-motif-bottom" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
-                <div class="pl-spray pl-spray-l" style="background-image: url(&quot;{{asset_image_4}}&quot;);"></div>
-                <div class="pl-spray pl-spray-r" style="background-image: url(&quot;{{asset_image_5}}&quot;);"></div>
+            <section id="schedule" class="section section-red" data-menu-label="Waktu &amp; Tempat">
+                <!-- overlay seigaiha/gelombang (asset 3 = chinese-overlay.webp) di atas
+                     panel flat merah #741C1B -->
+                <div class="cn-red-bg" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
                 <div class="section-head reveal-item">
-                    <div class="pl-crown pl-crown-inline" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
                     <div class="eyebrow">Save The Date</div>
                     <div class="display-name" style="font-size: 2.4rem;">Waktu &amp; Tempat</div>
                     <div class="ornament motif-divider">
                         <span></span>
-                        <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                        <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                         <span></span>
                     </div>
                 </div>
@@ -231,7 +224,7 @@
                 <div class="schedule-grid">
                     <div class="schedule-card reveal-item">
                         <div class="schedule-icon"><span uk-icon="icon: bookmark; ratio: 1.3"></span></div>
-                        <h3 class="schedule-title">Akad Nikah</h3>
+                        <h3 class="schedule-title">Holy Matrimony</h3>
                         <div class="schedule-meta">
                             <strong>{{tanggal_akad}}</strong><br>{{jam_akad}}
                         </div>
@@ -274,8 +267,8 @@
                 </div>
                 <div class="countdown-status" id="countdown-status" style="display:none"></div>
                 <!-- Hidden holder so index.js can read the real wedding date from the DB -->
-                <span id="pl-wed-date" data-wedding-date="{{wedding_date_iso}}" style="display:none"></span>
-                <span id="pl-jam-resepsi" style="display:none">{{jam_resepsi}}</span>
+                <span id="cn-wed-date" data-wedding-date="{{wedding_date_iso}}" style="display:none"></span>
+                <span id="cn-jam-resepsi" style="display:none">{{jam_resepsi}}</span>
 
                 <div id="rsvp-container">
                     {{#unless is_link_umum_and_not_for_spesific_guest}}
@@ -325,26 +318,19 @@
                 </div>
             </section>
 
-            <!-- ---------------- LIVE STREAMING (gold panel: motif-atas +
-                 Palembang-Pattern-Seamless red ground + motif-bawah, same recipe as the
-                 Waktu & Tempat / Wedding Gift sections) ---------------- -->
+            <!-- ---------------- LIVE STREAMING (panel flat merah #741C1B + overlay
+                 seigaiha, resep sama dengan section Waktu & Tempat /
+                 Wedding Gift) ---------------- -->
             {{#if is_fitur_live_streaming}}
-            <section class="section section-red has-motif" data-menu-label="Live Streaming">
-                <div class="pl-red-bg" style="background-image: url(&quot;{{asset_image_6}}&quot;);"></div>
-                <div class="pl-motif pl-motif-top" style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
-                <div class="pl-motif pl-motif-bottom" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
-                <!-- untaian bunga aksen sudut -->
-                <div class="pl-spray pl-spray-l" style="background-image: url(&quot;{{asset_image_4}}&quot;);"></div>
-                <div class="pl-spray pl-spray-r" style="background-image: url(&quot;{{asset_image_5}}&quot;);"></div>
+            <section class="section section-red" data-menu-label="Live Streaming">
+                <div class="cn-red-bg" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
 
                 <div class="section-head reveal-item">
-                    <!-- Aesan gede crown -->
-                    <div class="pl-crown pl-crown-inline" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
                     <div class="eyebrow">Momen Bahagia</div>
                     <div class="display-name" style="font-size: 2.4rem;">Live Streaming</div>
                     <div class="ornament motif-divider">
                         <span></span>
-                        <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                        <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                         <span></span>
                     </div>
                 </div>
@@ -362,7 +348,8 @@
             {{#if flag_pakai_timeline_kisah}}
             <section class="section section-couple" data-menu-label="Kisah Kami">
                 <div class="section-head reveal-item">
-                    <div class="eyebrow">Our Journey</div>
+                    <!-- "We Found Love" = judul section kisah milik source chinese. -->
+                    <div class="eyebrow">We Found Love</div>
                     <div class="display-name" style="font-size: 2.4rem;">Kisah Kami</div>
                 </div>
                 <div class="story-timeline">
@@ -405,7 +392,7 @@
                     <div class="display-name" style="font-size: 2.4rem;">Berbagi Kebahagiaan</div>
                     <div class="ornament motif-divider">
                         <span></span>
-                        <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                        <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                         <span></span>
                     </div>
                 </div>
@@ -470,9 +457,7 @@
             {{/if}}
 
             <!-- ---------------- WISHES ---------------- -->
-            <section id="wishes" class="section section-couple has-motif" data-menu-label="Ucapan &amp; Doa">
-                <div class="pl-motif pl-motif-top" style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
-                <div class="pl-motif pl-motif-bottom" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
+            <section id="wishes" class="section section-couple" data-menu-label="Ucapan &amp; Doa">
                 <div class="section-head reveal-item">
                     <div class="eyebrow">Doa Restu</div>
                     <div class="display-name" style="font-size: 2.4rem;">Ucapan &amp; Doa</div>
@@ -513,14 +498,9 @@
 
             <!-- ---------------- GIFT ---------------- -->
             {{#if tampilkan_amplop_online}}
-            <section id="gift" class="section section-red has-motif" data-menu-label="Wedding Gift">
-                <div class="pl-red-bg" style="background-image: url(&quot;{{asset_image_6}}&quot;);"></div>
-                <div class="pl-motif pl-motif-top" style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
-                <div class="pl-motif pl-motif-bottom" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
-                <div class="pl-spray pl-spray-l" style="background-image: url(&quot;{{asset_image_4}}&quot;);"></div>
-                <div class="pl-spray pl-spray-r" style="background-image: url(&quot;{{asset_image_5}}&quot;);"></div>
+            <section id="gift" class="section section-red" data-menu-label="Wedding Gift">
+                <div class="cn-red-bg" style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
                 <div class="section-head reveal-item">
-                    <div class="pl-crown pl-crown-inline" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
                     <div class="eyebrow">Tanda Kasih</div>
                     <div class="display-name" style="font-size: 2.4rem;">Wedding Gift</div>
                     <p class="gift-instruction">
@@ -574,13 +554,12 @@
 
             <!-- ---------------- CLOSING (full-height, deep gold) ---------------- -->
             <section class="section-closing">
-                <div class="closing-bg" style="background-image: linear-gradient(rgba(46,8,10,0.78), rgba(46,8,10,0.9)), url(&quot;{{#if photo_closing}}{{photo_closing}}{{else}}{{photo_hero_cover}}{{/if}}&quot;);"></div>
-                <div class="pl-crown pl-crown-closing" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
+                <div class="closing-bg" style="background-image: linear-gradient(rgba(16,15,15,0.78), rgba(16,15,15,0.9)), url(&quot;{{#if photo_closing}}{{photo_closing}}{{else}}{{photo_hero_cover}}{{/if}}&quot;);"></div>
 
                 <div class="closing-inner reveal-item">
                     <div class="ornament closing-ornament motif-divider">
                         <span></span>
-                        <svg class="pl-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
+                        <svg class="cn-diamond" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="3.6" ry="5.5"/><ellipse cx="12" cy="18.5" rx="3.6" ry="5.5"/><ellipse cx="5.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><ellipse cx="18.5" cy="12" rx="5.5" ry="3.6" opacity=".75"/><circle cx="12" cy="12" r="1.8" opacity=".9"/></svg>
                         <span></span>
                     </div>
                     <div class="eyebrow">With Love &amp; Gratitude</div>
@@ -658,7 +637,6 @@
                 <button class="menu-close" id="btn-close-menu">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
-                <div class="pl-crown pl-crown-menu" style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
                 <div class="eyebrow">The Wedding Of</div>
                 <div class="menu-couple">{{groom_nickname}} &amp; {{bride_nickname}}</div>
                 <div class="menu-date">{{wedding_date}}</div>

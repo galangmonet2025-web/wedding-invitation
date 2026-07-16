@@ -373,7 +373,11 @@ export function AdminLayout() {
                                         <HiOutlineExternalLink className="w-5 h-5" />
                                     </a>
                                 )}
-                                <div className="hidden sm:block"><BackgroundTaskIndicator /></div>
+                                {/* Indikator proses latar belakang: TAMPIL JUGA di layar kecil.
+                                    Komponennya sudah self-hiding (null saat tidak ada task) dan
+                                    ukurannya seukuran ikon lain, jadi tidak perlu di-hide di HP —
+                                    justru di HP-lah user paling butuh tahu ada proses berjalan/gagal. */}
+                                <BackgroundTaskIndicator />
                             </div>
                         </div>
                     </header>

@@ -47,7 +47,7 @@ export function ScannerPage() {
     const [manualGuests, setManualGuests] = useState<ManualGuest[]>([]);
     const [sortBy, setSortBy] = useState<'name' | 'time'>('time');
     const [isSaving, setIsSaving] = useState(false);
-    const { addTask, updateTask } = useBackgroundTaskStore();
+    const { addTask, updateTask, updateStep } = useBackgroundTaskStore();
 
     // Ensure only Staff and Tenant Admin can access
     useEffect(() => {
@@ -253,7 +253,14 @@ export function ScannerPage() {
         addTask({
             id: taskId,
             name: t('scanner.task_save_manual', { count: drafts.length }),
-            total: drafts.length
+            total: drafts.length,
+            // Satu langkah per tamu supaya kalau ada yang gagal, kelihatan tamu mana.
+            steps: drafts.map((g) => ({
+                id: g.id,
+                label: g.name?.trim() || '(tanpa nama)',
+                status: 'pending' as const,
+                api: 'checkinGuest',
+            }))
         });
 
         let successCount = 0;
@@ -265,6 +272,7 @@ export function ScannerPage() {
         // Save sequentially to avoid race conditions and handle individual errors
         for (let i = 0; i < drafts.length; i++) {
             const guest = drafts[i];
+            updateStep(taskId, guest.id, { status: 'running', phase: 'menyimpan...' });
             try {
                 // Send shorthand dynamic payload (simulating scanner behavior for uninvited checkin)
                 const payload = `NEW_GUEST:${guest.name.trim()}:${guest.category.trim()}:${guest.phone.trim()}:${guest.pax}`;
@@ -273,13 +281,24 @@ export function ScannerPage() {
                 if (res.success) {
                     setManualGuests(prev => prev.map(g => g.id === guest.id ? { ...g, status: 'saved' } : g));
                     successCount++;
+                    updateStep(taskId, guest.id, { status: 'success', phase: 'tersimpan' });
                 } else {
                     failCount++;
                     setManualGuests(prev => prev.map(g => g.id === guest.id ? { ...g, status: 'draft' } : g));
+                    updateStep(taskId, guest.id, {
+                        status: 'error',
+                        phase: undefined,
+                        error: res.message || 'Gagal menyimpan tamu'
+                    });
                 }
             } catch (err: any) {
                 failCount++;
                 setManualGuests(prev => prev.map(g => g.id === guest.id ? { ...g, status: 'draft' } : g));
+                updateStep(taskId, guest.id, {
+                    status: 'error',
+                    phase: undefined,
+                    error: err?.message || String(err)
+                });
             }
 
             // Update background task status

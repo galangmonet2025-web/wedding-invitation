@@ -73,6 +73,43 @@
                 </div>
             </section>
 
+            <!-- ---------------- OPENING VIDEO (FIRST section the guest sees after
+                 opening the invitation: Cover → Video → Hero → Couple → …).
+                 Full height of the phone container. The Bali motion video plays
+                 ONCE at 1.5× as soon as the invitation is opened; the couple text
+                 reveals near the end. No colour scrim — the clip is shown clean
+                 and the card text carries its own text-shadow for legibility.
+                 <video> is muted (visual only) so it never conflicts with the
+                 host's real music player. -->
+            <section id="theme-opening" class="section-opening">
+                <video class="opening-video" id="opening-video" muted playsinline preload="auto"
+                    poster="{{#if photo_cover}}{{photo_cover}}{{else}}{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}{{/if}}">
+                    <source src="https://assets.inviee.id/heritage/Bali-Motion-HD.mp4#t=0.5" type="video/mp4">
+                </video>
+
+                <div class="opening-inner">
+                    <!-- Text overlay — no frame/border; revealed near the end of the video -->
+                    <div class="opening-card" id="opening-card">
+                        <div class="opening-eyebrow">The Wedding of</div>
+                        <div class="opening-names">
+                            <span class="opening-name">{{groom_nickname}}</span>
+                            <span class="opening-amp">&amp;</span>
+                            <span class="opening-name">{{bride_nickname}}</span>
+                        </div>
+                        <div class="opening-hashtag" id="opening-hashtag"
+                            data-groom="{{groom_nickname}}" data-bride="{{bride_nickname}}">
+                            #{{groom_nickname}}{{bride_nickname}}
+                        </div>
+                        <div class="opening-date">{{wedding_date}}</div>
+                    </div>
+
+                    <div class="opening-continue" id="opening-scroll-hint">
+                        <span>Scroll</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                </div>
+            </section>
+
             <!-- ---------------- HERO (full-screen photo, Ken Burns + Meru crown) ---------------- -->
             <section class="section-hero">
                 <div class="hero-bg" style="background-image: linear-gradient(rgba(60,31,48,0.5), rgba(60,31,48,0.78)), url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
@@ -106,41 +143,6 @@
                 </div>
             </section>
 
-            <!-- ---------------- OPENING VIDEO (normal in-flow section, placed AFTER
-                 the hero: Cover → Hero → Video → Couple → …). Full height of the
-                 phone container. The Bali motion video plays ONCE when this
-                 section scrolls into view; the couple text reveals near the end.
-                 <video> is muted (visual only) so it never conflicts with the
-                 host's real music player. -->
-            <section id="theme-opening" class="section-opening">
-                <video class="opening-video" id="opening-video" muted playsinline preload="auto"
-                    poster="{{#if photo_cover}}{{photo_cover}}{{else}}{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}{{/if}}">
-                    <source src="https://assets.inviee.id/heritage/Bali-Motion-HD.mp4#t=0.5" type="video/mp4">
-                </video>
-                <div class="opening-scrim"></div>
-
-                <div class="opening-inner">
-                    <!-- Text overlay — no frame/border; revealed near the end of the video -->
-                    <div class="opening-card" id="opening-card">
-                        <div class="opening-eyebrow">The Wedding of</div>
-                        <div class="opening-names">
-                            <span class="opening-name">{{groom_nickname}}</span>
-                            <span class="opening-amp">&amp;</span>
-                            <span class="opening-name">{{bride_nickname}}</span>
-                        </div>
-                        <div class="opening-hashtag" id="opening-hashtag"
-                            data-groom="{{groom_nickname}}" data-bride="{{bride_nickname}}">
-                            #{{groom_nickname}}{{bride_nickname}}
-                        </div>
-                        <div class="opening-date">{{wedding_date}}</div>
-                    </div>
-
-                    <div class="opening-continue" id="opening-scroll-hint">
-                        <span>Scroll</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                </div>
-            </section>
 
             <!-- ---------------- COUPLE ---------------- -->
             <section id="couples" class="section section-couple has-motif" data-menu-label="Mempelai">

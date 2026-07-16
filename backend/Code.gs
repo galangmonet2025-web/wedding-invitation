@@ -3448,6 +3448,36 @@
       return quote;
     },
 
+    // Generate the next quotes_slug for a given zero-padded width.
+    // Master quotes (dibuat via menu Master Quotes) pakai 2 digit -> 'quotes-01'.
+    // Custom quotes (dibuat tenant via Kelola Undangan) pakai 4 digit -> 'quotes-0001'.
+    //
+    // Tiap pola punya deret sendiri: yang dihitung hanya slug dengan JUMLAH DIGIT
+    // yang sama, jadi quotes-05 dan quotes-0020 tidak saling mengganggu.
+    //
+    // Nomor diambil dari MAX yang sudah terpakai + 1, bukan dari jumlah baris:
+    // kalau quotes-03 dihapus, berikutnya tetap quotes-05 sehingga nomor tidak pernah
+    // dipakai ulang (menghitung baris akan menghasilkan quotes-04 yang bentrok).
+    nextQuotesSlug: function(width) {
+      var rows = DB.getAll('QuotesVariant');
+      // ^quotes-(tepat `width` digit)$ — jangkar penuh supaya 'quotes-0001' (4 digit)
+      // tidak ikut terbaca saat menghitung deret 2 digit.
+      var re = new RegExp('^quotes-(\\d{' + width + '})$');
+      var max = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var m = re.exec(String(rows[i].quotes_slug || '').trim());
+        if (m) {
+          var n = parseInt(m[1], 10);
+          if (n > max) max = n;
+        }
+      }
+      var next = String(max + 1);
+      // Zero-pad ke `width`; nomor yang melewati width dibiarkan tumbuh apa adanya
+      // (mis. deret 2 digit yang sudah lewat 99 -> 'quotes-100') supaya tetap unik.
+      while (next.length < width) next = '0' + next;
+      return 'quotes-' + next;
+    },
+
     // Build creator_username + tenant_slug enrichment maps once for the whole list
     enrichList: function(rows) {
       var users = DB.getAll('Users');
@@ -3518,6 +3548,8 @@
 
       var row = this.buildRowFromPayload(payload);
       row.id = id;
+      // Dibuat lewat menu Master Quotes -> deret 2 digit ('quotes-01').
+      row.quotes_slug = this.nextQuotesSlug(2);
       row.active = this.isTrue(payload.active) ? 'TRUE' : 'FALSE';
       row.flag_default_quotes = isDefault ? 'TRUE' : 'FALSE';
       // Use quote_tenant_id (set explicitly by the form). Empty = "Berlaku umum".
@@ -3623,6 +3655,10 @@
         var row = {};
         for (var k in quoteFields) { row[k] = quoteFields[k]; }
         row.id = quotesId;
+        // Dibuat sendiri oleh tenant lewat Kelola Undangan -> deret 4 digit ('quotes-0001').
+        // Hanya di cabang insert: slug tidak pernah berubah setelah baris dibuat,
+        // jadi cabang update di atas sengaja tidak menyentuh quotes_slug.
+        row.quotes_slug = this.nextQuotesSlug(4);
         row.religion_enum = payload.religion_enum || (tenant.religion || '');
         row.title = payload.title || ('Custom - ' + (tenant.domain_slug || tenantId));
         row.active = 'TRUE';
@@ -3649,7 +3685,7 @@
     var sheets = {
       'Themes': ['id', 'name', 'html_template', 'html_extra_1', 'html_extra_2', 'html_extra_3', 'html_extra_4', 'html_extra_5', 'html_extra_6', 'html_extra_7', 'html_extra_8', 'html_extra_9', 'html_extra_10', 'css_template', 'css_extra_1', 'css_extra_2', 'css_extra_3', 'css_extra_4', 'css_extra_5', 'css_extra_6', 'css_extra_7', 'css_extra_8', 'css_extra_9', 'css_extra_10', 'js_template', 'js_extra_1', 'js_extra_2', 'js_extra_3', 'js_extra_4', 'js_extra_5', 'js_extra_6', 'js_extra_7', 'js_extra_8', 'js_extra_9', 'js_extra_10', 'plan_type', 'style_category', 'preview_image', 'flag_draft', 'flag_use_system_action_button', 'created_at'],
       'Tenants': ['id', 'bride_nickname', 'bride_name', 'groom_nickname', 'groom_name', 'religion', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id', 'quotes_id'],
-      'QuotesVariant': ['id', 'religion_enum', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
+      'QuotesVariant': ['id', 'religion_enum', 'quotes_slug', 'title', 'quote_1', 'quote_2', 'quote_3', 'quote_4', 'quote_5', 'quote_6', 'quote_7', 'quote_by_1', 'quote_by_2', 'quote_by_3', 'quote_by_4', 'quote_by_5', 'quote_by_6', 'quote_by_7', 'flag_default_quotes', 'active', 'tenant_id', 'user_id', 'created_at', 'update_at'],
       'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
       'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'flag_sudah_kirim_undangan_via_whatsapp', 'checkin_status', 'created_at', 'flag_sudah_isi_ucapan', 'flag_sudah_kirim_hadiah'],
       'Wishes': ['id', 'tenant_id', 'guest_id', 'guest_name', 'message', 'created_at'],

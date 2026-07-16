@@ -1,48 +1,65 @@
 /* =========================================================================
- PALEMBANG HERITAGE — a Palembang (South Sumatra) wedding invitation theme.
+ CHINESE HERITAGE — a Chinese-decorated wedding invitation theme: red panel
+ (#741C1B) + gold (#D8C278) over a crane/peony/lantern painting.
 
- Cloned in structure from "sunda-heritage" (a lineage that goes back to
- "timeless") and re-skinned to the Palembang reference invitation: ivory
- paper, deep-red songket panels, gold accents, the AESAN GEDE (mahkota
- pengantin) crown, gold songket border bands and red botanical sprays.
+ Cloned in structure from "jawa-blue-heritage" (same inviee generation,
+ 2025/07-08), which had already dropped the 3-layer heritage recipe. This
+ source goes further still. Deliberate structural differences — do NOT
+ "harmonise" these back to the heritage siblings:
+ - NO motif band atas/bawah (source has no band artwork) -> no .cn-motif,
+ and NO .has-motif 165px padding (there is no band to clear).
+ - NO crown/siger (source has no ICON artwork) -> no .cn-siger*, and no
+ silhouette in the desktop sidebar.
+ - NO corner spray accents, and — unlike jawa-blue — NO corner flowers
+ either (.cn-flower-*): this source ships no flower artwork at all. The
+ cover frame is asset 2 doing the whole job on its own.
+ - Panel is FLAT #741C1B (no radial-gradient) with white text.
+ - Overlay = seigaiha (wave) @150% auto, opacity .6, NO mix-blend-mode.
+ (jawa-blue's 35%/.15 and the minang/bali 150-200px + multiply are THEIR
+ recipes, not this one's — verified from post-57022.css.)
+
+ COPY NOTE: this source is a CHRISTIAN invitation ("Holy Matrimony",
+ "~ 1 Corinthians 13:4-8 ~") — it has no Akad Nikah and no QS. Ar-Rum. Only
+ the DECORATION is Chinese (lanterns, cranes, peonies, seigaiha, red+gold);
+ the source uses no Chinese ceremony terms (no sangjit/tea pai/cheng), so
+ neither do we.
 
  The artwork lives in asset/ and is wired via {{asset_image_N}} INLINE
  STYLES in index.html — the host does NOT template-parse CSS, and a large
  base64 CSS overflows the Sheets 50K-per-cell chunking. See asset/ASSET.md.
 
- PALETTE — taken from the source, NOT invented:
- radial-gradient(at center center, #8A1B26 0%, #4C030A 80%) -> red panel
- overlay: background-color #4C030A + Palembang-Pattern-Seamless @150px,
- opacity .3, mix-blend-mode: multiply
- NOTE: 150px / .3 here. The sibling "sunda-heritage" uses 200px / .35 —
- that is Sunda-only. Angka resep WAJIB diverifikasi per source; jangan
- disalin dari tema saudara.
- Overlay & tepi radial sama-sama #4C030A.
- The ink/paper/gold vars below are derived from those two reds so the
- cream paper + dark ink + gold accents stay readable.
- fonts: Poppins + Cormorant Infant
+ PALETTE — verified from the source (post-57022.css), NOT invented:
+ #741C1B panel merah (61x sebagai background-color) | #D8C278 emas (34x)
+ #2F2F2F / #100F0F ink | #FFFFFF teks di atas panel | #F2F2F2 paper
+ fonts: Poppins + Cormorant Infant (same as jawa-blue — source uses both)
  ========================================================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Poppins:wght@300;400;500;600&display=swap');
 
 :root {
- /* --- Palette: 2 warna sumber (#8A1B26 / #4C030A) + turunannya --- */
- --paper: #fbf5f2; /* warm cream page */
- --paper-2: #f3e4e0; /* deeper rosy ivory (alt sections) */
- --ink: #2e1512; /* near-black warm ink */
- --ink-soft: #6b3a35; /* soft warm ink */
- --gold: #c2a568; /* antique gold */
- --gold-deep: #b08444; /* burnt gold */
- --gold-soft: #e8c890; /* pale gold */
- --saga: #8a1b26; /* deep red (radial centre) */
- --saga-deep: #4c030a; /* darkest red (radial edge) */
- --line: rgba(163, 140, 94, 0.42);
+ /* --- Palette VERIFIED from the source (Chinese Heritage, post-57022.css) ---
+ Nama variabelnya diwarisi dari skeleton (--gold*/--saga*) supaya diff-nya
+ kecil. Di tema INI namanya kebetulan jujur: --gold* memang emas #D8C278,
+ dan --saga-deep memang panel merah #741C1B. Tetap baca nama var sebagai
+ PERAN, bukan warna. */
+ --paper: #ffffff; /* paper putih (source: #FFFFFF) */
+ --paper-2: #f2f2f2; /* paper alternatif (source: #F2F2F2) */
+ --ink: #100f0f; /* ink paling gelap (source: #100F0F) */
+ --ink-soft: #2f2f2f; /* ink lembut (source: #2F2F2F) */
+ --gold: #d8c278; /* PERAN "garis/aksen": emas #D8C278 (34x di source) */
+ --gold-deep: #741c1b; /* PERAN "aksen tua": merah panel #741C1B */
+ --gold-soft: #d8c278; /* PERAN "aksen pucat": emas #D8C278 */
+ --saga: #d8c278; /* PERAN "aksen sedang": emas */
+ --saga-deep: #741c1b; /* PERAN "panel utama": merah #741C1B (61x di source) */
+ --line: rgba(216, 194, 120, 0.52); /* garis/divider emas */
  --serif: 'Cormorant Infant', 'Times New Roman', serif;
  --sans: 'Poppins', system-ui, sans-serif;
- --shadow: 0 18px 45px rgba(76, 3, 10, 0.18);
+ --shadow: 0 18px 45px rgba(47, 47, 47, 0.18);
 
- /* Motif band, pure SVG — meniru band songket Palembang-Motif-Atas/Bawah-1.webp */
- --motif-band: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='16' viewBox='0 0 40 16'%3E%3Cg fill='none' stroke='%23c2a568' stroke-width='1.1'%3E%3Cellipse cx='14' cy='8' rx='3' ry='6'/%3E%3Cellipse cx='26' cy='8' rx='3' ry='6'/%3E%3Cellipse cx='20' cy='8' rx='6' ry='3'/%3E%3C/g%3E%3Ccircle cx='20' cy='8' r='1.4' fill='%234c030a' opacity='.8'/%3E%3C/svg%3E");
+ /* Garis motif tipis (SVG murni) untuk tepi atas section closing — meniru
+ bentuk gelombang seigaiha dari chinese-overlay.webp, bukan aset band (tema
+ ini TIDAK punya motif band; lihat header). */
+ --motif-band: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='16' viewBox='0 0 40 16'%3E%3Cg fill='none' stroke='%23d8c278' stroke-width='1.1'%3E%3Cpath d='M0 16a10 10 0 0 1 20 0'/%3E%3Cpath d='M20 16a10 10 0 0 1 20 0'/%3E%3Cpath d='M4 16a6 6 0 0 1 12 0'/%3E%3Cpath d='M24 16a6 6 0 0 1 12 0'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 * {
@@ -55,20 +72,8 @@
  background: var(--saga-deep);
 }
 
-/* Aesan gede (mahkota pengantin Palembang) silhouette pinned to the base of the desktop sidebar */
-.pl-sidebar-crown {
- position: absolute;
- left: -2%;
- right: -2%;
- bottom: -2%;
- height: 46%;
- background-repeat: no-repeat;
- background-position: bottom center;
- background-size: contain;
- opacity: 0.9;
- filter: drop-shadow(0 -6px 24px rgba(0, 0, 0, 0.4));
- pointer-events: none;
-}
+/* Tidak ada siluet mahkota di sidebar desktop: source chinese tak punya
+ aset ICON/mahkota (beda dari sunda/jawa/minang). Sidebar = foto + scrim saja. */
 
 #layer-text .sidebar-couple-name {
  font-family: var(--serif);
@@ -122,36 +127,39 @@
  overflow-y: hidden;
 }
 
-/* Rich Palembang background (asset image 1 = rumah limas + jembatan + bunga).
- Fixed inside the phone
- scroller so the motif stays put while the content scrolls over it. The
- content sections are translucent (see .section / .section-couple etc.
- below), so this reads through the WHOLE invitation → the "kental" look. */
+/* Latar chinese (asset 1 = bangau + peony + lampion + matahari merah). Fixed di
+ dalam scroller HP supaya lukisannya diam saat konten digulir. Section kontennya
+ semi-transparan (lihat .section / .section-couple dst di bawah), jadi latar ini
+ tembus ke SELURUH undangan → tampilan "kental".
+ background-position 50% 75% = resep source (post-57022.css), bukan karangan:
+ menaruh bangau/peony-nya di bawah layar, langit + matahari merah di atas.
+ background-color #000000 juga dari source (dasar di balik gambar). */
 /* FIXED backdrop — completely out of flow, so it adds ZERO scrollable height
  (a sticky/absolute layer here stretched the scroller and made the cover
  scrollable). Clamped to the 480px phone column on desktop, like the FAB. */
-.pl-page-bg {
+.cn-page-bg {
  position: fixed;
  top: 0;
  bottom: 0;
  left: 0;
  right: 0;
  z-index: 0;
+ background-color: #000000;
  background-repeat: no-repeat;
- background-position: center center;
+ background-position: 50% 75%;
  background-size: cover;
  opacity: 0.9;
  pointer-events: none;
 }
 
 @media (min-width: 960px) {
- .pl-page-bg {
+ .cn-page-bg {
  left: auto;
  width: 480px;
  }
 }
 
-/* The background layer (.pl-page-bg, z-index:0) is the FIRST child of the scroller;
+/* The backdrop layer (.cn-page-bg, z-index:0) is the FIRST child of the scroller;
  every section that follows in the DOM paints above it automatically (they're
  position:relative via .section / .section-hero / etc). We deliberately do NOT
  add a blanket `.mock-app-screen > section` rule here — it would override the
@@ -165,93 +173,78 @@
 }
 
 /* =========================================================================
- PALEMBANG DECORATIVE ELEMENTS (copied from the reference invitation)
+ CHINESE DECORATIVE ELEMENTS
+
+ JAUH lebih sedikit daripada saudara heritage-nya, dan itu DISENGAJA — source
+ chinese (angkatan 2025/07-08) memang tak menyediakan asetnya:
+ - TIDAK ADA .cn-motif band atas/bawah -> tidak ada pula .has-motif
+ (padding 165px). Tak ada band yang perlu dihindari konten; kalau
+ padding-nya ditinggal, section cuma menganga kosong.
+ - TIDAK ADA .cn-siger / mahkota di cover, hero, closing, menu & sidebar.
+ - TIDAK ADA .cn-spray-l/-r aksen sudut section.
+ - TIDAK ADA .cn-flower-* aksen sudut frame cover — beda dari jawa-blue
+ (yang punya 1 aset bunga + scaleX). Source chinese tak punya aset bunga
+ sama sekali; bingkai cover dikerjakan asset 2 sendirian.
+ Yang tersisa: panel merah flat + overlay seigaiha, dan frame cover.
  ========================================================================= */
-
-/* Real songket motif borders (asset images 2 & 3). Placed as HTML divs that
- span the FULL height of the section; the top image anchors to the top edge
- and the bottom image to the bottom edge. The source art fades toward its
- inner edge, so together they frame the section top & bottom without covering
- the middle. */
-/* Border bands. Sizing copied from the source (background-position top/bottom
- center; no-repeat; background-size:100% auto) — the art spans the full width
- and keeps its aspect. We span the full section height so each band anchors to
- its own edge; the middle stays clear for the red pattern ground + content. */
-.pl-motif {
- position: absolute;
- left: 0;
- right: 0;
- top: 0;
- height: 100%;
- background-repeat: no-repeat;
- background-size: 100% auto;
- pointer-events: none;
- z-index: 1;
- opacity: 1;
-}
-
-.pl-motif-top { background-position: top center; }
-.pl-motif-bottom { background-position: bottom center; }
-
-/* Content must clear the two bands. The art is ~1.5:1, so at the 480px phone
- width each band is ~150px tall → pad generously top & bottom. */
-.has-motif { padding-top: 165px; padding-bottom: 165px; }
 
 /* =========================================================================
- RED SONGKET SECTIONS — a 3-layer "motif panel": Palembang-Motif-Atas
- (top border) + a DOMINANT DEEP-RED motif fill (Palembang-Pattern-Seamless
- tiled over red) + Palembang-Motif-Bawah-1 (bottom border).
+ PANEL MERAH (.section-red) — DUA layer saja: panel FLAT + overlay seigaiha.
+ Bukan resep 3-layer keluarga heritage (radial + band atas/bawah).
  ========================================================================= */
-/* EXACT recipe from the source:
- base = red radial gradient (#8A1B26 center → #4C030A edge); overlay =
- Palembang-Pattern-Seamless tiled at 150px, opacity 0.3, mix-blend-mode:
- multiply, over a #4C030A fill. That multiply overlay is what produces the
- dominant deep-red motif ground in the reference image.
- CATATAN: 150px/0.3 di sini. Tema saudara "sunda-heritage" pakai 200px/0.35
- — itu khusus Sunda. Angka resep diverifikasi per source, bukan disalin
- dari tema saudara. */
+/* Resep DIVERIFIKASI dari source (post-57022.css) — jangan diselaraskan
+ dengan tema saudara:
+ - panel = FLAT #741C1B. TIDAK ADA radial-gradient di source ini.
+ - overlay = seigaiha (gelombang), background-size 150% auto, opacity .6,
+ repeat, TANPA mix-blend-mode. (jawa-blue pakai 35%/.15; Minang/Bali/Sunda
+ pakai 150-200px + multiply — itu resep MEREKA, bukan resep di sini.)
+ opacity .6 memang TINGGI: aset seigaiha-nya abu-abu sangat pucat, jadi
+ baru terbaca sebagai gelombang lembut setelah ditumpuk sepekat itu di
+ atas merah. Jangan diturunkan "supaya seperti jawa-blue".
+ Nama kelas .section-red/.cn-red-bg diwarisi dari skeleton — di tema ini
+ namanya kebetulan tepat: panelnya memang merah #741C1B.
+ .section.section-red: 2 kelas supaya menang atas .section yang tertulis
+ setelahnya di file ini. */
 .section.section-red {
- background: radial-gradient(at center center, #8A1B26 0%, #4C030A 80%);
- color: #fdf1ee;
+ background: #741c1b;
+ color: #ffffff;
 }
 
-/* the motif-pattern multiply overlay (matches the source 1:1) */
-.pl-red-bg {
+/* overlay seigaiha di atas panel merah flat (persis source: 150% / .6 / repeat) */
+.cn-red-bg {
  position: absolute;
  inset: 0;
  z-index: 0;
- /* Overlay & tepi radial sama-sama #4C030A. */
- background-color: #4C030A;
+ background-color: #741c1b;
  background-repeat: repeat;
  background-position: center center;
- background-size: 150px auto;
- opacity: 0.3;
- mix-blend-mode: multiply;
+ background-size: 150% auto;
+ opacity: 0.6;
  pointer-events: none;
 }
 
-/* Stacking inside a gold section: pattern ground (0) → motif bands (1) → content (2).
- NOTE: the decorative layers are excluded — they position themselves absolutely and
- a blanket `position: relative` here would knock them back into the flow (that bug
- dumped both spray accents on top of each other at the top-left). */
-.section-red > *:not(.pl-red-bg):not(.pl-motif):not(.pl-spray) { position: relative; z-index: 2; }
+/* Susunan di dalam panel: overlay seigaiha (0) -> konten (2).
+ CATATAN: layer dekoratif dikecualikan — ia memosisikan diri secara absolut,
+ dan aturan borongan position:relative di sini akan menendangnya balik ke
+ flow. Di sini tinggal .cn-red-bg (band & spray sudah tak ada). */
+.section-red > *:not(.cn-red-bg) { position: relative; z-index: 2; }
 
-/* light text on the gold ground */
+/* teks terang di atas panel merah (source: teks #FFFFFF) */
 .section-red .eyebrow { color: var(--gold-soft); }
 .section-red .display-name,
-.section-red .schedule-venue { color: #fff4f0; }
-.section-red .ornament .pl-diamond { fill: var(--gold-soft); stroke: var(--gold-soft); }
-.section-red .gift-instruction { color: rgba(253, 246, 238, 0.85); }
+.section-red .schedule-venue { color: #ffffff; }
+.section-red .ornament .cn-diamond { fill: var(--gold-soft); stroke: var(--gold-soft); }
+.section-red .gift-instruction { color: rgba(255, 255, 255, 0.85); }
 
-/* cards on the gold ground → warm translucent panels with gold edges */
+/* kartu di atas panel merah -> panel putih dengan tepi emas */
 .section-red .schedule-card,
 .section-red .gift-card,
 .section-red .streaming-card {
- background: rgba(251, 246, 240, 0.94);
+ background: rgba(255, 255, 255, 0.94);
  border-color: var(--gold);
 }
 
-/* text inside those cream cards stays dark (the section-level light colour
+/* text inside those white cards stays dark (the section-level light colour
  would otherwise wash it out). */
 .section-red .schedule-card .schedule-address,
 .section-red .gift-card .schedule-address,
@@ -259,153 +252,34 @@
  color: var(--ink-soft);
 }
 
-/* …but a bare .schedule-address sitting directly on the gold ground goes light */
-.section-red > .schedule-address { color: rgba(253, 246, 238, 0.85); }
+/* …but a bare .schedule-address sitting directly on the red panel goes light */
+.section-red > .schedule-address { color: rgba(255, 255, 255, 0.85); }
 
-/* Untaian bunga merah aksen sudut — asset 4 & 5, pasangan cermin kiri/kanan. */
-.pl-spray {
+/* CATATAN: tema ini TIDAK punya .cn-flower-* (aksen sudut frame cover).
+ jawa-blue punya, karena source-nya menyediakan satu aset bunga; source
+ chinese TIDAK menyediakan aset bunga sama sekali, jadi div + CSS-nya
+ dibuang seluruhnya, bukan disembunyikan. Bingkai cover dikerjakan asset 2
+ (.cn-cover-art) sendirian — lihat di bawah. Jangan menambahkannya kembali
+ "supaya seragam dengan tema saudara". */
+
+/* Frame cover (asset 2) — bingkai arch/lengkung merah: lampion, peony &
+ bangau di tepinya, tengahnya PUCAT supaya teks terbaca.
+ Urutan layer cover: foto tenant (.cover-bg, z-0) → frame ini (z-1) → scrim
+ (.section-cover::after, z-1 TAPI setelahnya di DOM jadi menang) → konten
+ (.cover-inner, z-2). Frame sengaja DI BAWAH scrim supaya foto tenant &
+ frame-nya sama-sama teredam dan teks tetap terbaca.
+ Resep source: background-position center center; no-repeat; cover. */
+.cn-cover-art {
  position: absolute;
- width: 128px;
- height: 168px;
- background-repeat: no-repeat;
- background-position: center;
- background-size: contain;
- pointer-events: none;
+ inset: 0;
  z-index: 1;
- opacity: 0.95;
- filter: drop-shadow(0 6px 12px rgba(76, 3, 10, 0.25));
-}
-
-/* Tucked into the section's TOP CORNERS, just under the motif band.
- TANPA scaleX(-1). Beda dari Minang (yang cuma punya 1 gambar lalu
- dicerminkan lewat CSS), source Palembang menyediakan PASANGAN CERMIN asli:
- slot 4 = Palembang-Couple-Belakang-2.webp (condong KIRI, source memasangnya
- di 25% 60%), slot 5 = Palembang-Couple-Belakang-1.webp (condong KANAN, 75% 60%).
- Penomorannya TERBALIK dari intuisi (2 = kiri, 1 = kanan) — diverifikasi dari
- source, jangan "dirapikan". Menambahkan scaleX(-1) di sini justru membalik
- artwork yang sudah benar. */
-.pl-spray-l { top: 118px; left: -30px; }
-.pl-spray-r { top: 118px; right: -30px; }
-
-/* Aesan gede (mahkota pengantin Palembang) — used as a "crown"
- on the cover, hero, closing & menu. */
-.pl-crown {
- position: absolute;
  background-repeat: no-repeat;
- background-position: top center;
- background-size: contain;
- pointer-events: none;
- z-index: 2;
-}
-
-/* Kotak mahkota memakai aspek artwork ASLI (Palembang-Icon.webp = 1000x740,
- ~1.35:1) — bukan ~2:1 warisan siger Sunda yang pipih. `contain` memang tidak
- mendistorsi, tapi kotak yang terlalu pipih membuat mahkota tampil jauh lebih
- kecil dari jatah ruangnya. */
-.pl-crown-cover {
- top: 4%;
- left: 50%;
- transform: translateX(-50%);
- width: 170px;
- height: 126px;
- z-index: 2;
- opacity: 0.92;
- filter: drop-shadow(0 6px 14px rgba(76, 3, 10, 0.25));
- animation: plFloat 6s ease-in-out infinite alternate;
-}
-
-.pl-crown-hero {
- top: 26px;
- left: 50%;
- transform: translateX(-50%);
- width: 148px;
- height: 110px;
+ background-position: center center;
+ background-size: cover;
  opacity: 0.85;
- z-index: 2;
- filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
-}
-
-/* The crown now flows INSIDE the closing stack (not pinned to the top), so
- it sits directly above the "Terima Kasih" card with no gap. The whole
- crown + card group is nudged up 30px (see .closing-inner). */
-.pl-crown-closing {
- position: static;
- display: block;
- width: 132px;
- height: 98px;
- /* margin-top:auto pushes the crown + card GROUP down together; the tiny
- bottom margin keeps the card "pepet" (tight) right under the crown. */
- margin: auto auto 6px;
- opacity: 0.8;
- z-index: 2;
- filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
-}
-
-.pl-crown-menu {
- position: static;
- display: block;
- width: 140px;
- height: 104px;
- margin: 0 auto 12px;
- opacity: 0.9;
-}
-
-/* Crown that flows INSIDE a section head (not absolute). */
-.pl-crown-inline {
- position: static;
- display: block;
- width: 132px;
- height: 98px;
- margin: 0 auto 14px;
- opacity: 0.95;
- filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
-}
-
-@keyframes plFloat {
- 0% { transform: translateX(-50%) translateY(0); }
- 100% { transform: translateX(-50%) translateY(-6px); }
-}
-
-/* Untaian bunga merah — aksen sudut frame cover.
- CATATAN PETA SLOT: angkatan Palembang TIDAK punya aset bunga terpisah untuk
- frame cover (tak ada padanan "COUPLE-2" seperti Minang/Bali/Jawa, dan tak ada
- pasangan "Depan" seperti Sunda). Jadi frame cover MEMAKAI ULANG pasangan
- cermin slot 4 & 5 — tema ini total 7 slot, dan {{asset_image_8}}/{{asset_image_9}}
- sengaja TIDAK dipakai sama sekali (slot kosong = string kosong, dekorasi
- hilang tanpa error — tapi lebih baik tidak dirujuk). */
-.pl-flower {
- position: absolute;
- width: 118px;
- height: 150px;
- background-repeat: no-repeat;
- background-position: center;
- background-size: contain;
  pointer-events: none;
- z-index: 3;
- opacity: 0.95;
- filter: drop-shadow(0 6px 12px rgba(76, 3, 10, 0.22));
 }
 
-/* top-left of the cover frame — slot 4 (Belakang-2, condong KIRI) */
-.pl-flower-tl {
- top: -46px;
- left: -30px;
- width: 108px;
- height: 138px;
- transform: rotate(-8deg);
-}
-
-/* bottom-right of the cover frame — slot 5 (Belakang-1, condong KANAN).
- TANPA scaleX(-1): slot 5 SUDAH artwork cermin dari slot 4 — source
- menyediakan keduanya. Kalau di-flip lagi, untaian bunga yang sudah benar
- malah terbalik. Sama seperti .pl-spray. */
-.pl-flower-br {
- bottom: -50px;
- right: -30px;
- width: 108px;
- height: 138px;
- transform: rotate(8deg);
-}
 
 /* ---- Shared type & ornaments -------------------------------------------- */
 .eyebrow {
@@ -432,8 +306,8 @@
  color: var(--ink-soft);
 }
 
-/* Motif divider: gold hairlines flanking a gold rhombus (a nod to the
- motif songket Palembang). */
+/* Motif divider: garis rambut emas mengapit belah ketupat emas
+ (bentuk medalion kecil, senada dengan aksen emas #D8C278 source). */
 .ornament {
  display: flex;
  align-items: center;
@@ -455,7 +329,7 @@
 }
 
 .ornament svg,
-.ornament .pl-diamond {
+.ornament .cn-diamond {
  width: 20px;
  height: 20px;
  flex: none;
@@ -469,9 +343,9 @@
  text-align: center;
  position: relative;
  overflow: hidden;
- /* translucent cream panel so the Palembang background reads through while the
- text stays legible ("kental" but readable). */
- background: rgba(251, 246, 240, 0.82);
+ /* translucent white panel so the crane/peony backdrop reads through while
+ the text stays legible ("kental" but readable). */
+ background: rgba(255, 255, 255, 0.82);
 }
 
 .section-head {
@@ -483,9 +357,9 @@
  margin: 6px 0 0;
 }
 
-/* (Removed the SVG "motif band" on .section::before — the real
- PALEMBANG songket motif image (.pl-motif) now provides that border on sections that
- have it, so the drawn triangle band is redundant.) */
+/* (Tidak ada band motif di .section::before — tema ini memang TIDAK punya
+ motif band sama sekali (source-nya tak menyediakan asetnya). Section
+ dibingkai oleh latar bangau/peony + panel merah, bukan oleh band.) */
 
 /* ---- Reveal-on-scroll (host re-asserts .is-visible after re-inject) ------ */
 .reveal-item {
@@ -530,7 +404,7 @@
  content: '';
  position: absolute;
  inset: 0;
- background: linear-gradient(180deg, rgba(251, 246, 240, 0.55), rgba(251, 246, 240, 0.92));
+ background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.92));
  z-index: 1;
 }
 
@@ -548,7 +422,7 @@
  padding: 50px 26px;
  max-width: 360px;
  margin: 0 auto;
- background: rgba(251, 246, 240, 0.66);
+ background: rgba(255, 255, 255, 0.66);
  backdrop-filter: blur(2px);
 }
 
@@ -607,7 +481,7 @@
 /* =========================================================================
  OPENING VIDEO — a NORMAL in-flow section that sits ABOVE the hero (it's the
  first section the guest scrolls through after opening the cover, not an
- overlay over the hero). Full height of the phone container. The Palembang
+ overlay over the hero). Full height of the phone container. The Chinese Heritage
  motion video plays once; the couple text reveals near the clip's end.
  ========================================================================= */
 .section-opening {
@@ -691,7 +565,7 @@
  line-height: 1.05;
  letter-spacing: 2px;
  text-transform: uppercase;
- color: #fdf1ee;
+ color: #ffffff;
  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
 }
 
@@ -719,7 +593,7 @@
  font-weight: 500;
  letter-spacing: 4px;
  font-size: 13px;
- color: #fdf1ee;
+ color: #ffffff;
  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 
@@ -783,7 +657,7 @@
  border: 1px solid var(--saga-deep);
  border-radius: 40px;
  background: var(--saga-deep);
- color: #fff4f0;
+ color: #ffffff;
  cursor: pointer;
  transition: all 0.35s ease;
  text-decoration: none;
@@ -813,7 +687,7 @@
 }
 
 /* =========================================================================
- HERO — full-screen photo, Ken Burns zoom + warm glow, aesan gede crown.
+ HERO — full-screen photo, Ken Burns zoom + soft glow.
  ========================================================================= */
 .section-hero {
  position: relative;
@@ -824,8 +698,11 @@
  flex-direction: column;
  align-items: center;
  text-align: center;
- padding: 120px 24px 36px;
- color: #fdf1ee;
+ /* top 64px (bukan 120px warisan sunda): 120px itu ruang untuk mahkota
+ yang mengapung di atas hero — tema ini tak punya mahkota, jadi sisanya
+ cuma jadi celah kosong. */
+ padding: 64px 24px 36px;
+ color: #ffffff;
  background-color: var(--saga-deep);
  overflow: hidden;
 }
@@ -853,8 +730,8 @@
  inset: 0;
  z-index: 1;
  background:
- radial-gradient(circle at 22% 28%, rgba(232, 200, 144, 0.24) 0%, transparent 26%),
- radial-gradient(circle at 78% 72%, rgba(138, 27, 38, 0.20) 0%, transparent 30%);
+ radial-gradient(circle at 22% 28%, rgba(216, 194, 120, 0.24) 0%, transparent 26%),
+ radial-gradient(circle at 78% 72%, rgba(116, 28, 27, 0.20) 0%, transparent 30%);
  filter: blur(28px);
  animation: heroGlow 14s ease-in-out infinite alternate;
  pointer-events: none;
@@ -932,7 +809,7 @@
  font-style: italic;
  font-size: 1.05rem;
  line-height: 1.7;
- color: rgba(255, 248, 242, 0.94);
+ color: rgba(255, 255, 255, 0.94);
  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
 }
 
@@ -950,7 +827,6 @@
 @media (prefers-reduced-motion: reduce) {
  .section-hero .hero-bg { animation: none; }
  .section-hero::after { animation: none; }
- .pl-crown-cover { animation: none; }
 }
 
 .scroll-indicator {
@@ -996,7 +872,7 @@
  COUPLE
  ========================================================================= */
 .section-couple {
- background: rgba(251, 246, 240, 0.86);
+ background: rgba(255, 255, 255, 0.86);
 }
 
 .couple-row {
@@ -1072,7 +948,7 @@
  SCHEDULE
  ========================================================================= */
 .section-schedule {
- background: rgba(242, 231, 220, 0.84);
+ background: rgba(242, 242, 242, 0.84);
 }
 
 .schedule-grid {
@@ -1164,7 +1040,7 @@
  font-family: var(--serif);
  font-size: 2.4rem;
  font-weight: 500;
- color: #fff4f0;
+ color: #ffffff;
  width: 66px;
  height: 66px;
  display: flex;
@@ -1172,7 +1048,7 @@
  justify-content: center;
  border: 1px solid var(--gold);
  background: var(--saga-deep);
- box-shadow: inset 0 0 0 3px rgba(194, 165, 104, 0.25);
+ box-shadow: inset 0 0 0 3px rgba(216, 194, 120, 0.25);
 }
 
 .countdown-label {
@@ -1231,7 +1107,7 @@
 select.custom-input {
  appearance: none;
  -webkit-appearance: none;
- background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23a5563f' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23741c1b' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
  background-repeat: no-repeat;
  background-position: right 14px center;
 }
@@ -1405,7 +1281,7 @@ select.custom-input {
  SHARE HAPPINESS — story carousel
  ========================================================================= */
 .section-happiness {
- background: rgba(242, 231, 220, 0.84);
+ background: rgba(242, 242, 242, 0.84);
 }
 
 .story-carousel-wrapper {
@@ -1445,14 +1321,14 @@ select.custom-input {
  border-radius: 10px;
  overflow: hidden;
  aspect-ratio: 9 / 16;
- box-shadow: 0 16px 34px rgba(76, 3, 10, 0.3);
+ box-shadow: 0 16px 34px rgba(47, 47, 47, 0.3);
  border: 1px solid var(--line);
  transition: border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .story-slide.is-active .card-inner {
  border-color: var(--gold);
- box-shadow: 0 18px 42px rgba(76, 3, 10, 0.36), 0 0 0 1px var(--gold-soft);
+ box-shadow: 0 18px 42px rgba(47, 47, 47, 0.36), 0 0 0 1px var(--gold-soft);
 }
 
 .card-photo,
@@ -1472,7 +1348,7 @@ select.custom-input {
  position: absolute;
  inset: 0;
  z-index: 3;
- background: linear-gradient(rgba(46,8,10,0.28) 0%, rgba(46,8,10,0) 26%, rgba(46,8,10,0) 48%, rgba(46,8,10,0.82) 100%);
+ background: linear-gradient(rgba(16,15,15,0.28) 0%, rgba(16,15,15,0) 26%, rgba(16,15,15,0) 48%, rgba(16,15,15,0.82) 100%);
  pointer-events: none;
 }
 
@@ -1611,7 +1487,7 @@ select.custom-input {
 .gallery-overlay {
  position: absolute;
  inset: 0;
- background: rgba(46, 8, 10, 0.4);
+ background: rgba(16, 15, 15, 0.4);
  display: flex;
  align-items: center;
  justify-content: center;
@@ -1771,8 +1647,9 @@ select.custom-input {
  flex-direction: column;
  align-items: center;
  text-align: center;
- padding: 130px 34px 32px;
- color: #fdf1ee;
+ /* top 72px (bukan 130px): idem hero — tak ada mahkota yang perlu dihindari. */
+ padding: 72px 34px 32px;
+ color: #ffffff;
  background-color: var(--saga-deep);
  overflow: hidden;
 }
@@ -1797,17 +1674,17 @@ select.custom-input {
  z-index: 0;
 }
 
-/* No margin-top:auto here — the crown above owns the auto margin so the two
- stay tight together. The group's -30px lift lives on .pl-crown-closing's
- margin-top; we must NOT use `transform` on this element because it carries
- .reveal-item, whose .is-visible state resets `transform` to none and would
- cancel the lift. */
+/* Di skeleton sunda, `margin-top: auto` dipegang oleh .cn-siger-closing (mahkota
+ yang mengapung tepat di atas kartu ini). Tema ini TIDAK punya mahkota, jadi
+ kartunya sendiri yang harus mengambil alih auto margin itu — kalau tidak,
+ grup penutupnya mepet ke atas section, bukan mengambang di tengah.
+ margin-bottom 30px menaikkan grup dengan memakan ruang auto-margin footer.
+ Pakai margin, BUKAN `transform`: elemen ini memakai .reveal-item, dan
+ .reveal-item.is-visible me-reset transform jadi none → geserannya batal. */
 .closing-inner {
  position: relative;
  z-index: 2;
- /* Lifts the crown + card group 30px: this extra bottom margin eats into
- the footer's auto-margin space, shifting the group upward. Uses margin
- (not transform) because .reveal-item.is-visible resets transform. */
+ margin-top: auto;
  margin-bottom: 30px;
 }
 
@@ -1841,7 +1718,7 @@ select.custom-input {
  font-style: italic;
  font-size: 1.15rem;
  line-height: 1.7;
- color: rgba(255, 248, 242, 0.92);
+ color: rgba(255, 255, 255, 0.92);
  max-width: 320px;
  margin: 0 auto;
 }
@@ -1873,7 +1750,7 @@ select.custom-input {
 
 .footer-info {
  font-size: 11px;
- color: rgba(253, 246, 238, 0.72);
+ color: rgba(255, 255, 255, 0.72);
  line-height: 1.8;
  margin-top: 6px;
 }
@@ -1924,7 +1801,7 @@ select.custom-input {
  width: 50px;
  height: 50px;
  background: var(--saga-deep);
- color: #fff4f0;
+ color: #ffffff;
  border-color: var(--gold);
 }
 
@@ -1949,19 +1826,19 @@ select.custom-input {
  align-items: center;
  justify-content: center;
  cursor: pointer;
- box-shadow: 0 8px 20px rgba(76, 3, 10, 0.22);
+ box-shadow: 0 8px 20px rgba(47, 47, 47, 0.22);
  transition: all 0.3s ease;
  pointer-events: auto;
 }
 
 .floating-btn:hover {
  background: var(--saga-deep);
- color: #fff4f0;
+ color: #ffffff;
 }
 
 .floating-btn.music-playing {
  background: var(--saga-deep);
- color: #fff4f0;
+ color: #ffffff;
 }
 
 /* Menu modal */
@@ -1969,7 +1846,7 @@ select.custom-input {
  position: fixed;
  inset: 0;
  z-index: 200;
- background: rgba(242, 231, 220, 0.97);
+ background: rgba(242, 242, 242, 0.97);
  backdrop-filter: blur(4px);
  display: none;
  flex-direction: column;
@@ -2036,7 +1913,7 @@ select.custom-input {
  position: fixed;
  inset: 0;
  z-index: 200;
- background: rgba(46, 8, 10, 0.62);
+ background: rgba(16, 15, 15, 0.62);
  display: none;
  align-items: center;
  justify-content: center;

@@ -1,11 +1,11 @@
 /* =========================================================================
- JAWA BLUE HERITAGE ("Blue Javanese") — theme JS
+ CHINESE HERITAGE — theme JS
 
- Blue-grey (#4E647A) palette over a pale joglo/wayang backdrop. Cloned in
- structure & host-wiring from "sunda-heritage" (itself from minang-heritage /
- "timeless"), but this source is a DIFFERENT inviee generation (2025/07-08):
- it has NO motif band and NO crown, so those elements are absent here — see
- index.css and asset/ASSET.md.
+ Red (#741C1B) + gold (#D8C278) palette over a crane/peony/lantern backdrop.
+ Cloned in structure & host-wiring from "jawa-blue-heritage" (same inviee
+ generation, 2025/07-08; itself descended from sunda/minang/"timeless").
+ This source has NO motif band, NO crown and NO corner flowers, so those
+ elements are absent here — see index.css and asset/ASSET.md.
 
  Host contract (ThemeWrapper): this script is REMOVED and RE-EXECUTED every
  time its inputs change. So it must:
@@ -21,11 +21,11 @@
  'use strict';
 
  // ---- Run previous instance's cleanup, then start a fresh registry -------
- if (typeof window.__jawaBlueCleanup === 'function') {
- try { window.__jawaBlueCleanup(); } catch (e) { /* noop */ }
+ if (typeof window.__chineseCleanup === 'function') {
+ try { window.__chineseCleanup(); } catch (e) { /* noop */ }
  }
  var cleanupFns = [];
- window.__jawaBlueCleanup = function () {
+ window.__chineseCleanup = function () {
  cleanupFns.forEach(function (fn) { try { fn(); } catch (e) { /* noop */ } });
  cleanupFns = [];
  };
@@ -69,18 +69,18 @@
  };
 
  // =====================================================================
- // Countdown — reads the REAL wedding date from the DB (#jb-wed-date).
+ // Countdown — reads the REAL wedding date from the DB (#cn-wed-date).
  // Self-contained + guards against stacked intervals on re-execution.
  // =====================================================================
  (function startCountdown() {
- if (window.__jbCountdownTimer) {
- clearInterval(window.__jbCountdownTimer);
- window.__jbCountdownTimer = null;
+ if (window.__cnCountdownTimer) {
+ clearInterval(window.__cnCountdownTimer);
+ window.__cnCountdownTimer = null;
  }
 
  function resolveDay() {
  var holder = document.getElementById('wedding-calendar')
- || document.getElementById('jb-wed-date');
+ || document.getElementById('cn-wed-date');
  var raw = holder ? (holder.getAttribute('data-wedding-date') || '').trim() : '';
  var m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
  if (m) return new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0);
@@ -89,7 +89,7 @@
  }
 
  function receptionEnd(day) {
- var holder = document.getElementById('jb-jam-resepsi');
+ var holder = document.getElementById('cn-jam-resepsi');
  var txt = holder ? (holder.textContent || '') : '';
  var times = txt.match(/(\d{1,2}):(\d{2})/g) || [];
  var endH = 23, endM = 59;
@@ -123,16 +123,16 @@
  set('seconds', Math.floor((dist % 6e4) / 1000));
  } else if (Date.now() <= recEnd.getTime()) {
  setStatus('Hari yang kami nantikan telah tiba 🤍');
- clearInterval(window.__jbCountdownTimer); window.__jbCountdownTimer = null;
+ clearInterval(window.__cnCountdownTimer); window.__cnCountdownTimer = null;
  } else {
  setStatus('Acara kami telah selesai. Terima kasih atas doa & restunya 🙏');
- clearInterval(window.__jbCountdownTimer); window.__jbCountdownTimer = null;
+ clearInterval(window.__cnCountdownTimer); window.__cnCountdownTimer = null;
  }
  }
  tick();
- window.__jbCountdownTimer = setInterval(tick, 1000);
+ window.__cnCountdownTimer = setInterval(tick, 1000);
  cleanupFns.push(function () {
- if (window.__jbCountdownTimer) { clearInterval(window.__jbCountdownTimer); window.__jbCountdownTimer = null; }
+ if (window.__cnCountdownTimer) { clearInterval(window.__cnCountdownTimer); window.__cnCountdownTimer = null; }
  });
  })();
 

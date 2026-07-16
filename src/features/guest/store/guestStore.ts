@@ -204,35 +204,75 @@ export const useGuestStore = create<GuestState>((set, get) => ({
         }
     },
     bulkCreateGuests: async (data: CreateGuestRequest[]) => {
-        const { addTask, updateTask } = (useBackgroundTaskStore as any).getState();
+        const { addTask, updateTask, updateStep } = (useBackgroundTaskStore as any).getState();
         const taskId = `bulk-guest-${Date.now()}`;
-        
+
+        const CHUNK_SIZE = 10;
+        // Satu langkah = satu request importGuests (satu batch kontak), karena itulah
+        // satuan API yang bisa gagal. Label berisi rentang + nama kontak di dalamnya
+        // supaya kalau gagal, user tahu kontak mana yang harus diulang.
+        const chunkStepId = (i: number) => `chunk-${i}`;
+        const chunkLabel = (i: number, chunk: CreateGuestRequest[]) => {
+            const from = i + 1;
+            const to = i + chunk.length;
+            return `Kontak ${from}–${to}`;
+        };
+
         addTask({
             id: taskId,
             name: `Import ${data.length} Kontak Google`,
-            total: data.length
+            total: data.length,
+            steps: Array.from({ length: Math.ceil(data.length / CHUNK_SIZE) }, (_, k) => {
+                const i = k * CHUNK_SIZE;
+                const chunk = data.slice(i, i + CHUNK_SIZE);
+                return {
+                    id: chunkStepId(i),
+                    label: chunkLabel(i, chunk),
+                    status: 'pending' as const,
+                    api: 'importGuests',
+                };
+            })
         });
 
-        const CHUNK_SIZE = 10;
         let successCount = 0;
         let failedItems: CreateGuestRequest[] = [];
 
         try {
             for (let i = 0; i < data.length; i += CHUNK_SIZE) {
                 const chunk = data.slice(i, i + CHUNK_SIZE);
-                
+                const stepId = chunkStepId(i);
+
+                updateStep(taskId, stepId, {
+                    status: 'running',
+                    phase: `mengirim ${chunk.length} kontak...`
+                });
+
                 try {
                     // Always set overwrite to true as requested by user
                     // Use skipLoader: true to prevent blocking UI
                     const response = await (guestApi.importGuests as any)(chunk, true, { skipLoader: true });
-                    
+
                     if (response.success) {
                         successCount += chunk.length;
+                        updateStep(taskId, stepId, {
+                            status: 'success',
+                            phase: `${chunk.length} kontak tersimpan`
+                        });
                     } else {
                         failedItems = [...failedItems, ...chunk];
+                        updateStep(taskId, stepId, {
+                            status: 'error',
+                            phase: undefined,
+                            error: response.message || 'Gagal menyimpan kontak'
+                        });
                     }
-                } catch (err) {
+                } catch (err: any) {
                     failedItems = [...failedItems, ...chunk];
+                    updateStep(taskId, stepId, {
+                        status: 'error',
+                        phase: undefined,
+                        error: err?.message || String(err)
+                    });
                 }
 
                 // Update background task status

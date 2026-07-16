@@ -53,6 +53,12 @@ export const RELIGION_OPTIONS = [
 export interface QuotesVariant {
     id: string;
     religion_enum: string;
+    /**
+     * Dibuat otomatis oleh backend saat baris baru dibuat, tidak pernah dikirim form.
+     * 'quotes-01' (2 digit) = dibuat via Master Quotes, 'quotes-0001' (4 digit) = custom milik tenant.
+     * Kosong untuk baris lama yang dibuat sebelum kolom ini ada.
+     */
+    quotes_slug?: string;
     title: string;
     quote_1: string;
     quote_2: string;

@@ -631,16 +631,6 @@
  z-index: 0;
 }
 
-/* darkening scrim → keeps the gold/cream card text readable over the video */
-.section-opening .opening-scrim {
- position: absolute;
- inset: 0;
- z-index: 1;
- background:
- radial-gradient(120% 90% at 50% 35%, rgba(24,40,16,0.28) 0%, rgba(24,40,16,0.62) 70%, rgba(24,40,16,0.82) 100%);
- pointer-events: none;
-}
-
 .opening-inner {
  position: relative;
  z-index: 2;
@@ -1267,6 +1257,45 @@ select.custom-input {
  overflow-y: auto;
  padding-right: 6px;
  text-align: left;
+}
+
+/* =========================================================================
+   UCAPAN & DOA — full-screen only when there ARE wishes.
+
+   Guests should see as many wishes as possible before scrolling, so when the
+   list has at least one rendered wish the section grows to the full viewport
+   and the list absorbs the leftover height. When there are NO wishes yet the
+   section keeps its natural content height (no big empty gap).
+
+   Why `:has(... > [data-wish-item])` and not `:empty`:
+     - the host renders wishes as [data-wish-item] children of [data-loop="wishes"]
+       and PREPENDS newly submitted ones live (ThemeWrapper.prependWish) without
+       re-rendering the theme → :has() re-evaluates automatically, so the section
+       switches to full-screen the moment the first wish is posted.
+     - the {{#each}} block leaves whitespace text nodes behind when the array is
+       empty, so .wishes-list is NOT :empty and that selector would never match.
+   ========================================================================= */
+#wishes:has(.wishes-list > [data-wish-item]) {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* The list eats the remaining height instead of the fixed 340px box, so more
+   wishes fit on screen. min-height:0 is required for a flex child to be allowed
+   to shrink and scroll internally. */
+#wishes:has(.wishes-list > [data-wish-item]) .wishes-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+}
+
+/* The decorative motif bands are absolutely positioned; keep them out of the
+   flex flow so they don't become flex items and get stretched. */
+#wishes:has(.wishes-list > [data-wish-item]) > [class*="motif"] {
+    position: absolute;
 }
 
 .wish-item {

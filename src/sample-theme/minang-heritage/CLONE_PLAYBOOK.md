@@ -850,3 +850,85 @@ Agen builder menemukan **bug asli di harness-ku** (bukan alarm palsu):
 > sempat gagal senyap dan file sabotase **hampir tertinggal**). Lalu jalankan
 > **regresi ke semua tema lama** setelah mengendurkan assert, buktikan tidak ada
 > yang jadi longgar.
+
+---
+
+## 15. Bukti pakai: `chinese-heritage` (klon ke-12 & TERAKHIR dari batch ini, 2026-07-16)
+
+Angkatan **2025/07-08**, seangkatan `jawa-blue`. **Di-clone dari `jawa-blue`,
+BUKAN sunda** — dan itu keputusan yang menghemat paling banyak: jawa-blue sudah
+melewati semua pembongkaran struktural (buang motif band, mahkota, spray, panel
+flat, cover-art terpisah). Lolos §7 + harness render **percobaan pertama**.
+
+> **Aturan clone: pilih induk dari ANGKATAN yang sama, bukan yang "paling bagus".**
+> minang→sunda (beda angkatan) = banyak bongkar. jawa-blue→chinese (seangkatan)
+> = tinggal tukar palet/aset/copy.
+
+### 15.1. BARU (PALING PENTING): source bisa beda AGAMA — cek, jangan asumsi
+
+Sepuluh tema heritage sebelumnya seragam Islami (`Akad Nikah`, `Resepsi`,
+`QS. Ar-Rum : 21`). §11.3 bahkan menyimpulkan "anggap default-nya begitu".
+**`chinese` mematahkan itu** — terverifikasi dari HTML source:
+
+| | 10 tema lain | **chinese** |
+|---|---|---|
+| akad | `Akad Nikah` | **`Holy Matrimony`** |
+| ayat | `QS. Ar-Rum : 21` | **`~ 1 Corinthians 13:4-8 ~`** (`QS` = **0 hit**) |
+| resepsi | ada | tidak ada |
+| kisah | — | `We Found Love` |
+
+Cek wajib per source baru:
+```bash
+grep -oiE 'QS\.[^<]{0,25}|Ar-Rum|Corinthians|Korintus|Holy Matrimony|Akad Nikah' "Nama Situs.html" | sort -u
+```
+**Ini keputusan produk, bukan teknis → TANYA USER.** (Di sini user memilih
+"ikut source": Holy Matrimony + 1 Korintus.)
+
+### 15.2. BARU: mengganti ayat ≠ mengarang ayat
+
+Skeleton meng-hardcode terjemahan Ar-Rum. Godaannya: tulis terjemahan
+1 Korintus 13:4-8 dari ingatan. **JANGAN** — itu §10.3 versi paling berbahaya
+(mengarang teks kitab suci di produk yang dipakai orang).
+
+Yang benar, dan memang begitu di source: **sitasinya** saja yang di tema
+(`~ 1 Corinthians 13:4-8 ~`), **bunyi ayatnya dari tenant** (`{{quote_1}}` /
+Master Quotes). Jadi: hapus string hardcode, biarkan variabel yang mengisi.
+
+### 15.3. §14.4 terbukti lagi — dan ada tempat persembunyian BARU
+
+Sapuan warna `--var`+hex **tetap** meninggalkan warna induk. Di sini ditemukan:
+- `rgba(145,166,187,…)` = `#91A6BB` biru jawa-blue (hero glow, countdown inset)
+- `rgba(31,41,51,…)` scrim slate
+- `rgba(46,26,16,…)` / `rgba(71,42,28,…)` **coklat sunda** — masih menetes lewat
+  jawa-blue, **dua generasi** setelah sumbernya
+- **BARU: hex di dalam data-URI SVG** → `stroke='%234e647a'` di panah `<select>`.
+  Tak kena `grep '#4e647a'` karena `#` ter-encode jadi `%23`.
+
+Sapuan yang benar:
+```bash
+grep -noiE '#(4e647a|91a6bb)|%23(4e647a|91a6bb)|4e647a|91a6bb' index.css index.html
+grep -onE 'rgba\([0-9]+, ?[0-9]+, ?[0-9]+' index.css      # cek literal warna induk
+```
+> **Warna induk itu menular lintas generasi klon.** Tiap klon baru mewarisi sisa
+> klon sebelumnya. Sapu terhadap palet **semua** leluhur, bukan cuma induk langsung.
+
+### 15.4. minang & bali "gagal" di harness = parameter salah, BUKAN regresi
+
+Kalau menjalankan harness §12.6 ke `minang`/`bali` dengan asumsi pasangan-cermin,
+akan MERAH (`spray L/R use DIFFERENT artwork`, `no scaleX(-1)`). **Itu benar
+adanya**: keduanya desain LAMA → `l=slot4 r=slot4` (**1 gambar**) + `scaleX(-1)`,
+sesuai §13.1. Sudah ada di git jauh sebelum batch ini. **Jangan "perbaiki".**
+
+### 15.5. Status akhir katalog heritage (12 tema)
+
+| angkatan | tema | slot | pola |
+|---|---|---|---|
+| 2024/12 | minang, bali | 7 | 3-layer, 1 gambar + `scaleX(-1)` |
+| 2024/12 | jawa, batak, bugis | 8 | 3-layer, pasangan cermin asli |
+| 2025/02 | banjar, betawi, dayak, palembang | 7 | 3-layer, pasangan cermin asli |
+| 2025/07-08 | sunda | 9 | 3-layer, **200px/.35** (pengecualian) |
+| 2025/07-08 | **jawa-blue** | 5 | flat panel, tanpa band/mahkota |
+| 2025/07-08 | **chinese** | 4 | flat panel, tanpa band/mahkota/bunga |
+
+Semua lolos harness render (`verify-theme.cjs`, parser asli + jsdom), kecuali
+minang/bali yang butuh parameter desain-lama (§15.4).

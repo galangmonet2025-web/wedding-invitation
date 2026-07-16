@@ -384,12 +384,12 @@
  function reveal() {
  if (screen) screen.classList.add('reveal-content');
  if (fab) fab.style.display = 'block';
- // Pin the scroller to the top so the HERO (first section in the flow:
- // Cover → Hero → Video → …) is what the guest sees first.
+ // Pin the scroller to the top so the VIDEO (first section in the flow:
+ // Cover → Video → Hero → …) is what the guest sees first.
  if (screen) screen.scrollTop = 0;
- // Start the opening video immediately on open (it plays through in the
- // background at 1.5×; the guest reaches it after scrolling past the hero,
- // and the last frame + text stay put once it ends).
+ // Start the opening video immediately on open — it is the first thing on
+ // screen, plays through once at 1.5×, and the last frame + text stay put
+ // once it ends.
  playOpeningVideo();
  }
  if (btnOpen) btnOpen.addEventListener('click', reveal);
