@@ -1,0 +1,395 @@
+<div class="phone-container" id="content-body">
+    <div class="mock-app-screen dm-root">
+
+        <!-- ============ COVER ============ -->
+        <section id="theme-cover" class="dm-cover">
+            <css-doodle class="dm-doodle" grid="8" use="var(--dm-lines)"></css-doodle>
+            <div class="dm-cover-inner">
+                <div>
+                    <div class="dm-eyebrow">The Wedding Of</div>
+                    <h1 class="dm-cover-names">
+                        <span>{{groom_nickname}}</span>
+                        <span class="dm-amp">&amp;</span>
+                        <span>{{bride_nickname}}</span>
+                    </h1>
+                    <div class="dm-rule dm-rule-center"></div>
+                    <div class="dm-cover-date">{{wedding_date}}</div>
+                </div>
+
+                <div class="dm-guest">
+                    <span class="dm-guest-label">Kepada Yth.</span>
+                    <p class="dm-guest-name">{{nama_tamu}}</p>
+                </div>
+
+                <button class="dm-btn dm-btn-solid" id="btn-open-invitation">Buka Undangan</button>
+                <button class="dm-btn dm-btn-ghost" id="btn-show-qr">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="5" height="5" x="3" y="3" rx="1"></rect>
+                        <rect width="5" height="5" x="16" y="3" rx="1"></rect>
+                        <rect width="5" height="5" x="3" y="16" rx="1"></rect>
+                        <path d="M21 16h-3a2 2 0 0 0-2 2v3"></path>
+                        <path d="M12 7v3a2 2 0 0 1-2 2H7"></path>
+                        <path d="M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"></path>
+                    </svg>
+                    <span>QR</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ============ MAIN CONTENT (revealed on open) ============ -->
+        <div id="main-content">
+
+            <!-- OPENING (basmalah / salam pembuka) — mirrors heritage themes' -->
+            <!-- #theme-opening section that precedes the hero. -->
+            <section id="theme-opening" class="dm-section dm-opening">
+                <css-doodle class="dm-doodle" grid="14" use="var(--dm-dots)"></css-doodle>
+                <!-- Peran halaman ini: SALAM PEMBUKA. Kalimatnya yang jadi pusat —
+                     nama & tanggal sudah dilihat di cover, jadi tidak diulang. -->
+                <div class="dm-section-inner dm-center">
+                    <div class="reveal-item">
+                        <div class="dm-eyebrow">Assalamu'alaikum</div>
+                        <p class="dm-opening-text">{{kalimat_pembuka}}</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HERO / QUOTE -->
+            <section class="dm-section dm-hero">
+                <css-doodle class="dm-doodle" grid="8" use="var(--dm-lines)"></css-doodle>
+                <!-- Peran halaman ini: KUTIPAN. Hanya kutipan + sumbernya. -->
+                <div class="dm-section-inner dm-center">
+                    <div class="reveal-item">
+                        <blockquote class="dm-quote">
+                            {{quote}}
+                            <cite class="dm-cite">{{quote_by}}</cite>
+                        </blockquote>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COUPLE -->
+            <section id="couples" class="dm-section dm-couples" data-menu-label="Mempelai">
+                <css-doodle class="dm-doodle" grid="5" use="var(--dm-orbit)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div class="reveal-item">
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Mempelai</div>
+                    </div>
+
+                    <div class="dm-person reveal-item reveal-d1">
+                        <div class="dm-avatar">
+                            <img src="{{photo_groom_photo}}" alt="{{groom_nickname}}" class="dm-avatar-img">
+                        </div>
+                        <h3 class="dm-person-name">{{groom_name}}</h3>
+                        {{#if flag_tampilkan_nama_orang_tua}}
+                        <p class="dm-person-parents">
+                            Putra dari<br>
+                            Bapak {{nama_bapak_laki_laki}} &amp; Ibu {{nama_ibu_laki_laki}}
+                        </p>
+                        {{/if}}
+                        {{#if flag_tampilkan_sosial_media_mempelai}}
+                        <a class="dm-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener noreferrer">@{{ig_laki_laki}}</a>
+                        {{/if}}
+                    </div>
+
+                    <div class="dm-heart reveal-item reveal-d2">&amp;</div>
+
+                    <div class="dm-person reveal-item reveal-d3">
+                        <div class="dm-avatar">
+                            <img src="{{photo_bride_photo}}" alt="{{bride_nickname}}" class="dm-avatar-img">
+                        </div>
+                        <h3 class="dm-person-name">{{bride_name}}</h3>
+                        {{#if flag_tampilkan_nama_orang_tua}}
+                        <p class="dm-person-parents">
+                            Putri dari<br>
+                            Bapak {{nama_bapak_perempuan}} &amp; Ibu {{nama_ibu_perempuan}}
+                        </p>
+                        {{/if}}
+                        {{#if flag_tampilkan_sosial_media_mempelai}}
+                        <a class="dm-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener noreferrer">@{{ig_perempuan}}</a>
+                        {{/if}}
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCHEDULE / COUNTDOWN -->
+            <section id="schedule" class="dm-section dm-schedule" data-menu-label="Waktu &amp; Tempat">
+                <css-doodle class="dm-doodle" grid="6" use="var(--dm-bold)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div class="reveal-item">
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Menuju Hari Bahagia</div>
+                    </div>
+
+                    <div class="dm-countdown reveal-item reveal-d1" id="countdown">
+                        <div class="dm-cd-item"><span class="dm-cd-num" id="tm-countdown-days">{{countdown_hari}}</span><span class="dm-cd-lbl">Hari</span></div>
+                        <div class="dm-cd-item"><span class="dm-cd-num" id="tm-countdown-hours">{{countdown_jam}}</span><span class="dm-cd-lbl">Jam</span></div>
+                        <div class="dm-cd-item"><span class="dm-cd-num" id="tm-countdown-minutes">{{countdown_menit}}</span><span class="dm-cd-lbl">Menit</span></div>
+                        <div class="dm-cd-item"><span class="dm-cd-num" id="tm-countdown-seconds">{{countdown_detik}}</span><span class="dm-cd-lbl">Detik</span></div>
+                    </div>
+                    <span id="dm-wed-date" data-wedding-date="{{wedding_date_iso}}" style="display:none"></span>
+
+                    <div class="dm-cards">
+                        <div class="dm-card reveal-item reveal-d2">
+                            <div class="dm-card-tag">Akad Nikah</div>
+                            <div class="dm-card-date">{{tanggal_akad}}</div>
+                            <div class="dm-card-time">{{jam_akad}}</div>
+                            <div class="dm-card-venue">{{nama_lokasi_akad}}</div>
+                            <div class="dm-card-addr">{{keterangan_lokasi_akad}}</div>
+                            <a href="{{akad_map}}" target="_blank" class="dm-btn dm-btn-ghost dm-btn-sm">Buka Peta</a>
+                        </div>
+
+                        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                        <div class="dm-card reveal-item reveal-d3">
+                            <div class="dm-card-tag">Resepsi</div>
+                            <div class="dm-card-date">{{wedding_date}}</div>
+                            <div class="dm-card-time">{{jam_resepsi}}</div>
+                            <div class="dm-card-venue">{{nama_lokasi_resepsi}}</div>
+                            <div class="dm-card-addr">{{keterangan_lokasi_resepsi}}</div>
+                            <a href="{{resepsi_map}}" target="_blank" class="dm-btn dm-btn-ghost dm-btn-sm">Buka Peta</a>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+            </section>
+
+            <!-- RSVP (placed right after schedule, mirroring heritage order) -->
+            {{#unless is_link_umum_and_not_for_spesific_guest}}
+            <section id="rsvp" class="dm-section dm-rsvp" data-menu-label="Konfirmasi">
+                <css-doodle class="dm-doodle" grid="14" use="var(--dm-dots)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div class="reveal-item">
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Konfirmasi Kehadiran</div>
+                    </div>
+
+                    {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+                    <div class="dm-form" id="rsvp-form">
+                        <input class="dm-input" type="text" id="rsvp-code" value="{{kode_undangan}}" readonly tabindex="-1" placeholder="Kode Undangan">
+                        <input class="dm-input" type="text" value="{{nama_tamu}}" readonly tabindex="-1" placeholder="Nama Tamu">
+                        <select class="dm-input" id="rsvp-status">
+                            <option value="" disabled selected>Konfirmasi Kehadiran</option>
+                            <option value="hadir">Hadir</option>
+                            <option value="tidak-hadir">Tidak Hadir</option>
+                        </select>
+                        <select class="dm-input" id="rsvp-guests">
+                            <option value="1">1 Orang</option>
+                            <option value="2">2 Orang</option>
+                            <option value="3">3 Orang</option>
+                            <option value="4">4 Orang</option>
+                            <option value="5">5 Orang</option>
+                        </select>
+                        <button class="dm-btn dm-btn-solid dm-btn-block" id="btn-submit-kehadiran">Konfirmasi</button>
+                    </div>
+                    {{/hidden}}
+
+                    {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+                    <div class="dm-thankyou" id="alert-submit-kehadiran">
+                        {{^hidden is_hadir}}
+                        <div data-rsvp-branch="hadir">
+                            <div class="dm-ty-mark">✓</div>
+                            Terima kasih, <strong>{{guest_name}}</strong>!<br>
+                            Kami menantikan kehadiran Anda di hari bahagia kami.
+                        </div>
+                        {{/hidden}}
+                        {{#hidden is_hadir}}
+                        <div data-rsvp-branch="tidak">
+                            <div class="dm-ty-mark">♡</div>
+                            Terima kasih, <strong>{{guest_name}}</strong>.<br>
+                            Terima kasih atas doa dan restunya.
+                        </div>
+                        {{/hidden}}
+                    </div>
+                    {{/hidden}}
+                </div>
+            </section>
+            {{/unless}}
+
+            <!-- STORY / TIMELINE -->
+            {{#if flag_pakai_timeline_kisah}}
+            <section class="dm-section dm-story" data-menu-label="Kisah">
+                <css-doodle class="dm-doodle" grid="8" use="var(--dm-lines)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div class="reveal-item">
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Our Story</div>
+                    </div>
+                    <div class="dm-timeline">
+                        {{#each timeline_kisah}}
+                        <div class="dm-timeline-item reveal-item">
+                            <div class="dm-timeline-dot"></div>
+                            <div class="dm-timeline-date">{{this.tanggal}}</div>
+                            <h4 class="dm-timeline-title">{{this.judul}}</h4>
+                            <p class="dm-timeline-desc">{{this.deskripsi}}</p>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- GALLERY -->
+            {{#if is_fitur_gallery}}
+            <section id="gallery" class="dm-section dm-gallery" data-menu-label="Galeri">
+                <css-doodle class="dm-doodle" grid="14" use="var(--dm-dots)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div class="reveal-item">
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Gallery</div>
+                    </div>
+                    {{#if has_gallery}}
+                    <div class="dm-gallery-grid" id="sec-gallery">
+                        {{#each galleries}}
+                        <a class="dm-gallery-item gallery-item reveal-item">
+                            <img src="{{this.url}}" alt="" class="dm-gallery-img lightbox-injection">
+                        </a>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- WISHES -->
+            <section id="wishes" class="dm-section dm-wishes" data-menu-label="Ucapan &amp; Doa">
+                <css-doodle class="dm-doodle" grid="6" use="var(--dm-bold)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div class="reveal-item">
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Ucapan &amp; Doa</div>
+                    </div>
+
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    {{#hidden is_sudah_isi_ucapan}}
+                    <form class="dm-form" id="wish-form">
+                        <input class="dm-input" type="text" id="wish-name" value="{{nama_tamu}}" readonly tabindex="-1" placeholder="Nama Anda">
+                        <textarea class="dm-input dm-textarea" rows="3" id="wish-message" placeholder="Tulis ucapan &amp; doa..."></textarea>
+                        <button type="button" class="dm-btn dm-btn-solid dm-btn-block" id="btn-submit-ucapan">Kirim Ucapan</button>
+                    </form>
+                    {{/hidden}}
+
+                    {{^hidden is_sudah_isi_ucapan}}
+                    <div class="dm-thankyou" id="alert-submit-ucapan">
+                        <div class="dm-ty-mark">✓</div>
+                        Terima kasih atas ucapan dan doanya.
+                    </div>
+                    {{/hidden}}
+                    {{/unless}}
+
+                    <div class="dm-wishes-list" data-loop="wishes">
+                        {{#each wishes}}
+                        <div class="dm-wish" data-wish-item>
+                            <div class="dm-wish-head">
+                                <span class="dm-wish-name" data-wish-field="name">{{this.guest_name}}</span>
+                                <span class="dm-wish-time" data-wish-field="time">{{this.guest_comment_time}}</span>
+                            </div>
+                            <div class="dm-wish-msg" data-wish-field="message">{{this.guest_message}}</div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+            </section>
+
+            <!-- GIFT -->
+            {{#if tampilkan_amplop_online}}
+            <section id="gift" class="dm-section dm-gift" data-menu-label="Amplop Digital">
+                <css-doodle class="dm-doodle" grid="5" use="var(--dm-orbit)"></css-doodle>
+                <div class="dm-section-inner">
+                    <div>
+                        <span class="dm-index"></span>
+                        <div class="dm-eyebrow dm-center">Wedding Gift</div>
+                    </div>
+                    <p class="dm-gift-note">Doa restu Anda adalah karunia. Jika berkenan memberi tanda kasih, kami sediakan fitur ini.</p>
+
+                    <div class="dm-card">
+                        <div class="dm-card-tag">{{bank_1}}</div>
+                        {{#if flag_pakai_qris_rekening_1}}
+                        <img src="{{gambar_qris_rekening_1}}" alt="QRIS" class="dm-qris">
+                        {{/if}}
+                        <div class="dm-acc" id="dm-acc-1">{{rek_1}}</div>
+                        <div class="dm-acc-name">{{nama_rek_1}}</div>
+                        <button class="dm-btn dm-btn-ghost dm-btn-sm dm-copy" data-copy="dm-acc-1">Salin Rekening</button>
+                    </div>
+
+                    {{#if flag_pakai_2_rekening}}
+                    <div class="dm-card">
+                        <div class="dm-card-tag">{{bank_2}}</div>
+                        {{#if flag_pakai_qris_rekening_2}}
+                        <img src="{{gambar_qris_rekening_2}}" alt="QRIS" class="dm-qris">
+                        {{/if}}
+                        <div class="dm-acc" id="dm-acc-2">{{rek_2}}</div>
+                        <div class="dm-acc-name">{{nama_rek_2}}</div>
+                        <button class="dm-btn dm-btn-ghost dm-btn-sm dm-copy" data-copy="dm-acc-2">Salin Rekening</button>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- CLOSING -->
+            <section class="dm-section dm-closing">
+                <css-doodle class="dm-doodle" grid="8" use="var(--dm-lines)"></css-doodle>
+                <div class="dm-section-inner dm-center">
+                    <div class="reveal-item">
+                        <div class="dm-eyebrow dm-center">Terima Kasih</div>
+                        <p class="dm-closing-text">{{kalimat_penutup}}</p>
+                        <h2 class="dm-names">
+                            <span>{{groom_nickname}}</span>
+                            <span class="dm-amp">&amp;</span>
+                            <span>{{bride_nickname}}</span>
+                        </h2>
+                    </div>
+                    <footer class="dm-footer">
+                        <div class="dm-footer-name">{{site_name}}</div>
+                        <a href="{{site_url}}" target="_blank" class="dm-footer-url">{{site_url}}</a>
+                        <div class="dm-footer-copy">Digital wedding invitation © 2026</div>
+                    </footer>
+                </div>
+            </section>
+
+            <!-- ============ NAVIGASI PAGER ============ -->
+            <!-- Dibangun statis di sini; index.js mengisi titik-titik & angka
+                 sesuai jumlah section yang benar-benar ada (beberapa section
+                 bisa hilang karena {{#if}}/{{#unless}} saat binding). -->
+            <div class="dm-tap-hint" id="dm-tap-hint">Ketuk kiri untuk kembali &nbsp;·&nbsp; kanan untuk lanjut</div>
+
+            <nav class="dm-nav" id="dm-nav" aria-label="Navigasi halaman undangan">
+                <button class="dm-nav-btn" id="dm-prev" type="button" aria-label="Halaman sebelumnya">‹</button>
+                <div class="dm-nav-mid">
+                    <div class="dm-dots" id="dm-dots" role="tablist" aria-label="Pilih halaman"></div>
+                    <div class="dm-page-count" aria-live="polite">
+                        <b id="dm-page-now">1</b> / <span id="dm-page-total">1</span>
+                    </div>
+                </div>
+                <button class="dm-nav-btn" id="dm-next" type="button" aria-label="Halaman berikutnya">›</button>
+            </nav>
+        </div>
+
+        <!-- Menu modal (host reads #btn-show-menu via FAB) -->
+        <div id="menu-modal" class="uk-modal-full" uk-modal="">
+            <div class="uk-modal-dialog uk-flex uk-flex-center uk-flex-middle dm-menu-dialog" uk-height-viewport="">
+                <button class="uk-modal-close-full dm-menu-close" type="button" uk-toggle="target: #menu-modal">✕</button>
+                <div class="uk-width-1-1 uk-text-center dm-menu-content">
+                    <div class="dm-eyebrow dm-center">The Wedding Of</div>
+                    <h2 class="dm-menu-couple">{{groom_nickname}} &amp; {{bride_nickname}}</h2>
+                    <div class="dm-rule dm-rule-center"></div>
+                    <ul class="dm-menu-list">
+                        <li><a href="#couples" uk-toggle="target: #menu-modal">Mempelai</a></li>
+                        <li><a href="#schedule" uk-toggle="target: #menu-modal">Waktu &amp; Tempat</a></li>
+                        {{#unless is_link_umum_and_not_for_spesific_guest}}
+                        <li><a href="#rsvp" uk-toggle="target: #menu-modal">Konfirmasi Kehadiran</a></li>
+                        {{/unless}}
+                        <li><a href="#gallery" uk-toggle="target: #menu-modal">Galeri</a></li>
+                        <li><a href="#wishes" uk-toggle="target: #menu-modal">Ucapan &amp; Doa</a></li>
+                        <li><a href="#gift" uk-toggle="target: #menu-modal">Amplop &amp; Gift</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <audio id="bg-music" loop="">
+            <source src="{{music_url}}" type="audio/mpeg">
+        </audio>
+    </div>
+</div>

@@ -33,6 +33,51 @@
 @keyframes inv-spin {
     to { transform: rotate(360deg); }
 }
+/* =============================================
+   IMAGE SKELETON (gambar yang belum termuat)
+   =============================================
+   Dipasang oleh ThemeWrapper: tiap <img> yang belum selesai load diberi class
+   `inv-img-loading` (dilepas saat event load/error). Undangan langsung tampil,
+   gambar yang lambat memakai shimmer ini sebagai placeholder alih-alih ikon
+   broken / area kosong. Berlaku umum untuk SEMUA tema (tanpa mengubah markup
+   tema), aman karena hanya menempel di elemen yang benar-benar belum load. */
+img.inv-img-loading {
+    background-color: rgba(0, 0, 0, 0.06);
+    background-image: linear-gradient(
+        100deg,
+        rgba(0, 0, 0, 0) 20%,
+        rgba(255, 255, 255, 0.45) 45%,
+        rgba(255, 255, 255, 0.45) 55%,
+        rgba(0, 0, 0, 0) 80%
+    );
+    background-size: 220% 100%;
+    background-repeat: no-repeat;
+    background-position: -120% 0;
+    animation: inv-img-shimmer 1.15s ease-in-out infinite;
+    /* Sembunyikan glyph "broken image" browser selagi src masih kosong/loading.
+       Sengaja TIDAK memaksa min-height/width: biar dimensi tetap ditentukan tema
+       (width/height/aspect-ratio dari CSS tema), jadi tak menggeser layout. Kalau
+       tema tak memberi tinggi, area shimmer memang setipis baris — itu diterima
+       demi tidak merusak tata letak tema mana pun. */
+    color: transparent;
+    font-size: 0;
+}
+@media (prefers-color-scheme: dark) {
+    img.inv-img-loading {
+        background-color: rgba(255, 255, 255, 0.08);
+        background-image: linear-gradient(
+            100deg,
+            rgba(255, 255, 255, 0) 20%,
+            rgba(255, 255, 255, 0.14) 45%,
+            rgba(255, 255, 255, 0.14) 55%,
+            rgba(255, 255, 255, 0) 80%
+        );
+    }
+}
+@keyframes inv-img-shimmer {
+    to { background-position: 120% 0; }
+}
+
 .inv-error-icon {
     font-size: 64px;
 }

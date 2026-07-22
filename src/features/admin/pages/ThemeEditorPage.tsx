@@ -374,7 +374,13 @@ export function ThemeEditorPage() {
                 // memunculkan block-screen loader global — editor langsung tampil, tiap
                 // tab kode di-disable (readOnly) selama datanya masih dimuat.
                 await fetchThemes(false, true);
-                const theme = themes.find(t => t.id === id);
+                // PENTING: themeStore sengaja memuat daftar tema TANPA kolom
+                // html/css/js (skipTemplates) supaya Kelola Tema tidak lambat.
+                // Jadi editor TIDAK boleh mengambil isi template dari store —
+                // kalau nekat, editor terbuka kosong lalu save menimpa tema
+                // dengan template kosong. Ambil versi LENGKAP dari server.
+                const fullRes = await themeApi.getThemes({ skipLoader: true } as any);
+                const theme = (fullRes?.data || []).find((t: any) => t.id === id);
 
                 if (theme) {
                     setName(theme.name);
@@ -402,8 +408,11 @@ export function ThemeEditorPage() {
                     setAssetMediaList(parseAssetMediaList(theme.asset_media_list));
                 } else {
                     // Try one more time by forcing fetch (tetap SILENT, tanpa block-screen).
+                    // Sama seperti di atas: harus versi LENGKAP (tanpa skipTemplates),
+                    // bukan dari store yang templatenya sengaja dibuang.
                     await fetchThemes(true, true);
-                    const refetchedTheme = useThemeStore.getState().themes.find(t => t.id === id);
+                    const retryRes = await themeApi.getThemes({ skipLoader: true } as any);
+                    const refetchedTheme = (retryRes?.data || []).find((t: any) => t.id === id);
                     if (refetchedTheme) {
                         setName(refetchedTheme.name);
                         setCode(refetchedTheme.code || '');
@@ -434,15 +443,25 @@ export function ThemeEditorPage() {
                     }
                 }
             } else if (copiedTheme) {
-                // Pre-fill from copied theme
+                // Pre-fill from copied theme. copiedTheme datang lewat router state
+                // dari daftar (themeStore) yang TANPA kolom template, jadi isi
+                // html/css/js harus diambil ulang dari server — kalau tidak, hasil
+                // duplikat jadi tema kosong.
+                let source: any = copiedTheme;
+                try {
+                    const copyRes = await themeApi.getThemes({ skipLoader: true } as any);
+                    const full = (copyRes?.data || []).find((t: any) => t.id === copiedTheme.id);
+                    if (full) source = full;
+                } catch { /* biarkan: pakai data seadanya dari router state */ }
+
                 setName(`${copiedTheme.name} (Copy)`);
                 setCode('');
                 setPlanType(copiedTheme.plan_type);
                 setStyleCategory(copiedTheme.style_category || 'Lainnya');
                 setPreviewImage(copiedTheme.preview_image || '');
-                setHtmlCode(copiedTheme.html_template || '');
-                setCssCode(copiedTheme.css_template || '');
-                setJsCode(copiedTheme.js_template || '');
+                setHtmlCode(source.html_template || '');
+                setCssCode(source.css_template || '');
+                setJsCode(source.js_template || '');
                 setFlagDraft(true); // Default copies to draft
                 setFlagUseSystemActionButton(copiedTheme.flag_use_system_action_button !== false && copiedTheme.flag_use_system_action_button !== 'false');
                 // Clone tak mewarisi tenant contoh — biar admin memilih ulang (mirip `code` & asset media).
@@ -477,7 +496,9 @@ export function ThemeEditorPage() {
         (async () => {
             try {
                 // skipLoader: buka editor tak boleh memicu block-screen loader global.
-                const res = await themeApi.getThemes({ skipLoader: true } as any);
+                // skipTemplates: hanya membaca style_category dari tema lain,
+                // tak perlu menarik seluruh html/css/js mereka.
+                const res = await themeApi.getThemes({ skipLoader: true } as any, { skipTemplates: true });
                 if (!active) return;
                 const list = (res?.data || [])
                     .map((t: any) => (t.style_category || '').trim())
@@ -1694,12 +1715,20 @@ export function ThemeEditorPage() {
                 activeStepKey = 'refresh';
                 progress.update('refresh', { status: 'active', detail: 'Mengambil ulang kode dari server…' });
                 try {
-                    await fetchThemes(true);
-                    const saved = useThemeStore.getState().themes.find(t => t.id === id);
+                    // PENTING: pakai getThemes versi LENGKAP (TANPA skipTemplates).
+                    // fetchThemes() dari themeStore sengaja meminta skip_templates,
+                    // jadi kalau dipakai di sini html/css/js-nya undefined dan editor
+                    // langsung kosong walau simpan berhasil.
+                    const fullRes = await themeApi.getThemes({ skipLoader: true } as any);
+                    // Segarkan juga daftar tema (metadata) untuk halaman Kelola Tema.
+                    fetchThemes(true).catch(() => { });
+                    const saved = (fullRes?.data || []).find((t: any) => t.id === id);
                     if (saved) {
-                        const savedHtml = saved.html_template || '';
-                        const savedCss = saved.css_template || '';
-                        const savedJs = saved.js_template || '';
+                        // Kalau server tak mengirim balik salah satu template (mis. respons
+                        // terpangkas), JANGAN kosongkan editor — pertahankan kode lokal.
+                        const savedHtml = saved.html_template ?? htmlCode;
+                        const savedCss = saved.css_template ?? cssCode;
+                        const savedJs = saved.js_template ?? jsCode;
                         setHtmlCode(savedHtml);
                         setCssCode(savedCss);
                         setJsCode(savedJs);

@@ -100,6 +100,9 @@ export function NewLandingPage() {
     // no loading flash. See landingStore.ts.
     const config = useLandingStore(s => s.config);
     const themes = useLandingStore(s => s.themes);
+    // true setelah fetch pertama selesai — dipakai membedakan "sedang load tema"
+    // dari "sudah load tapi memang belum ada tema published" (empty state).
+    const landingLoaded = useLandingStore(s => s.loaded);
     const planTypes = useLandingStore(s => s.planTypes);
     const planFeatures = useLandingStore(s => s.planFeatures);
     const reviews = useLandingStore(s => s.reviews);
@@ -221,7 +224,7 @@ export function NewLandingPage() {
     // footer) renders from bundled defaults. So the page paints immediately and
     // each section fills in as its data arrives — instead of a 3s full-screen
     // "LOADING…" while the slowest Apps Script request finishes.
-    const siteName = config?.site_name || 'WEDDING SAAS';
+    const siteName = config?.site_name || 'Kosa Invitation';
 
     return (
         <div className="rm-lp min-h-screen font-sans overflow-x-hidden" style={{ background: 'var(--lp-ink)', color: '#fff' }}>
@@ -444,7 +447,22 @@ export function NewLandingPage() {
                     {/* Mobile: ≤3 tema → 1 baris saja; >3 tema → 2 baris (grid-flow-col
                         mengisi per kolom ke bawah, jadi tiap baris jumlahnya seimbang,
                         selisih maksimal 1). Lebih dari muat layar → scroll horizontal.
-                        sm+: kembali ke grid biasa. */}
+                        sm+: kembali ke grid biasa.
+                        Empty state (sudah load tapi tak ada tema) ditaruh DI LUAR grid
+                        supaya tidak terjepit lebar kolom `auto-cols-[44vw]`. */}
+                    {landingLoaded && filteredThemes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center py-16 px-6 border border-white/10 rounded-2xl bg-black/20">
+                            <div className="text-5xl mb-4" aria-hidden="true">🎨</div>
+                            <h3 className="lp-pixel text-[11px] sm:text-xs text-white mb-3 uppercase tracking-widest">
+                                {themes.length === 0 ? 'Tema Segera Hadir' : 'Belum Ada Tema di Kategori Ini'}
+                            </h3>
+                            <p className="text-xs sm:text-sm text-white/60 max-w-sm leading-relaxed">
+                                {themes.length === 0
+                                    ? 'Koleksi tema undangan kami sedang disiapkan. Nantikan pilihan tema menarik dalam waktu dekat.'
+                                    : 'Coba pilih kategori lain untuk melihat tema yang tersedia.'}
+                            </p>
+                        </div>
+                    ) : (
                     <div className={`grid ${filteredThemes.length > 3 ? 'grid-rows-2' : 'grid-rows-1'} grid-flow-col auto-cols-[44vw] sm:grid-rows-none sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none -mx-5 px-5 sm:mx-0 sm:px-0 pb-4 sm:pb-0 no-scrollbar`}>
                         {filteredThemes.length > 0 ? filteredThemes.map((theme) => {
                             // Themes tagged "Playable" get the deluxe treatment: a
@@ -495,7 +513,9 @@ export function NewLandingPage() {
                             </div>
                             );
                         }) : (
-                            // Skeleton themes if empty
+                            // Grid ini hanya dirender saat MASIH loading (empty-state
+                            // pasca-load sudah ditangani di luar grid), jadi fallback =
+                            // skeleton loading.
                             [1, 2, 3, 4, 5].map(i => (
                                 <div key={i} className="lp-theme w-full sm:w-auto snap-start animate-pulse">
                                     <div className="aspect-[9/16] bg-black/40"></div>
@@ -507,6 +527,7 @@ export function NewLandingPage() {
                             ))
                         )}
                     </div>
+                    )}
                 </div>
             </section>
 

@@ -449,7 +449,15 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         ...prev,
                         content: { ...prev.content, ...content },
                         images: newImages || prev.images,
-                        theme: newTheme || prev.theme,
+                        // Tema pengirim (dari themeStore) sengaja TANPA kolom
+                        // html/css/js. Menimpanya mentah-mentah akan mengosongkan
+                        // template dan preview jadi blank — jadi pertahankan
+                        // template milik `prev` bila yang datang tak membawanya.
+                        theme: newTheme
+                            ? (newTheme.html_template
+                                ? newTheme
+                                : { ...newTheme, html_template: prev.theme?.html_template, css_template: prev.theme?.css_template, js_template: prev.theme?.js_template })
+                            : prev.theme,
                         quotes: newQuotes !== undefined ? newQuotes : prev.quotes
                     };
                 });
@@ -1301,11 +1309,18 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     // LOADING - Moved after hooks
     // Guard against the not-found case: when the fetch fails, `data` stays null
-    // so the image-resolve effect early-returns and `resolvedImages` is never
-    // set. Without checking `error`/`!data` here, the old `!resolvedImages`
-    // condition stayed true forever and the loader spun endlessly instead of
-    // falling through to the error screen below.
-    if (!error && (loading || (!previewData && !data) || (!previewData && !resolvedImages))) {
+    // so the image-resolve effect early-returns. Without checking `error`/`!data`
+    // here, the loader would spin forever instead of falling through to the error
+    // screen below.
+    //
+    // PENTING: gate ini SENGAJA TIDAK menunggu `resolvedImages`. Undangan tampil
+    // segera setelah data teks + tema (request pertama split-load) tiba — gambar
+    // yang masih lambat di-resolve BELAKANGAN dan diberi skeleton (lihat CSS
+    // `.inv-page img:not([src])` / `[src=""]` di invitation.css). Dulu syarat
+    // `!resolvedImages` di sini menahan seluruh undangan di layar loading beberapa
+    // detik sampai gambar selesai — itu yang dihilangkan. dataContext sudah pakai
+    // `resolvedImages || {}` jadi render aman walau resolvedImages masih null.
+    if (!error && (loading || (!previewData && !data))) {
         return (
             <div className="inv-page inv-loading" style={{
                 background: '#1A1A2E',

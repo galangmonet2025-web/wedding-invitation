@@ -1,0 +1,26 @@
+[
+  {
+    "kelompok": "game-object",
+    "name": "obj_arrows.png",
+    "deskripsi": "Panah dan proyektil, 3 baris. Baris 1: panah kayu biasa 4 arah (atas, bawah, kiri, kanan) - batang cokelat #8a6a3a, bulu putih, mata panah abu. Baris 2: panah api 4 arah - sama tapi menyala oranye #ff9040 dengan jejak api pendek. Baris 3: biji musuh (bola cokelat berduri, 2 frame berputar) dan muzzle spark (2 frame kilatan). Ukuran tampil di engine sangat kecil (panah sekitar 12x4 px) tapi sel sheet tetap besar agar hasil downscale tajam.",
+    "orderNumber": 1,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "game-object",
+    "name": "obj_items.png",
+    "deskripsi": "Item pickup, tiap item satu sel: hati merah kecil #d05a5a (2 frame denyut), bunga skor kuning #e8c15a (2 frame kilau), Panah Api pickup (busur menyala oranye di atas alas batu), Sepatu Cepat (sepatu kulit cokelat bersayap kecil putih), Jimat Daun (liontin daun hijau bersinar dengan tali), Kunci kuningan (2 frame kilau). Semua item melayang sedikit di atas tanah dengan bayangan bulat lembut di bawahnya.",
+    "orderNumber": 2,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "game-object",
+    "name": "obj_fx.png",
+    "deskripsi": "Partikel dan efek, tiap item satu sel: spark putih-kuning, daun hijau jatuh (3 rotasi berbeda), kelopak bunga pink (3 rotasi berbeda), gumpalan tanah cokelat, puff debu abu (3 frame mengembang lalu memudar), percikan air biru, kunang-kunang glow (2 frame denyut), ledakan daun (4 frame menyebar). Latar transparan penuh, tepi tegas tanpa anti-alias.",
+    "orderNumber": 3,
+    "frameWidth": 80,
+    "frameHeight": 80
+  }
+]

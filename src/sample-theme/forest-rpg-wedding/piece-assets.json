@@ -1,0 +1,26 @@
+[
+  {
+    "kelompok": "box-kepingan",
+    "name": "piece_chest.png",
+    "deskripsi": "Peti kepingan undangan: peti kayu cokelat dengan pengikat EMAS #e8c15a dan ukiran HATI di tutup, bersinar lembut. 6 frame horizontal: closed (tutup rapat, kilau emas berdenyut), opening frame 1-3 (tutup terangkat bertahap, cahaya emas menyembur makin terang dari dalam), open (terbuka penuh, SURAT UNDANGAN putih ber-segel lilin merah melayang keluar), dan frame terakhir varian TERKUNCI (gembok kecil kuningan tergantung di depan peti). Pivot di dasar sel.",
+    "orderNumber": 1,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "box-kepingan",
+    "name": "piece_envelope.png",
+    "deskripsi": "Ikon kepingan undangan: amplop putih ber-segel lilin merah bermotif hati. 4 frame horizontal: idle (melayang naik-turun lembut dengan kilau berpindah), terkumpul (kilau emas terang menyeluruh), terkunci/redup (abu-abu, alpha rendah, tanpa kilau), pecah-jadi-cahaya (amplop memudar menjadi 3 partikel cahaya). Dipakai sebagai sprite yang terbang ke ikon indikator saat kepingan diambil.",
+    "orderNumber": 2,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "box-kepingan",
+    "name": "piece_couple.png",
+    "deskripsi": "Mempelai berdua di PELAMINAN (muncul setelah boss dikalahkan): pria berjas hitam + dasi dan wanita bergaun putih + kerudung + buket bunga, berdiri berdampingan bergandengan tangan di atas karpet merah, dengan latar gapura bunga. 3 frame horizontal: idle (napas lembut), melambai (tangan yang bebas melambai ke pemain), hati muncul (partikel hati kecil merah bermunculan di atas kepala). Sudut pandang tiga-perempat / top-down, hadap BAWAH ke pemain. Skala besar.",
+    "orderNumber": 3,
+    "frameWidth": 160,
+    "frameHeight": 160
+  }
+]

@@ -28,8 +28,12 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         const revalidateSilently = silent || get().hasLoaded;
         set({ loading: true });
         try {
+            // skipTemplates: store ini memasok DAFTAR tema (kartu di Kelola Tema,
+            // picker tenant) yang cuma perlu metadata. Isi html/css/js dimuat
+            // terpisah oleh Theme Editor lewat getThemes tanpa flag ini.
             const res = await themeApi.getThemes(
-                revalidateSilently ? ({ skipLoader: true } as any) : undefined
+                revalidateSilently ? ({ skipLoader: true } as any) : {},
+                { skipTemplates: true }
             );
             if (res.success) {
                 set({ 

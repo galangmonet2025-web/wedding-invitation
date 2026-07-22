@@ -215,7 +215,7 @@
 
       // Themes
       case 'getThemes':
-        return ThemeService.getThemes(auth);
+        return ThemeService.getThemes(auth, payload);
       case 'createTheme':
         PermissionService.requireRole(auth, ['superadmin']);
         return ThemeService.createTheme(auth, payload);
@@ -353,7 +353,9 @@
         return PaymentService.handleWebhook(payload);
       
       case 'getPublicThemes':
-        return ThemeService.getThemes(null);
+        // Landing page hanya menampilkan kartu tema (nama/thumbnail/plan) — tak
+        // pernah merender template di sini, jadi selalu tanpa kolom template.
+        return ThemeService.getThemes(null, { skip_templates: true });
       case 'getPublicPlanTypes':
         return PaymentService.getPlanTypes();
       case 'getPublicPlanFeatures':
@@ -2715,8 +2717,14 @@
   // =====================================================================
 
   var ThemeService = {
-    getThemes: function(auth) {
+    getThemes: function(auth, payload) {
       var themes = DB.getAll('Themes');
+      // skip_templates: daftar tema (Kelola Tema / picker / landing) HANYA butuh
+      // metadata. Kolom html/css/js_template + *_extra_1..10 itu 33 kolom x 50K
+      // char per tema (~1,6 MB/tema) — kalau ikut terkirim, response bisa belasan
+      // MB dan halaman terasa lama sekali saat load pertama. Editor tema tetap
+      // memanggil TANPA flag ini karena butuh isi template sungguhan.
+      var skipTemplates = payload && (payload.skip_templates === true || payload.skip_templates === 'true');
       // Resolve sample_tenant_id -> domain_slug once for the whole list. The landing
       // page builds its preview URL by SLUG (/#/preview/<code>/<slug>), not by id, so
       // we expose sample_tenant_slug alongside. Map built once to avoid N lookups.
@@ -2738,6 +2746,16 @@
         if (isPublic) t.sample_tenant_id = '';
         try { t.image_types = JSON.parse(t.image_types); } catch(e) { t.image_types = []; }
         try { t.asset_media_list = JSON.parse(t.asset_media_list); } catch(e) { t.asset_media_list = []; }
+        if (skipTemplates) {
+          // Buang ke-33 kolom template. Dibuang (bukan dikosongkan jadi '') supaya
+          // pemanggil tidak salah mengira tema ini punya template kosong lalu
+          // menimpanya dengan '' saat save.
+          var prefixes = ['html', 'css', 'js'];
+          for (var pi = 0; pi < prefixes.length; pi++) {
+            delete t[prefixes[pi] + '_template'];
+            for (var xi = 1; xi <= 10; xi++) delete t[prefixes[pi] + '_extra_' + xi];
+          }
+        }
       });
       // Tenant only sees themes for their plan or lower. Public sees all non-drafts.
       if (!auth || auth.role !== 'superadmin') {

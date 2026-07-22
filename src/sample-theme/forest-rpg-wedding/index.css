@@ -1,0 +1,479 @@
+/* ============================================================
+   FOREST RPG WEDDING — index.css
+   Bible: FOREST_RPG_BIBLE.md (Z.10 layout, Z.11 HUD, Z.12 toast, Z.15 UI game)
+   ============================================================ */
+
+:root {
+  --frpg-bg:        #1a2416;
+  --frpg-bg-2:      #22301c;
+  --frpg-ink:       #e8f0d8;
+  --frpg-ink-dim:   #a8bb92;
+  --frpg-green:     #6ad06a;
+  --frpg-green-d:   #3a7a3a;
+  --frpg-gold:      #e8c15a;
+  --frpg-gold-d:    #a8873a;
+  --frpg-olive:     #5a6f42;
+  --frpg-red:       #d05a5a;
+  --frpg-cyan:      #6ad0c8;
+  --frpg-shadow:    0 3px 0 rgba(0,0,0,.45);
+  --frpg-mono:      "Courier New", ui-monospace, monospace;
+}
+
+/* ---------- SHELL: mobile = 1 frame; desktop = 2 kolom ---------- */
+.frpg-shell {
+  display: flex;
+  justify-content: center;      /* mobile: center */
+  align-items: stretch;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--frpg-bg);
+  color: var(--frpg-ink);
+  font-family: var(--frpg-mono);
+  overflow-x: hidden;
+}
+
+/* MOBILE: frame mengunci RASIO kanvas internal (192:320 = 0.6).
+   Kanvas Phaser Scale.FIT mempertahankan rasio 0.6; kalau frame beda rasio,
+   sisi yang tak terisi jadi PITA gelap (bug "belum full screen").
+   Solusi: frame SETINGGI viewport (100dvh), lebar diturunkan dari tinggi
+   dengan rasio 0.6 -> kanvas mengisi frame TANPA pita, di HP mana pun. */
+.frpg-frame {
+  position: relative;
+  /* Lebar DIPASTIKAN dulu (100%), lalu dibatasi rasio via max. Tanpa lebar
+     eksplisit, aspect-ratio + tinggi dvh yang belum terhitung (mis. iframe
+     editor tanpa tinggi) membuat frame 0px -> #frpg-stage 0px -> boot game
+     menggantung (bug "PLAY tidak berfungsi"). */
+  width: 100%;
+  max-width: min(480px, 100vw, calc(100dvh * 192 / 320));
+  height: 100vh;
+  height: 100dvh;            /* dvh: aman dari bilah URL browser mobile */
+  min-height: 480px;        /* jaring: frame tak pernah 0 walau dvh gagal */
+  background: #0e1410;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px #2e3a24, 0 8px 40px rgba(0,0,0,.5);
+}
+
+.frpg-stage { position: absolute; inset: 0; }
+.frpg-stage canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+
+/* Panel undangan disembunyikan di mobile */
+.frpg-side { display: none; }
+
+/* ---------- DESKTOP: frame MENTOK KIRI 480px, panel kanan mengisi sisa ---------- */
+@media (min-width: 980px) {
+  .frpg-shell { justify-content: flex-start; }   /* JANGAN center */
+  .frpg-frame {
+    order: 1; flex: 0 0 auto;
+    width: 480px; max-width: 480px;
+    height: 100vh; max-height: 100vh;
+    aspect-ratio: auto; border-radius: 0;
+  }
+  .frpg-side {
+    display: block; order: 2; flex: 1;
+    min-width: 320px; height: 100vh;
+    overflow-y: auto;
+    padding: 40px 48px;
+    background: linear-gradient(180deg, #22301c 0%, #1a2416 100%);
+  }
+  .frpg-side .inner { max-width: 440px; margin: 0 auto; }
+}
+
+/* Desktop pakai keyboard -> sembunyikan kontrol sentuh */
+@media (hover: hover) and (pointer: fine) and (min-width: 980px) {
+  .frpg-touch { opacity: 0; pointer-events: none; }
+}
+
+/* ---------- ERROR (agar "Phaser gagal load" bisa dibedakan dari bug logic) ---------- */
+.frpg-error {
+  display: none;
+  position: absolute; left: 12px; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  padding: 14px; text-align: center;
+  background: #2a1414; border: 2px solid var(--frpg-red);
+  color: #ffd8d8; font-size: 12px; line-height: 1.5;
+}
+
+/* ---------- HUD (atas: dilihat, tak di-tap) ---------- */
+.frpg-hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  z-index: 20; pointer-events: none;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px calc(10px + env(safe-area-inset-top, 0px));
+  font-size: 11px; letter-spacing: .08em;
+  text-shadow: 0 2px 0 #000;
+  background: linear-gradient(180deg, rgba(0,0,0,.55), transparent);
+}
+.frpg-hud-area { color: var(--frpg-gold); }
+.frpg-hud-prog { color: var(--frpg-ink); }
+
+/* ---------- ICON-BUTTON: KIRI-ATAS, kolom vertikal ---------- */
+.frpg-icons {
+  position: absolute; top: 72px; left: 8px;
+  z-index: 22;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.frpg-ico {
+  width: 44px; height: 44px;               /* target sentuh >=44px */
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--frpg-mono); font-size: 17px; line-height: 1;
+  color: var(--frpg-ink);
+  background: rgba(26,36,22,.86);
+  border: 2px solid var(--frpg-olive);
+  box-shadow: var(--frpg-shadow);
+  cursor: pointer; padding: 0;
+}
+.frpg-ico:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.45); }
+.frpg-ico.is-on { border-color: var(--frpg-gold); color: var(--frpg-gold); }
+.frpg-ico[hidden] { display: none; }
+
+/* ---------- INDIKATOR KEPINGAN: KANAN-ATAS ---------- */
+.frpg-pieces {
+  position: absolute; top: 72px; right: 8px;
+  z-index: 22;
+  display: flex; flex-wrap: wrap; justify-content: flex-end;
+  gap: 6px; max-width: 130px;
+}
+.frpg-piece-ico {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1; padding: 0;
+  background: rgba(26,36,22,.7);
+  border: 2px solid #3a4a2e;
+  color: #55663f;
+  filter: grayscale(1);
+  opacity: .55;
+  cursor: default;
+  transition: transform .18s, opacity .18s, filter .18s;
+}
+.frpg-piece-ico.is-on {
+  border-color: var(--frpg-gold); color: var(--frpg-gold);
+  background: rgba(60,48,16,.9);
+  filter: none; opacity: 1; cursor: pointer;
+  box-shadow: 0 0 10px rgba(232,193,90,.5);
+}
+.frpg-piece-ico.is-on:active { transform: scale(.92); }
+.frpg-piece-ico.just-lit { animation: frpg-pop .5s ease; }
+@keyframes frpg-pop {
+  0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); }
+}
+
+/* Sprite kepingan yang terbang ke indikator */
+.frpg-fly {
+  position: absolute; z-index: 40; pointer-events: none;
+  font-size: 22px; line-height: 1;
+  transition: transform .6s cubic-bezier(.4,.1,.2,1), opacity .6s;
+}
+
+/* ---------- TOAST: atas-tengah ~18% (JANGAN di dasar) ---------- */
+.frpg-toast {
+  position: absolute; top: 18%; left: 50%;
+  transform: translate(-50%, -12px);
+  z-index: 30; opacity: 0; pointer-events: none;
+  max-width: 82%;
+  padding: 10px 16px;
+  font-size: 12px; line-height: 1.4; text-align: center;
+  background: rgba(14,20,16,.95);
+  border: 2px solid var(--frpg-cyan);
+  color: var(--frpg-ink);
+  box-shadow: var(--frpg-shadow);
+  transition: opacity .2s, transform .2s;
+}
+.frpg-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.frpg-toast.success { border-color: var(--frpg-gold); color: var(--frpg-gold); }
+.frpg-toast.danger  { border-color: var(--frpg-red);  color: #ffd0d0; }
+
+/* ---------- BANNER transisi area ---------- */
+.frpg-banner {
+  position: absolute; top: 38%; left: 0; right: 0;
+  z-index: 28; opacity: 0; pointer-events: none;
+  text-align: center; font-size: 20px; letter-spacing: .16em;
+  color: var(--frpg-gold);
+  text-shadow: 0 3px 0 #000, 0 0 18px rgba(232,193,90,.6);
+  transition: opacity .3s;
+}
+.frpg-banner.show { opacity: 1; }
+
+/* ---------- KONTROL SENTUH: joystick kiri-bawah, PANAH kanan-bawah ---------- */
+.frpg-touch {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 20%;                              /* SINKRON dgn CFG.CTRL_FRAC (kamera) */
+  z-index: 24; pointer-events: none;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.frpg-joy {
+  position: absolute; left: 18px; bottom: 26px;
+  width: 116px; height: 116px; border-radius: 50%;
+  background: rgba(26,36,22,.5);
+  border: 2px solid rgba(90,111,66,.8);
+  pointer-events: auto; touch-action: none;
+}
+.frpg-joy-knob {
+  position: absolute; left: 50%; top: 50%;
+  width: 48px; height: 48px; margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: rgba(106,208,106,.55);
+  border: 2px solid var(--frpg-green);
+  pointer-events: none;
+}
+.frpg-fire {
+  position: absolute; right: 22px; bottom: 34px;
+  width: 82px; height: 82px; border-radius: 50%;
+  font-size: 26px; line-height: 1; padding: 0;
+  color: #10180e;
+  background: var(--frpg-gold);
+  border: 2px solid var(--frpg-gold-d);
+  box-shadow: 0 4px 0 rgba(0,0,0,.45);
+  pointer-events: auto; touch-action: none; cursor: pointer;
+}
+.frpg-fire:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.45); }
+
+/* ---------- OVERLAY ---------- */
+.frpg-overlay {
+  position: absolute; inset: 0; z-index: 50;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(8,12,8,.9);
+}
+.frpg-overlay.show { display: flex; }
+.frpg-overlay.frpg-scroll { align-items: stretch; padding: 0; }
+
+.frpg-panel {
+  width: 100%; max-width: 360px;
+  max-height: 100%; overflow-y: auto;
+  padding: 22px 20px;
+  text-align: center;
+  background: linear-gradient(180deg, #24301e, #182114);
+  border: 3px solid var(--frpg-olive);
+  box-shadow: 0 0 0 2px #10180e, 0 10px 30px rgba(0,0,0,.6);
+}
+
+/* Corner-tick arcade */
+.frpg-panel::before, .frpg-panel::after {
+  content: ""; position: absolute; width: 10px; height: 10px;
+  border: 2px solid var(--frpg-gold);
+}
+.frpg-panel::before { border-right: 0; border-bottom: 0; margin: -14px 0 0 -12px; }
+.frpg-panel::after  { border-left: 0;  border-top: 0;    margin: 0 -12px -14px 0; align-self: flex-end; }
+
+.frpg-logo {
+  font-size: 26px; line-height: 1.1; letter-spacing: .14em;
+  color: var(--frpg-gold);
+  text-shadow: 0 3px 0 #000, 0 0 20px rgba(232,193,90,.4);
+  margin-bottom: 12px;
+}
+.frpg-logo span { font-size: 17px; color: var(--frpg-green); }
+.frpg-title {
+  font-size: 15px; letter-spacing: .12em; color: var(--frpg-gold);
+  margin: 0 0 10px; text-shadow: 0 2px 0 #000;
+}
+.frpg-lede { font-size: 12px; line-height: 1.6; color: var(--frpg-ink-dim); margin: 0 0 16px; }
+.frpg-lede small { color: #8fa578; }
+.frpg-big { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+.frpg-hint { font-size: 10px; color: #7d9166; margin: 10px 0 0; letter-spacing: .06em; }
+
+.frpg-field { margin: 0 0 14px; text-align: left; }
+.frpg-field > label {
+  display: block; font-size: 10px; letter-spacing: .12em;
+  color: #8fa578; margin-bottom: 6px;
+}
+.frpg-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- TOMBOL: semua terasa game, NOL link telanjang ---------- */
+.frpg-btn, .frpg-opt {
+  font-family: var(--frpg-mono); font-size: 12px;
+  letter-spacing: .1em; text-transform: uppercase; text-decoration: none;
+  padding: 11px 14px; cursor: pointer; display: inline-block;
+  border: 2px solid var(--frpg-olive);
+  background: #2c3a22; color: var(--frpg-ink);
+  box-shadow: var(--frpg-shadow);
+}
+.frpg-btn { width: 100%; margin-top: 8px; text-align: center; }
+.frpg-btn:active, .frpg-opt:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.45); }
+.frpg-btn-primary {
+  background: var(--frpg-gold); border-color: var(--frpg-gold-d); color: #10180e; font-weight: bold;
+}
+.frpg-btn-danger { background: var(--frpg-red); border-color: #8a3030; color: #fff; }
+.frpg-btn-ghost  { background: transparent; color: var(--frpg-ink-dim); }
+.frpg-btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.7); }
+.frpg-btn:disabled:active { transform: none; box-shadow: var(--frpg-shadow); }
+
+.frpg-opt { flex: 1 1 auto; min-width: 76px; text-align: center; padding: 9px 8px; font-size: 11px; }
+.frpg-opt.is-sel { background: var(--frpg-green-d); border-color: var(--frpg-green); color: #eaffea; }
+
+.frpg-row { display: flex; gap: 8px; margin-top: 10px; }
+.frpg-row .frpg-btn { margin-top: 0; }
+
+.frpg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.frpg-grid .frpg-cell {
+  padding: 12px 4px; text-align: center; cursor: pointer;
+  background: #2c3a22; border: 2px solid var(--frpg-olive);
+  box-shadow: var(--frpg-shadow); font-family: var(--frpg-mono);
+  color: var(--frpg-ink);
+}
+.frpg-grid .frpg-cell b { display: block; font-size: 18px; color: var(--frpg-gold); }
+.frpg-grid .frpg-cell span { display: block; font-size: 8px; letter-spacing: .06em; color: #8fa578; }
+.frpg-grid .frpg-cell.is-sel { border-color: var(--frpg-cyan); background: #23392f; }
+.frpg-grid .frpg-cell.is-locked { opacity: .4; cursor: not-allowed; filter: grayscale(1); }
+
+/* ---------- SHEET (modal kepingan & reveal) ---------- */
+.frpg-sheet {
+  position: relative;
+  width: 100%; height: 100%;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 52px 18px 40px;
+  background: linear-gradient(180deg, #1e2a18, #141c11);
+}
+.frpg-close {
+  position: sticky; top: 0; float: right;
+  width: 40px; height: 40px; z-index: 5;
+  font-size: 22px; line-height: 1; padding: 0; cursor: pointer;
+  background: rgba(26,36,22,.92); border: 2px solid var(--frpg-olive);
+  color: var(--frpg-ink); box-shadow: var(--frpg-shadow);
+}
+
+/* ---------- ISI UNDANGAN (dipakai di modal & reveal) ---------- */
+.frpg-invitation { display: none; }          /* sumber binding: tersembunyi */
+
+.frpg-sheet section { margin: 0 0 30px; text-align: center; }
+.frpg-sheet h2 {
+  font-size: 15px; letter-spacing: .14em; color: var(--frpg-gold);
+  margin: 0 0 14px; padding-bottom: 8px;
+  border-bottom: 2px solid rgba(90,111,66,.5);
+  text-transform: uppercase;
+}
+.frpg-sheet h3 { font-size: 18px; color: var(--frpg-ink); margin: 10px 0; }
+.frpg-sheet h4 { font-size: 13px; color: var(--frpg-green); margin: 8px 0; letter-spacing: .06em; }
+.frpg-sheet p  { font-size: 12px; line-height: 1.7; color: var(--frpg-ink-dim); margin: 5px 0; }
+.frpg-sheet p.sm { font-size: 10.5px; color: #7d9166; }
+.frpg-sheet a { color: var(--frpg-cyan); }
+
+.frpg-quote { font-style: italic; }
+.frpg-quoteby { font-size: 10.5px; color: #7d9166; }
+.frpg-big-date { font-size: 15px !important; color: var(--frpg-gold) !important; letter-spacing: .06em; }
+.frpg-closing { font-style: italic; }
+
+.frpg-couple { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.frpg-person { flex: 1 1 130px; max-width: 170px; }
+.frpg-photo {
+  width: 100%; aspect-ratio: 1; object-fit: cover;
+  border: 3px solid var(--frpg-olive); background: #22301c;
+}
+.frpg-ig { display: inline-block; margin-top: 6px; font-size: 11px; }
+
+.frpg-countdown { display: flex; justify-content: center; gap: 8px; margin: 12px 0 18px; }
+.frpg-countdown > div {
+  flex: 1 1 0; max-width: 68px; padding: 8px 4px;
+  background: #22301c; border: 2px solid var(--frpg-olive);
+}
+.frpg-countdown b { display: block; font-size: 19px; color: var(--frpg-gold); }
+.frpg-countdown span { display: block; font-size: 9px; color: #8fa578; letter-spacing: .06em; }
+
+.frpg-form { text-align: left; max-width: 320px; margin: 0 auto; }
+.frpg-form label {
+  display: block; font-size: 10px; letter-spacing: .1em;
+  color: #8fa578; margin: 12px 0 5px;
+}
+.frpg-form input, .frpg-form select, .frpg-form textarea {
+  width: 100%; box-sizing: border-box;
+  padding: 10px; font-family: var(--frpg-mono); font-size: 12.5px;
+  background: #161f12; color: var(--frpg-ink);
+  border: 2px solid var(--frpg-olive); border-radius: 0;
+}
+.frpg-form textarea { resize: vertical; }
+.frpg-form input:focus, .frpg-form select:focus, .frpg-form textarea:focus {
+  outline: none; border-color: var(--frpg-green);
+}
+#alert-submit-kehadiran:not(:empty), #alert-submit-ucapan:not(:empty) {
+  margin-top: 10px; padding: 10px; font-size: 11.5px;
+  background: #1e3320; border: 2px solid var(--frpg-green); color: #d8ffd8;
+}
+
+.frpg-event, .frpg-bank {
+  margin: 12px auto; max-width: 320px; padding: 14px;
+  background: #1e2a18; border: 2px solid var(--frpg-olive);
+}
+.frpg-rek { font-size: 17px !important; color: var(--frpg-gold) !important; letter-spacing: .1em; }
+.frpg-qris { width: 150px; max-width: 100%; margin-top: 8px; }
+.frpg-maplink {
+  display: inline-block; margin-top: 8px; padding: 8px 12px;
+  font-size: 11px; letter-spacing: .08em; text-decoration: none;
+  background: #2c3a22; border: 2px solid var(--frpg-olive);
+  color: var(--frpg-cyan); box-shadow: var(--frpg-shadow);
+}
+
+.frpg-timeline { text-align: left; max-width: 320px; margin: 0 auto; }
+.frpg-tl-item {
+  padding: 10px 0 10px 16px; margin-bottom: 6px;
+  border-left: 3px solid var(--frpg-green-d);
+}
+.frpg-tl-date { font-size: 10px; color: var(--frpg-gold); letter-spacing: .08em; }
+
+.frpg-gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.frpg-gallery-item img {
+  width: 100%; aspect-ratio: 1; object-fit: cover;
+  border: 2px solid var(--frpg-olive); cursor: pointer; display: block;
+}
+.frpg-stories { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.frpg-stories img { width: 90px; border: 2px solid var(--frpg-olive); }
+
+.frpg-wishes { margin-top: 16px; text-align: left; max-width: 320px; margin-inline: auto; }
+.frpg-wish {
+  padding: 10px; margin-bottom: 8px;
+  background: #1e2a18; border-left: 3px solid var(--frpg-green-d);
+}
+.frpg-wish b { color: var(--frpg-green); font-size: 12px; }
+.frpg-wish .sm { float: right; font-size: 9.5px; color: #6d8156; }
+.frpg-wish p { clear: both; margin: 5px 0 0; }
+
+/* Lightbox milik tema (class BERBEDA dari host) */
+.frpg-lightbox {
+  position: fixed; inset: 0; z-index: 999;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.94); padding: 20px;
+}
+.frpg-lightbox.show { display: flex; }
+.frpg-lightbox img { max-width: 100%; max-height: 90vh; border: 3px solid var(--frpg-olive); }
+
+/* ---------- PANEL KANAN (desktop) — PURE undangan ---------- */
+#frpg-couple-canvas {
+  width: 100%; height: auto; display: block;
+  border: 3px solid var(--frpg-olive);
+  background: #1e2a18;
+  image-rendering: auto;
+}
+.frpg-side-names {
+  margin-top: 22px; text-align: center;
+  font-size: 24px; letter-spacing: .06em; color: var(--frpg-gold);
+  text-shadow: 0 2px 0 #000;
+}
+.frpg-side-names em { color: var(--frpg-red); font-style: normal; margin: 0 8px; }
+.frpg-side-date {
+  text-align: center; font-size: 13px; letter-spacing: .12em;
+  color: var(--frpg-ink-dim); margin-top: 6px;
+}
+.frpg-side-event {
+  margin-top: 18px; padding: 16px; text-align: center;
+  background: #1e2a18; border: 2px solid var(--frpg-olive);
+}
+.frpg-side-event h4 {
+  font-size: 12px; letter-spacing: .14em; color: var(--frpg-green); margin: 0 0 8px;
+}
+.frpg-side-event p { font-size: 12.5px; line-height: 1.7; color: var(--frpg-ink-dim); margin: 3px 0; }
+.frpg-side-event p.sm { font-size: 11px; color: #7d9166; }
+.frpg-side-open { margin-top: 22px; }
+.frpg-credit {
+  margin-top: 26px; text-align: center;
+  font-size: 9.5px; color: #55663f; letter-spacing: .06em;
+}
+
+/* ---------- helper tampil per-perangkat ---------- */
+.frpg-desktop-only { display: none; }
+@media (hover: hover) and (pointer: fine) { .frpg-desktop-only { display: block; } .frpg-touch-only { display: none; } }
+
+/* ---------- kurangi animasi bila diminta OS ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .frpg-piece-ico, .frpg-toast, .frpg-banner, .frpg-fly { transition: none; animation: none; }
+}

@@ -1,0 +1,413 @@
+<!-- ============================================================
+     FOREST RPG WEDDING — index.html
+     Bible: FOREST_RPG_BIBLE.md (APPENDIX Z.14 kerangka HTML)
+     Art: Ansimuz "Tiny RPG Forest" (CC0) — ansimuz.itch.io/tiny-rpg-forest
+     ============================================================ -->
+
+<div class="frpg-shell">
+
+  <!-- ============ FRAME GAME (desktop: KIRI 480px; mobile: satu-satunya tampil) ============ -->
+  <div class="frpg-frame">
+
+    <div class="frpg-stage" id="frpg-stage"></div>
+    <div class="frpg-error" id="frpg-error"></div>
+
+    <!-- HUD info (dilihat, tak di-tap) -->
+    <div class="frpg-hud">
+      <span class="frpg-hud-area" id="frpg-area-name">TEPI HUTAN</span>
+      <span class="frpg-hud-prog" id="frpg-progress">0/0 &#128140;</span>
+    </div>
+
+    <!-- ICON-BUTTON: KIRI-ATAS, kolom vertikal (Z.11) -->
+    <div class="frpg-icons">
+      <button class="frpg-ico" id="frpg-cheat-btn" type="button" title="Mode bebas">&#9733;</button>
+      <button class="frpg-ico" id="frpg-areaselect-btn" type="button" title="Pilih area" hidden>&#9638;</button>
+      <button class="frpg-ico" id="frpg-open-invitation" type="button" title="Buka undangan">&#128140;</button>
+      <button class="frpg-ico" id="btn-toggle-music" type="button" title="Musik">
+        <span id="play-icon">&#9654;</span><span id="pause-icon" style="display:none">&#10073;&#10073;</span>
+      </button>
+      <button class="frpg-ico" id="frpg-sfx-btn" type="button" title="Efek suara">&#128266;</button>
+      <button class="frpg-ico" id="frpg-reset-btn" type="button" title="Ulang dari awal">&#8635;</button>
+    </div>
+
+    <!-- INDIKATOR KEPINGAN: KANAN-ATAS, DINAMIS (diisi JS dari scan #inv-source) -->
+    <div class="frpg-pieces" id="frpg-pieces"></div>
+
+    <!-- Toast: atas-tengah ~18% (Z.12) -->
+    <div class="frpg-toast" id="frpg-toast"></div>
+
+    <!-- KONTROL SENTUH: joystick kiri-bawah, PANAH kanan-bawah -->
+    <div class="frpg-touch" id="frpg-touch">
+      <div class="frpg-joy" id="frpg-joy"><div class="frpg-joy-knob" id="frpg-joy-knob"></div></div>
+      <button class="frpg-fire" id="frpg-fire" type="button">&#10148;</button>
+    </div>
+
+    <!-- ========== OVERLAY: COVER (pilih kesulitan + PRESS START) ========== -->
+    <div class="frpg-overlay frpg-cover show" id="frpg-cover">
+      <div class="frpg-panel">
+        <div class="frpg-logo">HUTAN<br><span>TERLARANG</span></div>
+        <p class="frpg-lede">
+          <span data-var="groom_nickname">{{groom_nickname}}</span> &amp;
+          <span data-var="bride_nickname">{{bride_nickname}}</span><br>
+          <small>Kumpulkan kepingan undangan yang tersebar di hutan.</small>
+        </p>
+
+        <div class="frpg-field">
+          <label>KESULITAN</label>
+          <div class="frpg-opts" id="frpg-diff-opts">
+            <button class="frpg-opt diff-opt is-sel" type="button" data-diff="easy">MUDAH</button>
+            <button class="frpg-opt diff-opt" type="button" data-diff="normal">SEDANG</button>
+            <button class="frpg-opt diff-opt" type="button" data-diff="hard">SULIT</button>
+          </div>
+        </div>
+
+        <button class="frpg-btn frpg-btn-primary" id="frpg-start-btn" type="button">PRESS START</button>
+        <p class="frpg-hint frpg-desktop-only">Panah = jalan &middot; Spasi = memanah</p>
+        <p class="frpg-hint frpg-touch-only">Joystick = jalan &middot; Tombol = memanah</p>
+        <button class="frpg-btn frpg-btn-ghost" id="frpg-skip-btn" type="button">Lewati &mdash; langsung buka undangan</button>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: PILIH AREA + KESULITAN (tombol OK, §8.4) ========== -->
+    <div class="frpg-overlay" id="frpg-areaselect">
+      <div class="frpg-panel">
+        <h3 class="frpg-title">PILIH AREA &amp; KESULITAN</h3>
+        <div class="frpg-field">
+          <label>KESULITAN</label>
+          <div class="frpg-opts" id="frpg-diff-opts-2">
+            <button class="frpg-opt diff-opt" type="button" data-diff="easy">MUDAH</button>
+            <button class="frpg-opt diff-opt" type="button" data-diff="normal">SEDANG</button>
+            <button class="frpg-opt diff-opt" type="button" data-diff="hard">SULIT</button>
+          </div>
+        </div>
+        <div class="frpg-field">
+          <label>AREA</label>
+          <div class="frpg-grid" id="frpg-area-grid"></div>
+        </div>
+        <div class="frpg-row">
+          <button class="frpg-btn frpg-btn-primary" id="frpg-area-ok" type="button">OK</button>
+          <button class="frpg-btn frpg-btn-ghost" id="frpg-area-cancel" type="button">BATAL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: MODAL KEPINGAN (clone dari #inv-source) ========== -->
+    <div class="frpg-overlay frpg-scroll" id="frpg-modal">
+      <div class="frpg-sheet">
+        <button class="frpg-close" id="frpg-modal-close" type="button">&times;</button>
+        <div id="frpg-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: REVEAL UNDANGAN PENUH ========== -->
+    <div class="frpg-overlay frpg-scroll" id="frpg-reveal">
+      <div class="frpg-sheet">
+        <button class="frpg-close" id="frpg-reveal-close" type="button">&times;</button>
+        <div id="frpg-reveal-body"></div>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: SEMUA KEPINGAN TERKUMPUL (celebration #1) ========== -->
+    <div class="frpg-overlay" id="frpg-allcollected">
+      <div class="frpg-panel">
+        <div class="frpg-big">&#128140;</div>
+        <h3 class="frpg-title">SEMUA KEPINGAN TERKUMPUL!</h3>
+        <p class="frpg-lede" id="frpg-allcollected-text"></p>
+        <button class="frpg-btn frpg-btn-primary" id="frpg-allcollected-open" type="button">&#128140; BUKA UNDANGAN</button>
+        <button class="frpg-btn frpg-btn-ghost" id="frpg-allcollected-cont" type="button">LANJUT BERMAIN</button>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: MENANG (celebration #2) ========== -->
+    <div class="frpg-overlay" id="frpg-win">
+      <div class="frpg-panel">
+        <div class="frpg-big">&#127881;</div>
+        <h3 class="frpg-title">HAPPILY EVER AFTER</h3>
+        <p class="frpg-lede" id="frpg-win-text"></p>
+        <button class="frpg-btn frpg-btn-primary" id="frpg-win-open" type="button">&#128140; BUKA UNDANGAN</button>
+        <button class="frpg-btn frpg-btn-ghost" id="frpg-win-again" type="button">MAIN LAGI</button>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: KONFIRMASI RESET (bukan confirm() native) ========== -->
+    <div class="frpg-overlay" id="frpg-resetconfirm">
+      <div class="frpg-panel">
+        <h3 class="frpg-title">HAPUS SEMUA PROGRES?</h3>
+        <p class="frpg-lede">Semua kepingan undangan yang sudah dikumpulkan akan hilang
+          dan permainan mulai dari awal.</p>
+        <div class="frpg-row">
+          <button class="frpg-btn frpg-btn-danger" id="frpg-reset-yes" type="button">YA, HAPUS</button>
+          <button class="frpg-btn frpg-btn-ghost" id="frpg-reset-no" type="button">BATAL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Banner transisi area (in-canvas feel) -->
+    <div class="frpg-banner" id="frpg-banner"></div>
+  </div>
+
+  <!-- ============ PANEL UNDANGAN (desktop KANAN) — PURE undangan, NOL tombol game ============ -->
+  <aside class="frpg-side" id="frpg-side">
+    <div class="inner">
+      <canvas id="frpg-couple-canvas" width="760" height="380"></canvas>
+
+      <div class="frpg-side-names">
+        <span data-var="groom_nickname">{{groom_nickname}}</span>
+        <em>&hearts;</em>
+        <span data-var="bride_nickname">{{bride_nickname}}</span>
+      </div>
+      <div class="frpg-side-date" data-var="wedding_date">{{wedding_date}}</div>
+
+      <div class="frpg-side-event">
+        <h4>AKAD</h4>
+        <p>{{tanggal_akad}} &middot; {{jam_akad}}</p>
+        <p>{{nama_lokasi_akad}}</p>
+        <p class="sm">{{keterangan_lokasi_akad}}</p>
+        {{#if akad_map}}<a class="frpg-maplink" href="{{akad_map}}" target="_blank" rel="noopener">&#9654; LIHAT PETA</a>{{/if}}
+      </div>
+
+      {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+      <div class="frpg-side-event">
+        <h4>RESEPSI</h4>
+        <p>{{tanggal_resepsi}} &middot; {{jam_resepsi}}</p>
+        <p>{{nama_lokasi_resepsi}}</p>
+        <p class="sm">{{keterangan_lokasi_resepsi}}</p>
+        {{#if resepsi_map}}<a class="frpg-maplink" href="{{resepsi_map}}" target="_blank" rel="noopener">&#9654; LIHAT PETA</a>{{/if}}
+      </div>
+      {{/if}}
+
+      <button class="frpg-btn frpg-btn-primary frpg-side-open" id="frpg-side-open" type="button">
+        &#128140; BUKA UNDANGAN LENGKAP
+      </button>
+
+      <p class="frpg-credit">Art: Ansimuz (CC0)</p>
+    </div>
+  </aside>
+
+  <!-- ==================================================================
+       SATU-SATUNYA SUMBER BINDING — semua {{vars}} hidup DI SINI SAJA.
+       Modal & reveal meng-CLONE dari sini (dengan de-ID, lihat X.6).
+       PENTING: {{#if}} MEMBUNGKUS <section>, BUKAN isinya (W.1).
+       ================================================================== -->
+  <div class="frpg-invitation" id="inv-source">
+
+    <!-- 1. HERO -->
+    <section data-info="hero">
+      <h2 data-sec-title>Undangan Pernikahan</h2>
+      <p class="frpg-quote">{{quote}}</p>
+      <p class="frpg-quoteby">{{quote_by}}</p>
+      <h3>{{groom_nickname}} &amp; {{bride_nickname}}</h3>
+      <p class="frpg-big-date">{{wedding_date}}</p>
+      <p>Kepada Yth. <strong>{{guest_name}}</strong></p>
+    </section>
+
+    <!-- 2. COUPLE -->
+    <section data-info="couple">
+      <h2 data-sec-title>Mempelai</h2>
+      <div class="frpg-couple">
+        <div class="frpg-person">
+          <img class="frpg-photo" src="{{photo_groom_photo}}" alt="{{groom_name}}">
+          <h4>{{groom_name}}</h4>
+          {{#if flag_tampilkan_nama_orang_tua}}
+          <p class="sm">Putra dari<br>{{nama_bapak_laki_laki}} &amp; {{nama_ibu_laki_laki}}</p>
+          {{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}
+          <a class="frpg-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener">@{{ig_laki_laki}}</a>
+          {{/if}}
+        </div>
+        <div class="frpg-person">
+          <img class="frpg-photo" src="{{photo_bride_photo}}" alt="{{bride_name}}">
+          <h4>{{bride_name}}</h4>
+          {{#if flag_tampilkan_nama_orang_tua}}
+          <p class="sm">Putri dari<br>{{nama_bapak_perempuan}} &amp; {{nama_ibu_perempuan}}</p>
+          {{/if}}
+          {{#if flag_tampilkan_sosial_media_mempelai}}
+          <a class="frpg-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener">@{{ig_perempuan}}</a>
+          {{/if}}
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. RSVP (ID host verbatim; rsvp-status value LOWERCASE) -->
+    <section data-info="rsvp">
+      <h2 data-sec-title>Konfirmasi Kehadiran</h2>
+      <div class="frpg-countdown">
+        <div><b>{{countdown_hari}}</b><span>Hari</span></div>
+        <div><b>{{countdown_jam}}</b><span>Jam</span></div>
+        <div><b>{{countdown_menit}}</b><span>Menit</span></div>
+        <div><b>{{countdown_detik}}</b><span>Detik</span></div>
+      </div>
+      <div class="frpg-form">
+        <label for="rsvp-code">Kode Undangan</label>
+        <input id="rsvp-code" type="text" value="{{kode_undangan}}" readonly>
+
+        <label for="rsvp-status">Kehadiran</label>
+        <select id="rsvp-status">
+          <option value="hadir">Hadir</option>
+          <option value="tidak-hadir">Tidak Hadir</option>
+        </select>
+
+        <label for="rsvp-guests">Jumlah Tamu</label>
+        <input id="rsvp-guests" type="number" min="1" value="1">
+
+        <button class="frpg-btn frpg-btn-primary" id="btn-submit-kehadiran" type="button">KIRIM KONFIRMASI</button>
+        <div id="alert-submit-kehadiran"></div>
+      </div>
+    </section>
+
+    <!-- 4. SCHEDULE -->
+    <section data-info="schedule">
+      <h2 data-sec-title>Waktu &amp; Tempat</h2>
+      <div class="frpg-event">
+        <h4>Akad Nikah</h4>
+        <p>{{tanggal_akad}}</p>
+        <p>{{jam_akad}}</p>
+        <p><strong>{{nama_lokasi_akad}}</strong></p>
+        <p class="sm">{{keterangan_lokasi_akad}}</p>
+        {{#if akad_map}}<a class="frpg-maplink" href="{{akad_map}}" target="_blank" rel="noopener">&#9654; LIHAT PETA</a>{{/if}}
+      </div>
+      {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+      <div class="frpg-event">
+        <h4>Resepsi</h4>
+        <p>{{tanggal_resepsi}}</p>
+        <p>{{jam_resepsi}}</p>
+        <p><strong>{{nama_lokasi_resepsi}}</strong></p>
+        <p class="sm">{{keterangan_lokasi_resepsi}}</p>
+        {{#if resepsi_map}}<a class="frpg-maplink" href="{{resepsi_map}}" target="_blank" rel="noopener">&#9654; LIHAT PETA</a>{{/if}}
+      </div>
+      {{/if}}
+    </section>
+
+    <!-- 5. STREAMING -->
+    {{#if is_fitur_live_streaming}}
+    <section data-info="streaming">
+      <h2 data-sec-title>Live Streaming</h2>
+      <p>Saksikan momen bahagia kami secara daring.</p>
+      <a class="frpg-btn frpg-btn-primary" href="{{link_live_streaming}}" target="_blank" rel="noopener">TONTON SEKARANG</a>
+    </section>
+    {{/if}}
+
+    <!-- 6. STORY -->
+    {{#if flag_pakai_timeline_kisah}}
+    <section data-info="story">
+      <h2 data-sec-title>Kisah Kami</h2>
+      <div class="frpg-timeline">
+        {{#each timeline_kisah}}
+        <div class="frpg-tl-item">
+          <span class="frpg-tl-date">{{this.tanggal}}</span>
+          <h4>{{this.judul}}</h4>
+          <p>{{this.deskripsi}}</p>
+        </div>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 7. GALLERY (class SENDIRI agar tidak dibajak lightbox host, Z.9) -->
+    {{#if has_gallery}}
+    <section data-info="gallery">
+      <h2 data-sec-title>Galeri</h2>
+      <div class="frpg-gallery">
+        {{#each galleries}}
+        <div class="frpg-gallery-item"><img src="{{this.url}}" alt="Galeri" loading="lazy"></div>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 8. HAPPINESS -->
+    {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+    <section data-info="happiness">
+      <h2 data-sec-title>Bagikan Kebahagiaan</h2>
+      <p>Unggah story Instagram dengan bingkai kami.</p>
+      <div class="frpg-stories">
+        <img src="{{sample_story_1}}" alt="Contoh story" loading="lazy">
+        <img src="{{sample_story_2}}" alt="Contoh story" loading="lazy">
+        <img src="{{sample_story_3}}" alt="Contoh story" loading="lazy">
+      </div>
+      <a class="frpg-btn frpg-btn-primary" href="{{link_balasan_instagram}}" target="_blank" rel="noopener">BUAT STORY</a>
+    </section>
+    {{/if}}
+
+    <!-- 9. WISHES (ID host verbatim) -->
+    <section data-info="wishes">
+      <h2 data-sec-title>Ucapan &amp; Doa</h2>
+      <div class="frpg-form">
+        <label for="wish-name">Nama</label>
+        <input id="wish-name" type="text" value="{{guest_name}}" placeholder="Nama kamu">
+
+        <label for="wish-message">Ucapan</label>
+        <textarea id="wish-message" rows="3" placeholder="Tulis doa &amp; harapan..."></textarea>
+
+        <button class="frpg-btn frpg-btn-primary" id="btn-submit-ucapan" type="button">KIRIM UCAPAN</button>
+        <div id="alert-submit-ucapan"></div>
+      </div>
+      <div class="frpg-wishes" id="frpg-wish-list">
+        {{#each wishes}}
+        <div class="frpg-wish">
+          <b>{{this.guest_name}}</b>
+          <span class="sm">{{this.guest_comment_time}}</span>
+          <p>{{this.guest_message}}</p>
+        </div>
+        {{/each}}
+      </div>
+    </section>
+
+    <!-- 10. GIFT -->
+    {{#if tampilkan_amplop_online}}
+    <section data-info="gift">
+      <h2 data-sec-title>Amplop Digital</h2>
+      <p>Doa restu adalah hadiah terindah. Bila ingin memberi tanda kasih:</p>
+
+      <div class="frpg-bank">
+        <h4>{{bank_1}}</h4>
+        <p class="frpg-rek">{{rek_1}}</p>
+        <p class="sm">a.n. {{nama_rek_1}}</p>
+        {{#if flag_pakai_qris_rekening_1}}
+        <img class="frpg-qris" src="{{gambar_qris_rekening_1}}" alt="QRIS" loading="lazy">
+        {{/if}}
+      </div>
+
+      {{#if flag_pakai_2_rekening}}
+      <div class="frpg-bank">
+        <h4>{{bank_2}}</h4>
+        <p class="frpg-rek">{{rek_2}}</p>
+        <p class="sm">a.n. {{nama_rek_2}}</p>
+        {{#if flag_pakai_qris_rekening_2}}
+        <img class="frpg-qris" src="{{gambar_qris_rekening_2}}" alt="QRIS" loading="lazy">
+        {{/if}}
+      </div>
+      {{/if}}
+
+      {{#if flag_kirim_hadiah_offline}}
+      <div class="frpg-bank">
+        <h4>Kirim Hadiah</h4>
+        <p>{{nama_lokasi_kirim_hadiah_offline}}</p>
+        <p class="sm">{{alamat_lokasi_kirim_hadiah_offline}}</p>
+        {{#if map_kirim_hadiah_offline}}<a class="frpg-maplink" href="{{map_kirim_hadiah_offline}}" target="_blank" rel="noopener">&#9654; LIHAT PETA</a>{{/if}}
+      </div>
+      {{/if}}
+    </section>
+    {{/if}}
+
+    <!-- 11. CLOSING -->
+    <section data-info="closing">
+      <h2 data-sec-title>Penutup</h2>
+      <p class="frpg-closing">{{kalimat_penutup}}</p>
+      <h3>{{groom_nickname}} &amp; {{bride_nickname}}</h3>
+      <p class="sm"><a href="{{site_url}}" target="_blank" rel="noopener">{{site_name}}</a></p>
+    </section>
+
+  </div>
+
+  <!-- ============ SLOT ASET (urutan upload baku, APPENDIX P.5) ============
+       1) player  2) enemy  3) environment  4) game-object  5) box-kepingan  -->
+  <img data-asset="player_sheet"      src="{{asset_image_1}}" alt="" hidden>
+  <img data-asset="enemy_sheet"       src="{{asset_image_2}}" alt="" hidden>
+  <img data-asset="environment_sheet" src="{{asset_image_3}}" alt="" hidden>
+  <img data-asset="object_sheet"      src="{{asset_image_4}}" alt="" hidden>
+  <img data-asset="piece_sheet"       src="{{asset_image_5}}" alt="" hidden>
+
+  <!-- Mirror musik host (BUKAN player asli — tanpa <source>) -->
+  <audio id="bg-music"></audio>
+</div>

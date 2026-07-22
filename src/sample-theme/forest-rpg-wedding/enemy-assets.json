@@ -1,0 +1,58 @@
+[
+  {
+    "kelompok": "enemy",
+    "name": "enemy_mole.png",
+    "deskripsi": "Tikus tanah (mole) cokelat #8a6a4a, badan bulat rendah, moncong pink, cakar krem, mata hitam kecil. 3 baris arah (down, up, side hadap KANAN), tiap baris 6 frame walk (badan bergoyang kiri-kanan, cakar bergerak bergantian). Baris ke-4: 3 frame die (badan mengempis lalu puff debu abu). Siluet RENDAH & BULAT agar jelas berbeda dari treant. Kaki di baris bawah sel.",
+    "orderNumber": 1,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "enemy",
+    "name": "enemy_treant.png",
+    "deskripsi": "Treant hijau gelap #3a5f30: pohon berjalan bertajuk kanopi lebat di kepala, batang cokelat #6b4a2a, dua kaki akar, mata kuning bersinar. 3 baris arah (down, up, side hadap KANAN), tiap baris 6 frame walk (kanopi bergoyang, akar melangkah berat dan lambat). Baris ke-4: 3 frame die (tumbang ke samping, daun berhamburan). Siluet LEBAR & BERTAJUK — wajib jelas berbeda dari mole. Kaki di baris bawah sel.",
+    "orderNumber": 2,
+    "frameWidth": 96,
+    "frameHeight": 96
+  },
+  {
+    "kelompok": "enemy",
+    "name": "enemy_mole_dig.png",
+    "deskripsi": "Mole penggali, varian mole dengan helm daun hijau. 11 frame horizontal: 1 frame buried (HANYA gundukan tanah cokelat, badan tidak terlihat sama sekali), 3 frame emerge (tanah retak, kepala muncul, badan penuh keluar), 4 frame chase (lari cepat, debu beterbangan di belakang), 3 frame die. Hadap KANAN. Kaki di baris bawah sel.",
+    "orderNumber": 3,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "enemy",
+    "name": "enemy_treant_old.png",
+    "deskripsi": "Treant Tua: pohon purba STATIS warna cokelat gelap keabuan #4a3f32, lumut biru di batang, mata merah menyala, lengan ranting panjang. 10 frame horizontal: 2 idle (goyang pelan), 2 windup (badan mundur, lengan ranting terangkat — telegraph jelas), 2 fire (lengan melempar ke depan, biji lepas), 1 hurt (kilat putih seluruh badan), 3 die (batang retak lalu runtuh jadi tunggul). Hadap KANAN. Akar di baris bawah sel.",
+    "orderNumber": 4,
+    "frameWidth": 96,
+    "frameHeight": 112
+  },
+  {
+    "kelompok": "enemy",
+    "name": "enemy_firefly.png",
+    "deskripsi": "Kunang Api: bola cahaya oranye-kuning #ffb84a dengan sayap transparan tipis dan ekor cahaya lembut. 4 frame fly (denyut terang-redup bergantian + sayap mengepak), 3 frame die (pecah menjadi percikan cahaya kecil). MELAYANG DI TENGAH SEL (bukan kaki di bawah). Glow lembut menyebar di sekeliling bola.",
+    "orderNumber": 5,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "enemy",
+    "name": "enemy_thorn.png",
+    "deskripsi": "Akar Duri (hazard, tidak bisa dibunuh): 5 frame horizontal. 1 hidden (tanah rata dengan retak samar nyaris tak terlihat), 2 crack (retak melebar + partikel tanah beterbangan — telegraph), 2 up (duri akar cokelat gelap #4a3524 dengan ujung tajam menyembul penuh dari tanah). Pivot di dasar sel.",
+    "orderNumber": 6,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "enemy",
+    "name": "boss_ent.png",
+    "deskripsi": "ENT PENJAGA GERBANG (boss): pohon purba RAKSASA berwajah, batang lebar berlumut, kanopi sangat lebat, dua lengan ranting panjang, mata hijau bersinar, akar besar sebagai kaki. 12 frame horizontal: 2 idle (kanopi bergoyang, napas), 2 windup (lengan terangkat tinggi, mata menyala terang), 2 attack_root (lengan menghantam tanah), 2 attack_seed (lengan melempar ke depan, biji lepas), 1 hurt (kilat putih seluruh badan), 3 defeated (MEMBUNGKUK HORMAT perlahan, mata melembut jadi kuning hangat, kelopak bunga bermunculan — BUKAN mati, BUKAN hancur; ia merestui). Hadap BAWAH menghadap pemain. Skala jauh lebih besar dari musuh lain.",
+    "orderNumber": 7,
+    "frameWidth": 160,
+    "frameHeight": 192
+  }
+]

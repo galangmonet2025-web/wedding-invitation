@@ -43,6 +43,12 @@ import { safeGetItem, safeSetItem } from '@/shared/utils/safeStorage';
 // can see a live invitation. Must match an ACTIVE tenant's domain_slug.
 const PREVIEW_DEMO_SLUG = 'dini-galang';
 
+// Perangkat sentuh / layar kecil: auto-fokus ke input pencarian akan membuka
+// keyboard layar yang menutupi daftar tamu, jadi auto-fokus dimatikan di sana.
+const isTouchDevice = () =>
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(hover: none) and (pointer: coarse)').matches || window.innerWidth < 768);
+
 export function ManageThemesPage() {
     const navigate = useNavigate();
     const base = useBasePath();
@@ -202,8 +208,12 @@ export function ManageThemesPage() {
 
     // Kick off the non-blocking inject/edit queue for the chosen sample-theme folders.
     // Progress shows in the header background-task indicator; we don't block the screen.
+    // Dialog SENGAJA dibiarkan terbuka: inject berjalan di latar belakang, dan dialog
+    // memantau backgroundTaskStore untuk menarik ulang snapshot DB begitu inject
+    // selesai (lalu status tiap folder bisa dicek ulang tanpa membuka dialog lagi).
+    // Menutupnya di sini membuat komponen ter-unmount sebelum sinyal selesai tiba,
+    // sehingga admin kembali melihat status berdasarkan data sebelum inject.
     const handleInjectThemes = (folders: string[], asDraft: boolean) => {
-        setIsInjectOpen(false);
         if (folders.length === 0) return;
         toast.success(`Memproses ${folders.length} tema di latar belakang (${asDraft ? 'draft' : 'release'})...`);
         // Fire-and-forget: the background task store drives the UI. Refresh the list when done.
@@ -1249,7 +1259,9 @@ export function ManageThemesPage() {
                                 </span>
                                 <input
                                     type="text"
-                                    autoFocus
+                                    // Di mobile jangan auto-fokus: keyboard langsung terbuka
+                                    // dan menutupi daftar tamu di bawahnya.
+                                    autoFocus={!isTouchDevice()}
                                     placeholder="Cari nama / kode tamu..."
                                     value={guestSearch}
                                     onChange={(e) => setGuestSearch(e.target.value)}

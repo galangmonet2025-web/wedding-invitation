@@ -1,0 +1,866 @@
+<!-- =====================================================================
+     PIXEL WEDDING RUN — index.html
+     Tema undangan pernikahan berbasis game platformer 16-bit (Phaser 3.80.1)
+     Bible: PIXEL_WEDDING_RUN_BIBLE.md
+
+     STRUKTUR:
+       [1] .pwr-shell        wrapper 2 kolom (desktop) / 1 kolom (mobile)
+       [2] .pwr-frame        frame game (KIRI di desktop, 480px) — SATU-SATUNYA interaktif
+       [3] .pwr-side         panel undangan (KANAN di desktop) — PURE undangan, no game button
+       [4] #inv-source       SATU-SATUNYA tempat binding {{vars}} hidup (display:none)
+       [5] #theme-fab-container  FAB tema (flag_use_system_action_button WAJIB false)
+
+     KONTRAK HOST (verbatim, jangan diubah):
+       btn-show-qr · btn-toggle-music · bg-music · play-icon · pause-icon
+       btn-submit-kehadiran · rsvp-status · rsvp-guests · rsvp-code · alert-submit-kehadiran
+       btn-submit-ucapan · wish-name · wish-message · wish-form · alert-submit-ucapan
+       tm-countdown-* (sudah di-inject host lewat {{countdown_*}})
+     ===================================================================== -->
+
+<div class="pwr-shell" id="pwr-shell">
+
+  <!-- ================================================================
+       [2] FRAME GAME — mentok KIRI di desktop (480px), satu-satunya area interaktif
+       ================================================================ -->
+  <div class="pwr-frame" id="pwr-frame">
+
+    <!-- Panggung Phaser. Canvas di-inject ke sini oleh index.js -->
+    <div class="pwr-stage" id="pwr-stage"></div>
+
+    <!-- Pesan error boot (Phaser gagal load vs bug logic) -->
+    <div class="pwr-error" id="pwr-error" style="display:none"></div>
+
+    <!-- ---------------- HUD info (atas — dilihat, TIDAK di-tap) ---------------- -->
+    <div class="pwr-hud" id="pwr-hud">
+      <div class="pwr-hud-row">
+        <span class="pwr-hud-score">SKOR <b id="pwr-score">000000</b></span>
+        <span class="pwr-hud-stage">STAGE <b id="pwr-stage-num">1</b>/<b id="pwr-stage-total">6</b></span>
+      </div>
+      <div class="pwr-hud-row pwr-hud-row-2">
+        <span class="pwr-chip" id="pwr-powerup-chip">—</span>
+        <span class="pwr-progress"><b id="pwr-piece-count">0</b>/<b id="pwr-piece-total">0</b> 💌</span>
+      </div>
+    </div>
+
+    <!-- ---------------- ICON-BUTTON (KIRI-ATAS) — kolom vertikal ---------------- -->
+    <div class="pwr-iconbar" id="pwr-iconbar">
+      <button type="button" class="pwr-iconbtn" id="pwr-btn-cheat"  title="Mode santai (buka semua)">★</button>
+      <button type="button" class="pwr-iconbtn" id="pwr-btn-stage"  title="Pilih stage &amp; kesulitan">▦</button>
+      <button type="button" class="pwr-iconbtn" id="pwr-btn-open"   title="Buka undangan">💌</button>
+      <!-- ⚠️ TOMBOL BACKSOUND TIDAK ADA DI SINI (sengaja).
+           Backsound tenant milik HALAMAN UNDANGAN saja; saat bermain yang
+           berbunyi hanya efek suara game. Tombolnya (#pwr-btn-music) ada di
+           FAB undangan, yang otomatis hanya tampil saat mode membaca. -->
+      <!-- Efek suara game — TERPISAH dari backsound host. Tetap di toolbar
+           game karena memang mengatur bunyi permainan. -->
+      <button type="button" class="pwr-iconbtn" id="pwr-btn-sfx"    title="Efek suara">🔊</button>
+      <button type="button" class="pwr-iconbtn" id="pwr-btn-reset"  title="Ulangi dari awal">⟲</button>
+    </div>
+
+    <!-- ---------------- INDIKATOR KEPINGAN (KANAN-ATAS) — dibangun JS ---------------- -->
+    <div class="pwr-pieces" id="pwr-pieces" aria-label="Kepingan undangan"></div>
+
+    <!-- ---------------- TOAST (atas-tengah, 18%) ---------------- -->
+    <div class="pwr-toast" id="pwr-toast" role="status" aria-live="polite"></div>
+
+    <!-- ---------------- KONTROL SENTUH (green zone bawah) ---------------- -->
+    <div class="pwr-touch" id="pwr-touch">
+      <div class="pwr-joy" id="pwr-joy">
+        <div class="pwr-joy-base" id="pwr-joy-base"><div class="pwr-joy-knob" id="pwr-joy-knob"></div></div>
+      </div>
+      <button type="button" class="pwr-btn-jump" id="pwr-btn-jump" aria-label="Lompat">JMP</button>
+      <!-- Tombol TEMBAK: hanya terlihat saat power-up BUKET aktif
+           (kelas is-available ditambahkan JS). Ditaruh di kiri tombol
+           lompat supaya ibu jari kanan bisa menjangkau keduanya. -->
+      <button type="button" class="pwr-btn-shoot" id="pwr-btn-shoot" aria-label="Tembak">HIT</button>
+    </div>
+
+    <!-- ================================================================
+         OVERLAY: COVER (PRESS START + pilih kesulitan)
+         Semua tombol game ada DI SINI, bukan di panel kanan.
+         ================================================================ -->
+    <div class="pwr-overlay pwr-overlay-cover show" id="pwr-ov-cover">
+      <div class="pwr-ov-inner">
+        <div class="pwr-cover-badge">PIXEL WEDDING RUN</div>
+        <h1 class="pwr-cover-title">
+          <span data-var="groom_nickname">{{groom_nickname}}</span>
+          <span class="pwr-amp">&amp;</span>
+          <span data-var="bride_nickname">{{bride_nickname}}</span>
+        </h1>
+        <div class="pwr-cover-date" data-var="wedding_date">{{wedding_date}}</div>
+
+        <p class="pwr-cover-lead">
+          Bantu mempelai pria menempuh perjalanan menuju pelaminan.<br>
+          Kumpulkan <b>kepingan undangan 💌</b> di sepanjang jalan.
+        </p>
+
+        <div class="pwr-diff-wrap">
+          <div class="pwr-diff-label">TINGKAT KESULITAN</div>
+          <div class="pwr-diff-row">
+            <button type="button" class="pwr-diff-opt is-sel" data-diff="easy">SANTAI</button>
+            <button type="button" class="pwr-diff-opt" data-diff="normal">NORMAL</button>
+            <button type="button" class="pwr-diff-opt" data-diff="hard">SERU</button>
+          </div>
+        </div>
+
+        <!-- ⚠️ JANGAN beri id="btn-open-invitation" pada tombol MULAI.
+             Host (ThemeWrapper) menangkap klik pada ID itu lalu memanggil
+             setIsOpened(true) + setIsPlaying(true). Keduanya mengubah props
+             tema sehingga host MENGEKSEKUSI ULANG index.js — game yang baru
+             saja dimulai langsung dibongkar, dan yang tersisa hanya musik.
+             Itulah gejala "MULAI ditekan, tapi cuma musik yang jalan".
+
+             Pemicu isOpened dipindahkan ke #pwr-host-open (elemen tersembunyi
+             di luar frame) yang diklik JS SETELAH game berjalan. -->
+        <button type="button" class="pwr-btn-primary pwr-start" id="pwr-btn-start">▶ MULAI</button>
+
+        <button type="button" class="pwr-btn-ghost" id="pwr-btn-skip">
+          Langsung buka undangan saja
+        </button>
+
+        <div class="pwr-cover-keys">
+          <span class="pwr-key">←</span><span class="pwr-key">→</span> jalan &nbsp;·&nbsp;
+          <span class="pwr-key">SPASI</span> lompat
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         OVERLAY: STAGE SELECT (stage + kesulitan sekaligus, pakai tombol OK)
+         ================================================================ -->
+    <div class="pwr-overlay" id="pwr-ov-stage">
+      <div class="pwr-ov-inner">
+        <div class="pwr-ov-title">PILIH STAGE &amp; KESULITAN</div>
+
+        <div class="pwr-diff-wrap">
+          <div class="pwr-diff-label">KESULITAN</div>
+          <div class="pwr-diff-row">
+            <button type="button" class="pwr-diff-opt is-sel" data-diff="easy">SANTAI</button>
+            <button type="button" class="pwr-diff-opt" data-diff="normal">NORMAL</button>
+            <button type="button" class="pwr-diff-opt" data-diff="hard">SERU</button>
+          </div>
+        </div>
+
+        <div class="pwr-diff-label">STAGE</div>
+        <div class="pwr-stage-grid" id="pwr-stage-grid"><!-- dibangun JS --></div>
+
+        <div class="pwr-ov-actions">
+          <button type="button" class="pwr-btn-primary" id="pwr-stage-ok">OK</button>
+          <button type="button" class="pwr-btn-secondary" id="pwr-stage-cancel">BATAL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         OVERLAY: KONFIRMASI RESET
+         ================================================================ -->
+    <div class="pwr-overlay" id="pwr-ov-reset">
+      <div class="pwr-ov-inner">
+        <div class="pwr-ov-title">ULANGI DARI AWAL?</div>
+        <p class="pwr-ov-text">
+          Semua kepingan undangan yang sudah terkumpul, skor, dan progres stage
+          akan dihapus. Undangan tetap bisa dibuka lagi setelahnya.
+        </p>
+        <div class="pwr-ov-actions">
+          <button type="button" class="pwr-btn-danger" id="pwr-reset-yes">YA, ULANGI</button>
+          <button type="button" class="pwr-btn-secondary" id="pwr-reset-no">BATAL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         OVERLAY: CELEBRATION (2 pemicu — semua kepingan / tamat game)
+         ================================================================ -->
+    <div class="pwr-overlay pwr-overlay-celebrate" id="pwr-ov-celebrate">
+      <div class="pwr-ov-inner">
+        <div class="pwr-celebrate-emoji" id="pwr-celebrate-emoji">💌</div>
+        <div class="pwr-ov-title" id="pwr-celebrate-title">SEMUA KEPINGAN TERKUMPUL!</div>
+        <p class="pwr-ov-text" id="pwr-celebrate-text"></p>
+        <div class="pwr-ov-actions">
+          <button type="button" class="pwr-btn-primary" id="pwr-celebrate-open">💌 BUKA UNDANGAN</button>
+          <button type="button" class="pwr-btn-secondary" id="pwr-celebrate-close">LANJUT MAIN</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         MODAL: SATU KEPINGAN (klik ikon indikator)
+         Isi = clone dari #inv-source[data-info=...]
+         ================================================================ -->
+    <div class="pwr-modal" id="pwr-piece-modal">
+      <div class="pwr-modal-box">
+        <button type="button" class="pwr-modal-close" id="pwr-piece-close" aria-label="Tutup">✕</button>
+        <div class="pwr-modal-title" id="pwr-piece-title"></div>
+        <div class="pwr-modal-body" id="pwr-piece-body"><!-- clone --></div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         REVEAL: UNDANGAN LENGKAP (scroll di dalam frame)
+         Isi = clone SEMUA section dari #inv-source
+         ================================================================ -->
+    <div class="pwr-reveal" id="pwr-reveal">
+      <div class="pwr-reveal-bar">
+        <span class="pwr-reveal-bar-title">UNDANGAN</span>
+        <button type="button" class="pwr-reveal-back" id="pwr-reveal-back">✕ TUTUP</button>
+      </div>
+      <div class="pwr-reveal-body" id="pwr-reveal-body"><!-- clone --></div>
+    </div>
+
+  </div><!-- /.pwr-frame -->
+
+
+  <!-- ================================================================
+       [3] PANEL KANAN (desktop) — PURE UNDANGAN, NOL TOMBOL GAME
+       ----------------------------------------------------------------
+       KERANGKA: disamakan dengan jumper-wedding (pola yang sudah
+       disetujui user), BUKAN pola bento/poster yang berkali-kali ditolak.
+
+         - panel = SATU PEMANDANGAN bertema (langit + pita tanah +
+           hiasan melayang), bukan bidang kertas polos;
+         - dua kolom yang di-align TENGAH:
+             kiri  = jati diri (logo, medali mempelai, nama, tanggal,
+                     nama tamu, hitung mundur, tombol buka)
+             kanan = kartu info (acara + cara bermain + kredit)
+         - height:100vh + overflow:hidden -> TIDAK PERNAH ter-scroll;
+           isinya yang mengecil di layar pendek (lihat @media max-height).
+       ================================================================ -->
+  <aside class="pwr-side" id="pwr-side">
+    <!-- Lapis cahaya + hiasan melayang: inilah yang membuat panel terbaca
+         sebagai DUNIA game, bukan ruang kosong di sebelah frame. -->
+    <div class="pwr-side-veil" aria-hidden="true"></div>
+    <div class="pwr-side-deco" aria-hidden="true">
+      <div class="pwr-deco-cloud dc1"></div>
+      <div class="pwr-deco-cloud dc2"></div>
+      <div class="pwr-deco-coin">◆</div>
+      <div class="pwr-deco-heart dh1">💗</div>
+      <div class="pwr-deco-star ds1">✦</div>
+      <div class="pwr-deco-star ds2">✧</div>
+    </div>
+
+    <!-- ============ PANEL: KERANGKA SEPERTI TEMA SPACE WAR ============
+         header (badge + logo + baris misi) lalu grid 2 kolom:
+           KIRI (lebih lebar) = kanvas mempelai lebar + kartu misi +
+                                hint + kartu KONTROL PILOT
+           KANAN = nama/tanggal/tamu + kartu WAKTU & TEMPAT + tombol buka
+         .pwr-side-panel di-align TENGAH (bukan height:100vh terkunci),
+         mengikuti .sw-side-panel; isinya mengecil di layar pendek. -->
+    <div class="pwr-side-panel">
+
+      <header class="pwr-side-head">
+        <!-- ★ pintu ke tools game DISISIPKAN INLINE di lencana, sama
+             seperti spacewar (#sw-tuner-btn): menyatu dengan tulisan
+             lencana sehingga tamu tak menyadarinya, tapi tetap bisa
+             diklik. ID #pwr-tune-star DIPERTAHANKAN — itulah yang
+             dipetakan DELEGATED di index.js. -->
+        <div class="pwr-side-badge"><button class="pwr-tune-star" id="pwr-tune-star" type="button" title="Atur game" aria-label="Atur game">✦</button> UNDANGAN PERNIKAHAN ✦</div>
+        <div class="pwr-side-logo">PIXEL&nbsp;WEDDING<br><span class="pwr-side-logo-sub">RUN</span></div>
+        <div class="pwr-side-op">MISI: BAWA MEMPELAI KE PELAMINAN</div>
+      </header>
+
+      <div class="pwr-side-grid">
+        <!-- ============ KOLOM KIRI — KANVAS + MISI + KONTROL ============ -->
+        <div class="pwr-side-hero">
+          <!-- Kanvas mempelai LEBAR (760x380), sama seperti .sw-couple-stage.
+               #pwr-couple dicari drawCoupleCanvas() di index.js lewat ID. -->
+          <div class="pwr-couple-stage">
+            <canvas id="pwr-couple" width="760" height="380" aria-label="Ilustrasi mempelai"></canvas>
+          </div>
+
+          <div class="pwr-side-mission">
+            <div class="pwr-side-mission-title">🕹️ CARA BERMAIN</div>
+            <p class="pwr-side-mission-text">Mempelai pria berlari menembus 6 pulau
+              <b>mengumpulkan kepingan undangan 💌</b>. Lompati jurang, injak musuh,
+              lalu kalahkan bos di Stage 6 untuk membuka undangan lengkap.</p>
+          </div>
+
+          <div class="pwr-side-hint">Mainkan game di kiri &amp; kumpulkan kepingan 💌 untuk membuka undangan satu per satu.</div>
+
+          <!-- KONTROL KEYBOARD (desktop) — PC tak punya joystick di layar -->
+          <div class="pwr-side-ctrl">
+            <div class="pwr-side-ctrl-title">⌨ KONTROL PEMAIN</div>
+            <div class="pwr-side-keys">
+              <span class="pwr-key">← → / A D</span><span class="pwr-key-desc">Lari kiri / kanan</span>
+              <span class="pwr-key">SPACE</span><span class="pwr-key-desc">Lompat</span>
+              <span class="pwr-key">X / E</span><span class="pwr-key-desc">Tembak (power-up buket 💐)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ KOLOM KANAN — UNDANGAN MURNI ============ -->
+        <div class="pwr-side-info">
+          <div class="pwr-side-names">
+            <span data-var="groom_nickname">{{groom_nickname}}</span>
+            <span class="pwr-heart">♥</span>
+            <span data-var="bride_nickname">{{bride_nickname}}</span>
+          </div>
+          <div class="pwr-side-date" data-var="wedding_date">{{wedding_date}}</div>
+          {{#if nama_tamu}}
+          <div class="pwr-side-guest">Kepada Yth.<br><strong data-var="nama_tamu">{{nama_tamu}}</strong></div>
+          {{/if}}
+
+          <div class="pwr-side-info-title">⌚ WAKTU &amp; TEMPAT</div>
+          <div class="pwr-side-event">
+            <div class="pwr-side-event-tag">AKAD NIKAH</div>
+            <div class="pwr-side-event-line">
+              {{tanggal_akad}}{{#if jam_akad}} · {{jam_akad}}{{/if}}
+            </div>
+            {{#if nama_lokasi_akad}}<div class="pwr-side-event-place">{{nama_lokasi_akad}}</div>{{/if}}
+            {{#if keterangan_lokasi_akad}}<div class="pwr-side-event-addr">{{keterangan_lokasi_akad}}</div>{{/if}}
+            {{#if akad_map}}<a class="pwr-side-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+          </div>
+
+          {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+          <div class="pwr-side-event">
+            <div class="pwr-side-event-tag">RESEPSI</div>
+            <div class="pwr-side-event-line">
+              {{tanggal_resepsi}}{{#if jam_resepsi}} · {{jam_resepsi}}{{/if}}
+            </div>
+            {{#if nama_lokasi_resepsi}}<div class="pwr-side-event-place">{{nama_lokasi_resepsi}}</div>{{/if}}
+            {{#if keterangan_lokasi_resepsi}}<div class="pwr-side-event-addr">{{keterangan_lokasi_resepsi}}</div>{{/if}}
+            {{#if resepsi_map}}<a class="pwr-side-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+          </div>
+          {{/if}}
+
+          <button type="button" class="pwr-side-open" id="pwr-side-open">💌 BUKA UNDANGAN LENGKAP</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /.pwr-shell -->
+
+
+<!-- =====================================================================
+     [5] FAB TEMA — flag_use_system_action_button WAJIB false untuk tema ini.
+     Host menyembunyikan container ini bila flag true, dan merender FAB-nya
+     sendiri di kanan-bawah (menutupi tombol JMP). Karena itu flag = false.
+     ===================================================================== -->
+<div id="theme-fab-container" class="pwr-fab">
+  <!-- Menu navigasi section (sejajar tema non-game). Membuka #pwr-menu;
+       di dalam reveal ia meloncat ke section, di luar reveal ia membuka
+       reveal dulu lalu meloncat. Lihat index.js bagian MENU. -->
+  <button type="button" id="btn-show-menu" class="pwr-fab-btn" title="Menu undangan">☰</button>
+  <button type="button" id="btn-show-qr" class="pwr-fab-btn" title="QR Check-in">▣</button>
+  <!-- Backsound: HANYA di sini (FAB = mode membaca undangan), bukan di
+       toolbar game. Menekan ini meneruskan klik ke #btn-toggle-music milik
+       host — tema tidak pernah memanggil audio.play() sendiri. -->
+  <button type="button" id="pwr-btn-music" class="pwr-fab-btn" title="Musik">🎵</button>
+  <!-- Kembali ke atas — hanya muncul saat reveal ter-scroll. -->
+  <button type="button" id="pwr-fab-top" class="pwr-fab-btn" title="Kembali ke atas" style="display:none">▲</button>
+  <!-- Tombol musik host: disembunyikan; dikendalikan lewat #pwr-btn-music via klik programatik.
+       Ikon play/pause di dalamnya DITULIS HOST — tema tidak boleh menyentuhnya. -->
+  <button type="button" id="btn-toggle-music" class="pwr-fab-music" aria-hidden="true" tabindex="-1">
+    <span id="play-icon"></span><span id="pause-icon" style="display:none"></span>
+  </button>
+</div>
+
+<!-- Hook event musik. Host men-dispatch Event('play'/'pause') ke elemen ini.
+     Tema TIDAK BOLEH memanggil .play() di sini — backsound milik host. -->
+<audio id="bg-music" preload="none" aria-hidden="true"></audio>
+
+<!-- =====================================================================
+     PEMICU isOpened HOST — tersembunyi, TIDAK pernah diklik tamu.
+     Host memakai klik pada #btn-open-invitation sebagai satu-satunya
+     tanda "undangan dibuka"; tanpa itu FAB (menu/QR/musik) tak pernah
+     terlihat karena `.is-closed #theme-fab-container{display:none}`.
+
+     Tombolnya dipisahkan dari tombol MULAI karena host ikut memanggil
+     setIsOpened+setIsPlaying yang membuat JS tema DI-EKSEKUSI ULANG —
+     kalau menempel di MULAI, game langsung dibongkar begitu dimulai.
+     JS mengklik elemen ini lewat notifyHostOpened(), yaitu saat tamu
+     benar-benar MEMBUKA UNDANGAN (ikon 💌 / skip / celebration).
+     ===================================================================== -->
+<button type="button" id="btn-open-invitation" class="pwr-host-open"
+        aria-hidden="true" tabindex="-1"></button>
+
+<!-- =====================================================================
+     MENU NAVIGASI SECTION (dibuka #btn-show-menu)
+     Daftar isinya DIBANGUN JS dari section yang benar-benar ada di
+     #inv-source (data-title), jadi section yang dimatikan flag tidak
+     pernah muncul sebagai menu mati. Jangan hardcode daftarnya.
+     ===================================================================== -->
+<div class="pwr-menu" id="pwr-menu" aria-hidden="true">
+  <div class="pwr-menu-box">
+    <button type="button" class="pwr-menu-x" id="pwr-menu-close" aria-label="Tutup">✕</button>
+    <div class="pwr-menu-kicker">THE WEDDING OF</div>
+    <div class="pwr-menu-names">{{groom_nickname}} &amp; {{bride_nickname}}</div>
+    <div class="pwr-menu-date">{{wedding_date}}</div>
+    <nav class="pwr-menu-list" id="pwr-menu-list"><!-- dibangun JS --></nav>
+  </div>
+</div>
+
+
+<!-- =====================================================================
+     [4] #inv-source — SATU-SATUNYA tempat binding {{vars}} hidup.
+     Semua section dibungkus {{#if}} pada level <section> supaya section yang
+     dimatikan flag BENAR-BENAR ABSEN dari DOM → scanSections() menghitung yang riil.
+
+     ID host di dalam sini ditulis sebagai data-pwrid (BUKAN id). JS memasangkan
+     id aslinya hanya pada CLONE yang tampil, supaya tidak pernah ada duplicate id.
+     Lihat APPENDIX Z.6 Bible.
+     ===================================================================== -->
+<div id="inv-source" style="display:none" aria-hidden="true">
+
+  <!-- 1. HERO ------------------------------------------------------- -->
+  <section data-info="hero" data-title="Undangan">
+    {{#if photo_hero_cover}}
+    <div class="pwr-sec-hero-photo"><img data-src="{{photo_hero_cover}}" alt=""></div>
+    {{/if}}
+    <div class="pwr-sec-kicker">THE WEDDING OF</div>
+    <h2 class="pwr-sec-names">{{groom_nickname}} &amp; {{bride_nickname}}</h2>
+    <div class="pwr-sec-date">{{wedding_date}}</div>
+
+    <!-- Sapaan tamu personal — hanya untuk tautan yang ditujukan ke tamu
+         tertentu; tautan umum tidak menampilkannya (sama seperti tema non-game). -->
+    {{#unless is_link_umum_and_not_for_spesific_guest}}
+    {{#if nama_tamu}}
+    <div class="pwr-sec-greet">
+      <span class="pwr-sec-greet-label">Kepada Yth.</span>
+      <span class="pwr-sec-greet-name">{{nama_tamu}}</span>
+    </div>
+    {{/if}}
+    {{/unless}}
+    {{#if quote}}
+    <blockquote class="pwr-sec-quote">
+      <p>{{quote}}</p>
+      {{#if quote_by}}<cite>— {{quote_by}}</cite>{{/if}}
+    </blockquote>
+    {{/if}}
+    {{#if kalimat_pembuka}}<p class="pwr-sec-lead">{{kalimat_pembuka}}</p>{{/if}}
+  </section>
+
+  <!-- 2. COUPLE ----------------------------------------------------- -->
+  <section data-info="couple" data-title="Mempelai">
+    <div class="pwr-sec-head">Mempelai</div>
+
+    <div class="pwr-couple-card">
+      {{#if photo_groom_photo}}<img class="pwr-couple-photo" data-src="{{photo_groom_photo}}" alt="">{{/if}}
+      <div class="pwr-couple-name">{{groom_name}}</div>
+      {{#if flag_tampilkan_nama_orang_tua}}
+      <div class="pwr-couple-parents">
+        Putra dari Bapak {{nama_bapak_laki_laki}}<br>&amp; Ibu {{nama_ibu_laki_laki}}
+      </div>
+      {{/if}}
+      {{#if flag_tampilkan_sosial_media_mempelai}}
+        {{#if ig_laki_laki}}
+        <a class="pwr-couple-ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener">@{{ig_laki_laki}}</a>
+        {{/if}}
+      {{/if}}
+    </div>
+
+    <div class="pwr-couple-amp">♥</div>
+
+    <div class="pwr-couple-card">
+      {{#if photo_bride_photo}}<img class="pwr-couple-photo" data-src="{{photo_bride_photo}}" alt="">{{/if}}
+      <div class="pwr-couple-name">{{bride_name}}</div>
+      {{#if flag_tampilkan_nama_orang_tua}}
+      <div class="pwr-couple-parents">
+        Putri dari Bapak {{nama_bapak_perempuan}}<br>&amp; Ibu {{nama_ibu_perempuan}}
+      </div>
+      {{/if}}
+      {{#if flag_tampilkan_sosial_media_mempelai}}
+        {{#if ig_perempuan}}
+        <a class="pwr-couple-ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener">@{{ig_perempuan}}</a>
+        {{/if}}
+      {{/if}}
+    </div>
+  </section>
+
+  <!-- 3. RSVP ------------------------------------------------------- -->
+  <section data-info="rsvp" data-title="Konfirmasi Kehadiran">
+    <div class="pwr-sec-head">Konfirmasi Kehadiran</div>
+
+    <div class="pwr-sec-countdown">
+      <div class="pwr-cd-cell"><b>{{countdown_hari}}</b><span>HARI</span></div>
+      <div class="pwr-cd-cell"><b>{{countdown_jam}}</b><span>JAM</span></div>
+      <div class="pwr-cd-cell"><b>{{countdown_menit}}</b><span>MENIT</span></div>
+      <div class="pwr-cd-cell"><b>{{countdown_detik}}</b><span>DETIK</span></div>
+    </div>
+
+    {{#if guest_name}}<p class="pwr-sec-guest">Kepada Yth. <b>{{guest_name}}</b></p>{{/if}}
+
+    <!-- Tautan umum (tanpa tamu spesifik) tidak punya kode undangan, jadi
+         form konfirmasi tidak ditampilkan — persis tema non-game. -->
+    {{#unless is_link_umum_and_not_for_spesific_guest}}
+
+    <!-- FORM: disembunyikan host saat sudah submit -->
+    <div data-pwrid="rsvp-form" class="pwr-form">
+      <label class="pwr-label">Apakah Anda dapat hadir?</label>
+      <!-- ⚠️ NILAI WAJIB lowercase persis: hadir / tidak-hadir.
+           "Hadir" (kapital) → host menampilkan card hadir TAPI backend mencatat DECLINED. -->
+      <select data-pwrid="rsvp-status" class="pwr-input">
+        <option value="hadir">Ya, saya akan hadir</option>
+        <option value="tidak-hadir">Maaf, saya berhalangan</option>
+      </select>
+
+      <label class="pwr-label">Jumlah tamu</label>
+      <input data-pwrid="rsvp-guests" class="pwr-input" type="number" min="1" max="10" value="1">
+
+      <input data-pwrid="rsvp-code" type="hidden" value="{{kode_undangan}}">
+
+      <button type="button" data-pwrid="btn-submit-kehadiran" class="pwr-btn-primary pwr-btn-block">
+        KIRIM KONFIRMASI
+      </button>
+    </div>
+
+    <!-- CARD thank-you. WAJIB berisi [data-rsvp-branch] supaya host TIDAK menimpa innerHTML.
+         Host hanya mem-flip display + memilih cabang. -->
+    <div data-pwrid="alert-submit-kehadiran" class="pwr-thanks" style="display:none">
+      <div data-rsvp-branch="hadir">
+        <div class="pwr-thanks-emoji">🎉</div>
+        <div class="pwr-thanks-title">Terima kasih!</div>
+        <p>Kami menantikan kehadiran Anda di hari bahagia kami.</p>
+      </div>
+      <div data-rsvp-branch="tidak">
+        <div class="pwr-thanks-emoji">🙏</div>
+        <div class="pwr-thanks-title">Terima kasih</div>
+        <p>Terima kasih atas doa dan restunya untuk kami.</p>
+      </div>
+    </div>
+    {{/unless}}
+  </section>
+
+  <!-- 4. SCHEDULE --------------------------------------------------- -->
+  <section data-info="schedule" data-title="Jadwal Acara">
+    <div class="pwr-sec-head">Jadwal Acara</div>
+
+    <div class="pwr-event">
+      <div class="pwr-event-head">AKAD NIKAH</div>
+      <div class="pwr-event-when">{{tanggal_akad}}{{#if jam_akad}} · {{jam_akad}}{{/if}}</div>
+      {{#if nama_lokasi_akad}}<div class="pwr-event-place">{{nama_lokasi_akad}}</div>{{/if}}
+      {{#if keterangan_lokasi_akad}}<div class="pwr-event-addr">{{keterangan_lokasi_akad}}</div>{{/if}}
+      {{#if akad_map}}<a class="pwr-event-map" href="{{akad_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+    </div>
+
+    {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+    <div class="pwr-event">
+      <div class="pwr-event-head">RESEPSI</div>
+      <div class="pwr-event-when">{{tanggal_resepsi}}{{#if jam_resepsi}} · {{jam_resepsi}}{{/if}}</div>
+      {{#if nama_lokasi_resepsi}}<div class="pwr-event-place">{{nama_lokasi_resepsi}}</div>{{/if}}
+      {{#if keterangan_lokasi_resepsi}}<div class="pwr-event-addr">{{keterangan_lokasi_resepsi}}</div>{{/if}}
+      {{#if resepsi_map}}<a class="pwr-event-map" href="{{resepsi_map}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>{{/if}}
+    </div>
+    {{/if}}
+  </section>
+
+  <!-- 5. STREAMING -------------------------------------------------- -->
+  {{#if is_fitur_live_streaming}}
+  <section data-info="streaming" data-title="Live Streaming">
+    <div class="pwr-sec-head">Live Streaming</div>
+    <p class="pwr-sec-text">Saksikan momen bahagia kami secara langsung.</p>
+    {{#if link_live_streaming}}
+    <a class="pwr-btn-primary pwr-btn-block" href="{{link_live_streaming}}" target="_blank" rel="noopener">
+      ▶ TONTON SEKARANG
+    </a>
+    {{/if}}
+  </section>
+  {{/if}}
+
+  <!-- 6. STORY ------------------------------------------------------ -->
+  {{#if flag_pakai_timeline_kisah}}
+  <section data-info="story" data-title="Kisah Kami">
+    <div class="pwr-sec-head">Kisah Kami</div>
+    <div class="pwr-timeline">
+      {{#each timeline_kisah}}
+      <div class="pwr-tl-item">
+        <div class="pwr-tl-dot"></div>
+        <div class="pwr-tl-date">{{this.tanggal}}</div>
+        <div class="pwr-tl-title">{{this.judul}}</div>
+        <div class="pwr-tl-desc">{{this.deskripsi}}</div>
+      </div>
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
+  <!-- 7. GALLERY ---------------------------------------------------- -->
+  {{#if has_gallery}}
+  <section data-info="gallery" data-title="Galeri">
+    <div class="pwr-sec-head">Galeri</div>
+    <div class="pwr-gallery">
+      {{#each galleries}}
+      <div class="pwr-gal-item"><img data-src="{{this.url}}" alt=""></div>
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
+  <!-- 8. HAPPINESS (Story IG) --------------------------------------- -->
+  {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+  <section data-info="happiness" data-title="Bagikan Kebahagiaan">
+    <div class="pwr-sec-head">Bagikan Kebahagiaan</div>
+    <p class="pwr-sec-text">Unggah story Instagram dengan bingkai kami!</p>
+    <!-- Tiap kartu = foto + bingkai IG di atasnya (pola tema non-game). -->
+    <div class="pwr-story-row">
+      {{#if sample_story_1}}
+      <div class="pwr-story-card">
+        <img class="pwr-story-img" data-src="{{sample_story_1}}" alt="">
+        {{#if frame_balasan_instagram}}<img class="pwr-story-frame" data-src="{{frame_balasan_instagram}}" alt="">{{/if}}
+      </div>
+      {{/if}}
+      {{#if sample_story_2}}
+      <div class="pwr-story-card">
+        <img class="pwr-story-img" data-src="{{sample_story_2}}" alt="">
+        {{#if frame_balasan_instagram}}<img class="pwr-story-frame" data-src="{{frame_balasan_instagram}}" alt="">{{/if}}
+      </div>
+      {{/if}}
+      {{#if sample_story_3}}
+      <div class="pwr-story-card">
+        <img class="pwr-story-img" data-src="{{sample_story_3}}" alt="">
+        {{#if frame_balasan_instagram}}<img class="pwr-story-frame" data-src="{{frame_balasan_instagram}}" alt="">{{/if}}
+      </div>
+      {{/if}}
+    </div>
+    {{#if link_balasan_instagram}}
+    <a class="pwr-btn-primary pwr-btn-block" href="{{link_balasan_instagram}}" target="_blank" rel="noopener">
+      ✦ COBA BINGKAINYA
+    </a>
+    {{/if}}
+  </section>
+  {{/if}}
+
+  <!-- 9. WISHES ----------------------------------------------------- -->
+  <section data-info="wishes" data-title="Ucapan &amp; Doa">
+    <div class="pwr-sec-head">Ucapan &amp; Doa</div>
+
+    <!-- Sama seperti RSVP: tautan umum tidak menampilkan form. -->
+    {{#unless is_link_umum_and_not_for_spesific_guest}}
+    <div data-pwrid="wish-form" class="pwr-form">
+      <label class="pwr-label">Nama</label>
+      <input data-pwrid="wish-name" class="pwr-input" type="text" placeholder="Nama Anda" value="{{guest_name}}">
+
+      <label class="pwr-label">Ucapan</label>
+      <textarea data-pwrid="wish-message" class="pwr-input pwr-textarea" rows="3"
+                placeholder="Tulis ucapan &amp; doa untuk kedua mempelai"></textarea>
+
+      <button type="button" data-pwrid="btn-submit-ucapan" class="pwr-btn-primary pwr-btn-block">
+        KIRIM UCAPAN
+      </button>
+    </div>
+
+    <div data-pwrid="alert-submit-ucapan" class="pwr-thanks" style="display:none">
+      <div class="pwr-thanks-emoji">💌</div>
+      <div class="pwr-thanks-title">Terima kasih!</div>
+      <p>Ucapan Anda sudah kami terima.</p>
+    </div>
+    {{/unless}}
+
+    <!-- List ucapan. Host mem-prepend ke [data-loop="wishes"] memakai [data-wish-template]. -->
+    <div class="pwr-wishes" data-loop="wishes">
+      {{#each wishes}}
+      <div class="pwr-wish" data-wish-item>
+        <div class="pwr-wish-top">
+          <span class="pwr-wish-name" data-wish-field="name">{{this.guest_name}}</span>
+          <time class="pwr-wish-time" data-wish-field="time">{{this.guest_comment_time}}</time>
+        </div>
+        <p class="pwr-wish-msg" data-wish-field="message">{{this.guest_message}}</p>
+      </div>
+      {{/each}}
+    </div>
+
+    <!-- Template WAJIB: tanpa ini host membuat markup generik polos saat list kosong. -->
+    <div class="pwr-wish" data-wish-template style="display:none">
+      <div class="pwr-wish-top">
+        <span class="pwr-wish-name" data-wish-field="name"></span>
+        <time class="pwr-wish-time" data-wish-field="time"></time>
+      </div>
+      <p class="pwr-wish-msg" data-wish-field="message"></p>
+    </div>
+  </section>
+
+  <!-- 10. GIFT ------------------------------------------------------ -->
+  {{#if tampilkan_amplop_online}}
+  <section data-info="gift" data-title="Hadiah">
+    <div class="pwr-sec-head">Hadiah</div>
+    <p class="pwr-sec-text">
+      Doa restu Anda sudah sangat berarti. Bila ingin memberi tanda kasih,
+      berikut informasinya.
+    </p>
+
+    <div class="pwr-bank">
+      <div class="pwr-bank-name">{{bank_1}}</div>
+      <div class="pwr-bank-no" data-copy="{{rek_1}}">{{rek_1}}</div>
+      <div class="pwr-bank-owner">a.n. {{nama_rek_1}}</div>
+      {{#if flag_pakai_qris_rekening_1}}
+      <img class="pwr-qris" data-src="{{gambar_qris_rekening_1}}" alt="QRIS">
+      {{/if}}
+    </div>
+
+    {{#if flag_pakai_2_rekening}}
+    <div class="pwr-bank">
+      <div class="pwr-bank-name">{{bank_2}}</div>
+      <div class="pwr-bank-no" data-copy="{{rek_2}}">{{rek_2}}</div>
+      <div class="pwr-bank-owner">a.n. {{nama_rek_2}}</div>
+      {{#if flag_pakai_qris_rekening_2}}
+      <img class="pwr-qris" data-src="{{gambar_qris_rekening_2}}" alt="QRIS">
+      {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if flag_kirim_hadiah_offline}}
+    <div class="pwr-bank">
+      <div class="pwr-bank-name">KIRIM HADIAH</div>
+      <div class="pwr-bank-owner">{{nama_lokasi_kirim_hadiah_offline}}</div>
+      <div class="pwr-event-addr">{{alamat_lokasi_kirim_hadiah_offline}}</div>
+      {{#if map_kirim_hadiah_offline}}
+      <a class="pwr-event-map" href="{{map_kirim_hadiah_offline}}" target="_blank" rel="noopener">▶ LIHAT PETA</a>
+      {{/if}}
+    </div>
+    {{/if}}
+  </section>
+  {{/if}}
+
+  <!-- 11. CLOSING --------------------------------------------------- -->
+  <section data-info="closing" data-title="Penutup">
+    <div class="pwr-sec-head">Terima Kasih</div>
+    {{#if kalimat_penutup}}<p class="pwr-sec-text">{{kalimat_penutup}}</p>{{/if}}
+    <div class="pwr-closing-names">{{groom_nickname}} &amp; {{bride_nickname}}</div>
+    {{#if photo_closing}}
+    <div class="pwr-sec-hero-photo"><img data-src="{{photo_closing}}" alt=""></div>
+    {{/if}}
+    <!-- FOOTER PENYEDIA — disamakan dengan tema non-game (lake-como dkk):
+         logo/nama web + tautan situs + baris ikon sosial media webconfig. -->
+    <footer class="pwr-foot">
+      {{#if site_logo}}<img class="pwr-foot-logo" data-src="{{site_logo}}" alt="{{site_name}}">{{/if}}
+      <div class="pwr-foot-name">{{site_name}}</div>
+      {{#if tagline}}<div class="pwr-foot-tagline">{{tagline}}</div>{{/if}}
+
+      {{#if site_url}}
+      <a class="pwr-foot-url" href="{{site_url}}" target="_blank" rel="noopener">{{site_url}}</a>
+      {{/if}}
+
+      <div class="pwr-foot-social">
+        {{#if flag_use_instagram_webconfig}}
+        <a class="pwr-foot-soc" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+          </svg>
+        </a>
+        {{/if}}
+        {{#if flag_use_tiktok_webconfig}}
+        <a class="pwr-foot-soc" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener" aria-label="TikTok">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+          </svg>
+        </a>
+        {{/if}}
+        {{#if flag_use_youtube_webconfig}}
+        <a class="pwr-foot-soc" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener" aria-label="YouTube">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+          </svg>
+        </a>
+        {{/if}}
+        {{#if flag_use_whatsapp_webconfig}}
+        <a class="pwr-foot-soc" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener" aria-label="WhatsApp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+        </a>
+        {{/if}}
+      </div>
+
+      <div class="pwr-foot-copy">Undangan digital &copy; {{site_name}}</div>
+    </footer>
+  </section>
+
+</div><!-- /#inv-source -->
+
+<!-- =====================================================================
+     PANEL TUNING GAME (PC saja, dibuka lewat ★ di side badge).
+     Isi slider di-generate oleh index.js dari daftar TUNE_SPECS, jadi
+     menambah parameter cukup di satu tempat (JS), bukan di HTML.
+     ===================================================================== -->
+<div class="pwr-tune" id="pwr-tune" aria-hidden="true">
+  <div class="pwr-tune-head">
+    <span>ATUR GAME</span>
+    <!-- Ringkasan berapa slider yang nilainya belum di-bake ke TUNE_DEF.
+         Konvensi sama dengan #pwr-swap-unsaved di dialog Ganti Sprite. -->
+    <span class="pwr-swap-unsaved" id="pwr-tune-unsaved"></span>
+    <button type="button" class="pwr-tune-x" id="pwr-tune-close" aria-label="Tutup">×</button>
+  </div>
+  <div class="pwr-tune-list" id="pwr-tune-list"></div>
+  <div class="pwr-tune-foot">
+    <button type="button" class="pwr-tune-btn" id="pwr-tune-reset">Reset</button>
+    <!-- Menghapus SEMUA simpanan lokal (fisika, sprite, ukuran, geser) sekaligus,
+         bukan cuma slider di panel ini. Dipisahkan dari "Reset" karena akibatnya
+         jauh lebih luas: pilihan sprite pun ikut hilang. -->
+    <button type="button" class="pwr-tune-btn pwr-tune-btn-warn" id="pwr-tune-wipe">Hapus data tersimpan</button>
+    <button type="button" class="pwr-tune-btn" id="pwr-tune-copy">Salin nilai</button>
+    <button type="button" class="pwr-tune-btn" id="pwr-tune-swap">Ganti sprite…</button>
+    <button type="button" class="pwr-tune-btn pwr-tune-btn-go" id="pwr-tune-apply">Terapkan &amp; ulang stage</button>
+  </div>
+  <div class="pwr-tune-note" id="pwr-tune-note"></div>
+</div>
+
+<!-- ==================================================================
+     DIALOG GANTI SPRITE
+     Kiri  = objek game yang bisa diganti (dibuat dari ASSET_MAP)
+     Kanan = pilihan sprite dari sheet   (dibuat dari SHEET_MAP)
+     Keduanya diisi oleh JS; di sini hanya kerangkanya.
+     ================================================================== -->
+<div class="pwr-swap" id="pwr-swap" aria-hidden="true">
+  <div class="pwr-swap-box">
+    <div class="pwr-swap-head">
+      <span>GANTI SPRITE</span>
+      <button type="button" class="pwr-tune-x" id="pwr-swap-close" aria-label="Tutup">×</button>
+    </div>
+    <div class="pwr-swap-body">
+      <div class="pwr-swap-col pwr-swap-col-left">
+        <div class="pwr-swap-col-h">
+          Objek game
+          <!-- Ringkasan berapa objek yang nilainya belum di-bake ke
+               index.js. Diisi buildSwapList(); kosong = semua aman. -->
+          <span class="pwr-swap-unsaved" id="pwr-swap-unsaved"></span>
+        </div>
+        <div class="pwr-swap-list" id="pwr-swap-list"></div>
+      </div>
+      <div class="pwr-swap-col pwr-swap-col-right">
+        <div class="pwr-swap-col-h" id="pwr-swap-pick-head">Pilih objek di kiri dulu</div>
+        <div class="pwr-swap-pick" id="pwr-swap-pick"></div>
+      </div>
+    </div>
+    <div class="pwr-swap-foot">
+      <button type="button" class="pwr-tune-btn" id="pwr-swap-reset">Kembalikan bawaan</button>
+      <button type="button" class="pwr-tune-btn" id="pwr-swap-all">Tampilkan semua</button>
+      <button type="button" class="pwr-tune-btn pwr-tune-btn-go" id="pwr-swap-apply">Terapkan</button>
+    </div>
+    <div class="pwr-tune-note" id="pwr-swap-note"></div>
+  </div>
+</div>
+
+<!-- ==================================================================
+     SPRITE — SATU SHEET UNTUK SEMUANYA
+     ------------------------------------------------------------------
+     Unggah assets/sprite-sheet.png lewat Theme Editor > Asset Media
+     sebagai berkas PERTAMA; host mengisinya ke {{asset_image_1}}.
+
+     Kalau belum diunggah, src tetap berisi teks "{{asset_image_1}}";
+     engine mendeteksinya dan SELURUH sprite memakai art prosedural,
+     jadi undangan yang sudah live tidak rusak.
+
+     Mengubah isi sheet: edit gambarnya lalu unggah ulang. Kalau UKURAN
+     atau SUSUNAN kotak ikut berubah, peta harus dibuat ulang juga:
+         node assets/build-sheet.cjs && node assets/inline-map.cjs
+
+     Sumber: Pixel Adventure 1 - Pixel Frog, lisensi CC0 (boleh komersial,
+     boleh dimodifikasi, atribusi tidak wajib). Lihat assets/ASSET.md.
+     ================================================================== -->
+<div id="pwr-assets" aria-hidden="true"
+     style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none">
+  <!-- SATU sheet berisi seluruh sprite: assets/sprite-sheet.png (2048x1475,
+       773 kotak). Unggah sebagai Asset Media PERTAMA. Peta koordinatnya
+       ada di assets/sprite-map.json dan sudah ikut di-inline ke index.js
+       (SHEET_MAP), jadi hanya berkas gambar ini yang perlu diunggah. -->
+  <img data-asset="sheet" src="{{asset_image_1}}" alt="">
+  <!-- LATAR: assets/bg-sheet.png — unggah sebagai Asset Media KEDUA.
+       Berisi seluruh lapis parallax stage 1-6, tiap lapis dalam kotak
+       berbingkai ungu + nomor (peta koordinatnya = BG_MAP di index.js).
+       Boleh dikosongkan: kalau belum diunggah, latar kembali digambar
+       prosedural persis seperti sebelumnya. -->
+  <img data-asset="bg" src="{{asset_image_2}}" alt="">
+</div>

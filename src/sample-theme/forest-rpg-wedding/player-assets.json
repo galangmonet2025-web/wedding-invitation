@@ -1,0 +1,18 @@
+[
+  {
+    "kelompok": "player",
+    "name": "player_groom.png",
+    "deskripsi": "Mempelai pria pixel-art top-down, jas hitam + dasi + kemeja putih, rambut gelap, membawa busur kayu kecil. 4 baris arah (0=down, 1=up, 2=side hadap KANAN, 3=hurt/extra). Tiap baris arah berisi 11 frame berurutan: 2 frame idle (napas naik-turun 1px), 6 frame walk (langkah kaki bergantian, badan sedikit bergoyang), 3 frame shoot (tarik busur, lepas panah, recoil). Hadap KANAN untuk baris side; engine flip untuk kiri. Kaki menapak baris paling bawah sel. Bayangan bulat lembut di bawah kaki.",
+    "orderNumber": 1,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "player",
+    "name": "player_bride.png",
+    "deskripsi": "Mempelai wanita pixel-art top-down, gaun putih panjang + kerudung/veil putih, rambut gelap, membawa busur kayu kecil. STRUKTUR FRAME IDENTIK dengan player_groom.png (4 baris arah, tiap baris 2 idle + 6 walk + 3 shoot) agar frame-map engine sama persis. Gaun berayun halus saat walk. Hadap KANAN untuk baris side. Kaki menapak baris paling bawah sel. Bayangan bulat lembut di bawah.",
+    "orderNumber": 2,
+    "frameWidth": 80,
+    "frameHeight": 80
+  }
+]

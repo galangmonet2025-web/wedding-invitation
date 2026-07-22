@@ -27,8 +27,28 @@ export interface ThemeDiffResult {
 
 // Normalize line endings so a pure CRLF/LF difference (e.g. from git checkout on
 // Windows) is NOT reported as a real source change.
+//
+// Also neutralizes the newline guards that splitTemplateColumns() inserts when a
+// 50K chunk would otherwise start with '=', '+', '-' or '@' (Google Sheets would
+// store such a cell as "#ERROR!"). Those guards live INSIDE the stored template —
+// the backend reassembles chunks by plain concatenation and never strips them — so
+// a freshly-injected theme legitimately differs from its folder source by exactly
+// those characters. Without this, the affected folders (lake-como, netflix,
+// retromario, …) would report "Perlu update" forever no matter how often they are
+// injected, which is the very bug the guard was added to fix.
+//
+// A guard sits at the very START of a chunk, so trimming leading/trailing
+// whitespace is what actually neutralizes it (collapsing runs alone would miss the
+// one at index 0). Runs are collapsed too, for a guard landing at an interior chunk
+// boundary. Both are safe for a SOURCE-EQUALITY check: leading/trailing blank space
+// and blank-line count carry no meaning in HTML, CSS or JS, so two templates
+// differing only in those are the same source. Neither can hide a real edit — any
+// non-whitespace change still shows up.
 function norm(s: string | undefined): string {
-    return (s || '').replace(/\r\n/g, '\n');
+    return (s || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\n+/g, '\n')
+        .trim();
 }
 
 /**

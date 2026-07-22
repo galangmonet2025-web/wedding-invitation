@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     HiOutlineX,
@@ -9,8 +9,11 @@ import {
     HiOutlinePlusCircle,
 } from 'react-icons/hi';
 import { Theme } from '@/types';
+import { themeApi } from '@/core/api/endpoints';
+import toast from 'react-hot-toast';
 import { getSampleThemeBundles, SampleThemeBundle } from '../utils/sampleThemes';
 import { diffThemeBundle, ThemeDiffResult, ThemeDiffStatus } from '../utils/themeDiff';
+import { useBackgroundTaskStore } from '@/shared/store/backgroundTaskStore';
 
 interface ThemeInjectModalProps {
     /** Currently-loaded themes (carry full html/css/js), used to match & diff by code. */
@@ -67,15 +70,47 @@ interface Row extends SampleThemeBundle {
 export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeInjectModalProps) {
     const bundles = useMemo(() => getSampleThemeBundles(), []);
 
+    // `existingThemes` berasal dari themeStore yang sengaja dimuat TANPA kolom
+    // html/css/js (biar Kelola Tema cepat). Untuk MENCOCOKKAN kode tema itu sudah
+    // cukup, tapi untuk DIFF kita butuh isi template asli — jadi ambil versi
+    // lengkap dari server dan pakai itu kalau sudah tersedia.
+    const [fullThemes, setFullThemes] = useState<Theme[] | null>(null);
+    // Naik tiap kali snapshot DB perlu ditarik ULANG (mis. sesudah inject selesai).
+    const [sourceEpoch, setSourceEpoch] = useState(0);
+    // True selagi snapshot sedang diambil — dipakai menonaktifkan tombol Cek supaya
+    // admin tidak membandingkan dengan data yang sedang diganti.
+    const [loadingSource, setLoadingSource] = useState(true);
+
+    // Tarik snapshot template dari server. Dijalankan saat modal dibuka DAN tiap kali
+    // `sourceEpoch` naik.
+    //
+    // BUG YANG DIPERBAIKI: dulu efek ini `[]` — snapshot diambil sekali lalu dipakai
+    // selamanya. Sesudah inject/simpan dari editor, DB sudah berubah tapi diff masih
+    // membandingkan folder dengan snapshot LAMA, sehingga status "Perlu update" (mis.
+    // "beda: JS") menempel terus padahal Sheet sudah berisi versi baru. Yang basi
+    // adalah pembandingnya, bukan datanya.
+    useEffect(() => {
+        let active = true;
+        setLoadingSource(true);
+        (async () => {
+            try {
+                const res = await themeApi.getThemes({ skipLoader: true } as any);
+                if (active && res?.success) setFullThemes(res.data || []);
+            } catch { /* diamkan: tombol Cek akan memberi tahu bila belum siap */ }
+            finally { if (active) setLoadingSource(false); }
+        })();
+        return () => { active = false; };
+    }, [sourceEpoch]);
+
     // code (lowercased) -> DB theme, so we can match folders & diff their source.
     const themeByCode = useMemo(() => {
         const map = new Map<string, Theme>();
-        for (const t of existingThemes) {
+        for (const t of (fullThemes || existingThemes)) {
             const c = (t.code || '').toString().trim().toLowerCase();
             if (c) map.set(c, t);
         }
         return map;
-    }, [existingThemes]);
+    }, [existingThemes, fullThemes]);
 
     const rows: Row[] = useMemo(
         () =>
@@ -88,12 +123,17 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
 
     const [selected, setSelected] = useState<Set<string>>(() => new Set(rows.map((r) => r.folder)));
 
-    // Simpan hasil inject sebagai DRAFT (default) atau langsung RELEASE.
-    // Draft = flag_draft:true (tema belum tampil ke tenant). Release = flag_draft:false.
-    const [asDraft, setAsDraft] = useState(true);
+    // Konfirmasi Draft/Publish ditampilkan sebagai dialog SAAT klik Inject (bukan
+    // radio permanen). `pendingFolders` = folder yang menunggu dikonfirmasi; null =
+    // dialog tertutup. Dipakai bersama oleh Inject per-baris maupun Inject massal.
+    const [pendingFolders, setPendingFolders] = useState<string[] | null>(null);
 
     // Per-folder check result. Absent => belum dicek (status 'unchecked' shown).
     // A folder that is 'new' (not in DB) is always known without a diff, so we seed it.
+    //
+    // Dideklarasikan DI ATAS confirmInject/reloadSource yang memakainya: `const` berada
+    // di temporal dead zone sampai barisnya dieksekusi, jadi menaruhnya di bawah membuat
+    // kedua fungsi itu melempar ReferenceError saat dipanggil.
     const [checked, setChecked] = useState<Record<string, ThemeDiffResult>>(() => {
         const seed: Record<string, ThemeDiffResult> = {};
         for (const r of rows) {
@@ -104,11 +144,81 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
         return seed;
     });
 
+    // Buka dialog konfirmasi untuk sekumpulan folder (abaikan bila kosong).
+    const askConfirm = (folders: string[]) => {
+        if (folders.length === 0) return;
+        setPendingFolders(folders);
+    };
+
+    // Pilih Draft/Publish di dialog -> teruskan ke onConfirm lalu tutup dialog.
+    // asDraft=true => flag_draft:true (belum tampil ke tenant); false => publish.
+    //
+    // Hasil "Cek" untuk folder yang baru saja diinject SENGAJA dibuang: begitu inject
+    // jalan, badge lamanya ("Perlu update") tidak lagi menggambarkan keadaan DB, dan
+    // membiarkannya justru yang membuat dialog terlihat "tidak pernah update".
+    // Statusnya kembali ke "Belum dicek" sampai admin menekan Cek lagi terhadap
+    // snapshot baru.
+    const confirmInject = (asDraft: boolean) => {
+        if (!pendingFolders) return;
+        const folders = pendingFolders;
+        onConfirm(folders, asDraft);
+        setPendingFolders(null);
+        setChecked((prev) => {
+            const next = { ...prev };
+            for (const folder of folders) {
+                const row = rows.find((r) => r.folder === folder);
+                if (row && row.existsInDb) delete next[folder];
+            }
+            return next;
+        });
+    };
+
+    // Ambil ulang snapshot DB + kosongkan hasil cek, supaya perbandingan berikutnya
+    // memakai isi Sheet yang TERBARU. Dipakai tombol "Muat ulang sumber".
+    //
+    // Inject berjalan di LATAR BELAKANG (lihat injectSampleThemes) dan tidak memberi
+    // tahu dialog saat selesai, jadi tombol ini yang dipakai admin setelah panel tugas
+    // menunjukkan inject-nya rampung.
+    const reloadSource = () => {
+        setChecked((prev) => {
+            const next: Record<string, ThemeDiffResult> = {};
+            // 'new' itu intrinsik (tema belum ada di DB), bukan hasil diff — pertahankan.
+            for (const r of rows) {
+                if (!r.existsInDb) next[r.folder] = prev[r.folder] || { status: 'new', htmlSame: false, cssSame: false, jsSame: false };
+            }
+            return next;
+        });
+        setSourceEpoch((n) => n + 1);
+    };
+
+    // AUTO-REFRESH saat inject latar belakang selesai.
+    //
+    // injectSampleThemes() menulis progresnya ke backgroundTaskStore dengan id
+    // berawalan 'inject-theme-'. Dialog ikut memantau: begitu jumlah task inject yang
+    // SUDAH selesai bertambah, snapshot ditarik ulang sendiri — jadi admin tidak perlu
+    // ingat menekan "Muat ulang sumber", dan status tidak pernah lagi menampilkan hasil
+    // diff terhadap DB sebelum inject.
+    const finishedInjects = useBackgroundTaskStore((s) =>
+        s.tasks.filter((t) => t.id.startsWith('inject-theme-') && t.status !== 'running').length
+    );
+    const seenFinished = useRef(finishedInjects);
+    useEffect(() => {
+        if (finishedInjects === seenFinished.current) return;
+        seenFinished.current = finishedInjects;
+        reloadSource();
+        // reloadSource sengaja tidak masuk deps: ia dibuat ulang tiap render, dan
+        // memasukkannya akan menjadikan efek ini berjalan terus-menerus.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [finishedInjects]);
+
     const statusOf = (r: Row): ThemeDiffResult =>
         checked[r.folder] || { status: 'unchecked', htmlSame: false, cssSame: false, jsSame: false };
 
     // Run the diff for one folder and store the result (instant — DB source is in memory).
+    // Selama template lengkap belum tiba, diff akan membandingkan dengan string kosong
+    // dan SELALU bilang "different" — jadi tahan dulu daripada memberi hasil palsu.
     const checkOne = (folder: string) => {
+        if (!fullThemes) { toast('Memuat sumber tema dari server, coba lagi sebentar…'); return; }
         setChecked((prev) => {
             const row = rows.find((r) => r.folder === folder);
             if (!row) return prev;
@@ -117,6 +227,7 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
     };
 
     const checkMany = (folders: string[]) => {
+        if (!fullThemes) { toast('Memuat sumber tema dari server, coba lagi sebentar…'); return; }
         setChecked((prev) => {
             const next = { ...prev };
             for (const folder of folders) {
@@ -280,8 +391,17 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                     </label>
 
                     <button
+                        onClick={reloadSource}
+                        disabled={loadingSource}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition disabled:opacity-40 flex items-center gap-1.5"
+                        title="Ambil ulang source tema dari server. Tekan ini setelah inject selesai supaya perbandingan memakai data terbaru."
+                    >
+                        <HiOutlineRefresh className={`w-3.5 h-3.5 ${loadingSource ? 'animate-spin' : ''}`} />
+                        {loadingSource ? 'Memuat…' : 'Muat ulang sumber'}
+                    </button>
+                    <button
                         onClick={() => checkMany(selectedFolders)}
-                        disabled={selectedFolders.length === 0}
+                        disabled={selectedFolders.length === 0 || loadingSource}
                         className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 flex items-center gap-1.5"
                         title="Bandingkan source DB vs folder untuk item terpilih"
                     >
@@ -377,14 +497,15 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                                     {r.existsInDb && (
                                         <button
                                             onClick={() => checkOne(r.folder)}
-                                            className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition flex items-center gap-1"
+                                            disabled={loadingSource}
+                                            className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 flex items-center gap-1"
                                             title="Bandingkan source DB vs folder"
                                         >
                                             <HiOutlineRefresh className="w-3.5 h-3.5" /> Cek
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => onConfirm([r.folder], asDraft)}
+                                        onClick={() => askConfirm([r.folder])}
                                         className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-lg text-white bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-sm transition flex items-center gap-1"
                                         title={r.existsInDb ? 'Update tema ini sekarang' : 'Inject tema ini sekarang'}
                                     >
@@ -394,37 +515,6 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                             </div>
                         );
                     })}
-                </div>
-
-                {/* Draft vs Release toggle — berlaku untuk SEMUA aksi inject (per-item & massal). */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-900/30">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                        Simpan sebagai
-                    </span>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                            type="radio"
-                            name="inject-save-mode"
-                            checked={asDraft}
-                            onChange={() => setAsDraft(true)}
-                            className="w-4 h-4 border-gray-300 text-yellow-600 focus:ring-yellow-500 cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            Draft <span className="text-gray-400 dark:text-gray-500 font-normal">(belum tampil ke tenant)</span>
-                        </span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                            type="radio"
-                            name="inject-save-mode"
-                            checked={!asDraft}
-                            onChange={() => setAsDraft(false)}
-                            className="w-4 h-4 border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            Langsung release <span className="text-gray-400 dark:text-gray-500 font-normal">(tampil ke tenant)</span>
-                        </span>
-                    </label>
                 </div>
 
                 {/* Footer */}
@@ -448,17 +538,67 @@ export function ThemeInjectModal({ existingThemes, onClose, onConfirm }: ThemeIn
                             Batal
                         </button>
                         <button
-                            onClick={() => onConfirm(selectedFolders, asDraft)}
+                            onClick={() => askConfirm(selectedFolders)}
                             disabled={selected.size === 0}
                             className="px-5 py-2 text-xs font-medium rounded-xl text-white bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <i className="ri-flashlight-fill"></i>
                             Inject {selected.size > 0 ? `(${selected.size})` : ''}
-                            <span className="opacity-80">· {asDraft ? 'Draft' : 'Release'}</span>
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Dialog konfirmasi Draft/Publish — muncul saat klik Inject (per-baris/massal).
+                3 aksi: Batal (tutup dialog), Draft (flag_draft:true), Publish (langsung tampil). */}
+            {pendingFolders && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setPendingFolders(null)}
+                    />
+                    <div className="relative z-10 w-full max-w-sm bg-white dark:bg-wedding-dark-card rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                        <div className="px-6 pt-6 pb-4">
+                            <h4 className="text-base font-semibold text-gray-800 dark:text-white">
+                                Inject {pendingFolders.length} tema?
+                            </h4>
+                            <p className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                                Pilih cara menyimpan hasil inject:
+                            </p>
+                            <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                                <li>
+                                    <span className="font-semibold">Draft</span>
+                                    <span className="text-gray-400 dark:text-gray-500"> — belum tampil ke tenant</span>
+                                </li>
+                                <li>
+                                    <span className="font-semibold">Publish</span>
+                                    <span className="text-gray-400 dark:text-gray-500"> — langsung tampil ke tenant</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+                            <button
+                                onClick={() => setPendingFolders(null)}
+                                className="px-4 py-2 text-xs font-medium rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={() => confirmInject(true)}
+                                className="px-4 py-2 text-xs font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 transition"
+                            >
+                                Draft
+                            </button>
+                            <button
+                                onClick={() => confirmInject(false)}
+                                className="px-4 py-2 text-xs font-medium rounded-xl text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-md transition"
+                            >
+                                Publish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>,
         document.body
     );

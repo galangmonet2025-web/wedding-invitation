@@ -207,6 +207,18 @@ export function ThemeWrapper({
     // by a template re-parse after submitting RSVP/wish (force content visible).
     const prevHtmlRef = useRef<string | null>(null);
 
+    // Snapshot playback state of theme <video> elements (keyed by id) so a host
+    // HTML re-injection doesn't RESTART a video that was already playing.
+    //
+    // Kenapa perlu: host mengganti seluruh innerHTML tema tiap `htmlBase` berubah
+    // (mis. gambar tenant yang tiba belakangan ter-merge ke template, atau setelah
+    // RSVP/ucapan). Penggantian itu membuang <video> lama dan membuat yang baru
+    // dari template — video "seakan refresh lalu berhenti", karena JS tema TIDAK
+    // di-run ulang (di-guard) sehingga .play() tak dipanggil lagi pada elemen baru.
+    // Kita rekam currentTime/paused/ended secara berkala, lalu setelah re-inject
+    // pulihkan posisi + lanjutkan main pada <video> baru dengan id yang sama.
+    const videoStateRef = useRef<Record<string, { time: number; paused: boolean; ended: boolean }>>({});
+
     useEffect(() => {
         const handleScroll = (e: any) => {
             const tgt = e.target;
@@ -240,6 +252,123 @@ export function ThemeWrapper({
         restore();
         const raf = requestAnimationFrame(restore);
         return () => cancelAnimationFrame(raf);
+    }, [htmlBase]);
+
+    // SKELETON GAMBAR: undangan tampil segera (tanpa layar loading full); gambar
+    // tenant/tema yang masih lambat di-resolve diberi shimmer sebagai placeholder,
+    // bukan ikon broken atau area kosong. Berlaku umum untuk SEMUA tema tanpa
+    // mengubah markup tema-nya.
+    //
+    // Cara kerja: setiap kali HTML tema di-(re)inject (htmlBase berubah — termasuk
+    // saat base64 gambar baru ter-merge ke template), scan semua <img>. Yang BELUM
+    // selesai load (belum `complete` atau naturalWidth 0, mis. src masih kosong)
+    // diberi class `inv-img-loading`; class itu dilepas saat gambar berhasil/gagal
+    // load. Gambar yang sudah cached (complete) tak pernah diberi skeleton.
+    useLayoutEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const imgs = Array.from(container.querySelectorAll('img'));
+        const cleanups: Array<() => void> = [];
+
+        imgs.forEach((img) => {
+            // Sudah termuat (cache hit / src langsung valid) -> tak perlu skeleton.
+            const hasSrc = !!(img.getAttribute('src') || '').trim();
+            if (hasSrc && img.complete && img.naturalWidth > 0) {
+                img.classList.remove('inv-img-loading');
+                return;
+            }
+
+            img.classList.add('inv-img-loading');
+            const done = () => img.classList.remove('inv-img-loading');
+            // `load` juga menyala saat src kosong diganti src valid nanti; `error`
+            // melepas skeleton agar area tak berkedip selamanya kalau gambar gagal.
+            img.addEventListener('load', done);
+            img.addEventListener('error', done);
+            cleanups.push(() => {
+                img.removeEventListener('load', done);
+                img.removeEventListener('error', done);
+            });
+        });
+
+        return () => { cleanups.forEach((fn) => fn()); };
+    }, [htmlBase]);
+
+    // PRESERVE VIDEO ACROSS RE-INJECTION. Runs after every htmlBase (re)inject.
+    // Step 1: restore any video we snapshotted before this re-inject into the
+    //         freshly-created element with the same id (seek to where it was;
+    //         resume if it was playing). This kills the "video restarts then
+    //         stops" bug when tenant images arrive a few seconds after opening.
+    // Step 2: (re)attach lightweight listeners that keep videoStateRef current,
+    //         so the NEXT re-inject can restore correctly too.
+    // Only <video> with an id is handled — an id is required to match old→new.
+    useLayoutEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const videos = Array.from(container.querySelectorAll<HTMLVideoElement>('video[id]'));
+        const cleanups: Array<() => void> = [];
+
+        videos.forEach((video) => {
+            const id = video.id;
+            const snap = videoStateRef.current[id];
+
+            // Step 1 — restore prior playback state onto the new element.
+            if (snap) {
+                const applySnapshot = () => {
+                    try {
+                        if (isFinite(snap.time) && snap.time > 0) {
+                            // Clamp to just under duration so a near-finished clip
+                            // doesn't loop back to the very start.
+                            var dur = video.duration;
+                            video.currentTime = (isFinite(dur) && dur > 0)
+                                ? Math.min(snap.time, Math.max(0, dur - 0.05))
+                                : snap.time;
+                        }
+                    } catch (e) { /* seeking before metadata is ready — ignore */ }
+                    // Resume only if it was actively playing (not paused, not ended).
+                    if (!snap.paused && !snap.ended) {
+                        var p = video.play();
+                        if (p && typeof p.catch === 'function') p.catch(function () { /* autoplay blocked */ });
+                    }
+                };
+                // If metadata is ready we can seek now; else wait for it once.
+                if (video.readyState >= 1 /* HAVE_METADATA */) {
+                    applySnapshot();
+                } else {
+                    var onMeta = function () { video.removeEventListener('loadedmetadata', onMeta); applySnapshot(); };
+                    video.addEventListener('loadedmetadata', onMeta);
+                    cleanups.push(function () { video.removeEventListener('loadedmetadata', onMeta); });
+                }
+            }
+
+            // Step 2 — keep the snapshot fresh for the next re-inject.
+            const capture = () => {
+                videoStateRef.current[id] = {
+                    time: video.currentTime || 0,
+                    paused: video.paused,
+                    ended: video.ended,
+                };
+            };
+            // Seed a snapshot ONLY if we don't already have one. When `snap` exists
+            // we're mid-restore: the new element still reads time:0/paused:true, so
+            // capturing now would clobber the good snapshot before applySnapshot()
+            // (which may be async via loadedmetadata) runs. The listeners below take
+            // over once real playback/seek events fire on the restored element.
+            if (!snap) capture();
+            video.addEventListener('timeupdate', capture);
+            video.addEventListener('play', capture);
+            video.addEventListener('pause', capture);
+            video.addEventListener('ended', capture);
+            cleanups.push(function () {
+                video.removeEventListener('timeupdate', capture);
+                video.removeEventListener('play', capture);
+                video.removeEventListener('pause', capture);
+                video.removeEventListener('ended', capture);
+            });
+        });
+
+        return function () { cleanups.forEach(function (fn) { fn(); }); };
     }, [htmlBase]);
 
     // Sync open/envelope state when isOpened is true OR htmlBase changes (re-renders fresh HTML)

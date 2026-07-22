@@ -1,0 +1,26 @@
+[
+  {
+    "kelompok": "environment",
+    "name": "env_tileset.png",
+    "deskripsi": "Tileset hutan top-down, tile logis 16x16 px disusun grid (sel sheet 80x80 lalu di-downscale engine). Isi: tanah rumput 4 varian seamless (#5a8f42 terang, #3a5f30 gelap), tanah jalur cokelat 4 varian seamless (#8a6a4a), 8 tile transisi rumput-ke-jalur, air dangkal 2 frame riak (#3f6a8a), tepi air 4 tile, batu lantai 4 varian, lumut 2 varian. SEAMLESS WAJIB: dua tile bersebelahan tidak boleh menampakkan garis jahitan. Tanpa bayangan arah agar bisa di-tile bebas.",
+    "orderNumber": 1,
+    "frameWidth": 80,
+    "frameHeight": 80
+  },
+  {
+    "kelompok": "environment",
+    "name": "env_props.png",
+    "deskripsi": "Props hutan top-down, tiap item menempati satu sel: pohon besar (kanopi lebat), pohon kecil, semak destructible (2 frame: utuh dan bergetar saat kena panah), pot tanah liat, batu besar, batu kecil, tunggul kayu, jamur merah, jamur biru, bunga putih, bunga kuning, bunga merah, bunga ungu, bunga biru, rumput tinggi, pakis, teratai, kayu lapuk, akar menonjol, tengkorak hewan, pagar kayu, gerobak, jerami, papan petunjuk, obor (2 frame api berkedip), pilar batu, bendera. Semua top-down dengan bayangan lembut di bawah, pivot di dasar sel.",
+    "orderNumber": 2,
+    "frameWidth": 80,
+    "frameHeight": 96
+  },
+  {
+    "kelompok": "environment",
+    "name": "env_gate.png",
+    "deskripsi": "Gerbang Gunung: gapura batu raksasa berukir motif daun dan hati, dua pilar tebal dengan lengkung di atas. 3 frame horizontal: closed (pintu batu rapat, bagian dalam gelap), opening (celah bercahaya emas melebar, partikel cahaya keluar), open (terbuka penuh, cahaya emas terang menyembur, karpet merah terlihat di baliknya). Skala besar. Hadap BAWAH menghadap pemain. Pivot dasar sel.",
+    "orderNumber": 3,
+    "frameWidth": 192,
+    "frameHeight": 160
+  }
+]

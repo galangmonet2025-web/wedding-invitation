@@ -254,8 +254,15 @@ export const activityApi = {
 // =============================================
 
 export const themeApi = {
-    getThemes: async (config: any = {}): Promise<ApiResponse<Theme[]>> => {
-        const res = await apiClient.post('', { action: 'getThemes' }, config);
+    // skipTemplates: minta backend TIDAK mengirim kolom html/css/js_template +
+    // *_extra_1..10 (33 kolom x 50K char per tema). Daftar tema hanya butuh
+    // metadata; ikut mengirim template membuat response jadi belasan MB dan
+    // halaman Kelola Tema lama saat load pertama. Hanya Theme Editor — yang
+    // benar-benar merender/menyimpan template — memanggil tanpa flag ini.
+    getThemes: async (config: any = {}, opts: { skipTemplates?: boolean } = {}): Promise<ApiResponse<Theme[]>> => {
+        const body: Record<string, any> = { action: 'getThemes' };
+        if (opts.skipTemplates) body.skip_templates = true;
+        const res = await apiClient.post('', body, config);
         return res.data;
     },
 
@@ -295,15 +302,100 @@ export const themeApi = {
     },
 };
 
+// Google Sheets COERCES a cell whose text starts with one of these into a formula
+// and stores "#ERROR!" instead of the code. A theme chunk very often starts with
+// them ('@import'/'@media' in CSS, '= x' / '- 1' at a 50K cut point in JS), which
+// silently corrupts that column: the reassembled template comes back as "#ERROR!",
+// so the theme renders broken AND the inject dialog can never report "Identik"
+// (it diffs "#ERROR!" against the real source, so the folder is stuck on
+// "Perlu update" no matter how many times it is injected).
+const SHEETS_FORMULA_PREFIXES = ['=', '+', '-', '@'];
+
+// The guard for the FIRST chunk: a newline glued in front, so Sheets sees plain
+// text instead of a formula. The prefix is stored in the cell and the backend
+// reassembles by plain concatenation (DB.getAll in Code.gs), so it ends up INSIDE
+// the template — a newline at position 0 of a file is inert in HTML, CSS and JS
+// (verified: a leading '\n' still leaves '@import' a valid CSSImportRule), so
+// nothing has to strip it and the backend stays untouched (no Apps Script redeploy).
+const CHUNK_SAFE_PREFIX = '\n';
+
+// A chunk carrying the prefix must hold one character less of real payload, so the
+// cell total still lands on the backend's hard 50.000-char-per-chunk limit.
+const MAX_CHUNK = 50000;
+
+// How far an INTERIOR cut may be pulled back. Interior boundaries cannot use the
+// newline trick: a chunk boundary falls in the middle of the source, so injecting a
+// newline there splits a token — '.rm-cd-num' would become '.rm\n-cd-num' (a
+// different CSS selector) and 'a ===\n= b' a JS SyntaxError. Shortening the chunk
+// instead moves the boundary onto a harmless character and changes nothing when the
+// pieces are concatenated back. The window must clear the longest run of prefix
+// chars real source contains — ASCII comment banners ('/* ==== */') run 70-80, so
+// 512 is comfortable while costing only a slightly shorter chunk.
+const CHUNK_SHIFT_LIMIT = 512;
+
 // Split a (possibly huge) template string into the backend's 11 split columns:
-// <prefix>_template (chars 0..50K) + <prefix>_extra_1..10 (50K each). Mirrors
-// splitStringIntoFields() in backend/Code.gs so chunked saves reassemble cleanly.
+// <prefix>_template + <prefix>_extra_1..10.
+//
+// Two different guards, because the two positions have different constraints:
+//   - chunk 0 starts at the beginning of the file, so a newline can be PREPENDED
+//     (nothing is split; the file just gains a leading blank line).
+//   - chunks 1..10 start mid-source, so the previous chunk is SHORTENED until the
+//     boundary lands on a safe character — inserting anything there would corrupt
+//     whatever token straddles the cut.
+//
+// Either way a stored cell never exceeds MAX_CHUNK, and concatenating the columns
+// back reproduces the template (plus, at most, one leading newline).
 export function splitTemplateColumns(prefix: 'html' | 'css' | 'js', value: string): Record<string, string> {
     const s = value || '';
+
+    const chunks: string[] = [];
+    let pos = 0;
+    for (let i = 0; i <= 10; i++) {
+        if (pos >= s.length) {
+            chunks.push('');
+            continue;
+        }
+
+        // Does THIS chunk start on a formula character? Only chunk 0 can fix that by
+        // prepending; interior chunks were already made safe by the previous
+        // iteration shortening itself (see below).
+        const needsPrefix = pos === 0 && SHEETS_FORMULA_PREFIXES.includes(s[0]);
+        const budget = MAX_CHUNK - (needsPrefix ? CHUNK_SAFE_PREFIX.length : 0);
+
+        // Choose where this chunk ENDS. The end is also where the NEXT chunk starts,
+        // so pull it back until the next chunk would begin on a safe character —
+        // that is what keeps interior boundaries from needing an inserted char.
+        let take = Math.min(budget, s.length - pos);
+        if (pos + take < s.length) {
+            const floor = Math.max(1, take - CHUNK_SHIFT_LIMIT);
+            while (take > floor && SHEETS_FORMULA_PREFIXES.includes(s[pos + take])) take--;
+            // If no safe boundary exists within the window (e.g. a huge run of '='),
+            // fall back to the full-size cut and let the backend's
+            // setNumberFormat('@') be the safety net for that one cell.
+            if (SHEETS_FORMULA_PREFIXES.includes(s[pos + take])) take = Math.min(budget, s.length - pos);
+        }
+
+        const payload = s.substring(pos, pos + take);
+        chunks.push(needsPrefix ? CHUNK_SAFE_PREFIX + payload : payload);
+        pos += take;
+    }
+
+    // 11 columns x 50.000 = 550.000 chars of capacity, the same ceiling the backend
+    // enforces (MAX_TOTAL_CHARS). Each guard consumes one char of that headroom, so a
+    // template within a few chars of the ceiling can stop fitting. Fail LOUDLY rather
+    // than silently dropping the tail — a truncated theme would save "successfully"
+    // and then render broken.
+    if (pos < s.length) {
+        throw new Error(
+            `Template ${prefix.toUpperCase()} terlalu besar (${s.length} karakter) untuk disimpan ` +
+            `dalam 11 kolom x 50.000. Harap perkecil ukurannya.`
+        );
+    }
+
     const cols: Record<string, string> = {};
-    cols[`${prefix}_template`] = s.substring(0, 50000);
+    cols[`${prefix}_template`] = chunks[0];
     for (let i = 1; i <= 10; i++) {
-        cols[`${prefix}_extra_${i}`] = s.substring(i * 50000, (i + 1) * 50000);
+        cols[`${prefix}_extra_${i}`] = chunks[i];
     }
     return cols;
 }
