@@ -78,8 +78,15 @@ const SERVICE_TINT: Record<string, string> = {
     'bg-yellow-500': 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400',
 };
 
-export function serviceIconTint(color: string): string {
-    return SERVICE_TINT[color] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300';
+/**
+ * DULU memetakan tiap warna menu ke tint-nya sendiri, sehingga grid layanan
+ * tampil sebagai pelangi. Sekarang SELURUH ikon memakai satu tint emas yang
+ * senada dengan Home Page — parameter `color` sengaja diabaikan (tetap ada agar
+ * pemanggilnya tak perlu diubah, dan SERVICE_TINT tetap jadi rujukan bila suatu
+ * saat warna per-menu dihidupkan lagi).
+ */
+export function serviceIconTint(_color?: string): string {
+    return 'bg-gold-50 dark:bg-gold-900/20 text-gold-600 dark:text-gold-400';
 }
 
 /**
@@ -240,6 +247,16 @@ export function AdminLayout() {
 
     return (
         <div className={`admin-shell min-h-screen [overflow-x:clip] ${isDark ? 'dark' : ''}`}>
+            {/* Lapisan ambient ala HomePage (.hp-backdrop) — HANYA di mobile.
+                Tanpa ini semua panel kaca di bawah tidak punya apa pun untuk
+                di-blur, sehingga efeknya hilang dan tampil seperti putih rata. */}
+            <div className="admin-backdrop" aria-hidden="true">
+                <div className="admin-orb admin-orb-1" />
+                <div className="admin-orb admin-orb-2" />
+                <div className="admin-orb admin-orb-3" />
+                <div className="admin-grain" />
+            </div>
+
             <div className="flex min-h-screen min-w-0">
                 {/* ===== Desktop sidebar (gold accent) ===== */}
                 <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-72 flex-col bg-white dark:bg-wedding-dark-card border-r border-gray-100 dark:border-gray-800">
@@ -276,8 +293,12 @@ export function AdminLayout() {
                             <NavLink key={item.to} to={item.to} end={item.to === '/admin/dashboard'} className={({ isActive }) => `admin-navlink ${isActive ? 'is-active' : ''}`}>
                                 {({ isActive }) => (
                                     <>
-                                        <span className={`admin-navlink-icon ${item.color} ${isActive ? '' : 'opacity-90'}`}>
-                                            <item.icon className="w-[18px] h-[18px] text-white" />
+                                        {/* item.color sengaja TIDAK dipakai lagi: warna
+                                            per-menu membuat rail terbaca sebagai pelangi.
+                                            Warna kotak & ikon kini seragam (emas/gelap saat
+                                            aktif) lewat .admin-navlink-icon di index.css. */}
+                                        <span className={`admin-navlink-icon ${isActive ? '' : 'opacity-90'}`}>
+                                            <item.icon className="w-[18px] h-[18px]" />
                                         </span>
                                         <span className="truncate">{item.label}</span>
                                     </>
@@ -296,15 +317,17 @@ export function AdminLayout() {
                             </button>
                         </div>
                         <button onClick={() => navigate(classicTarget)} className="admin-navlink w-full text-gray-600 dark:text-gray-300">
-                            <span className="admin-navlink-icon bg-gradient-to-br from-gold-400 to-gold-600"><HiOutlineDesktopComputer className="w-[18px] h-[18px] text-white" /></span>
+                            <span className="admin-navlink-icon"><HiOutlineDesktopComputer className="w-[18px] h-[18px]" /></span>
                             <span>{t('view_switch.to_classic', 'Versi Klasik')}</span>
                         </button>
                         <button onClick={() => setPasswordModalOpen(true)} className="admin-navlink w-full text-gray-600 dark:text-gray-300">
-                            <span className="admin-navlink-icon bg-gray-400"><HiOutlineKey className="w-[18px] h-[18px] text-white" /></span>
+                            <span className="admin-navlink-icon"><HiOutlineKey className="w-[18px] h-[18px]" /></span>
                             <span>{t('sidebar.change_password')}</span>
                         </button>
                         <button onClick={() => setLogoutConfirmOpen(true)} className="admin-navlink w-full text-red-500">
-                            <span className="admin-navlink-icon bg-red-500"><HiOutlineLogout className="w-[18px] h-[18px] text-white" /></span>
+                            {/* Keluar tetap MERAH — itu sinyal keamanan, bukan hiasan.
+                                Hanya dilembutkan jadi kotak bertint + ikon merah. */}
+                            <span className="admin-navlink-icon is-danger"><HiOutlineLogout className="w-[18px] h-[18px]" /></span>
                             <span>{t('sidebar.logout')}</span>
                         </button>
                     </div>
@@ -312,36 +335,50 @@ export function AdminLayout() {
 
                 {/* ===== Main column ===== */}
                 <div className="flex-1 min-w-0 flex flex-col min-h-screen lg:ml-72">
-                    {/* Gojek-style gold header */}
-                    <header className="admin-header relative overflow-hidden sticky top-0 z-30 rounded-b-3xl shadow-lg shadow-gold-900/10">
-                        {/* Soft decorative depth so the gold band isn't flat */}
-                        <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/15 blur-2xl" />
-                        <div className="pointer-events-none absolute -bottom-24 -left-10 w-56 h-56 rounded-full bg-black/10 blur-2xl" />
+                    {/* ===== Header =====
+                        DESKTOP (lg+): pita emas Gojek yang lama — tidak diubah.
+                        MOBILE (<lg): pita KACA bergaya HomePage — judul serif
+                        Playfair, eyebrow emas berhuruf kapital, garis rambut
+                        emas di bawah. Dua penampilan ini dipisah dengan kelas
+                        responsif pada elemen yang sama supaya tidak ada header
+                        ganda yang saling menimpa saat sticky. */}
+                    <header className="admin-header-hp relative overflow-hidden sticky top-0 z-30 lg:rounded-b-3xl lg:shadow-lg lg:shadow-gold-900/10">
+                        {/* Soft decorative depth so the gold band isn't flat (desktop only) */}
+                        <div className="hidden lg:block pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/15 blur-2xl" />
+                        <div className="hidden lg:block pointer-events-none absolute -bottom-24 -left-10 w-56 h-56 rounded-full bg-black/10 blur-2xl" />
 
                         {(isImpersonating || user?.role === 'staff') && (
-                            <div className={`relative px-4 lg:px-8 py-1.5 text-center text-[11px] font-black uppercase tracking-wider text-white ${isImpersonating ? 'bg-orange-500/90' : 'bg-blue-500/90'}`}>
+                            <div className={`relative px-4 lg:px-8 py-1.5 text-center text-[10px] lg:text-[11px] font-bold uppercase tracking-[.16em] lg:tracking-wider text-white ${isImpersonating ? 'bg-orange-500/90' : 'bg-blue-500/90'}`}>
                                 {isImpersonating
                                     ? `👤 Viewing as Tenant: ${tenant?.bride_name} & ${tenant?.groom_name}`
                                     : `Staff Receptionist: ${tenant?.bride_name} & ${tenant?.groom_name}`}
                             </div>
                         )}
-                        <div className="relative flex items-center justify-between gap-3 px-4 lg:px-8 pt-3.5 pb-4 min-w-0">
+                        <div className="relative flex items-center justify-between gap-3 px-4 lg:px-8 pt-3 pb-3.5 lg:pt-3.5 lg:pb-4 min-w-0">
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                 {isHome ? (
                                     <div className="min-w-0">
-                                        <p className="text-xs text-white/85 leading-tight mb-0.5">{t('dashboard.welcome_back', 'Halo, selamat datang')} 👋</p>
-                                        <h2 className="text-lg lg:text-xl font-bold text-white leading-tight truncate">{displayName}</h2>
+                                        <p className="admin-eyebrow lg:hidden mb-1.5">{t('dashboard.welcome_back', 'Selamat datang')}</p>
+                                        <p className="hidden lg:block text-xs text-white/85 leading-tight mb-0.5">{t('dashboard.welcome_back', 'Halo, selamat datang')} 👋</p>
+                                        <h2 className="admin-serif lg:hidden text-[22px] leading-tight truncate">{displayName}</h2>
+                                        <h2 className="hidden lg:block text-lg lg:text-xl font-bold text-white leading-tight truncate">{displayName}</h2>
                                     </div>
                                 ) : (
                                     <>
                                         {/* Icon of the active menu, before its title */}
                                         {ActiveIcon && (
-                                            <span className="w-10 h-10 rounded-2xl bg-white/20 ring-1 ring-white/25 flex items-center justify-center shrink-0">
-                                                <ActiveIcon className="w-[22px] h-[22px] text-white" />
-                                            </span>
+                                            <>
+                                                <span className="admin-header-mark lg:hidden">
+                                                    <ActiveIcon className="w-[21px] h-[21px]" />
+                                                </span>
+                                                <span className="hidden lg:flex w-10 h-10 rounded-2xl bg-white/20 ring-1 ring-white/25 items-center justify-center shrink-0">
+                                                    <ActiveIcon className="w-[22px] h-[22px] text-white" />
+                                                </span>
+                                            </>
                                         )}
                                         <div className="min-w-0 flex-1 overflow-hidden">
-                                            <h2 className="text-base lg:text-lg font-bold text-white leading-tight truncate">{headerTitle}</h2>
+                                            <h2 className="admin-serif lg:hidden text-[19px] leading-tight truncate">{headerTitle}</h2>
+                                            <h2 className="hidden lg:block text-base lg:text-lg font-bold text-white leading-tight truncate">{headerTitle}</h2>
                                         </div>
                                     </>
                                 )}
@@ -350,15 +387,23 @@ export function AdminLayout() {
                             <div className="flex items-center gap-1.5 shrink-0">
                                 {/* Badge jenis paket tenant — di pojok kanan header, selalu terlihat. */}
                                 {tenant && showTenantMenu && (
-                                    <span
-                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white shadow-sm text-[11px] font-black uppercase tracking-wider ${planTextClass(tenant.plan_type)}`}
-                                        title={`Paket: ${String(tenant.plan_type || '').toUpperCase()}`}
-                                    >
-                                        <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
-                                        {tenant.plan_type}
-                                    </span>
+                                    <>
+                                        <span
+                                            className="admin-plan-pill lg:hidden"
+                                            title={`Paket: ${String(tenant.plan_type || '').toUpperCase()}`}
+                                        >
+                                            {tenant.plan_type}
+                                        </span>
+                                        <span
+                                            className={`hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white shadow-sm text-[11px] font-black uppercase tracking-wider ${planTextClass(tenant.plan_type)}`}
+                                            title={`Paket: ${String(tenant.plan_type || '').toUpperCase()}`}
+                                        >
+                                            <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
+                                            {tenant.plan_type}
+                                        </span>
+                                    </>
                                 )}
-                                <button onClick={() => navigate(classicTarget)} className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider text-gold-700 bg-white shadow-sm active:scale-95 transition-transform" title={t('view_switch.to_classic', 'Versi Klasik') as string}>
+                                <button onClick={() => navigate(classicTarget)} className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider text-gold-700 bg-white shadow-sm active:scale-95 transition-transform" title={t('view_switch.to_classic', 'Versi Klasik') as string}>
                                     <HiOutlineDesktopComputer className="w-4 h-4" />
                                     <span className="hidden md:inline">{t('view_switch.to_classic', 'Versi Klasik')}</span>
                                 </button>
@@ -369,7 +414,12 @@ export function AdminLayout() {
                                     Buka Undangan (untuk HP yang tak fullscreen otomatis). */}
                                 <FullscreenButton />
                                 {invitationUrl && showTenantMenu && (
-                                    <a href={invitationUrl} target="_blank" rel="noopener noreferrer" className="admin-icon-btn" title={t('topbar.open_invitation', 'Buka Undangan')}>
+                                    <a href={invitationUrl} target="_blank" rel="noopener noreferrer" className="admin-icon-btn-hp lg:hidden" title={t('topbar.open_invitation', 'Buka Undangan')}>
+                                        <HiOutlineExternalLink className="w-[18px] h-[18px]" />
+                                    </a>
+                                )}
+                                {invitationUrl && showTenantMenu && (
+                                    <a href={invitationUrl} target="_blank" rel="noopener noreferrer" className="admin-icon-btn hidden lg:flex" title={t('topbar.open_invitation', 'Buka Undangan')}>
                                         <HiOutlineExternalLink className="w-5 h-5" />
                                     </a>
                                 )}
@@ -380,6 +430,8 @@ export function AdminLayout() {
                                 <BackgroundTaskIndicator />
                             </div>
                         </div>
+                        {/* Garis rambut emas penutup header (mobile) — .hp-rule */}
+                        <span className="admin-rule lg:hidden" aria-hidden="true" />
                     </header>
 
                     {/* Page content — .admin-scope restyles reused pages to match. */}
@@ -396,17 +448,17 @@ export function AdminLayout() {
             </div>
 
             {/* ===== Mobile bottom nav (minimalist, Gojek-style) ===== */}
-            <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-wedding-dark-card/95 backdrop-blur-lg border-t border-gray-100 dark:border-gray-800 pb-[env(safe-area-inset-bottom)]">
+            <nav className="admin-bottomnav-hp lg:hidden fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)]">
                 <div className="grid grid-cols-5">
                     {bottomNavItems.map((item) => (
-                        <NavLink key={item.to} to={item.to} end={item.to === '/admin/dashboard'} className={({ isActive }) => `admin-tab ${isActive ? 'is-active' : ''}`}>
-                            <span className="admin-tab-icon"><item.icon className="w-[22px] h-[22px]" /></span>
-                            <span className="admin-tab-label">{item.label}</span>
+                        <NavLink key={item.to} to={item.to} end={item.to === '/admin/dashboard'} className={({ isActive }) => `admin-tab-hp ${isActive ? 'is-active' : ''}`}>
+                            <item.icon className="w-[21px] h-[21px]" />
+                            <span className="admin-tab-hp-label">{item.label}</span>
                         </NavLink>
                     ))}
-                    <button onClick={() => setMoreOpen(true)} className={`admin-tab ${moreOpen ? 'is-active' : ''}`}>
-                        <span className="admin-tab-icon"><HiOutlineViewGrid className="w-[22px] h-[22px]" /></span>
-                        <span className="admin-tab-label">{t('sidebar.menu', 'Menu')}</span>
+                    <button onClick={() => setMoreOpen(true)} className={`admin-tab-hp ${moreOpen ? 'is-active' : ''}`}>
+                        <HiOutlineViewGrid className="w-[21px] h-[21px]" />
+                        <span className="admin-tab-hp-label">{t('sidebar.menu', 'Menu')}</span>
                     </button>
                 </div>
             </nav>
@@ -414,37 +466,58 @@ export function AdminLayout() {
             {/* ===== Mobile "Menu" sheet (full grid) ===== */}
             {moreOpen && (
                 <div className="lg:hidden fixed inset-0 z-[60]">
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setMoreOpen(false)} />
-                    <div className="absolute inset-x-0 bottom-0 max-h-[88vh] rounded-t-[2rem] bg-white dark:bg-wedding-dark-card shadow-2xl animate-slide-up flex flex-col">
+                    <div className="absolute inset-0 bg-[#1A1A1F]/45 backdrop-blur-sm animate-fade-in" onClick={() => setMoreOpen(false)} />
+                    <div className="admin-sheet-hp absolute inset-x-0 bottom-0 max-h-[88vh] rounded-t-[2rem] animate-slide-up flex flex-col">
                         <div className="pt-3 flex justify-center shrink-0">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
+                            <div className="w-12 h-1.5 rounded-full" style={{ background: 'var(--ad-line)' }} />
                         </div>
-                        <div className="px-5 pt-3 pb-2 flex items-center justify-between shrink-0">
-                            <h3 className="font-black text-lg text-gray-800 dark:text-white">{t('sidebar.menu', 'Menu')}</h3>
-                            <button onClick={() => setMoreOpen(false)} className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 active:scale-90 transition-transform">
-                                <HiOutlineX className="w-5 h-5" />
+                        <div className="px-5 pt-3.5 pb-3 flex items-start justify-between gap-3 shrink-0">
+                            <div className="min-w-0">
+                                <p className="admin-eyebrow mb-1.5">{t('sidebar.menu', 'Menu')}</p>
+                                <h3 className="admin-serif text-[21px] leading-tight truncate">
+                                    {showTenantMenu
+                                        ? t('topbar.wedding_dashboard', 'Wedding Dashboard')
+                                        : t('topbar.superadmin_panel', 'Super Admin Panel')}
+                                </h3>
+                            </div>
+                            <button onClick={() => setMoreOpen(false)} className="admin-icon-btn-hp mt-1" aria-label={t('common.close', 'Tutup') as string}>
+                                <HiOutlineX className="w-[18px] h-[18px]" />
                             </button>
                         </div>
+                        <span className="admin-rule mx-5 shrink-0" aria-hidden="true" />
 
                         <div className="px-5 pb-6 overflow-y-auto no-scrollbar">
-                            <div className="grid grid-cols-4 gap-y-5 gap-x-2 pt-2">
-                                {filteredNavItems.map((item) => (
-                                    <NavLink key={item.to} to={item.to} end={item.to === '/admin/dashboard'} onClick={() => setMoreOpen(false)} className="admin-service">
-                                        <span className={`admin-service-icon ${serviceIconTint(item.color)}`}><item.icon className="w-6 h-6" /></span>
-                                        <span className="admin-service-label">{item.label}</span>
-                                    </NavLink>
-                                ))}
+                            <div className="grid grid-cols-4 gap-y-5 gap-x-2 pt-5">
+                                {filteredNavItems.map((item) => {
+                                    const isActive = activeItem?.to === item.to;
+                                    return (
+                                        <NavLink
+                                            key={item.to}
+                                            to={item.to}
+                                            end={item.to === '/admin/dashboard'}
+                                            onClick={() => setMoreOpen(false)}
+                                            className={`admin-service-hp ${isActive ? 'is-active' : ''}`}
+                                        >
+                                            <span className="admin-service-hp-icon"><item.icon className="w-6 h-6" /></span>
+                                            <span className="admin-service-hp-label">{item.label}</span>
+                                        </NavLink>
+                                    );
+                                })}
                             </div>
 
+                            <span className="admin-rule mt-6 mb-5 block" aria-hidden="true" />
+
                             {/* Settings row — language + dark mode moved here from the header */}
-                            <div className="mt-6 grid grid-cols-2 gap-3">
-                                <div className="flex items-center justify-between gap-2 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-                                    <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{t('sidebar.language', 'Bahasa')}</span>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="admin-glass-card flex items-center justify-between gap-2 p-3.5">
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--ad-ink-soft)' }}>{t('sidebar.language', 'Bahasa')}</span>
                                     <LanguageSwitcher />
                                 </div>
-                                <button onClick={toggleTheme} className="flex items-center justify-between gap-2 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 active:scale-95 transition-transform">
-                                    <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{isDark ? t('sidebar.light_mode', 'Mode Terang') : t('sidebar.dark_mode', 'Mode Gelap')}</span>
-                                    {isDark ? <HiOutlineSun className="w-5 h-5 text-gold-400 shrink-0" /> : <HiOutlineMoon className="w-5 h-5 text-gray-500 shrink-0" />}
+                                <button onClick={toggleTheme} className="admin-glass-card flex items-center justify-between gap-2 p-3.5">
+                                    <span className="text-xs font-semibold text-left" style={{ color: 'var(--ad-ink-soft)' }}>{isDark ? t('sidebar.light_mode', 'Mode Terang') : t('sidebar.dark_mode', 'Mode Gelap')}</span>
+                                    {isDark
+                                        ? <HiOutlineSun className="w-5 h-5 shrink-0" style={{ color: 'var(--ad-gold-light)' }} />
+                                        : <HiOutlineMoon className="w-5 h-5 shrink-0" style={{ color: 'var(--ad-gold-deep)' }} />}
                                 </button>
                             </div>
 
@@ -452,27 +525,32 @@ export function AdminLayout() {
                                 classic view is a desktop-oriented layout, so the
                                 switcher is only offered from the desktop sidebar/header. */}
 
-                            <div className="mt-3 p-4 rounded-3xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shrink-0">
-                                            <span className="text-white font-black">{user?.username?.[0]?.toUpperCase()}</span>
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user?.username}</p>
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-gold-600">{user?.role?.replace('_', ' ')}</p>
-                                        </div>
+                            <div className="admin-glass-card mt-3 p-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    {/* Kotak inisial: latar GELAP + garis rambut emas,
+                                        meniru .hp-brand-mark di HomePage. */}
+                                    <div
+                                        className="w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0"
+                                        style={{ background: 'var(--ad-ink)', border: '1px solid rgba(212,175,55,.32)' }}
+                                    >
+                                        <span className="admin-serif text-lg" style={{ color: 'var(--ad-gold-light)' }}>
+                                            {user?.username?.[0]?.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--ad-ink)' }}>{user?.username}</p>
+                                        <p className="admin-eyebrow mt-1">{user?.role?.replace('_', ' ')}</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="mt-3 grid grid-cols-2 gap-3">
-                                <button onClick={() => { setMoreOpen(false); setPasswordModalOpen(true); }} className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-600 dark:text-gray-300 active:scale-95 transition-transform">
-                                    <HiOutlineKey className="w-5 h-5 text-gold-500" />
+                                <button onClick={() => { setMoreOpen(false); setPasswordModalOpen(true); }} className="admin-btn-ghost">
+                                    <HiOutlineKey className="w-[18px] h-[18px]" style={{ color: 'var(--ad-gold-deep)' }} />
                                     {t('sidebar.change_password')}
                                 </button>
-                                <button onClick={() => { setMoreOpen(false); setLogoutConfirmOpen(true); }} className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/30 text-xs font-bold text-red-600 active:scale-95 transition-transform">
-                                    <HiOutlineLogout className="w-5 h-5" />
+                                <button onClick={() => { setMoreOpen(false); setLogoutConfirmOpen(true); }} className="admin-btn-ghost admin-btn-danger-soft">
+                                    <HiOutlineLogout className="w-[18px] h-[18px]" />
                                     {t('sidebar.logout')}
                                 </button>
                             </div>

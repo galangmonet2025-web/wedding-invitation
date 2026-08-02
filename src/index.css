@@ -259,6 +259,369 @@
     @apply bg-gradient-to-br from-gold-500 to-gold-600 text-white;
   }
 
+  /* ===================================================================
+     MOBILE ADMIN CHROME — disamakan dengan HALAMAN HOME (HomePage.tsx).
+     Bahasa desain HomePage: off-white hangat (#FDFCFA), KACA (backdrop
+     blur di atas lapisan orb), garis rambut emas, judul Playfair Display,
+     eyebrow huruf kapital ber-letter-spacing lebar, sudut membulat 20–24px,
+     dan aksen GELAP (--ink) untuk elemen aktif — BUKAN emas padat.
+
+     Token di sini SENGAJA menyalin nilai --hp-* dari <HomeStyles/> supaya
+     kedua halaman betul-betul satu sistem. Kalau HomePage berubah, ubah
+     juga di sini.
+
+     Cakupan: HANYA cangkang versi mobile (<lg). Sidebar desktop, isi
+     halaman (.admin-scope), dan shell /private tidak disentuh.
+     =================================================================== */
+  .admin-shell {
+    --ad-bg: #FDFCFA;
+    --ad-surface: #FFFFFF;
+    --ad-ink: #1A1A1F;
+    --ad-ink-soft: #5A5A66;
+    --ad-ink-mute: #6E6E7A;
+    --ad-line: rgba(26, 26, 31, .09);
+    --ad-gold: #D4AF37;
+    --ad-gold-deep: #B8860B;
+    --ad-gold-text: #8A6508;
+    --ad-gold-light: #E8C86A;
+    --ad-gold-grad: linear-gradient(135deg, #B8860B 0%, #E8C86A 38%, #D4AF37 55%, #F5E4A8 72%, #B8860B 100%);
+    --ad-glass-1: rgba(255, 255, 255, .62);
+    --ad-glass-2: rgba(255, 255, 255, .55);
+    --ad-glass-3: rgba(255, 255, 255, .82);
+    --ad-glass-border: rgba(255, 255, 255, .75);
+    --ad-glass-rim: inset 0 1px 0 rgba(255, 255, 255, .9);
+    --ad-glass-shadow: 0 8px 32px rgba(31, 38, 60, .07);
+    --ad-glass-shadow-lift: 0 16px 48px rgba(31, 38, 60, .12);
+    --ad-ease-lux: cubic-bezier(.22, 1, .36, 1);
+  }
+
+  /* Mode gelap: permukaan jadi ink, kaca dibalik jadi putih transparan tipis.
+     Nilai emas dinaikkan terangnya karena kontras teks emas gelap di atas
+     latar gelap gagal terbaca. */
+  .admin-shell.dark {
+    --ad-bg: #0E0E12;
+    --ad-surface: #17171D;
+    --ad-ink: #FBFAF7;
+    --ad-ink-soft: rgba(251, 250, 247, .66);
+    --ad-ink-mute: rgba(251, 250, 247, .48);
+    --ad-line: rgba(255, 255, 255, .10);
+    --ad-gold-text: var(--ad-gold-light);
+    --ad-glass-1: rgba(255, 255, 255, .05);
+    --ad-glass-2: rgba(20, 20, 26, .62);
+    --ad-glass-3: rgba(255, 255, 255, .08);
+    --ad-glass-border: rgba(255, 255, 255, .12);
+    --ad-glass-rim: inset 0 1px 0 rgba(255, 255, 255, .06);
+    --ad-glass-shadow: 0 8px 32px rgba(0, 0, 0, .40);
+    --ad-glass-shadow-lift: 0 16px 48px rgba(0, 0, 0, .55);
+  }
+
+  /* Latar halaman + lapisan orb/butiran. Ini WAJIB ada: efek kaca
+     (backdrop-filter) tidak terlihat di atas warna rata — blur butuh sesuatu
+     di belakangnya. Sama persis alasannya dengan .hp-backdrop di HomePage. */
+  @media (max-width: 1023px) {
+    .admin-shell {
+      background: var(--ad-bg);
+      color: var(--ad-ink);
+      isolation: isolate;
+    }
+  }
+  .admin-backdrop {
+    @apply lg:hidden pointer-events-none fixed inset-0 overflow-hidden;
+    z-index: -1;
+  }
+  .admin-orb {
+    @apply absolute rounded-full;
+    filter: blur(40px);
+  }
+  .admin-orb-1 {
+    width: 620px;
+    height: 620px;
+    top: -260px;
+    left: -180px;
+    background: radial-gradient(circle, rgba(212, 175, 55, .15), transparent 68%);
+  }
+  .admin-orb-2 {
+    width: 680px;
+    height: 680px;
+    top: 28%;
+    right: -300px;
+    background: radial-gradient(circle, rgba(226, 199, 163, .14), transparent 70%);
+  }
+  .admin-orb-3 {
+    width: 560px;
+    height: 560px;
+    bottom: 2%;
+    left: 4%;
+    background: radial-gradient(circle, rgba(178, 190, 214, .10), transparent 70%);
+  }
+  .admin-grain {
+    @apply absolute;
+    inset: -50%;
+    opacity: .032;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---- Header versi mobile: pita kaca, bukan blok emas padat ---- */
+  .admin-header-hp {
+    background: var(--ad-glass-2);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    border-bottom: 1px solid rgba(212, 175, 55, .16);
+    box-shadow: 0 1px 24px rgba(31, 38, 60, .05);
+    color: var(--ad-ink);
+  }
+  .admin-shell.dark .admin-header-hp {
+    box-shadow: 0 1px 24px rgba(0, 0, 0, .35);
+  }
+  /* Di layar besar header kembali ke pita EMAS lama (tampilan desktop tidak
+     diubah sama sekali oleh redesign mobile ini). Tailwind tak bisa memberi
+     prefix `lg:` pada kelas komponen, jadi peralihannya ditulis di sini. */
+  @media (min-width: 1024px) {
+    .admin-header-hp {
+      @apply bg-gradient-to-br from-gold-500 to-gold-600 text-white;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      border-bottom: none;
+      box-shadow: none;
+    }
+  }
+  /* Eyebrow: huruf kapital kecil ber-jarak lebar + garis emas, persis
+     .hp-eyebrow. Dipakai untuk sapaan "Selamat datang" / nama menu induk. */
+  .admin-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .2em;
+    color: var(--ad-gold-text);
+  }
+  /* Judul serif — pembeda utama gaya HomePage dari gaya lama yang sans-bold. */
+  .admin-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -.015em;
+    color: var(--ad-ink);
+    font-weight: 500;
+  }
+  /* Ikon menu aktif di header: kotak kaca bergaris rambut emas. */
+  .admin-header-mark {
+    @apply flex items-center justify-center shrink-0;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    background: var(--ad-glass-1);
+    border: 1px solid rgba(212, 175, 55, .32);
+    box-shadow: var(--ad-glass-rim);
+    color: var(--ad-gold-deep);
+  }
+  .admin-shell.dark .admin-header-mark {
+    color: var(--ad-gold-light);
+  }
+  /* Tombol ikon di header kaca — putaran, garis rambut, isi kaca.
+     Menggantikan .admin-icon-btn (putih transparan di atas emas) untuk mobile. */
+  .admin-icon-btn-hp {
+    @apply flex items-center justify-center shrink-0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: var(--ad-ink-soft);
+    background: var(--ad-glass-1);
+    border: 1px solid var(--ad-glass-border);
+    box-shadow: var(--ad-glass-rim);
+    transition: color .22s var(--ad-ease-lux), border-color .22s var(--ad-ease-lux), transform .22s var(--ad-ease-lux);
+  }
+  .admin-icon-btn-hp:hover {
+    color: var(--ad-gold-text);
+    border-color: rgba(212, 175, 55, .5);
+  }
+  .admin-icon-btn-hp:active {
+    transform: scale(.94);
+  }
+  .admin-icon-btn-hp.is-fs-active {
+    color: var(--ad-gold-text);
+    border-color: rgba(212, 175, 55, .55);
+  }
+  /* Pil paket (basic/pro/premium) bergaya .hp-theme-plan. */
+  .admin-plan-pill {
+    @apply inline-flex items-center gap-1;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    background: var(--ad-glass-3);
+    border: 1px solid rgba(212, 175, 55, .32);
+    color: var(--ad-gold-text);
+  }
+
+  /* ---- Bottom nav versi HomePage: kaca + aksen GELAP untuk item aktif ---- */
+  .admin-bottomnav-hp {
+    background: var(--ad-glass-2);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(150%);
+    border-top: 1px solid rgba(212, 175, 55, .18);
+    box-shadow: 0 -1px 24px rgba(31, 38, 60, .06);
+  }
+  .admin-shell.dark .admin-bottomnav-hp {
+    box-shadow: 0 -1px 24px rgba(0, 0, 0, .4);
+  }
+  .admin-tab-hp {
+    @apply flex flex-col items-center justify-center gap-1.5 pt-2.5 pb-3;
+    position: relative;
+    color: var(--ad-ink-mute);
+    transition: color .22s var(--ad-ease-lux);
+  }
+  /* Garis emas tipis di ATAS tab aktif — kutipan langsung dari underline
+     .hp-nav-links a::after (scaleX dari kiri). */
+  .admin-tab-hp::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 22%;
+    right: 22%;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--ad-gold-grad);
+    transform: scaleX(0);
+    transition: transform .28s var(--ad-ease-lux);
+  }
+  .admin-tab-hp.is-active {
+    color: var(--ad-ink);
+  }
+  .admin-tab-hp.is-active::after {
+    transform: scaleX(1);
+  }
+  .admin-tab-hp-label {
+    @apply truncate;
+    max-width: 68px;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: .04em;
+  }
+  .admin-tab-hp.is-active .admin-tab-hp-label {
+    font-weight: 600;
+  }
+
+  /* ---- Lembar "Menu": permukaan kaca tingkat 3 + grid layanan ---- */
+  .admin-sheet-hp {
+    background: var(--ad-glass-3);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(24px) saturate(150%);
+    border-top: 1px solid var(--ad-glass-border);
+    box-shadow: 0 -18px 54px rgba(31, 38, 60, .16), var(--ad-glass-rim);
+  }
+  .admin-shell.dark .admin-sheet-hp {
+    background: #14141A;
+    box-shadow: 0 -18px 54px rgba(0, 0, 0, .6), var(--ad-glass-rim);
+  }
+  /* Kartu kaca serbaguna di dalam lembar (baris setelan, kartu profil). */
+  .admin-glass-card {
+    background: var(--ad-glass-1);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid var(--ad-glass-border);
+    box-shadow: var(--ad-glass-shadow), var(--ad-glass-rim);
+    border-radius: 20px;
+    color: var(--ad-ink);
+    transition: transform .22s var(--ad-ease-lux), box-shadow .22s var(--ad-ease-lux), border-color .22s var(--ad-ease-lux);
+  }
+  .admin-glass-card:active {
+    transform: translateY(1px);
+  }
+  /* Ikon layanan: kotak kaca netral + ikon emas. Menggantikan pelangi tint
+     warna-warni supaya senada dengan palet HomePage yang tenang. */
+  .admin-service-hp {
+    @apply flex flex-col items-center gap-2 text-center;
+    transition: transform .22s var(--ad-ease-lux);
+  }
+  .admin-service-hp:active {
+    transform: scale(.95);
+  }
+  .admin-service-hp-icon {
+    @apply flex items-center justify-center;
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    background: var(--ad-glass-1);
+    border: 1px solid var(--ad-glass-border);
+    box-shadow: var(--ad-glass-rim);
+    color: var(--ad-gold-deep);
+    transition: border-color .22s var(--ad-ease-lux), box-shadow .22s var(--ad-ease-lux), transform .22s var(--ad-ease-lux);
+  }
+  .admin-shell.dark .admin-service-hp-icon {
+    color: var(--ad-gold-light);
+  }
+  .admin-service-hp:hover .admin-service-hp-icon {
+    border-color: rgba(212, 175, 55, .45);
+    box-shadow: var(--ad-glass-shadow-lift), var(--ad-glass-rim);
+  }
+  /* Menu yang SEDANG dibuka: isian gelap + ikon emas, mengikuti pola
+     .hp-chip.is-active (aksen gelap, bukan emas padat). */
+  .admin-service-hp.is-active .admin-service-hp-icon {
+    background: var(--ad-ink);
+    border-color: rgba(212, 175, 55, .45);
+    color: var(--ad-gold-light);
+  }
+  .admin-shell.dark .admin-service-hp.is-active .admin-service-hp-icon {
+    background: var(--ad-gold-grad);
+    color: #26200C;
+  }
+  .admin-service-hp-label {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--ad-ink-soft);
+  }
+  .admin-service-hp.is-active .admin-service-hp-label {
+    color: var(--ad-ink);
+    font-weight: 600;
+  }
+  /* Garis pemisah rambut emas — .hp-rule. */
+  .admin-rule {
+    @apply block;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, .35) 50%, transparent);
+  }
+  /* Tombol pil bergaya .hp-btn-primary (GELAP + garis rambut emas). */
+  .admin-btn-ink {
+    @apply inline-flex items-center justify-center gap-2;
+    padding: 13px 22px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--ad-ink);
+    color: var(--ad-bg);
+    border: 1px solid rgba(212, 175, 55, .3);
+    box-shadow: 0 4px 16px rgba(26, 26, 31, .18);
+    transition: transform .2s var(--ad-ease-lux), box-shadow .2s var(--ad-ease-lux);
+  }
+  .admin-btn-ink:active {
+    transform: scale(.97);
+  }
+  .admin-btn-ghost {
+    @apply inline-flex items-center justify-center gap-2;
+    padding: 13px 22px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ad-ink);
+    background: var(--ad-glass-1);
+    border: 1px solid var(--ad-glass-border);
+    box-shadow: var(--ad-glass-rim);
+    transition: transform .2s var(--ad-ease-lux), border-color .2s var(--ad-ease-lux);
+  }
+  .admin-btn-ghost:active {
+    transform: scale(.97);
+  }
+  .admin-btn-danger-soft {
+    color: #C0392B;
+    border-color: rgba(192, 57, 43, .28);
+  }
+  .admin-shell.dark .admin-btn-danger-soft {
+    color: #FCA5A5;
+    border-color: rgba(252, 165, 165, .28);
+  }
+
   /* Sidebar / more-sheet nav link */
   .admin-navlink {
     @apply flex items-center gap-3 px-2.5 py-2 rounded-2xl text-[13.5px] font-bold text-gray-500 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-white/5 hover:text-gold-700 transition-all duration-200;
@@ -273,6 +636,54 @@
     @apply scale-105;
   }
 
+  /* --- Ikon sidebar: NETRAL, bukan warna-warni ---
+     Tiap item menu membawa `color` sendiri (bg-violet-500, bg-sky-500, dst.)
+     yang dulu mengisi kotak ikon → terbaca sebagai pelangi. Isian itu ditimpa
+     di sini menjadi kotak lembut netral dengan ikon EMAS, supaya seluruh rail
+     menu satu warna dan senada dengan Home Page.
+
+     Ditulis sebagai override (bukan menghapus `color` di TSX) karena nilai
+     `color` masih dipakai di tempat lain; `!important` diperlukan sebab
+     bg-*-500 dari Tailwind ada di layer utilities yang menang atas komponen. */
+  .admin-shell .admin-navlink-icon {
+    background: rgba(212, 175, 55, .10) !important;
+    box-shadow: none;
+    color: #B8860B;
+  }
+  .admin-shell .admin-navlink-icon svg {
+    color: #B8860B;
+  }
+  .admin-shell.dark .admin-navlink-icon {
+    background: rgba(232, 200, 106, .12) !important;
+  }
+  .admin-shell.dark .admin-navlink-icon svg {
+    color: #E8C86A;
+  }
+  /* Menu aktif: kotak jadi GELAP + ikon emas — pola aksen yang sama dengan
+     .hp-chip.is-active di Home Page (aksen gelap, bukan emas padat). */
+  .admin-shell .admin-navlink.is-active .admin-navlink-icon {
+    background: #1A1A1F !important;
+  }
+  .admin-shell .admin-navlink.is-active .admin-navlink-icon svg {
+    color: #E8C86A;
+  }
+  .admin-shell.dark .admin-navlink.is-active .admin-navlink-icon {
+    background: linear-gradient(135deg, #B8860B 0%, #E8C86A 38%, #D4AF37 55%, #F5E4A8 72%, #B8860B 100%) !important;
+  }
+  .admin-shell.dark .admin-navlink.is-active .admin-navlink-icon svg {
+    color: #26200C;
+  }
+  /* Keluar/Logout — satu-satunya ikon rail yang boleh berwarna. */
+  .admin-shell .admin-navlink-icon.is-danger {
+    background: rgba(220, 38, 38, .10) !important;
+  }
+  .admin-shell .admin-navlink-icon.is-danger svg {
+    color: #DC2626;
+  }
+  .admin-shell.dark .admin-navlink-icon.is-danger svg {
+    color: #FCA5A5;
+  }
+
   /* Round icon button in the topbar (sits on the gold header → white/glass) */
   .admin-icon-btn {
     @apply w-9 h-9 rounded-full flex items-center justify-center text-white/90 bg-white/15 hover:bg-white/25 transition-all active:scale-90;
@@ -281,6 +692,33 @@
      state reads at a glance, without a jarring accent color. */
   .admin-icon-btn.is-fs-active {
     @apply text-black/70 ring-1 ring-black/40;
+  }
+
+  /* PENTING — di HP header bukan lagi pita emas, melainkan KACA terang, jadi
+     ikon putih .admin-icon-btn praktis tak terlihat. Halaman menyuntikkan
+     tombolnya sendiri lewat adminHeaderActionStore (Kelola Undangan, Tamu,
+     Ucapan, dll.) dan FullscreenButton memakai kelas ini sebagai bawaan, jadi
+     penyesuaiannya dilakukan DI SINI supaya semua ikut tanpa mengubah tiap
+     halaman. Di layar besar (pita emas) gaya lama tetap berlaku. */
+  @media (max-width: 1023px) {
+    .admin-shell .admin-icon-btn {
+      width: 38px;
+      height: 38px;
+      color: var(--ad-ink-soft);
+      background: var(--ad-glass-1);
+      border: 1px solid var(--ad-glass-border);
+      box-shadow: var(--ad-glass-rim);
+    }
+    .admin-shell .admin-icon-btn:hover {
+      color: var(--ad-gold-text);
+      background: var(--ad-glass-3);
+      border-color: rgba(212, 175, 55, .5);
+    }
+    .admin-shell .admin-icon-btn.is-fs-active {
+      @apply ring-0;
+      color: var(--ad-gold-text);
+      border-color: rgba(212, 175, 55, .55);
+    }
   }
 
   /* Mobile bottom-nav tab */

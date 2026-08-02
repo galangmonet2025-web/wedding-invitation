@@ -1,3 +1,65 @@
+// ============ Toast bergaya Netflix ============
+// Pengganti UIkit.notification (kotak putih bawaan yang tidak nyambung dengan
+// tema gelap ini). Satu elemen dipakai ulang, jadi klik beruntun tidak
+// menumpuk toast dan tidak ada sampah DOM saat host re-inject skrip.
+window.__nfxToast = function (copiedText) {
+    // Di desktop undangan dirender di dalam bingkai ponsel; toast harus ikut
+    // di dalamnya, bukan melayang di tengah layar penuh.
+    var host = document.querySelector('.mock-app-screen')
+        || document.querySelector('.phone-container')
+        || document.body;
+
+    var t = document.getElementById('nfx-toast');
+    if (!t || t.parentNode !== host) {
+        if (t && t.parentNode) t.parentNode.removeChild(t);
+        t = document.createElement('div');
+        t.id = 'nfx-toast';
+        t.setAttribute('role', 'status');
+        t.setAttribute('aria-live', 'polite');
+        host.appendChild(t);
+    }
+
+    var preview = (copiedText || '').trim().replace(/\s+/g, ' ');
+    if (preview.length > 30) preview = preview.slice(0, 30) + '…';
+
+    t.innerHTML =
+        '<span class="nfx-toast__icon" aria-hidden="true">'
+        + '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"'
+        + ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M20 6 9 17l-5-5"></path></svg></span>'
+        + '<span class="nfx-toast__body">'
+        + '<span class="nfx-toast__title">Berhasil disalin</span>'
+        + (preview ? '<span class="nfx-toast__sub"></span>' : '')
+        + '</span>';
+    // Teks tenant dimasukkan sebagai TEXT, bukan HTML, supaya nomor/alamat
+    // yang mengandung karakter markup tidak bisa merusak (atau menyuntik) DOM.
+    if (preview) t.querySelector('.nfx-toast__sub').textContent = preview;
+
+    // Toast memakai position:fixed (lihat CSS), jadi secara bawaan ia berpusat
+    // ke VIEWPORT. Di desktop undangan hanya menempati bingkai ponsel ~500px,
+    // maka pusatkan ke bingkai itu. Lebarnya dibaca saat runtime supaya tetap
+    // benar kalau host mengubah tata letaknya.
+    var frame = document.querySelector('.phone-container');
+    var box = frame ? frame.getBoundingClientRect() : null;
+    if (box && box.width && box.width < window.innerWidth - 1) {
+        t.style.left = (box.left + box.width / 2) + 'px';
+        t.style.maxWidth = Math.max(200, box.width - 40) + 'px';
+    } else {
+        t.style.left = '';
+        t.style.maxWidth = '';
+    }
+
+    // Restart animasi walau toast sebelumnya masih tampil.
+    t.classList.remove('is-visible');
+    void t.offsetWidth;
+    t.classList.add('is-visible');
+
+    clearTimeout(window.__nfxToastTimer);
+    window.__nfxToastTimer = setTimeout(function () {
+        t.classList.remove('is-visible');
+    }, 2200);
+};
+
 // ============ Copy to Clipboard ============
 window.copyToClipboard = function (elementId, btn) {
     const el = document.getElementById(elementId);
@@ -7,21 +69,23 @@ window.copyToClipboard = function (elementId, btn) {
     const originalText = btn.innerHTML;
 
     function handleSuccess() {
-        if (typeof UIkit !== 'undefined') {
-            UIkit.notification({
-                message: '<span uk-icon="icon: check"></span> Teks berhasil disalin!',
-                status: 'success',
-                pos: 'top-center',
-                timeout: 2000
-            });
-        } else {
-            btn.innerHTML = '<span uk-icon="check" style="margin-right: 5px;"></span> DATA TERSALIN';
-            btn.style.background = "rgba(232, 114, 154, 0.35)";
+        // Umpan balik pada tombolnya sendiri — paling jelas karena tepat di
+        // tempat jari menekan. Tombol dikunci lebarnya supaya kartu tidak
+        // "melompat" saat labelnya berganti sebentar.
+        if (!btn.dataset.nfxCopyBusy) {
+            btn.dataset.nfxCopyBusy = '1';
+            const w = btn.offsetWidth;
+            if (w) btn.style.minWidth = w + 'px';
+            btn.classList.add('is-copied');
+            btn.innerHTML = '<span class="nfx-copy-check" aria-hidden="true">✓</span> TERSALIN';
             setTimeout(() => {
                 btn.innerHTML = originalText;
-                btn.style.background = "";
-            }, 2000);
+                btn.classList.remove('is-copied');
+                btn.style.minWidth = '';
+                delete btn.dataset.nfxCopyBusy;
+            }, 1800);
         }
+        window.__nfxToast(text);
     }
 
     if (navigator.clipboard && window.isSecureContext) {

@@ -27,8 +27,23 @@ export function AdminHomePage() {
         <div className="space-y-5 animate-fade-in">
             {/* Service grid (Gojek-style). Sits just below the header with a
                 comfortable gap — no negative overlap so nothing feels cramped. */}
-            <div className="mt-1 relative z-10 bg-white dark:bg-wedding-dark-card rounded-3xl shadow-[0_4px_20px_-6px_rgba(0,0,0,0.12)] border border-gray-100 dark:border-gray-800 p-5 lg:p-6">
-                <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-8 gap-y-6 gap-x-2">
+            {/* MOBILE (<lg): panel KACA bergaya HomePage — ikon emas di kotak
+                kaca, senada dengan cangkang /admin versi mobile.
+                DESKTOP (lg+): panel putih + ikon warna-warni yang lama. */}
+            <div className="admin-glass-card lg:hidden mt-1 relative z-10 !rounded-3xl p-5">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-y-6 gap-x-2">
+                    {items.map((item) => (
+                        <NavLink key={item.to} to={item.to} end={item.to === '/admin/dashboard'} className="admin-service-hp">
+                            <span className="admin-service-hp-icon">
+                                <item.icon className="w-6 h-6" />
+                            </span>
+                            <span className="admin-service-hp-label">{item.label}</span>
+                        </NavLink>
+                    ))}
+                </div>
+            </div>
+            <div className="hidden lg:block mt-1 relative z-10 bg-white dark:bg-wedding-dark-card rounded-3xl shadow-[0_4px_20px_-6px_rgba(0,0,0,0.12)] border border-gray-100 dark:border-gray-800 p-5 lg:p-6">
+                <div className="grid grid-cols-8 gap-y-6 gap-x-2">
                     {items.map((item) => (
                         <NavLink key={item.to} to={item.to} end={item.to === '/admin/dashboard'} className="admin-service">
                             <span className={`admin-service-icon ${serviceIconTint(item.color)}`}>
@@ -40,8 +55,11 @@ export function AdminHomePage() {
                 </div>
             </div>
 
-            {/* Section label */}
-            <h3 className="px-1 text-sm font-black text-gray-700 dark:text-gray-200">
+            {/* Section label — eyebrow emas di HP, judul tebal biasa di desktop */}
+            <p className="admin-eyebrow lg:hidden px-1 pt-1">
+                {t('dashboard.overview', 'Ringkasan')}
+            </p>
+            <h3 className="hidden lg:block px-1 text-sm font-black text-gray-700 dark:text-gray-200">
                 {t('dashboard.overview', 'Ringkasan')}
             </h3>
 

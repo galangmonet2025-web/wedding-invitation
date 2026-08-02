@@ -1,0 +1,835 @@
+<div class="uk-grid-collapse uk-height-viewport" uk-grid="">
+
+    <!-- ======================= SIDEBAR DESKTOP (dekoratif) ======================= -->
+    <div class="uk-width-expand uk-visible@m vg-sidebar" id="desktop-bg-container">
+        <div id="layer-bg" style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></div>
+        <div class="vg-sidebar__scrim"></div>
+        <div id="layer-text">
+            <div class="vg-eyebrow" style="color:#d9b0b6;">The Wedding Issue</div>
+            <h1 class="vg-sidebar__masthead">
+                {{groom_nickname}}<br>&amp;<br>{{bride_nickname}}
+            </h1>
+            <div class="vg-sidebar__meta">{{wedding_date}}</div>
+        </div>
+    </div>
+
+    <!-- ======================= KOLOM UNDANGAN ======================= -->
+    <div class="phone-container" id="content-body">
+        <div class="mock-app-screen">
+
+            <!-- ============================================================
+                 SAMPUL MAJALAH
+                 Anatomi: skyline > masthead > coverlines > dateline + barcode
+                 ============================================================ -->
+            <section id="theme-cover">
+                <div class="vg-cover-photo" style="background-image: url(&quot;{{#if photo_cover}}{{photo_cover}}{{else}}{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}{{/if}}&quot;);"></div>
+                <div class="vg-cover-scrim"></div>
+
+                <div class="vg-cover-inner">
+
+                    <!-- skyline / banner atas -->
+                    <div class="vg-skyline">
+                        <span>Vol. I &middot; No. 01</span>
+                        <span>Edisi Pernikahan</span>
+                    </div>
+
+                    <!-- MASTHEAD -->
+                    <div class="vg-masthead">
+                        <h1 class="vg-masthead__title">
+                            {{groom_nickname}}
+                            <span class="vg-masthead__amp">and</span>
+                            {{bride_nickname}}
+                        </h1>
+                        <div class="vg-masthead__sub">The Wedding Issue</div>
+                    </div>
+
+                    <!-- COVERLINES -->
+                    <div class="vg-coverlines">
+                        <div class="vg-coverline-item">
+                            <div class="vg-coverline-item__kicker">Liputan Utama</div>
+                            <div class="vg-coverline-item__text">
+                                Janji Suci Dua Insan<br>
+                                <em>di hari yang dinanti</em>
+                            </div>
+                        </div>
+
+                        <div class="vg-coverline-item vg-coverline-item--right">
+                            <div class="vg-coverline-item__kicker">Eksklusif</div>
+                            <div class="vg-coverline-item__text">
+                                {{nama_lokasi_resepsi}}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DATELINE + BARCODE (barcode = kode undangan) -->
+                    <div class="vg-cover-foot">
+                        <div class="vg-dateline">
+                            {{wedding_date}}<br>
+                            {{site_name}}
+                        </div>
+                        <div class="vg-barcode">
+                            <div class="vg-barcode__bars" id="vg-barcode-bars"></div>
+                            <div class="vg-barcode__code">
+                                {{#if kode_undangan}}{{kode_undangan}}{{else}}undangan{{/if}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Label langganan: nama tamu -->
+                {{#unless is_link_umum_and_not_for_spesific_guest}}
+                <div class="vg-sublabel">
+                    <div class="vg-sublabel__meta">
+                        Edisi<br>Khusus
+                    </div>
+                    <div class="vg-sublabel__name">{{nama_tamu}}</div>
+                </div>
+                {{/unless}}
+
+                <div class="vg-open-wrap">
+                    <button type="button" id="btn-open-invitation">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <path d="M4 6h16v12H4z" />
+                            <path d="M4 7l8 6 8-6" />
+                        </svg>
+                        Buka Undangan
+                    </button>
+
+                    <!-- QR check-in di sampul (host menangani klik #btn-show-qr).
+                         Tombol FAB QR milik host baru muncul SESUDAH undangan dibuka,
+                         jadi tanpa tombol ini tamu tak punya akses QR di sampul. -->
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <button type="button" id="btn-show-qr" class="vg-cover-qr">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="6" height="6" rx="1" />
+                            <rect x="15" y="3" width="6" height="6" rx="1" />
+                            <rect x="3" y="15" width="6" height="6" rx="1" />
+                            <path d="M15 15h3v3h-3zM20 20h1v1h-1z" />
+                        </svg>
+                        QR Check-in
+                    </button>
+                    {{/unless}}
+                </div>
+            </section>
+
+            <!-- ============================================================
+                 ISI MAJALAH
+                 ============================================================ -->
+            <div id="vg-magazine">
+
+                <!-- ---------------------- DAFTAR ISI ---------------------- -->
+                <section id="contents" data-menu-label="Daftar Isi" class="vg-section vg-contents">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">01</span>
+                        <span class="vg-sechead__title">Contents</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    <h2 class="vg-contents__title reveal-item">Dalam<br>Edisi Ini</h2>
+
+                    <ul class="vg-toc reveal-item">
+                        <li data-scroll="couples">
+                            <span class="vg-toc__num">02</span>
+                            <span class="vg-toc__label">Mempelai</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        <li data-scroll="schedule">
+                            <span class="vg-toc__num">03</span>
+                            <span class="vg-toc__label">Waktu &amp; Tempat</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        {{#if flag_pakai_timeline_kisah}}
+                        <li data-scroll="story">
+                            <span class="vg-toc__num">04</span>
+                            <span class="vg-toc__label">Kisah Kami</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        {{/if}}
+                        {{#if is_fitur_gallery}}
+                        <li data-scroll="gallery">
+                            <span class="vg-toc__num">05</span>
+                            <span class="vg-toc__label">Galeri</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        {{/if}}
+                        <li data-scroll="rsvp">
+                            <span class="vg-toc__num">06</span>
+                            <span class="vg-toc__label">Kehadiran</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        <li data-scroll="wishes">
+                            <span class="vg-toc__num">07</span>
+                            <span class="vg-toc__label">Ucapan &amp; Doa</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        {{#if tampilkan_amplop_online}}
+                        <li data-scroll="gift">
+                            <span class="vg-toc__num">08</span>
+                            <span class="vg-toc__label">Wedding Gift</span>
+                            <span class="vg-toc__dots"></span>
+                        </li>
+                        {{/if}}
+                    </ul>
+                </section>
+
+                <!-- ---------------------- PEMBUKA ---------------------- -->
+                <section class="vg-section vg-section--tight">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">&mdash;</span>
+                        <span class="vg-sechead__title">Editor's Letter</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+                    <div class="vg-article vg-article--dropcap reveal-item">
+                        <p>
+                            {{#if kalimat_pembuka}}{{kalimat_pembuka}}{{else}}Dengan memohon rahmat dan
+                            ridho Tuhan Yang Maha Esa, kami bermaksud menyelenggarakan pernikahan putra-putri
+                            kami. Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila
+                            Bapak/Ibu/Saudara/i berkenan hadir untuk memberikan doa restu.{{/if}}
+                        </p>
+                    </div>
+                    <div class="vg-folio">01</div>
+                </section>
+
+                <!-- ---------------------- MEMPELAI ---------------------- -->
+                <section id="couples" data-menu-label="Mempelai" class="vg-section vg-couples">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">02</span>
+                        <span class="vg-sechead__title">The Couple</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    <!-- ===== Mempelai pria — "pelat" feature opener ===== -->
+                    <article class="vg-plate reveal-item">
+                        <span class="vg-plate__index" aria-hidden="true">I</span>
+
+                        <div class="vg-plate__figure">
+                            <div class="vg-plate__photo" style="background-image: url(&quot;{{photo_groom_photo}}&quot;);"></div>
+                            <span class="vg-plate__credit">Mempelai Pria</span>
+                        </div>
+
+                        <h3 class="vg-plate__name">{{groom_nickname}}</h3>
+
+                        <div class="vg-plate__body">
+                            <p class="vg-plate__fullname">{{groom_name}}</p>
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="vg-plate__rule"></div>
+                            <p class="vg-plate__parents">
+                                <span class="vg-plate__parents-lbl">Putra dari</span>
+                                Bapak {{nama_bapak_laki_laki}}<br>
+                                &amp; Ibu {{nama_ibu_laki_laki}}
+                            </p>
+                            {{/if}}
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            {{#if ig_laki_laki}}
+                            <a class="vg-plate__ig" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                                    <circle cx="12" cy="12" r="4" />
+                                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                                </svg>
+                                {{ig_laki_laki}}
+                            </a>
+                            {{/if}}
+                            {{/if}}
+                        </div>
+                    </article>
+
+                    <!-- Pemisah ampersand khas spread majalah -->
+                    <div class="vg-amp reveal-item" aria-hidden="true">
+                        <span class="vg-amp__line"></span>
+                        <span class="vg-amp__mark">&amp;</span>
+                        <span class="vg-amp__line"></span>
+                    </div>
+
+                    <!-- ===== Mempelai wanita — cermin dari blok pria ===== -->
+                    <article class="vg-plate vg-plate--mirror reveal-item">
+                        <span class="vg-plate__index" aria-hidden="true">II</span>
+
+                        <div class="vg-plate__figure">
+                            <div class="vg-plate__photo" style="background-image: url(&quot;{{photo_bride_photo}}&quot;);"></div>
+                            <span class="vg-plate__credit">Mempelai Wanita</span>
+                        </div>
+
+                        <h3 class="vg-plate__name">{{bride_nickname}}</h3>
+
+                        <div class="vg-plate__body">
+                            <p class="vg-plate__fullname">{{bride_name}}</p>
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <div class="vg-plate__rule"></div>
+                            <p class="vg-plate__parents">
+                                <span class="vg-plate__parents-lbl">Putri dari</span>
+                                Bapak {{nama_bapak_perempuan}}<br>
+                                &amp; Ibu {{nama_ibu_perempuan}}
+                            </p>
+                            {{/if}}
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            {{#if ig_perempuan}}
+                            <a class="vg-plate__ig" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                                    <circle cx="12" cy="12" r="4" />
+                                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                                </svg>
+                                {{ig_perempuan}}
+                            </a>
+                            {{/if}}
+                            {{/if}}
+                        </div>
+                    </article>
+                    <div class="vg-folio">02</div>
+                </section>
+
+                <!-- ---------------------- PULL QUOTE ---------------------- -->
+                <section class="vg-section vg-section--tight">
+                    <div class="vg-pullquote reveal-item">
+                        <p class="vg-pullquote__text">
+                            &ldquo;{{#if quote}}{{quote}}{{else}}Dan di antara tanda-tanda kekuasaan-Nya
+                            ialah Dia menciptakan untukmu pasangan hidup dari jenismu sendiri, supaya
+                            kamu cenderung dan merasa tenteram kepadanya.{{/if}}&rdquo;
+                        </p>
+                        {{#if quote_by}}
+                        <div class="vg-pullquote__attr">{{quote_by}}</div>
+                        {{/if}}
+                    </div>
+                </section>
+
+                <!-- ---------------------- WAKTU & TEMPAT ---------------------- -->
+                <section id="schedule" data-menu-label="Waktu &amp; Tempat" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">03</span>
+                        <span class="vg-sechead__title">Save The Date</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    <!-- Akad -->
+                    <div class="vg-event reveal-item">
+                        <div class="vg-event__tag">Akad Nikah</div>
+                        <div class="vg-event__date">{{tanggal_akad}}</div>
+                        <div class="vg-event__time">{{jam_akad}}</div>
+                        <div class="vg-event__place">{{nama_lokasi_akad}}</div>
+                        <div class="vg-event__addr">{{keterangan_lokasi_akad}}</div>
+                        {{#if akad_map}}
+                        <a class="vg-btn-outline" href="{{akad_map}}" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                <path d="M12 21s-7-4.35-7-10a7 7 0 1114 0c0 5.65-7 10-7 10z" />
+                                <circle cx="12" cy="11" r="2.5" />
+                            </svg>
+                            Lihat Peta
+                        </a>
+                        {{/if}}
+                    </div>
+
+                    <!-- Resepsi -->
+                    <div class="vg-event reveal-item">
+                        <div class="vg-event__tag">Resepsi</div>
+                        <div class="vg-event__date">{{tanggal_resepsi}}</div>
+                        <div class="vg-event__time">{{jam_resepsi}}</div>
+                        <div class="vg-event__place">{{nama_lokasi_resepsi}}</div>
+                        <div class="vg-event__addr">{{keterangan_lokasi_resepsi}}</div>
+                        {{#if resepsi_map}}
+                        <a class="vg-btn-outline" href="{{resepsi_map}}" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                <path d="M12 21s-7-4.35-7-10a7 7 0 1114 0c0 5.65-7 10-7 10z" />
+                                <circle cx="12" cy="11" r="2.5" />
+                            </svg>
+                            Lihat Peta
+                        </a>
+                        {{/if}}
+                    </div>
+
+                    <!-- Countdown: angka digerakkan host (span tm-countdown-*) -->
+                    <div class="vg-countdown reveal-item">
+                        <div class="vg-countdown__cell">
+                            <div class="vg-countdown__num">{{countdown_hari}}</div>
+                            <div class="vg-countdown__lbl">Hari</div>
+                        </div>
+                        <div class="vg-countdown__cell">
+                            <div class="vg-countdown__num">{{countdown_jam}}</div>
+                            <div class="vg-countdown__lbl">Jam</div>
+                        </div>
+                        <div class="vg-countdown__cell">
+                            <div class="vg-countdown__num">{{countdown_menit}}</div>
+                            <div class="vg-countdown__lbl">Menit</div>
+                        </div>
+                        <div class="vg-countdown__cell">
+                            <div class="vg-countdown__num">{{countdown_detik}}</div>
+                            <div class="vg-countdown__lbl">Detik</div>
+                        </div>
+                    </div>
+                    <div id="countdown-status" style="display:none;"></div>
+                    <span id="vg-wed-date" data-wedding-date="{{wedding_date_iso}}" style="display:none;"></span>
+
+                    {{#if is_fitur_live_streaming}}
+                    {{#if link_live_streaming}}
+                    <div style="text-align:center;" class="reveal-item">
+                        <a class="vg-live" href="{{link_live_streaming}}" target="_blank" rel="noopener">
+                            <span class="vg-live__dot"></span>
+                            Saksikan Live Streaming
+                        </a>
+                    </div>
+                    {{/if}}
+                    {{/if}}
+                    <div class="vg-folio">03</div>
+                </section>
+
+                <!-- ---------------------- KISAH KAMI ---------------------- -->
+                {{#if flag_pakai_timeline_kisah}}
+                <section id="story" data-menu-label="Kisah Kami" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">04</span>
+                        <span class="vg-sechead__title">Our Story</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    {{#each timeline_kisah}}
+                    <div class="vg-feature reveal-item" style="margin-bottom:32px;">
+                        <div class="vg-feature__role">{{this.tanggal}}</div>
+                        <h3 class="vg-feature__name" style="font-size:26px;margin:0 0 10px;">{{this.judul}}</h3>
+                        <div class="vg-article">
+                            <p>{{this.deskripsi}}</p>
+                        </div>
+                    </div>
+                    {{/each}}
+                    <div class="vg-folio">04</div>
+                </section>
+                {{/if}}
+
+                <!-- ---------------------- GALERI (photo essay) ---------------------- -->
+                {{#if is_fitur_gallery}}
+                <section id="gallery" data-menu-label="Galeri" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">05</span>
+                        <span class="vg-sechead__title">Photo Essay</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    <div class="vg-gallery reveal-item">
+                        {{#each galleries}}
+                        <a class="vg-gallery__item gallery-item">
+                            <img class="lightbox-injection" src="{{this.url}}" alt="Galeri {{@index_plus_1}}" loading="lazy">
+                            <span class="vg-gallery__cap">Plate {{@index_plus_1}}</span>
+                        </a>
+                        {{/each}}
+                    </div>
+                    <div class="vg-folio">05</div>
+                </section>
+                {{/if}}
+
+                <!-- ---------------------- RSVP ---------------------- -->
+                <section id="rsvp" data-menu-label="Konfirmasi Kehadiran" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">06</span>
+                        <span class="vg-sechead__title">RSVP</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <div id="rsvp-container" class="reveal-item">
+
+                        {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+                        <div id="rsvp-form">
+                            <div class="vg-field">
+                                <label class="vg-label" for="guest-name-input">Nama Tamu</label>
+                                <input class="vg-input" type="text" id="guest-name-input" value="{{nama_tamu}}" readonly tabindex="-1">
+                            </div>
+
+                            <input type="hidden" id="rsvp-code" value="{{kode_undangan}}">
+
+                            <div class="vg-field">
+                                <label class="vg-label" for="rsvp-status">Konfirmasi</label>
+                                <select class="vg-select" id="rsvp-status">
+                                    <option value="" disabled selected>Pilih kehadiran</option>
+                                    <option value="hadir">Hadir</option>
+                                    <option value="declined">Tidak Hadir</option>
+                                </select>
+                            </div>
+
+                            <div class="vg-field">
+                                <label class="vg-label" for="rsvp-guests">Jumlah Tamu</label>
+                                <select class="vg-select" id="rsvp-guests">
+                                    <option value="1">1 Orang</option>
+                                    <option value="2">2 Orang</option>
+                                    <option value="3">3 Orang</option>
+                                    <option value="4">4 Orang</option>
+                                    <option value="5">5 Orang</option>
+                                </select>
+                            </div>
+
+                            <button type="button" class="vg-btn-solid" id="btn-submit-kehadiran">Kirim Konfirmasi</button>
+                        </div>
+                        {{/hidden}}
+
+                        {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+                        <div id="alert-submit-kehadiran" class="vg-thanks">
+                            {{^hidden is_hadir}}
+                            <div data-rsvp-branch="hadir">
+                                <div class="vg-thanks__mark">&mdash;</div>
+                                <div class="vg-thanks__title">Sampai Jumpa</div>
+                                <div class="vg-thanks__text">
+                                    Terima kasih telah mengonfirmasi kehadiran. Kami menantikan
+                                    kehadiran Anda di hari bahagia kami.
+                                </div>
+                            </div>
+                            {{/hidden}}
+
+                            {{#hidden is_hadir}}
+                            <div data-rsvp-branch="tidak">
+                                <div class="vg-thanks__mark">&mdash;</div>
+                                <div class="vg-thanks__title">Terima Kasih</div>
+                                <div class="vg-thanks__text">
+                                    Terima kasih atas konfirmasinya. Doa dan restu Anda
+                                    sudah sangat berarti bagi kami.
+                                </div>
+                            </div>
+                            {{/hidden}}
+                        </div>
+                        {{/hidden}}
+
+                    </div>
+                    {{/unless}}
+                    <div class="vg-folio">06</div>
+                </section>
+
+                <!-- ---------------------- UCAPAN & DOA ---------------------- -->
+                <section id="wishes" data-menu-label="Ucapan &amp; Doa" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">07</span>
+                        <span class="vg-sechead__title">Letters</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <div id="wish-container" class="reveal-item">
+
+                        {{#hidden is_sudah_isi_ucapan}}
+                        <div id="wish-form">
+                            <div class="vg-field">
+                                <label class="vg-label" for="wish-name">Nama</label>
+                                <input class="vg-input" type="text" id="wish-name" value="{{nama_tamu}}" readonly tabindex="-1">
+                            </div>
+                            <div class="vg-field">
+                                <label class="vg-label" for="wish-message">Ucapan &amp; Doa</label>
+                                <textarea class="vg-textarea" id="wish-message" rows="3" placeholder="Tulis ucapan dan doa Anda..."></textarea>
+                            </div>
+                            <button type="button" class="vg-btn-solid" id="btn-submit-ucapan">Kirim Ucapan</button>
+                        </div>
+                        {{/hidden}}
+
+                        {{^hidden is_sudah_isi_ucapan}}
+                        <div id="alert-submit-ucapan" class="vg-thanks">
+                            <div class="vg-thanks__mark">&mdash;</div>
+                            <div class="vg-thanks__title">Terima Kasih</div>
+                            <div class="vg-thanks__text">
+                                Ucapan dan doa Anda telah kami terima. Terima kasih atas
+                                kehangatan yang Anda kirimkan.
+                            </div>
+                        </div>
+                        {{/hidden}}
+
+                    </div>
+                    {{/unless}}
+
+                    <!-- Daftar ucapan: di luar blok unless agar link umum tetap melihatnya -->
+                    <div class="vg-wishes" data-loop="wishes">
+                        {{#each wishes}}
+                        <div class="vg-wish reveal-item" data-wish-item>
+                            <div class="vg-wish__head">
+                                <span class="vg-wish__name" data-wish-field="name">{{this.guest_name}}</span>
+                                <span class="vg-wish__line"></span>
+                                <span class="vg-wish__name" style="font-weight:300;letter-spacing:.14em;" data-wish-field="time">{{this.guest_comment_time}}</span>
+                            </div>
+                            <p class="vg-wish__msg" data-wish-field="message">{{this.guest_message}}</p>
+                        </div>
+                        {{/each}}
+                    </div>
+
+                    <!-- Cetakan untuk ucapan baru saat daftar masih kosong -->
+                    <div data-wish-template style="display:none;">
+                        <div class="vg-wish is-visible" data-wish-item>
+                            <div class="vg-wish__head">
+                                <span class="vg-wish__name" data-wish-field="name"></span>
+                                <span class="vg-wish__line"></span>
+                                <span class="vg-wish__name" style="font-weight:300;letter-spacing:.14em;" data-wish-field="time"></span>
+                            </div>
+                            <p class="vg-wish__msg" data-wish-field="message"></p>
+                        </div>
+                    </div>
+                    <div class="vg-folio">07</div>
+                </section>
+
+                <!-- ---------------------- WEDDING GIFT ---------------------- -->
+                {{#if tampilkan_amplop_online}}
+                <section id="gift" data-menu-label="Wedding Gift" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">08</span>
+                        <span class="vg-sechead__title">The Registry</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+
+                    <div class="vg-article reveal-item" style="margin-bottom:26px;">
+                        <p>
+                            Doa restu Anda adalah hadiah terindah. Namun bila berkenan memberi
+                            tanda kasih, kami sediakan kanal berikut.
+                        </p>
+                    </div>
+
+                    <!-- Dua rekening BERDAMPINGAN; satu rekening -> otomatis 1 kolom. -->
+                    <div class="vg-gift-grid{{#if flag_pakai_2_rekening}} is-duo{{/if}}">
+                        {{#if bank_1}}
+                        <div class="vg-gift reveal-item">
+                            <div class="vg-gift__bank">{{bank_1}}</div>
+                            <div class="vg-gift__num" id="vg-acc-1">{{rek_1}}</div>
+                            <div class="vg-gift__name">a.n. {{nama_rek_1}}</div>
+                            <button type="button" class="vg-btn-outline" data-copy="vg-acc-1">Salin Nomor</button>
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <img class="vg-gift__qr" src="{{gambar_qris_rekening_1}}" alt="QRIS 1" loading="lazy">
+                            {{/if}}
+                        </div>
+                        {{/if}}
+
+                        {{#if flag_pakai_2_rekening}}
+                        {{#if bank_2}}
+                        <div class="vg-gift reveal-item">
+                            <div class="vg-gift__bank">{{bank_2}}</div>
+                            <div class="vg-gift__num" id="vg-acc-2">{{rek_2}}</div>
+                            <div class="vg-gift__name">a.n. {{nama_rek_2}}</div>
+                            <button type="button" class="vg-btn-outline" data-copy="vg-acc-2">Salin Nomor</button>
+                            {{#if flag_pakai_qris_rekening_2}}
+                            <img class="vg-gift__qr" src="{{gambar_qris_rekening_2}}" alt="QRIS 2" loading="lazy">
+                            {{/if}}
+                        </div>
+                        {{/if}}
+                        {{/if}}
+                    </div>
+
+                    {{#if flag_kirim_hadiah_offline}}
+                    <div class="vg-gift reveal-item">
+                        <div class="vg-gift__bank">Kirim Hadiah</div>
+                        <!-- id dipakai tombol Salin Alamat (mekanisme data-copy di index.js) -->
+                        <div class="vg-gift__addr" id="vg-addr-offline">
+                            <span class="vg-gift__addr-place" data-copy-line>{{nama_lokasi_kirim_hadiah_offline}}</span>
+                            <span class="vg-gift__addr-line" data-copy-line>{{alamat_lokasi_kirim_hadiah_offline}}</span>
+                        </div>
+                        <button type="button" class="vg-btn-outline" data-copy="vg-addr-offline">Salin Alamat</button>
+                    </div>
+                    {{/if}}
+                    <div class="vg-folio">08</div>
+                </section>
+                {{/if}}
+
+                <!-- ---------------------- BALASAN INSTAGRAM ---------------------- -->
+                {{#if flag_pakai_additional_feature_story_balasan_instagram}}
+                <section id="happiness" data-menu-label="Berbagi Bahagia" class="vg-section">
+                    <div class="vg-sechead reveal-item">
+                        <span class="vg-sechead__num">09</span>
+                        <span class="vg-sechead__title">Share The Joy</span>
+                        <span class="vg-sechead__line"></span>
+                    </div>
+                    <div class="vg-article reveal-item" style="margin-bottom:22px;">
+                        <p>Bagikan kebahagiaan ini melalui Instagram Story Anda.</p>
+                    </div>
+                    <!-- Frame IG adalah PNG transparan: wajib ditumpuk DI ATAS foto
+                         contoh (sample_story_*), bukan berdiri sendiri — kalau sendirian
+                         bingkai putihnya nyaris tak terlihat di atas kertas gading. -->
+                    <div class="vg-story-row reveal-item">
+                        <div class="vg-story-card">
+                            <img class="vg-story-card__photo" src="{{sample_story_1}}" alt="Momen 1" loading="lazy">
+                            {{#if frame_balasan_instagram}}
+                            <img class="vg-story-card__frame" src="{{frame_balasan_instagram}}" alt="Frame" loading="lazy">
+                            {{/if}}
+                            <span class="vg-story-card__cap">Bab Satu</span>
+                        </div>
+                        <div class="vg-story-card">
+                            <img class="vg-story-card__photo" src="{{sample_story_2}}" alt="Momen 2" loading="lazy">
+                            {{#if frame_balasan_instagram}}
+                            <img class="vg-story-card__frame" src="{{frame_balasan_instagram}}" alt="Frame" loading="lazy">
+                            {{/if}}
+                            <span class="vg-story-card__cap">Bab Dua</span>
+                        </div>
+                        <div class="vg-story-card">
+                            <img class="vg-story-card__photo" src="{{sample_story_3}}" alt="Momen 3" loading="lazy">
+                            {{#if frame_balasan_instagram}}
+                            <img class="vg-story-card__frame" src="{{frame_balasan_instagram}}" alt="Frame" loading="lazy">
+                            {{/if}}
+                            <span class="vg-story-card__cap">Bab Tiga</span>
+                        </div>
+                    </div>
+
+                    {{#if link_balasan_instagram}}
+                    <div class="reveal-item" style="text-align:center;margin-top:24px;">
+                        <a class="vg-btn-outline" href="{{link_balasan_instagram}}" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                <rect x="2" y="2" width="20" height="20" rx="5" />
+                                <circle cx="12" cy="12" r="4" />
+                                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                            </svg>
+                            Buka Frame
+                        </a>
+                    </div>
+                    {{/if}}
+                    <div class="vg-folio">09</div>
+                </section>
+                {{/if}}
+
+                <!-- ---------------------- PENUTUP ---------------------- -->
+                <section class="vg-closing">
+                    <div class="vg-closing__photo" style="background-image: url(&quot;{{#if photo_closing}}{{photo_closing}}{{else}}{{photo_hero_cover}}{{/if}}&quot;);"></div>
+                    <div class="vg-closing__scrim"></div>
+
+                    <div class="vg-closing__inner">
+                        <!-- Skyline penutup: meniru "back cover" majalah -->
+                        <div class="vg-closing__skyline">
+                            <span>Vol. I &middot; No. 01</span>
+                            <span>Penutup</span>
+                        </div>
+
+                        <div class="vg-closing__center">
+                            <div class="vg-closing__eyebrow">Terima Kasih</div>
+
+                            <p class="vg-closing__thanks">
+                                {{#if kalimat_penutup}}{{kalimat_penutup}}{{else}}Merupakan suatu kehormatan
+                                dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir dan
+                                memberikan doa restu.{{/if}}
+                            </p>
+
+                            <div class="vg-closing__ornament" aria-hidden="true">
+                                <span></span><i>&#10022;</i><span></span>
+                            </div>
+
+                            <h2 class="vg-closing__names">
+                                {{groom_nickname}}
+                                <span class="vg-closing__amp">and</span>
+                                {{bride_nickname}}
+                            </h2>
+
+                            <div class="vg-closing__date">{{wedding_date}}</div>
+                        </div>
+                        <!-- /vg-closing__center -->
+
+                        <div class="vg-social">
+                            {{#if flag_use_instagram_webconfig}}
+                            <a href="{{url_instagram_webconfig}}" target="_blank" rel="noopener" aria-label="Instagram">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                                    <circle cx="12" cy="12" r="4" />
+                                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                                </svg>
+                            </a>
+                            {{/if}}
+                            {{#if flag_use_whatsapp_webconfig}}
+                            <a href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener" aria-label="WhatsApp">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm0 2a8 8 0 016.9 12l.8 2.8-2.9-.8A8 8 0 1112 4zm4.3 9.6c-.2-.1-1.3-.7-1.5-.8-.2-.1-.4-.1-.5.1l-.7.8c-.1.2-.3.2-.5.1a6.4 6.4 0 01-3.2-2.8c-.1-.2 0-.4.1-.5l.5-.6c.1-.2.1-.3 0-.5l-.7-1.6c-.2-.4-.4-.4-.5-.4h-.5c-.2 0-.5.1-.7.3a2.6 2.6 0 00-.8 1.9c0 1.1.8 2.2.9 2.4a9 9 0 003.5 3.1c1.7.7 2 .6 2.4.5.5-.1 1.3-.5 1.5-1.1.2-.5.2-1 .1-1.1z" />
+                                </svg>
+                            </a>
+                            {{/if}}
+                            {{#if flag_use_youtube_webconfig}}
+                            <a href="{{url_youtube_webconfig}}" target="_blank" rel="noopener" aria-label="YouTube">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M23 12s0-3.5-.4-5.1a2.6 2.6 0 00-1.8-1.8C19.1 4.7 12 4.7 12 4.7s-7.1 0-8.8.4A2.6 2.6 0 001.4 6.9C1 8.5 1 12 1 12s0 3.5.4 5.1a2.6 2.6 0 001.8 1.8c1.7.4 8.8.4 8.8.4s7.1 0 8.8-.4a2.6 2.6 0 001.8-1.8C23 15.5 23 12 23 12zM9.8 15.3V8.7l6 3.3-6 3.3z" />
+                                </svg>
+                            </a>
+                            {{/if}}
+                            {{#if flag_use_tiktok_webconfig}}
+                            <a href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener" aria-label="TikTok">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M16.5 2h-3v13a2.5 2.5 0 11-2.5-2.5c.2 0 .4 0 .5.1V9.5A5.5 5.5 0 1016.5 15V8.6a6.8 6.8 0 004 1.3V6.8a3.9 3.9 0 01-4-3.8V2z" />
+                                </svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ---------------------- KOLOFON / FOOTER ---------------------- -->
+                <div class="vg-colophon">
+                    <a class="vg-colophon__brand" href="{{site_url}}" target="_blank" rel="noopener">{{site_name}}</a>
+                    <div class="vg-colophon__text">
+                        Undangan digital oleh {{site_name}}<br>
+                        Vol. I &middot; Edisi Pernikahan
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 FAB (dipakai hanya bila flag_use_system_action_button = false)
+                 ============================================================ -->
+            <div id="theme-fab-container" style="display:none;">
+                <div class="vg-fab-stack">
+                    <button type="button" class="vg-fab" id="btn-show-menu" aria-label="Menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                            <path d="M4 7h16M4 12h16M4 17h16" />
+                        </svg>
+                    </button>
+                    <button type="button" class="vg-fab" id="btn-show-qr" aria-label="QR">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
+                            <path d="M14 14h3v3h-3zM19 19h2v2h-2z" />
+                        </svg>
+                    </button>
+                    <button type="button" class="vg-fab" id="btn-toggle-music" aria-label="Musik">
+                        <svg id="play-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="display:block;">
+                            <path d="M9 18V5l10-2v13" />
+                            <circle cx="7" cy="18" r="2.5" />
+                            <circle cx="17" cy="16" r="2.5" />
+                        </svg>
+                        <svg id="pause-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="display:none;">
+                            <path d="M9 5v14M15 5v14" />
+                        </svg>
+                    </button>
+                    <button type="button" class="vg-fab" id="btn-scroll-up" aria-label="Ke atas" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ---------------------- MODAL MENU ---------------------- -->
+            <div class="vg-modal" id="menu-modal">
+                <div class="vg-modal__panel">
+                    <button type="button" class="vg-modal__close" id="btn-close-menu" aria-label="Tutup">&times;</button>
+                    <div class="vg-modal__title">Contents</div>
+                    <div class="vg-modal__sub">Daftar Isi</div>
+                    <ul class="vg-menu-list">
+                        <li><button type="button" data-scroll="contents"><span class="vg-menu-num">01</span>Daftar Isi</button></li>
+                        <li><button type="button" data-scroll="couples"><span class="vg-menu-num">02</span>Mempelai</button></li>
+                        <li><button type="button" data-scroll="schedule"><span class="vg-menu-num">03</span>Waktu &amp; Tempat</button></li>
+                        {{#if flag_pakai_timeline_kisah}}
+                        <li><button type="button" data-scroll="story"><span class="vg-menu-num">04</span>Kisah Kami</button></li>
+                        {{/if}}
+                        {{#if is_fitur_gallery}}
+                        <li><button type="button" data-scroll="gallery"><span class="vg-menu-num">05</span>Galeri</button></li>
+                        {{/if}}
+                        <li><button type="button" data-scroll="rsvp"><span class="vg-menu-num">06</span>Kehadiran</button></li>
+                        <li><button type="button" data-scroll="wishes"><span class="vg-menu-num">07</span>Ucapan &amp; Doa</button></li>
+                        {{#if tampilkan_amplop_online}}
+                        <li><button type="button" data-scroll="gift"><span class="vg-menu-num">08</span>Wedding Gift</button></li>
+                        {{/if}}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- ---------------------- MODAL QR ---------------------- -->
+            <div class="vg-modal" id="qr-modal">
+                <div class="vg-modal__panel">
+                    <button type="button" class="vg-modal__close" id="btn-close-qr" aria-label="Tutup">&times;</button>
+                    <div class="vg-modal__title">Check-In</div>
+                    <div class="vg-modal__sub">Tunjukkan saat tiba</div>
+                    <div id="qr-slot"></div>
+                </div>
+            </div>
+
+            <!-- ---------------------- LIGHTBOX ---------------------- -->
+            <div class="vg-lightbox" id="vg-lightbox">
+                <button type="button" class="vg-lightbox__close" id="vg-lightbox-close" aria-label="Tutup">&times;</button>
+                <img id="vg-lightbox-img" src="" alt="">
+            </div>
+
+            <!-- Penampung event musik (host yang memutar audio, bukan tema) -->
+            <audio id="bg-music" loop></audio>
+        </div>
+    </div>
+</div>

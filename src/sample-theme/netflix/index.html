@@ -79,8 +79,8 @@
 
             <!-- ===== COVER ("Who's watching?" profile gate) ===== -->
             <section id="theme-cover" class="section-cover"
-                style="background-image: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.92)), url(&quot;{{photo_cover}}&quot;);">
-                <div class="cover-zoom" style="background-image: url(&quot;{{photo_cover}}&quot;);"></div>
+                style="background-image: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.92)), url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);">
+                <div class="cover-zoom" style="background-image: url(&quot;{{#if photo_hero_cover}}{{photo_hero_cover}}{{else}}{{photo_background}}{{/if}}&quot;);"></div>
 
                 <!-- Top bar: Netflix wordmark -->
                 <div class="cover-topbar">
@@ -93,6 +93,11 @@
 
                     <button class="profile-tile" id="btn-open-invitation" type="button">
                         <div class="profile-avatar">
+                            {{#if photo_hero_cover}}
+                            <img class="profile-photo" src="{{photo_hero_cover}}" alt="{{groom_nickname}} &amp; {{bride_nickname}}" loading="eager" decoding="async">
+                            {{else}}{{#if photo_background}}
+                            <img class="profile-photo" src="{{photo_background}}" alt="{{groom_nickname}} &amp; {{bride_nickname}}" loading="eager" decoding="async">
+                            {{else}}
                             <svg class="smiley-avatar" viewBox="0 0 320 320" aria-label="Smiley">
                                 <defs>
                                     <linearGradient id="smileyRed" x1="0" y1="0" x2="0" y2="1">
@@ -105,6 +110,7 @@
                                 <circle cx="210" cy="120" r="22" fill="#ffffff"></circle>
                                 <path d="M104 178 q56 56 112 0" fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round"></path>
                             </svg>
+                            {{/if}}{{/if}}
                         </div>
                         <span class="profile-name" data-var="nama_tamu">{{nama_tamu}}</span>
                     </button>
@@ -348,7 +354,7 @@
                                     <div class="schedule-address" data-var="keterangan_lokasi_akad">{{keterangan_lokasi_akad}}</div>
                                 </div>
                             </div>
-                            <a href="{{akad_map}}" data-var="akad_map" target="_blank" class="btn btn-schedule">
+                            <a href="{{akad_map}}" target="_blank" class="btn btn-schedule">
                                 <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
                             </a>
                         </div>
@@ -384,7 +390,7 @@
                                         <div class="schedule-address" data-var="keterangan_lokasi_resepsi">{{keterangan_lokasi_resepsi}}</div>
                                     </div>
                                 </div>
-                                <a href="{{resepsi_map}}" data-var="resepsi_map" target="_blank" class="btn btn-schedule">
+                                <a href="{{resepsi_map}}" target="_blank" class="btn btn-schedule">
                                     <span uk-icon="location" style="margin-right: 5px;"></span> Buka Google Maps
                                 </a>
                             </div>
@@ -494,7 +500,7 @@
                                 <p style="font-size: 12px; color: rgba(255,255,255,0.78); margin-bottom: 20px;">
                                     Saksikan rangkaian acara pernikahan kami secara live dari mana saja Anda berada.
                                 </p>
-                                <a href="{{link_live_streaming}}" data-var="link_live_streaming" target="_blank"
+                                <a href="{{link_live_streaming}}" target="_blank"
                                     class="btn-schedule" style="text-decoration: none;">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 6px; vertical-align: middle;"><path d="M8 5v14l11-7z"></path></svg>
                                     TONTON SEKARANG
@@ -665,7 +671,7 @@
                         </div>
 
                         <div style="margin-top: 30px; text-align: center; padding: 0 20px;">
-                            <a href="{{link_balasan_instagram}}" data-var="link_balasan_instagram" class="btn-konfirm"
+                            <a href="{{link_balasan_instagram}}" class="btn-konfirm"
                                 id="btn-share-instagram" target="_blank"
                                 style="min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); text-decoration: none; display: inline-block;">
                                 <span uk-icon="icon: instagram; ratio: 1.1"

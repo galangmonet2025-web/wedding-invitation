@@ -1,0 +1,2219 @@
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;0,6..96,800;0,6..96,900;1,6..96,400;1,6..96,500;1,6..96,600&family=Jost:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
+
+/* ============================================================================
+   VOGUE EDITORIAL — tema undangan bergaya majalah mode
+   ----------------------------------------------------------------------------
+   Bahasa visual (hasil riset):
+   - Didone (Bodoni Moda): kontras tebal-tipis ekstrem, stress vertikal.
+   - Hierarki maksimal 3 tingkat: masthead > cover line utama > cover line minor.
+   - Judul ALL-CAPS ber-tracking longgar (konvensi Vogue sejak 1955).
+   - Palet: hitam / kertas gading / satu aksen OXBLOOD (jewel tone 2026).
+   - Whitespace sebagai elemen aktif, grid kolom + baseline grid.
+   ========================================================================== */
+
+:root {
+    --vg-ink: #0d0c0b;
+    --vg-ink-soft: #3a3734;
+    --vg-paper: #f4f1ea;
+    --vg-paper-pure: #fbfaf7;
+    --vg-rule: rgba(13, 12, 11, 0.16);
+    --vg-rule-strong: rgba(13, 12, 11, 0.42);
+
+    /* Aksen tunggal — oxblood (Vogue Bridal 2026) */
+    --vg-accent: #6b1f2a;
+    --vg-accent-deep: #4a1420;
+    --vg-accent-tint: rgba(107, 31, 42, 0.08);
+
+    /* Baseline grid: seluruh leading kelipatan angka ini */
+    --vg-baseline: 8px;
+    --vg-gutter: 22px;
+    --vg-margin: 26px;
+
+    --vg-serif: 'Bodoni Moda', 'Didot', 'Bodoni MT', Georgia, serif;
+    --vg-sans: 'Jost', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ---------------------------------------------------------------- reset ---- */
+.phone-container,
+.phone-container * {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================================================
+   RESET TAUTAN & TOMBOL — WAJIB.
+   Host memuat UIkit + Bootstrap, dan browser punya gaya bawaan `a:visited`
+   (ungu/biru) serta `text-decoration: underline`. Tanpa reset ini, tautan yang
+   sudah pernah diklik berubah warna dan bergaris bawah — terlihat tidak rapi.
+   Semua state (link/visited/hover/active/focus) dipaksa memakai warna yang
+   diwarisi dari komponennya sendiri.
+   ========================================================================== */
+/* `text-decoration:none` aman untuk SEMUA tautan. */
+.phone-container a,
+.phone-container a:link,
+.phone-container a:visited,
+.phone-container a:hover,
+.phone-container a:active,
+.phone-container a:focus {
+    text-decoration: none;
+}
+
+/* Warna: `inherit` HANYA untuk tautan yang tidak punya warna sendiri.
+   `.vg-live` (teks putih di atas oxblood) dan tautan berkelas lain harus
+   dikecualikan — kalau tidak, teksnya ikut jadi hitam dan hilang di latar gelap. */
+.phone-container a:not([class]),
+.phone-container a:not([class]):link,
+.phone-container a:not([class]):visited,
+.phone-container a:not([class]):hover,
+.phone-container a:not([class]):active,
+.phone-container a:not([class]):focus {
+    color: inherit;
+}
+
+/* Fokus keyboard tetap terlihat (aksesibilitas), tapi memakai aksen tema —
+   bukan cincin biru bawaan browser. Fokus dari KLIK tidak memunculkan cincin. */
+.phone-container a:focus,
+.phone-container button:focus,
+.phone-container input:focus,
+.phone-container select:focus,
+.phone-container textarea:focus {
+    outline: none;
+}
+
+.phone-container a:focus-visible,
+.phone-container button:focus-visible,
+.phone-container input:focus-visible,
+.phone-container select:focus-visible,
+.phone-container textarea:focus-visible {
+    outline: 2px solid var(--vg-accent);
+    outline-offset: 2px;
+}
+
+/* Tombol: netralkan HANYA gaya teks bawaan UIkit/Bootstrap.
+   JANGAN reset `background`/`border`/`color` di sini — selektor ini lebih
+   khusus daripada aturan tombol tema di bawahnya, sehingga akan menghapus
+   latar tombol (sudah terbukti: semua tombol jadi transparan). */
+.phone-container button {
+    font-family: inherit;
+    text-decoration: none;
+    box-shadow: none;
+}
+
+/* Tombol tema tidak boleh berubah warna saat sudah/ sedang diklik. */
+.phone-container button:hover,
+.phone-container button:focus,
+.phone-container button:active {
+    text-decoration: none;
+    box-shadow: none;
+}
+
+/* Sosmed & tautan di area gelap harus tetap warna kertas, termasuk :visited. */
+.vg-social a,
+.vg-social a:visited,
+.vg-colophon a,
+.vg-colophon a:visited,
+.vg-igframe a,
+.vg-igframe a:visited {
+    color: var(--vg-paper);
+    text-decoration: none;
+}
+
+/* :visited untuk tautan BERKELAS — kunci ke warna masing-masing supaya tidak
+   berubah ungu/biru setelah pernah diklik. */
+.vg-live:visited {
+    color: #fff;
+}
+
+.vg-btn-outline:visited,
+.vg-plate__ig:visited,
+.vg-feature__ig:visited {
+    color: var(--vg-ink);
+}
+
+.vg-colophon__brand:visited {
+    color: var(--vg-paper);
+}
+
+.phone-container {
+    background-color: var(--vg-paper);
+    background-size: cover;
+    background-position: center;
+    font-family: var(--vg-sans);
+    color: var(--vg-ink);
+    position: relative;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Tekstur kertas halus — memberi kesan cetak, bukan layar */
+.phone-container::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.5;
+    background-image:
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.014) 0 1px, transparent 1px 3px);
+}
+
+.mock-app-screen {
+    position: relative;
+    background: var(--vg-paper);
+    min-height: 100vh;
+}
+
+/* ============================================================================
+   DESKTOP: sidebar kiri harus DIAM saat isi undangan digulir.
+   Kalau HALAMAN yang menggulir, sidebar pasti ikut terbawa naik. Pola `timeless`:
+   kunci tinggi .phone-container ke 100vh, lalu yang menggulir adalah
+   .mock-app-screen — BUKAN halaman. Sidebar dibuat sticky setinggi layar.
+   Hanya >=960px agar perilaku scroll di HP tidak berubah.
+   ========================================================================== */
+@media (min-width: 960px) {
+    .phone-container {
+        max-height: 100vh;
+        min-height: 100vh;
+        overflow-x: hidden;
+        /* !important WAJIB: saat undangan dibuka host menulis INLINE
+           `phoneContainer.style.overflowY='auto'` (ThemeWrapper ~baris 401).
+           Tanpa !important inline itu menang dan sidebar ikut ter-scroll lagi. */
+        overflow-y: hidden !important;
+        flex: none;
+    }
+
+    .mock-app-screen {
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .vg-sidebar {
+        height: 100vh;
+        position: sticky;
+        top: 0;
+    }
+}
+
+/* ============================================================================
+   KUNCI: sampul tidak boleh bisa di-scroll.
+   Shorthand `overflow` GAGAL di lingkungan host — harus overflow-y eksplisit.
+   ========================================================================== */
+.mock-app-screen:not(.reveal-content) {
+    overflow-y: hidden !important;
+    max-height: 100vh;
+}
+
+.mock-app-screen:not(.reveal-content) #vg-magazine {
+    display: none !important;
+}
+
+/* Sampul memudar saat host menambahkan .reveal-content (host juga memberi
+   `.is-opened #theme-cover{display:none}` — ini hanya transisinya). */
+.reveal-content #theme-cover {
+    opacity: 0;
+    transform: scale(1.04);
+    pointer-events: none;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+/* Skeleton bawaan host: setiap <img> yang belum termuat diberi .inv-img-loading */
+.inv-img-loading {
+    background: linear-gradient(100deg, #e6e2da 30%, #f2efe9 50%, #e6e2da 70%);
+    background-size: 220% 100%;
+    animation: vgShimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes vgShimmer {
+    from {
+        background-position: 160% 0;
+    }
+
+    to {
+        background-position: -60% 0;
+    }
+}
+
+/* =========================================================== tipografi ==== */
+.vg-serif {
+    font-family: var(--vg-serif);
+}
+
+.vg-eyebrow {
+    font-family: var(--vg-sans);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--vg-ink-soft);
+}
+
+.vg-eyebrow--accent {
+    color: var(--vg-accent);
+}
+
+/* Coverline: ALL-CAPS, tracking longgar (aturan legibilitas ukuran besar) */
+.vg-coverline {
+    font-family: var(--vg-serif);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.vg-rule {
+    height: 1px;
+    background: var(--vg-rule);
+    width: 100%;
+}
+
+.vg-rule--ink {
+    background: var(--vg-rule-strong);
+}
+
+/* ============================================================================
+   SAMPUL MAJALAH (#theme-cover)
+   Anatomi: masthead > coverline utama > coverline sekunder > dateline > barcode
+   ========================================================================== */
+#theme-cover {
+    position: relative;
+    height: 100vh;
+    min-height: 560px;
+    overflow: hidden;
+    background: var(--vg-ink);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Sampul memang harus "bleed" penuh (konvensi sampul majalah), jadi di sini
+   `cover` benar. Skala drift dibuat SANGAT kecil (1.02 -> 1.05) supaya wajah
+   tidak ikut terpotong; sebelumnya 1.06 -> 1.13 terasa terlalu ter-zoom. */
+.vg-cover-photo {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 28%;
+    filter: grayscale(0.32) contrast(1.06);
+    transform: scale(1.02);
+    animation: vgCoverDrift 22s ease-in-out infinite alternate;
+}
+
+@keyframes vgCoverDrift {
+    from {
+        transform: scale(1.02) translateY(0);
+    }
+
+    to {
+        transform: scale(1.05) translateY(-6px);
+    }
+}
+
+/* Gradien supaya teks putih tetap terbaca di atas foto apa pun */
+.vg-cover-scrim {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(8, 7, 7, 0.52) 0%, rgba(8, 7, 7, 0.12) 26%,
+            rgba(8, 7, 7, 0.10) 52%, rgba(8, 7, 7, 0.72) 84%, rgba(8, 7, 7, 0.92) 100%);
+}
+
+.vg-cover-inner {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: calc(var(--vg-baseline) * 3) var(--vg-margin) calc(var(--vg-baseline) * 3);
+    color: #fff;
+}
+
+/* ---- skyline / banner atas ---- */
+.vg-skyline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.82);
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+/* ---- MASTHEAD: elemen terbesar, konsisten ---- */
+.vg-masthead {
+    margin-top: calc(var(--vg-baseline) * 2);
+    text-align: center;
+}
+
+.vg-masthead__title {
+    font-family: var(--vg-serif);
+    font-weight: 800;
+    /* Kerning rapat khusus masthead (konvensi), bukan untuk teks kecil */
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
+    line-height: 0.86;
+    font-size: clamp(46px, 17.5vw, 88px);
+    margin: 0;
+    color: #fff;
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.4);
+}
+
+.vg-masthead__amp {
+    display: block;
+    font-style: italic;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.42em;
+    line-height: 1;
+    margin: 2px 0;
+    color: var(--vg-paper);
+    opacity: 0.95;
+}
+
+.vg-masthead__sub {
+    margin-top: 10px;
+    font-family: var(--vg-sans);
+    font-size: 8.5px;
+    letter-spacing: 0.44em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ---- coverlines kiri/kanan ---- */
+.vg-coverlines {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--vg-baseline) * 1.5);
+}
+
+.vg-coverline-item {
+    max-width: 74%;
+}
+
+.vg-coverline-item--right {
+    align-self: flex-end;
+    text-align: right;
+    max-width: 70%;
+}
+
+.vg-coverline-item__kicker {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #e6b9bf;
+    margin-bottom: 3px;
+}
+
+.vg-coverline-item__text {
+    font-family: var(--vg-serif);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.32;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.vg-coverline-item__text em {
+    font-style: italic;
+    text-transform: none;
+    letter-spacing: 0.01em;
+}
+
+/* ---- dateline + barcode (barcode = kode undangan tamu) ---- */
+.vg-cover-foot {
+    margin-top: calc(var(--vg-baseline) * 2.5);
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.26);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.vg-dateline {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.86);
+    line-height: 1.9;
+}
+
+.vg-barcode {
+    text-align: center;
+    background: #fff;
+    padding: 5px 6px 3px;
+    border-radius: 1px;
+}
+
+.vg-barcode__bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 26px;
+}
+
+.vg-barcode__bars i {
+    display: block;
+    width: 1.5px;
+    height: 100%;
+    background: #0d0c0b;
+}
+
+.vg-barcode__code {
+    font-family: var(--vg-sans);
+    font-size: 6.5px;
+    letter-spacing: 0.14em;
+    color: #0d0c0b;
+    margin-top: 2px;
+    text-transform: uppercase;
+}
+
+/* ---- label langganan: nama tamu ---- */
+.vg-sublabel {
+    position: relative;
+    z-index: 2;
+    margin: 0 var(--vg-margin) calc(var(--vg-baseline) * 1.5);
+    background: rgba(251, 250, 247, 0.94);
+    color: var(--vg-ink);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+}
+
+.vg-sublabel__meta {
+    font-family: var(--vg-sans);
+    font-size: 7px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+    line-height: 1.6;
+    border-right: 1px solid var(--vg-rule);
+    padding-right: 12px;
+    white-space: nowrap;
+}
+
+.vg-sublabel__name {
+    font-family: var(--vg-serif);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---- tombol buka (host: #btn-open-invitation memicu isOpened) ---- */
+.vg-open-wrap {
+    position: relative;
+    z-index: 2;
+    padding: 0 var(--vg-margin) calc(var(--vg-baseline) * 3.5);
+}
+
+#btn-open-invitation {
+    width: 100%;
+    border: 0;
+    cursor: pointer;
+    background: var(--vg-accent);
+    color: #fff;
+    font-family: var(--vg-sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    padding: 15px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+#btn-open-invitation:hover {
+    background: var(--vg-accent-deep);
+}
+
+#btn-open-invitation:active {
+    transform: scale(0.985);
+}
+
+#btn-open-invitation svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* QR check-in di sampul: gaya "ghost" agar tidak menyaingi tombol utama. */
+.vg-cover-qr {
+    width: 100%;
+    margin-top: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: transparent;
+    color: #fff;
+    font-family: var(--vg-sans);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+    transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.vg-cover-qr:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: #fff;
+}
+
+.vg-cover-qr svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* ============================================================================
+   ISI MAJALAH
+   ========================================================================== */
+#vg-magazine {
+    position: relative;
+    background: var(--vg-paper);
+}
+
+.vg-section {
+    padding: calc(var(--vg-baseline) * 7) var(--vg-margin);
+    position: relative;
+}
+
+.vg-section--tight {
+    padding-top: calc(var(--vg-baseline) * 4);
+}
+
+/* Folio (nomor halaman majalah) */
+.vg-folio {
+    position: absolute;
+    bottom: calc(var(--vg-baseline) * 2);
+    right: var(--vg-margin);
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.24em;
+    color: var(--vg-rule-strong);
+    text-transform: uppercase;
+}
+
+/* Kepala section: nomor + judul + garis */
+.vg-sechead {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: calc(var(--vg-baseline) * 3);
+}
+
+.vg-sechead__num {
+    font-family: var(--vg-serif);
+    font-size: 11px;
+    font-style: italic;
+    color: var(--vg-accent);
+    flex-shrink: 0;
+}
+
+.vg-sechead__title {
+    font-family: var(--vg-sans);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.36em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.vg-sechead__line {
+    flex: 1;
+    height: 1px;
+    background: var(--vg-rule);
+}
+
+/* ---------------------------------------------- DAFTAR ISI (contents) ---- */
+.vg-contents {
+    background: var(--vg-ink);
+    color: var(--vg-paper);
+}
+
+.vg-contents .vg-sechead__title,
+.vg-contents .vg-sechead__num {
+    color: var(--vg-paper);
+}
+
+.vg-contents .vg-sechead__line {
+    background: rgba(244, 241, 234, 0.3);
+}
+
+.vg-contents__title {
+    font-family: var(--vg-serif);
+    font-size: 34px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin: 0 0 calc(var(--vg-baseline) * 3);
+}
+
+.vg-toc {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.vg-toc li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(244, 241, 234, 0.16);
+    cursor: pointer;
+}
+
+.vg-toc li:last-child {
+    border-bottom: 0;
+}
+
+.vg-toc__num {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: #c98d96;
+    width: 22px;
+    flex-shrink: 0;
+}
+
+.vg-toc__label {
+    font-family: var(--vg-serif);
+    font-size: 16px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    flex: 1;
+}
+
+.vg-toc__dots {
+    flex: 1;
+    border-bottom: 1px dotted rgba(244, 241, 234, 0.32);
+    transform: translateY(-3px);
+}
+
+/* ============================================================================
+   MEMPELAI — "feature opener" majalah, satu pelat per mempelai (bercermin)
+   ========================================================================== */
+.vg-couples {
+    padding-bottom: calc(var(--vg-baseline) * 5);
+}
+
+.vg-plate {
+    position: relative;
+    margin-bottom: calc(var(--vg-baseline) * 2);
+}
+
+/* Angka romawi besar sebagai watermark editorial di belakang foto */
+.vg-plate__index {
+    position: absolute;
+    top: -14px;
+    left: -4px;
+    z-index: 0;
+    font-family: var(--vg-serif);
+    font-size: 84px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--vg-ink);
+    opacity: 0.07;
+    letter-spacing: -0.02em;
+    pointer-events: none;
+    user-select: none;
+}
+
+.vg-plate--mirror .vg-plate__index {
+    left: auto;
+    right: -4px;
+}
+
+/* Foto tidak penuh selebar kolom — menyisakan "mat" asimetris */
+.vg-plate__figure {
+    position: relative;
+    z-index: 1;
+    width: 82%;
+}
+
+.vg-plate--mirror .vg-plate__figure {
+    margin-left: auto;
+}
+
+.vg-plate__photo {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: #ddd8ce center/cover no-repeat;
+    filter: grayscale(0.22) contrast(1.04);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+/* Kredit foto vertikal di sisi luar, khas caption majalah */
+.vg-plate__credit {
+    position: absolute;
+    top: 8px;
+    right: -13px;
+    transform-origin: right top;
+    transform: rotate(90deg) translateX(100%);
+    font-family: var(--vg-sans);
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+    white-space: nowrap;
+}
+
+.vg-plate--mirror .vg-plate__credit {
+    right: auto;
+    left: -13px;
+    transform-origin: left top;
+    transform: rotate(-90deg) translateX(-100%);
+}
+
+/* Nama besar sengaja menabrak foto */
+.vg-plate__name {
+    position: relative;
+    z-index: 2;
+    margin: -26px 0 0;
+    font-family: var(--vg-serif);
+    font-size: clamp(34px, 12vw, 54px);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    line-height: 0.9;
+    color: var(--vg-ink);
+    text-align: right;
+}
+
+.vg-plate--mirror .vg-plate__name {
+    text-align: left;
+}
+
+.vg-plate__body {
+    position: relative;
+    z-index: 2;
+    margin-top: 14px;
+    text-align: right;
+    /* flex kolom: `.vg-plate__ig` adalah inline-flex sehingga text-align tidak
+       cukup — perataannya diatur align-items. */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.vg-plate--mirror .vg-plate__body {
+    text-align: left;
+    align-items: flex-start;
+}
+
+.vg-plate__fullname {
+    font-family: var(--vg-serif);
+    font-size: 15px;
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--vg-ink);
+    margin: 0;
+}
+
+.vg-plate__rule {
+    width: 40px;
+    height: 1px;
+    background: var(--vg-accent);
+    margin: 12px 0;
+}
+
+.vg-plate__parents {
+    font-family: var(--vg-sans);
+    font-size: 11.5px;
+    font-weight: 300;
+    line-height: 20px;
+    color: var(--vg-ink-soft);
+    margin: 0;
+}
+
+.vg-plate__parents-lbl {
+    display: block;
+    font-size: 7.5px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+    margin-bottom: 5px;
+}
+
+.vg-plate__ig {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--vg-ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--vg-rule-strong);
+    padding-bottom: 3px;
+    transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.vg-plate__ig:hover {
+    color: var(--vg-accent);
+    border-color: var(--vg-accent);
+}
+
+.vg-plate__ig svg {
+    width: 11px;
+    height: 11px;
+}
+
+/* Pemisah ampersand antar-mempelai */
+.vg-amp {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: calc(var(--vg-baseline) * 4) 0;
+}
+
+.vg-amp__line {
+    flex: 1;
+    height: 1px;
+    background: var(--vg-rule);
+}
+
+.vg-amp__mark {
+    font-family: var(--vg-serif);
+    font-size: 30px;
+    font-style: italic;
+    color: var(--vg-accent);
+    line-height: 1;
+}
+
+/* -------------------------------------------------- FEATURE (mempelai) ---- */
+.vg-feature {
+    margin-bottom: calc(var(--vg-baseline) * 5);
+}
+
+.vg-feature:last-child {
+    margin-bottom: 0;
+}
+
+.vg-feature__photo {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: #ddd8ce center/cover no-repeat;
+    filter: grayscale(0.15);
+}
+
+.vg-feature__photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+/* Nama besar yang "menabrak" foto — pelanggaran grid yang disengaja */
+.vg-feature__name {
+    font-family: var(--vg-serif);
+    font-size: clamp(30px, 10vw, 46px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 0.94;
+    margin: -22px 0 0 -6px;
+    position: relative;
+    z-index: 2;
+    color: var(--vg-ink);
+    mix-blend-mode: normal;
+}
+
+.vg-feature--right .vg-feature__name {
+    text-align: right;
+    margin-left: 0;
+    margin-right: -6px;
+}
+
+.vg-feature__role {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+    margin: 12px 0 6px;
+}
+
+.vg-feature--right .vg-feature__role,
+.vg-feature--right .vg-feature__parents {
+    text-align: right;
+}
+
+/* Tautan Instagram ikut rata kanan pada blok mempelai wanita.
+   `.vg-feature__ig` adalah inline-flex, jadi `text-align` pada induknya TIDAK
+   berpengaruh — elemennya harus didorong sendiri memakai margin-left:auto
+   di dalam pembungkus flex kolom. */
+.vg-feature--right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.vg-feature--right .vg-feature__photo,
+.vg-feature--right .vg-feature__name {
+    width: 100%;
+}
+
+.vg-feature__parents {
+    font-family: var(--vg-serif);
+    font-size: 13px;
+    font-style: italic;
+    line-height: 1.6;
+    color: var(--vg-ink-soft);
+    margin: 0;
+}
+
+.vg-feature__ig {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--vg-ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--vg-rule-strong);
+    padding-bottom: 2px;
+}
+
+.vg-feature__ig svg {
+    width: 11px;
+    height: 11px;
+}
+
+/* ------------------------------------------------ ARTIKEL + DROP CAP ---- */
+.vg-article {
+    font-family: var(--vg-sans);
+    font-size: 13px;
+    font-weight: 300;
+    /* leading = 3 x baseline, menjaga baseline grid */
+    line-height: 24px;
+    color: var(--vg-ink-soft);
+    text-align: justify;
+    hyphens: auto;
+}
+
+.vg-article p {
+    margin: 0 0 calc(var(--vg-baseline) * 2);
+}
+
+.vg-article p:last-child {
+    margin-bottom: 0;
+}
+
+/* Drop cap — "pintu masuk" mata pembaca */
+.vg-article--dropcap>p:first-of-type::first-letter {
+    font-family: var(--vg-serif);
+    font-weight: 700;
+    font-size: 58px;
+    line-height: 0.82;
+    float: left;
+    margin: 4px 9px 0 0;
+    color: var(--vg-accent);
+}
+
+/* --------------------------------------------------------- PULL QUOTE ---- */
+.vg-pullquote {
+    margin: calc(var(--vg-baseline) * 4) 0;
+    padding: calc(var(--vg-baseline) * 3) 0;
+    border-top: 2px solid var(--vg-ink);
+    border-bottom: 1px solid var(--vg-rule);
+    text-align: center;
+}
+
+.vg-pullquote__text {
+    font-family: var(--vg-serif);
+    font-size: 20px;
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--vg-ink);
+    margin: 0;
+}
+
+.vg-pullquote__attr {
+    margin-top: 14px;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+}
+
+/* ------------------------------------------------------ KARTU ACARA ---- */
+.vg-event {
+    border: 1px solid var(--vg-rule-strong);
+    padding: calc(var(--vg-baseline) * 3) 20px;
+    margin-bottom: calc(var(--vg-baseline) * 2.5);
+    background: var(--vg-paper-pure);
+    position: relative;
+}
+
+.vg-event:last-of-type {
+    margin-bottom: 0;
+}
+
+.vg-event__tag {
+    position: absolute;
+    top: -8px;
+    left: 18px;
+    background: var(--vg-accent);
+    color: #fff;
+    font-family: var(--vg-sans);
+    font-size: 7.5px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+}
+
+.vg-event__date {
+    font-family: var(--vg-serif);
+    font-size: 26px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    margin: 6px 0 4px;
+}
+
+.vg-event__time {
+    font-family: var(--vg-sans);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+    margin-bottom: 12px;
+}
+
+.vg-event__place {
+    font-family: var(--vg-serif);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 4px;
+}
+
+.vg-event__addr {
+    font-family: var(--vg-sans);
+    font-size: 11px;
+    font-weight: 300;
+    line-height: 18px;
+    color: var(--vg-ink-soft);
+}
+
+.vg-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 14px;
+    padding: 9px 15px;
+    border: 1px solid var(--vg-ink);
+    background: transparent;
+    color: var(--vg-ink);
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.vg-btn-outline:hover {
+    background: var(--vg-ink);
+    color: var(--vg-paper);
+}
+
+.vg-btn-outline svg {
+    width: 11px;
+    height: 11px;
+}
+
+/* --------------------------------------------------------- COUNTDOWN ---- */
+.vg-countdown {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--vg-rule-strong);
+    border: 1px solid var(--vg-rule-strong);
+    margin-top: calc(var(--vg-baseline) * 3);
+}
+
+.vg-countdown__cell {
+    background: var(--vg-paper-pure);
+    padding: 14px 4px 11px;
+    text-align: center;
+}
+
+.vg-countdown__num {
+    font-family: var(--vg-serif);
+    font-size: 27px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--vg-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.vg-countdown__lbl {
+    font-family: var(--vg-sans);
+    font-size: 7px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--vg-ink-soft);
+    margin-top: 6px;
+}
+
+#countdown-status {
+    margin-top: 12px;
+    text-align: center;
+    font-family: var(--vg-sans);
+    font-size: 9px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+}
+
+/* ------------------------------------------------- PHOTO ESSAY/GALERI ---- */
+.vg-gallery {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+}
+
+.vg-gallery__item {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+    background: #e2ded6;
+    cursor: pointer;
+}
+
+/* Item pertama full-bleed melintasi 2 kolom — pelanggaran grid yang disengaja */
+.vg-gallery__item:first-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 4 / 3;
+}
+
+.vg-gallery__item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(0.2);
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease;
+}
+
+.vg-gallery__item:hover img {
+    transform: scale(1.05);
+    filter: grayscale(0);
+}
+
+.vg-gallery__cap {
+    position: absolute;
+    left: 8px;
+    bottom: 7px;
+    font-family: var(--vg-sans);
+    font-size: 7px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* ------------------------------------------------------- FORM/RSVP ---- */
+.vg-field {
+    margin-bottom: calc(var(--vg-baseline) * 2.5);
+}
+
+.vg-label {
+    display: block;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--vg-ink-soft);
+    margin-bottom: 8px;
+}
+
+.vg-input,
+.vg-select,
+.vg-textarea {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--vg-rule-strong);
+    padding: 9px 0;
+    font-family: var(--vg-serif);
+    font-size: 15px;
+    color: var(--vg-ink);
+    outline: none;
+    border-radius: 0;
+    transition: border-color 0.25s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.vg-input:focus,
+.vg-select:focus,
+.vg-textarea:focus {
+    border-bottom-color: var(--vg-accent);
+}
+
+.vg-textarea {
+    resize: vertical;
+    min-height: 76px;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.vg-select {
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--vg-ink) 50%),
+        linear-gradient(135deg, var(--vg-ink) 50%, transparent 50%);
+    background-position: right 10px center, right 5px center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 24px;
+    cursor: pointer;
+}
+
+.vg-btn-solid {
+    width: 100%;
+    border: 0;
+    cursor: pointer;
+    background: var(--vg-ink);
+    color: var(--vg-paper);
+    font-family: var(--vg-sans);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 15px;
+    transition: background 0.25s ease, opacity 0.25s ease;
+}
+
+.vg-btn-solid:hover:not(:disabled) {
+    background: var(--vg-accent);
+}
+
+.vg-btn-solid:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Kartu terima kasih (host membukanya via revealThankYou) */
+.vg-thanks {
+    border: 1px solid var(--vg-accent);
+    background: var(--vg-accent-tint);
+    padding: calc(var(--vg-baseline) * 3) 20px;
+    text-align: center;
+}
+
+.vg-thanks__mark {
+    font-family: var(--vg-serif);
+    font-size: 30px;
+    font-style: italic;
+    color: var(--vg-accent);
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.vg-thanks__title {
+    font-family: var(--vg-serif);
+    font-size: 19px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+.vg-thanks__text {
+    font-family: var(--vg-sans);
+    font-size: 11.5px;
+    font-weight: 300;
+    line-height: 19px;
+    color: var(--vg-ink-soft);
+}
+
+/* --------------------------------------------------------- UCAPAN ---- */
+.vg-wishes {
+    margin-top: calc(var(--vg-baseline) * 4);
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.vg-wishes::-webkit-scrollbar {
+    width: 2px;
+}
+
+.vg-wishes::-webkit-scrollbar-thumb {
+    background: var(--vg-rule-strong);
+}
+
+.vg-wish {
+    padding: calc(var(--vg-baseline) * 2) 0;
+    border-bottom: 1px solid var(--vg-rule);
+}
+
+.vg-wish:first-child {
+    padding-top: 0;
+}
+
+.vg-wish__head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.vg-wish__name {
+    font-family: var(--vg-sans);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--vg-ink);
+}
+
+.vg-wish__line {
+    flex: 1;
+    height: 1px;
+    background: var(--vg-rule);
+}
+
+.vg-wish__msg {
+    font-family: var(--vg-serif);
+    font-size: 14px;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--vg-ink-soft);
+    margin: 0;
+}
+
+.vg-wishes__empty {
+    font-family: var(--vg-sans);
+    font-size: 11px;
+    font-weight: 300;
+    color: var(--vg-ink-soft);
+    text-align: center;
+    padding: calc(var(--vg-baseline) * 3) 0;
+    font-style: italic;
+}
+
+/* ------------------------------------------------------------ HADIAH ---- */
+/* Grid rekening: 1 kolom bawaan; `is-duo` -> DUA kolom berdampingan.
+   `align-items:start` supaya kartu tanpa QRIS tidak ikut memanjang. */
+.vg-gift-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: start;
+    margin-bottom: calc(var(--vg-baseline) * 2);
+}
+
+.vg-gift-grid.is-duo {
+    grid-template-columns: 1fr 1fr;
+}
+
+.vg-gift {
+    border: 1px solid var(--vg-rule-strong);
+    background: var(--vg-paper-pure);
+    padding: calc(var(--vg-baseline) * 2.5) 18px;
+    /* jarak antar-kartu kini diatur `gap` grid */
+    margin-bottom: 0;
+    height: 100%;
+}
+
+/* Dua kolom = ruang sempit: kecilkan nomor & padding supaya nomor rekening
+   tetap utuh terbaca dan tidak memaksa kartu melebar. */
+.vg-gift-grid.is-duo .vg-gift {
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+.vg-gift-grid.is-duo .vg-gift__num {
+    font-size: 17px;
+    letter-spacing: 0.02em;
+}
+
+.vg-gift-grid.is-duo .vg-gift__qr {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Layar sangat sempit: tumpuk kembali agar nomor tidak terpotong. */
+@media (max-width: 400px) {
+    .vg-gift-grid.is-duo {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Kartu hadiah offline berdiri sendiri di luar grid */
+.vg-gift-grid+.vg-gift {
+    margin-top: calc(var(--vg-baseline) * 2);
+}
+
+.vg-gift__bank {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--vg-accent);
+    margin-bottom: 8px;
+}
+
+.vg-gift__num {
+    font-family: var(--vg-serif);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 3px;
+    word-break: break-all;
+}
+
+.vg-gift__name {
+    font-family: var(--vg-sans);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--vg-ink-soft);
+}
+
+.vg-gift__qr {
+    display: block;
+    width: 130px;
+    max-width: 55%;
+    margin: 14px auto 0;
+    border: 1px solid var(--vg-rule);
+}
+
+/* Alamat kirim hadiah (offline) */
+.vg-gift__addr {
+    margin-bottom: 4px;
+}
+
+.vg-gift__addr-place {
+    display: block;
+    font-family: var(--vg-serif);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--vg-ink);
+    margin-bottom: 5px;
+}
+
+.vg-gift__addr-line {
+    display: block;
+    font-family: var(--vg-sans);
+    font-size: 11.5px;
+    font-weight: 300;
+    line-height: 19px;
+    color: var(--vg-ink-soft);
+}
+
+/* ------------------------------------------------------------ PENUTUP ---- */
+/* ============================================================================
+   PENUTUP — "back cover" majalah, satu halaman penuh
+   ========================================================================== */
+.vg-closing {
+    position: relative;
+    min-height: 100vh;
+    padding: calc(var(--vg-baseline) * 3) var(--vg-margin) calc(var(--vg-baseline) * 6);
+    background: var(--vg-ink);
+    color: var(--vg-paper);
+    text-align: center;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Foto dibuat JAUH lebih terlihat (sebelumnya opacity .3 + grayscale penuh
+   membuatnya nyaris hilang). Kontras teks kini ditangani scrim terpisah,
+   bukan dengan memudarkan fotonya. */
+.vg-closing__photo {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 30%;
+    opacity: 0.55;
+    filter: grayscale(0.75) contrast(1.08);
+}
+
+.vg-closing__scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg,
+            rgba(13, 12, 11, 0.82) 0%,
+            rgba(13, 12, 11, 0.55) 34%,
+            rgba(13, 12, 11, 0.72) 72%,
+            rgba(13, 12, 11, 0.94) 100%);
+}
+
+.vg-closing__inner {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.vg-closing__skyline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(244, 241, 234, 0.72);
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(244, 241, 234, 0.22);
+}
+
+/* Blok tengah mengambil sisa ruang & dipusatkan vertikal */
+.vg-closing__center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: calc(var(--vg-baseline) * 4) 0;
+}
+
+.vg-closing__eyebrow {
+    font-family: var(--vg-sans);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.44em;
+    text-transform: uppercase;
+    color: #d9b0b6;
+    margin-bottom: calc(var(--vg-baseline) * 2.5);
+}
+
+.vg-closing__thanks {
+    font-family: var(--vg-serif);
+    font-size: 14px;
+    font-style: italic;
+    line-height: 1.75;
+    color: rgba(244, 241, 234, 0.9);
+    max-width: 310px;
+    margin: 0 auto;
+}
+
+.vg-closing__ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: calc(var(--vg-baseline) * 3.5) 0;
+}
+
+.vg-closing__ornament span {
+    width: 44px;
+    height: 1px;
+    background: rgba(244, 241, 234, 0.4);
+}
+
+.vg-closing__ornament i {
+    font-style: normal;
+    font-size: 11px;
+    color: #d9b0b6;
+    line-height: 1;
+}
+
+.vg-closing__date {
+    margin-top: calc(var(--vg-baseline) * 2.5);
+    font-family: var(--vg-sans);
+    font-size: 8.5px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: rgba(244, 241, 234, 0.75);
+}
+
+.vg-closing__names {
+    font-family: var(--vg-serif);
+    font-size: clamp(38px, 14vw, 62px);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 0.92;
+    margin: 0;
+}
+
+.vg-closing__amp {
+    display: block;
+    font-style: italic;
+    font-weight: 400;
+    text-transform: none;
+    font-size: 0.4em;
+    margin: 3px 0;
+    opacity: 0.9;
+}
+
+/* ------------------------------------------------- KARTU STORY IG ---- */
+/* Tiga kartu sejajar yang bisa digeser. Foto contoh di bawah, PNG frame
+   transparan ditumpuk persis di atasnya (pola sama seperti tema lain:
+   .card-photo + .card-frame). */
+.vg-story-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 62%;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+    margin: 0 calc(var(--vg-margin) * -1);
+    padding-left: var(--vg-margin);
+    padding-right: var(--vg-margin);
+    scrollbar-width: none;
+}
+
+.vg-story-row::-webkit-scrollbar {
+    display: none;
+}
+
+.vg-story-card {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    /* Latar gelap: bingkai frame umumnya PUTIH, jadi butuh kontras. */
+    background: #171514;
+    overflow: hidden;
+    scroll-snap-align: center;
+}
+
+.vg-story-card__photo,
+.vg-story-card__frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.vg-story-card__photo {
+    object-fit: cover;
+    z-index: 1;
+    filter: grayscale(0.18);
+}
+
+/* `contain` supaya bingkai tidak terpotong; z-index di atas foto. */
+.vg-story-card__frame {
+    object-fit: contain;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.vg-story-card__cap {
+    position: absolute;
+    left: 10px;
+    bottom: 9px;
+    z-index: 3;
+    font-family: var(--vg-sans);
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
+@media (min-width: 520px) {
+    .vg-story-row {
+        grid-auto-columns: 1fr;
+        overflow-x: visible;
+    }
+}
+
+/* ---------------------------------------------------------- IG FRAME ---- */
+.vg-igframe {
+    margin-top: calc(var(--vg-baseline) * 4);
+    padding-top: calc(var(--vg-baseline) * 3);
+    border-top: 1px solid rgba(244, 241, 234, 0.2);
+}
+
+.vg-igframe img {
+    width: 100%;
+    max-width: 260px;
+    display: block;
+    margin: 0 auto 14px;
+    border: 1px solid rgba(244, 241, 234, 0.24);
+}
+
+.vg-igframe a {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--vg-paper);
+    text-decoration: none;
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    border: 1px solid rgba(244, 241, 234, 0.5);
+    padding: 9px 15px;
+}
+
+/* ------------------------------------------------------- LIVE STREAM ---- */
+.vg-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    background: var(--vg-accent);
+    color: #fff;
+    font-family: var(--vg-sans);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    padding: 11px 17px;
+    margin-top: calc(var(--vg-baseline) * 2);
+}
+
+.vg-live__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    animation: vgPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes vgPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.25;
+    }
+}
+
+/* ------------------------------------------------------------- SOSMED ---- */
+.vg-social {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: calc(var(--vg-baseline) * 3);
+}
+
+.vg-social a {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(244, 241, 234, 0.4);
+    color: var(--vg-paper);
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.vg-social a:hover {
+    background: var(--vg-paper);
+    color: var(--vg-ink);
+}
+
+.vg-social svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ------------------------------------------------------ KOLOFON/FOOTER ---- */
+.vg-colophon {
+    background: var(--vg-ink);
+    border-top: 1px solid rgba(244, 241, 234, 0.16);
+    padding: calc(var(--vg-baseline) * 3) var(--vg-margin) calc(var(--vg-baseline) * 5);
+    text-align: center;
+}
+
+.vg-colophon__brand {
+    font-family: var(--vg-serif);
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--vg-paper);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 6px;
+}
+
+.vg-colophon__text {
+    font-family: var(--vg-sans);
+    font-size: 7.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(244, 241, 234, 0.5);
+    line-height: 1.9;
+}
+
+/* ============================================================================
+   FAB / MODAL
+   Host memaksa #theme-fab-container { display:block } saat terbuka —
+   jadi flex diletakkan pada anak (.vg-fab-stack), bukan pada container.
+   ========================================================================== */
+#theme-fab-container {
+    position: fixed;
+    right: 14px;
+    bottom: 16px;
+    z-index: 60;
+    pointer-events: none;
+}
+
+.vg-fab-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    pointer-events: auto;
+}
+
+.vg-fab {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--vg-paper);
+    background: var(--vg-ink);
+    color: var(--vg-paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.vg-fab:hover {
+    background: var(--vg-accent);
+    border-color: var(--vg-accent);
+}
+
+.vg-fab svg {
+    width: 16px;
+    height: 16px;
+}
+
+.vg-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background: rgba(10, 9, 9, 0.86);
+    backdrop-filter: blur(3px);
+}
+
+.vg-modal.is-open {
+    display: flex;
+}
+
+.vg-modal__panel {
+    background: var(--vg-paper);
+    width: 100%;
+    max-width: 330px;
+    padding: calc(var(--vg-baseline) * 4) 22px;
+    position: relative;
+    max-height: 84vh;
+    overflow-y: auto;
+}
+
+.vg-modal__close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--vg-serif);
+    font-size: 20px;
+    line-height: 1;
+    color: var(--vg-ink);
+    padding: 4px;
+}
+
+.vg-modal__title {
+    font-family: var(--vg-serif);
+    font-size: 21px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: center;
+    margin: 0 0 6px;
+}
+
+.vg-modal__sub {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--vg-accent);
+    margin-bottom: calc(var(--vg-baseline) * 3);
+}
+
+.vg-menu-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.vg-menu-list li+li {
+    border-top: 1px solid var(--vg-rule);
+}
+
+.vg-menu-list button {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    padding: 13px 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--vg-serif);
+    font-size: 15px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--vg-ink);
+}
+
+.vg-menu-list button:hover {
+    color: var(--vg-accent);
+}
+
+.vg-menu-list .vg-menu-num {
+    font-family: var(--vg-sans);
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--vg-accent);
+    width: 20px;
+    flex-shrink: 0;
+}
+
+#qr-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid var(--vg-rule);
+}
+
+#qr-slot img,
+#qr-slot canvas,
+#qr-slot svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* -------------------------------------------------------- LIGHTBOX ---- */
+.vg-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 7, 7, 0.95);
+    padding: 18px;
+}
+
+.vg-lightbox.is-open {
+    display: flex;
+}
+
+.vg-lightbox img {
+    max-width: 100%;
+    max-height: 86vh;
+    object-fit: contain;
+}
+
+.vg-lightbox__close {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-family: var(--vg-serif);
+    font-size: 26px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* ============================================================================
+   REVEAL ON SCROLL
+   WAJIB memakai nama kelas `.reveal-item` + `.is-visible` — keduanya DIKENAL
+   host. Setelah re-inject HTML (mis. sesudah kirim ucapan/RSVP) host menyapu
+   `.reveal-item:not(.is-visible)` dan menambahkan `.is-visible`. Memakai nama
+   lain = section jadi blank setelah submit.
+   ========================================================================== */
+.reveal-item {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-item.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .reveal-item,
+    .vg-gallery__item img,
+    .vg-cover-photo {
+        transition: none !important;
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* ======================================================= SIDEBAR DESKTOP ---- */
+.vg-sidebar {
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    /* Latar gelap ini menjadi "mat" (paspartu) di sisi foto yang tidak terisi
+       saat memakai background-size:contain — kesannya foto dipajang, bukan bolong. */
+    background: var(--vg-ink);
+}
+
+/* Foto sidebar: pakai `contain` supaya foto tampil UTUH seperti pelat majalah,
+   bukan `cover` yang mem-crop besar-besaran di kolom tinggi-ramping (itulah
+   penyebab tampilan "ke-zoom" di PC). Ukuran 100% + tanpa offset negatif;
+   ruang gerak parallax didapat dari transform, bukan dari melebihkan elemen. */
+#layer-bg {
+    position: absolute;
+    inset: 0;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: grayscale(0.4) contrast(1.05);
+    z-index: 1;
+    transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Ruang napas kiri/kanan khas layout editorial.
+   HARUS diletakkan SESUDAH aturan dasar #layer-bg di atas: kekhususan keduanya
+   sama, jadi kalau ditaruh sebelumnya `inset:0` yang menang dan margin ini
+   tidak pernah berlaku. */
+@media (min-width: 960px) {
+    #layer-bg {
+        inset: 0 6% 0 6%;
+    }
+}
+
+/* Scrim hanya pekat di BAWAH (tempat teks berada) supaya foto tetap terbaca
+   jernih di bagian atas — foto utuh adalah inti tampilan editorial. */
+.vg-sidebar__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(180deg,
+            rgba(8, 7, 7, 0.10) 0%,
+            rgba(8, 7, 7, 0.06) 42%,
+            rgba(8, 7, 7, 0.72) 82%,
+            rgba(8, 7, 7, 0.92) 100%);
+}
+
+#layer-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 56px;
+    z-index: 4;
+    width: 100%;
+    color: #fff;
+    transition: transform 0.1s ease;
+}
+
+.vg-sidebar__masthead {
+    font-family: var(--vg-serif);
+    font-size: 5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.88;
+    margin: 12px 0 0;
+}
+
+.vg-sidebar__meta {
+    margin-top: 16px;
+    font-family: var(--vg-sans);
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+/* -------------------------------------------------------- responsif ---- */
+@media (max-width: 360px) {
+    :root {
+        --vg-margin: 20px;
+    }
+
+    .vg-masthead__title {
+        font-size: clamp(40px, 16vw, 70px);
+    }
+
+    .vg-countdown__num {
+        font-size: 23px;
+    }
+}
+
+@media (min-width: 1200px) {
+    #layer-text {
+        padding: 70px;
+    }
+}
