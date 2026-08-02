@@ -155,34 +155,60 @@
     (function musicMirror() {
         var audio = document.getElementById('bg-music');
         var btn = document.getElementById('btn-toggle-music');
-        if (!audio) return;
+        // Cukup salah satu ada. Dulu di-return kalau #bg-music tidak ada, padahal
+        // pada backsound YouTube elemen itu bisa saja tidak dipasang host —
+        // akibatnya seluruh cermin status musik mati total.
+        if (!audio && !btn) return;
 
         var fab = document.getElementById('theme-fab-container');
+
+        // SUMBER KEBENARAN = kelas `music-playing` pada #btn-toggle-music, yang
+        // ditulis host (ThemeWrapper) untuk SEMUA sumber musik.
+        // JANGAN pakai `!audio.paused`: kalau backsound tenant berupa YouTube,
+        // host memutarnya lewat player YouTube dan <audio id="bg-music"> tidak
+        // pernah benar-benar play — audio.paused selamanya true, sehingga
+        // .is-playing tak pernah menyala (equalizer diam & tombol tak berubah).
+        // Host memang mengirim event 'play'/'pause' buatan ke #bg-music, tapi itu
+        // hanya event; properti .paused-nya tidak ikut berubah.
+        function isPlayingNow() {
+            if (btn && btn.classList.contains('music-playing')) return true;
+            return !!audio && !audio.paused;   // cadangan untuk backsound non-YouTube
+        }
         function sync() {
+            var playing = isPlayingNow();
+            // Ikon play/pause juga diurus host, tapi tetap disetel di sini supaya
+            // benar pada mode pratinjau/editor yang tidak menjalankan host.
             var play = document.getElementById('play-icon');
             var pause = document.getElementById('pause-icon');
-            if (!play || !pause) return;
-            var playing = !audio.paused;
-            if (playing) {
-                play.style.display = 'none';
-                pause.style.display = 'block';
-                if (btn) btn.classList.add('music-playing');
-            } else {
-                play.style.display = 'block';
-                pause.style.display = 'none';
-                if (btn) btn.classList.remove('music-playing');
+            if (play && pause) {
+                play.style.display = playing ? 'none' : 'block';
+                pause.style.display = playing ? 'block' : 'none';
             }
-            // Freeze/animate the nav-bar equalizer with the music state.
             if (fab) fab.classList.toggle('is-playing', playing);
         }
-        audio.addEventListener('play', sync);
-        audio.addEventListener('pause', sync);
-        audio.addEventListener('playing', sync);
+
+        if (audio) {
+            audio.addEventListener('play', sync);
+            audio.addEventListener('pause', sync);
+            audio.addEventListener('playing', sync);
+        }
+
+        // Host mengubah kelas `music-playing` langsung lewat classList (bukan
+        // event), jadi perubahannya hanya bisa ditangkap dengan MutationObserver.
+        var btnObserver = null;
+        if (btn && typeof MutationObserver === 'function') {
+            btnObserver = new MutationObserver(sync);
+            btnObserver.observe(btn, { attributes: true, attributeFilter: ['class'] });
+        }
+
         sync();
         cleanupFns.push(function () {
-            audio.removeEventListener('play', sync);
-            audio.removeEventListener('pause', sync);
-            audio.removeEventListener('playing', sync);
+            if (audio) {
+                audio.removeEventListener('play', sync);
+                audio.removeEventListener('pause', sync);
+                audio.removeEventListener('playing', sync);
+            }
+            if (btnObserver) btnObserver.disconnect();
         });
     })();
 
@@ -232,31 +258,59 @@
         var next = document.getElementById('pb-next');
         if (!scope || (!prev && !next)) return;
 
+        // SEMUA <section> ikut diurutkan, bukan cuma yang ber-id/ber-label:
+        // hero (.section-hero) dan penutup (.section-closing) tidak punya
+        // keduanya, sehingga dulu terlewat — "prev" dari Mempelai tidak bisa
+        // balik ke hero dan "next" dari Gift tidak bisa sampai ke penutup.
+        // Yang dibuang cuma cover (itu gerbang, bukan bagian alur baca).
         var sections = Array.prototype.slice.call(
-            scope.querySelectorAll('section[id], section[data-menu-label]')
+            scope.querySelectorAll('section')
         ).filter(function (el) {
-            return el.id !== 'theme-cover';
+            return el.id !== 'theme-cover' && el.offsetParent !== null;
         });
         if (!sections.length) return;
 
         function scrollTo(el) {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        // Posisi diukur lewat getBoundingClientRect() — relatif VIEWPORT, jadi
+        // selalu benar tanpa perlu tahu elemen mana yang sebenarnya men-scroll.
+        // Versi lama membandingkan el.offsetTop dengan scope.scrollTop, padahal
+        // .mock-app-screen tidak pernah scroll (yang scroll = window), sehingga
+        // scrollTop selalu 0 dan currentIndex() selalu mengembalikan section yang
+        // sama → tombol next/prev terasa "nyangkut" di beberapa section saja.
         function currentIndex() {
             var best = 0, bestDist = Infinity;
-            var top = scope.scrollTop;
             sections.forEach(function (el, i) {
-                var d = Math.abs(el.offsetTop - top);
-                if (d < bestDist) { bestDist = d; best = i; }
+                // Toleransi 2px supaya section yang pas menempel di atas layar
+                // tidak kalah oleh pembulatan sub-pixel.
+                var d = Math.abs(el.getBoundingClientRect().top);
+                if (d < bestDist - 2) { bestDist = d; best = i; }
             });
             return best;
         }
-        function onPrev() { scrollTo(sections[Math.max(0, currentIndex() - 1)]); }
-        function onNext() { scrollTo(sections[Math.min(sections.length - 1, currentIndex() + 1)]); }
+        // scrollIntoView({behavior:'smooth'}) berjalan ASINKRON. Kalau tombol
+        // ditekan cepat berturut-turut, currentIndex() membaca posisi yang masih
+        // di tengah animasi sehingga hasilnya section yang sama → klik ke-2 dst
+        // terasa tidak berfungsi. Selama animasi berlangsung indeks dikunci dan
+        // dihitung dari target terakhir, bukan dari posisi scroll saat itu.
+        var pendingIdx = -1, pendingTimer = 0;
+        function go(delta) {
+            var from = pendingIdx >= 0 ? pendingIdx : currentIndex();
+            var to = Math.max(0, Math.min(sections.length - 1, from + delta));
+            pendingIdx = to;
+            clearTimeout(pendingTimer);
+            // Lepas kunci setelah animasi smooth selesai (~700ms cukup aman).
+            pendingTimer = setTimeout(function () { pendingIdx = -1; }, 700);
+            scrollTo(sections[to]);
+        }
+        function onPrev() { go(-1); }
+        function onNext() { go(1); }
 
         if (prev) prev.addEventListener('click', onPrev);
         if (next) next.addEventListener('click', onNext);
         cleanupFns.push(function () {
+            clearTimeout(pendingTimer);
             if (prev) prev.removeEventListener('click', onPrev);
             if (next) next.removeEventListener('click', onNext);
         });
@@ -283,8 +337,15 @@
             titleEl.style.removeProperty('--np-scroll-dur');
             var overflow = inner.scrollWidth - titleEl.clientWidth;
             if (overflow > 6) {
-                titleEl.style.setProperty('--np-scroll', (-overflow - 24) + 'px');
-                var dur = Math.min(20, Math.max(7, overflow * 0.06));
+                // Geser PERSIS sebanyak teks yang keluar layar (dulu ditambah -24px
+                // untuk memberi ruang lompatan balik; sekarang animasinya bolak-balik
+                // jadi tambahan itu justru bikin teks kelewat mundur dan menyisakan
+                // ruang kosong di ujung).
+                titleEl.style.setProperty('--np-scroll', (-overflow - 4) + 'px');
+                // Satu siklus = SEKALI jalan (maju saja), karena `alternate` membuat
+                // arah baliknya jadi siklus tersendiri. Durasinya dinaikkan sedikit
+                // dari versi lama supaya kecepatan bacanya tetap enak.
+                var dur = Math.min(16, Math.max(4.5, overflow * 0.045));
                 titleEl.style.setProperty('--np-scroll-dur', dur.toFixed(1) + 's');
                 titleEl.classList.add('is-marquee');
             }

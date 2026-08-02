@@ -246,37 +246,32 @@ const hitE = js.slice(js.indexOf('GameScene.prototype.shotHitsEnemy'),
 ok(/killEnemy/.test(hitE), 'peluru membunuh musuh biasa');
 ok(/s\.disableBody/.test(hitE), 'peluru lenyap saat kena (tidak menembus)');
 
+/* Peluru melukai bos — TANPA jendela rentan (model baru: bisa diserang
+   kapan saja). Detail mekanik bos diuji lengkap di verify-boss.cjs;
+   di sini cukup dipastikan jalur peluru-ke-bos terpasang & memanggil
+   hitBoss. */
 const hitB = js.slice(js.indexOf('GameScene.prototype.shotHitsBoss'),
-                      js.indexOf('GameScene.prototype.showBlockedHit'));
-ok(/this\.bossVulnerable/.test(hitB),
-   'peluru menghormati jendela rentan yang SAMA dengan injakan — ' +
-   'kalau tidak, bos jadi karung tinju dan rancangannya runtuh');
-ok(/showBlockedHit/.test(hitB),
-   'ada umpan balik saat tembakan tertahan (pemain tahu "belum waktunya", ' +
-   'bukan mengira tembakannya rusak)');
-ok(/hitBoss\(\)/.test(hitB), 'peluru melukai bos saat jendelanya terbuka');
+                      js.indexOf('\n};', js.indexOf('GameScene.prototype.shotHitsBoss')));
+ok(/hitBoss\(\)/.test(hitB), 'peluru melukai bos (memanggil hitBoss)');
+ok(!/bossVulnerable/.test(hitB),
+   'peluru TIDAK lagi menunggu jendela rentan (bisa menembak kapan saja)');
 ok(/overlap\(this\.shots, this\.boss/.test(js),
    'tabrakan peluru-vs-bos benar-benar dipasang');
 ok(/overlap\(this\.shots, this\.enemies/.test(js),
    'tabrakan peluru-vs-musuh dipasang');
 
 /* =====================================================================
-   6. BOS BERGERAK — model retromario
+   6. BOS BERGERAK — patroli (detail lengkap di verify-boss.cjs)
    ===================================================================== */
 const ub = js.slice(js.indexOf('GameScene.prototype.updateBoss'),
-                    js.indexOf('GameScene.prototype.setBossVulnerable'));
+                    js.indexOf('\n};', js.indexOf('GameScene.prototype.updateBoss')));
 ok(/b\.dirX/.test(ub) && /arenaL/.test(ub) && /arenaR/.test(ub),
-   'bos BERPATROLI & memantul di batas arena (retromario: berjalan, ' +
-   'bukan diam di satu titik)');
+   'bos BERPATROLI & memantul di batas arena');
 ok(w.BOSS_ARENA_W > 0, 'lebar arena bos ditentukan (' + w.BOSS_ARENA_W + 'px)');
 ok(/this\.bossPhase \* /.test(ub),
-   'kecepatan bos NAIK tiap fase (retromario: baseSpd + phase*0.5)');
-ok(/b\.lunging/.test(ub),
-   'bos berhenti mendatar saat memberi aba-aba (supaya telegraph terbaca)');
-const atk = js.slice(js.indexOf('GameScene.prototype.bossAttack'),
-                     js.indexOf('GameScene.prototype.manualBossHit'));
-ok(/b\.lunging = true/.test(atk), 'aba-aba mengunci gerak');
-ok(/b\.lunging = false/.test(atk), 'gerak dilepas lagi saat jendela rentan dibuka');
+   'kecepatan bos NAIK tiap fase');
+ok(/invulnMs/.test(ub),
+   'damage dikelola lewat penghitung invulnMs (bukan jendela rentan)');
 
 /* =====================================================================
    7. TIDAK MELINTASI STAGE (bug jam scene)

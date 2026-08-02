@@ -309,7 +309,7 @@ var STAGES = [
     biome:'desert',  ground:'sand' },
   { id:4, name:'SKYPIEA',        short:'SKYPIEA', len:6800, pieces:1, enemies:['E1','E5','E6'],
     biome:'sky',     ground:'cloud' },
-  { id:5, name:'ARLONG PARK',    short:'ARLONG',  len:4200, pieces:0, enemies:['E1'],
+  { id:5, name:'ARLONG PARK',    short:'ARLONG',  len:5600, pieces:0, enemies:['E1'],
     biome:'lair',    ground:'marble', boss:true }
 ];
 
@@ -2280,12 +2280,16 @@ function toast(msg, kind, ms) {
   if (!el) return;
   /* Font bitmap dipakai kalau SEMUA karakternya tersedia; kalau tidak,
      jatuh ke teks biasa. Sheet yang belum diunggah juga jatuh ke teks. */
-  /* Skala menyesuaikan lebar toast: pesan panjang di layar sempit akan
-     meluber kalau selalu 2x. Minimal 1x supaya tetap terbaca. */
-  var maxW = (el.clientWidth || 300) - 32;
-  var need = measureText(msg, 1).w;
-  var sc = Math.max(1, Math.min(2, Math.floor(maxW / Math.max(1, need))));
-  var cv = fontCanRender(msg) ? renderText(msg, sc, 1) : null;
+  /* Font bitmap HANYA dipakai kalau pesan PENDEK cukup ditampilkan 2x
+     (glyph 8x10 -> 16x20) tanpa meluber. Kalau pesan panjang, memaksa
+     bitmap 1-baris berarti mengecilkannya jadi tak terbaca (dilaporkan
+     user: "text ini kecil sekali") — untuk itu kita jatuh ke teks biasa
+     yang BISA membungkus ke 2 baris dan sudah dibesarkan lewat CSS
+     (clamp 15-20px, tebal). Jadi: pendek = bitmap tajam 2x; panjang =
+     teks biasa yang membungkus & tetap besar. */
+  var maxW = (el.clientWidth || 300) - 36;
+  var fits2x = measureText(msg, 1).w * 2 <= maxW;
+  var cv = (fontCanRender(msg) && fits2x) ? renderText(msg, 2, 1) : null;
   if (cv) {
     el.innerHTML = '';
     cv.className = 'pwr-toast-bmp';
@@ -6621,7 +6625,6 @@ GameScene.prototype.init = function (data) {
   /* Reset flag boss tiap stage — jangan bocor antar sektor */
   this.arenaX = null;
   this.bossActive = false;
-  this.bossVulnerable = false;
   this.bossHp = 12;
   this._next = 0;
   this.clearSeq = null;
@@ -8348,7 +8351,7 @@ GameScene.prototype.updateInner = function (time, delta) {
   /* Boss */
   if (this.boss) {
     if (!this.bossActive && p.x >= this.arenaX) this.activateBoss();
-    if (this.bossActive) { this.updateBoss(time, delta); this.manualBossHit(); }
+    if (this.bossActive) this.updateBoss(time, delta);   /* kontak diurus di dalam updateBoss */
   }
 };
 
@@ -9162,51 +9165,65 @@ GameScene.prototype.shotHitsEnemy = function (s, e) {
   this.killEnemy(e, 20);
 };
 
-/* Peluru mengenai bos. Hormati jendela rentan yang SAMA dengan injakan:
-   kalau menembak boleh kapan saja, seluruh rancangan "tunggu dia
-   menguning" runtuh dan bosnya jadi sekadar karung tinju. */
-GameScene.prototype.shotHitsBoss = function (s, b) {
-  if (!s.active || !b || !b.active || !this.bossActive) return;
-  s.disableBody(true, true);
-  if (!this.bossVulnerable) {
-    /* Beri UMPAN BALIK, jangan diam: tanpa ini pemain mengira
-       tembakannya rusak, bukan mengira waktunya belum tepat. */
-    this.showBlockedHit(b);
-    return;
-  }
-  this.hitBoss();
-};
+/* Peluru mengenai bos.
 
-/* Percikan "TAHAN" saat peluru mengenai bos di luar jendela rentan. */
-GameScene.prototype.showBlockedHit = function (b) {
-  if (!this.bossActive) return;   /* peluru terakhir mendarat sesudah bos kalah */
-  if (this._blockFxAt && this.time.now - this._blockFxAt < 220) return;
-  this._blockFxAt = this.time.now;
-  var puff = this.add.text(b.x, b.y - 20, 'TAHAN', {
-    fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold',
-    color: '#9fd8ff', stroke: '#000000', strokeThickness: 3
-  }).setOrigin(0.5).setDepth(53);
-  /* Disimpan supaya defeatBoss bisa menyapunya: percikan ini hidup 420ms,
-     cukup lama untuk tertinggal di layar sesudah bos kalah. */
-  this._blockPuff = puff;
-  var self = this;
-  this.tweens.add({
-    targets: puff, y: b.y - 44, alpha: 0, duration: 420,
-    onComplete: function () {
-      try { puff.destroy(); } catch (e) {}
-      if (self._blockPuff === puff) self._blockPuff = null;
-    }
-  });
-  sfx('block');
+   ⚠️ AKAR BUG "BOS ILANG SAAT DITEMBAK" (dilaporkan user berkali-kali) ⚠️
+   ---------------------------------------------------------------------
+   physics.add.overlap(this.shots, this.boss, ...) — object1 = GROUP peluru,
+   object2 = SPRITE tunggal bos. Phaser 3.80.1 (World.js collideHandler ->
+   collideSpriteVsGroup) MENORMALKAN urutan argumen: SPRITE TUNGGAL selalu
+   dikirim sebagai argumen PERTAMA, anggota GROUP sebagai argumen KEDUA —
+   TANPA memandang urutan yang kita tulis di add.overlap.
+
+   Jadi callback ini dipanggil sebagai shotHitsBoss(BOS, PELURU), bukan
+   (peluru, bos). Kode lama menulis s.disableBody(true, true) pada argumen
+   pertama = pada BOS -> active=false & visible=false -> BOS HILANG persis
+   saat ditembak (HP masih penuh karena hitBoss ikut jalan tapi bos sudah
+   dimatikan). Inilah penyebab sebenarnya — bukan alpha/tint/partikel.
+
+   Perbaikan: JANGAN andalkan urutan. Kenali mana yang bos (this.boss) dan
+   mana yang peluru berdasar identitas, lalu matikan HANYA peluru. */
+GameScene.prototype.shotHitsBoss = function (a, c) {
+  var b = this.boss;
+  if (!b || !b.active || !this.bossActive) return;
+  /* Bos adalah argumen mana pun yang === this.boss; peluru yang satunya. */
+  var shot = (a === b) ? c : a;
+  if (!shot || !shot.active) return;
+  if (typeof shot.disableBody === 'function') shot.disableBody(true, true);
+  /* JANGAN PERNAH menyentuh 'b' (bos) di sini dengan disable/hide. */
+  /* Tidak ada lagi "jendela rentan": bos selalu bisa dilukai (permintaan
+     user). Yang membatasi hanya invulnMs sesudah kena — diperiksa di dalam
+     hitBoss(), jadi peluru saat bos masih kebal otomatis tak berefek. */
+  this.hitBoss();
 };
 
 /* ---------------------------------------------------------------
    BOSS
    --------------------------------------------------------------- */
 GameScene.prototype.buildBossArena = function (L, GY) {
-  /* Koridor walk-in: boss INACTIVE sampai player mencapai arenaX */
-  this.arenaX = L.len - Math.round(BW * 0.9);
-  this.boss = this.physics.add.sprite(L.len - 160, GY - 120, 't_boss1');
+  /* TATA LETAK ARENA (permintaan user):
+       - bos DULU, bendera jauh SESUDAHNYA
+       - selama bos hidup, pemain DITAHAN di arena; baru boleh maju
+         setelah bos kalah
+     Jadi arena bos ditaruh jauh dari bendera. Bendera & mempelai di ujung
+     level (dipasang di create()/di sini), arena bos ~1200px sebelumnya. */
+  var flagX = L.goalX;                        /* ujung — tempat bendera */
+  this.bossHomeX = flagX - 1250;              /* bos bertarung di sini */
+  this.arenaX = this.bossHomeX - Math.round(BW * 0.5);  /* pemicu aktif */
+  /* Gerbang: tepi kanan tempat pemain ditahan selama bos hidup. Sedikit
+     di kanan rumah bos supaya ada ruang bertarung, tapi masih jauh dari
+     bendera. */
+  this.bossGateX = this.bossHomeX + 180;
+
+  /* Bos BERDIRI DI TANAH.
+     BUG YANG DIPERBAIKI (dilaporkan user: "bossnya ga napak tanah").
+     Dulu baseY = GY - 120 dengan origin TENGAH: titik tengah 120px di atas
+     tanah, kaki (setengah tinggi ~58px di bawahnya) berhenti di GY-62 —
+     melayang 62px. Sekarang acuannya KAKI (setOrigin(0.5,1)) dan baseY =
+     GY, aturan yang sama dengan bendera & mempelai, jadi kakinya menempel
+     tanah berapa pun tinggi/skalanya. */
+  this.boss = this.physics.add.sprite(this.bossHomeX, GY, 't_boss1');
+  this.boss.setOrigin(0.5, 1);
   this.boss.body.setAllowGravity(false);
   this.boss.setImmovable(true);
   this.boss.setAlpha(0);              /* JANGAN setActive(false) — body ikut mati */
@@ -9217,19 +9234,28 @@ GameScene.prototype.buildBossArena = function (L, GY) {
   this.physics.add.overlap(this.shots, this.boss, this.shotHitsBoss, null, this);
   this.bossHp = 12;
   this.bossPhase = 1;
-  this.bossVulnerable = false;
-  this.bossNextAttack = 0;
-  this.boss.baseY = GY - 120;
+  this.boss.baseY = GY;              /* kaki di tanah (origin kaki) */
+  /* Penghitung damage-feedback (frame-based, bukan tween). Diinisialisasi
+     di sini supaya updateBoss tidak membaca undefined pada frame pertama. */
+  this.boss.invulnMs = 0;
+  this.boss.flashMs = 0;
 
-  /* Penjaga di koridor supaya approach tidak kosong */
+  /* Penjaga di koridor MENUJU arena (bukan sesudahnya) supaya approach
+     tidak kosong. */
   for (var i = 0; i < 3; i++) {
     this.spawnList.push({ x: this.arenaX - 500 + i * 150, y: GY - 40, type: 'E1' });
   }
 
-  /* HP bar KECIL di ATAS boss (world-space) */
-  this.bossHpBg = this.add.rectangle(this.boss.x, this.boss.y - 80, 94, 7, 0x000000)
+  /* Tinggi kepala bos di atas kakinya — dipakai menaruh bar HP & indikator.
+     Origin bos = KAKI, jadi kepalanya di y - displayHeight. Dihitung dari
+     tinggi tekstur SEBENARNYA (ikut skala/ganti sprite), bukan angka mati,
+     supaya bar tetap di atas kepala berapa pun ukuran bosnya. */
+  this.bossHeadH = (this.boss.displayHeight || 117) + 16;
+
+  /* HP bar KECIL di ATAS KEPALA boss (world-space) */
+  this.bossHpBg = this.add.rectangle(this.boss.x, this.boss.y - this.bossHeadH, 94, 7, 0x000000)
     .setDepth(50).setVisible(false);
-  this.bossHpFill = this.add.rectangle(this.boss.x - 45, this.boss.y - 80, 90, 5, 0xe23b2e)
+  this.bossHpFill = this.add.rectangle(this.boss.x - 45, this.boss.y - this.bossHeadH, 90, 5, 0xe23b2e)
     .setOrigin(0, 0.5).setDepth(51).setVisible(false);
 
   /* Mempelai wanita menunggu di pelaminan.
@@ -9245,23 +9271,36 @@ GameScene.prototype.buildBossArena = function (L, GY) {
      tetap berdiri di tanah.
      Tween naik-turun juga dibuang: itu membuatnya melayang SECARA SENGAJA
      6px di atas tanah — mempelai berdiri menunggu, bukan hantu. */
-  this.bride = this.add.sprite(L.len - 60, GY, 't_bride').setDepth(8);
+  /* Mempelai berdiri DI SAMPING bendera (di ujung, jauh dari arena bos),
+     jadi pemain baru menghampirinya setelah bos kalah & gerbang terbuka. */
+  var brideX = L.goalX + 70;
+  this.bride = this.add.sprite(brideX, GY, 't_bride').setDepth(8);
   this.bride.setOrigin(0.5, 1);
-  this.bride.setPosition(L.len - 60, GY);
+  this.bride.setPosition(brideX, GY);
   playSlot(this.bride, 'bride');
 };
 
 GameScene.prototype.activateBoss = function () {
   this.bossActive = true;
-  this.tweens.add({ targets: this.boss, alpha: 1, duration: 400 });
-  this.cameras.main.setBounds(this.L.len - BW, 0, BW, BH);
+  /* Muncul langsung penuh, BUKAN tween alpha: updateBoss menulis alpha
+     tiap frame (untuk kedip damage), jadi tween fade-in akan langsung
+     tertimpa dan malah membuat bos berkedip aneh saat kemunculan. */
+  this.boss.setAlpha(1);
+  /* Kunci kamera ke ARENA (bukan ke ujung level): arena kini jauh sebelum
+     bendera, jadi mengunci ke L.len-BW akan memperlihatkan tempat yang
+     salah. Batas kiri dipatok supaya pemandangan tidak menyapu mundur,
+     kanan dibatasi gerbang supaya bendera belum terlihat. Dilepas lagi
+     saat bos kalah (defeatBoss) agar pemain bisa berjalan ke bendera. */
+  var camL = Math.max(0, this.arenaX - Math.round(BW * 0.25));
+  var camW = (this.bossGateX + 120) - camL;
+  this.cameras.main.setBounds(camL, 0, Math.max(BW, camW), BH);
   this.cameras.main.flash(300, 255, 255, 255);
   this.bossHpBg.setVisible(true);
   this.bossHpFill.setVisible(true);
-  this.bossNextAttack = this.time.now + 1600;
   sfx('bosshit');
-  this.setBossVulnerable(false);   /* mulai dari keadaan "TAHAN" yang jelas */
-  toast('SANG PENJAGA WAKTU muncul! Injak saat dia MENGUNING & tertulis SERANG!', 'warn', 5600);
+  /* Aturan baru: bos SELALU bisa diserang — tidak ada aba-aba yang harus
+     ditunggu. Cukup injak dari atas atau tembak. */
+  toast('SANG PENJAGA WAKTU muncul! Injak dari atas atau tembak dengan BUKET!', 'warn', 5200);
 };
 
 /* Lebar arena bos, dalam px. Bos memantul di dalam pita ini.
@@ -9273,297 +9312,254 @@ GameScene.prototype.updateBoss = function (time, delta) {
   var b = this.boss;
   if (!b || !b.active) return;
 
-  /* ---- BERGERAK MENDATAR (model retromario) ----------------------
-     Dulu bos DIAM di satu titik dan hanya bergoyang naik-turun, jadi
-     pertarungannya sekadar "berdiri di bawahnya lalu tunggu aba-aba".
-     Di retromario bos berpatroli dan memantul di dinding arena,
-     sehingga pemain harus MEMBACA POSISI dan mengejar peluang, bukan
-     menunggu di tempat. Itu yang ditiru di sini.
+  /* ---- MODEL RETROMARIO, TANPA JENDELA RENTAN ----------------------
+     Permintaan user: "ga usah ada timing kapan harus nyerang, buat
+     supaya bisa di serang terus". Di retromario bos memang begitu —
+     satu-satunya gerbang adalah invuln beberapa frame SESUDAH kena
+     (supaya satu tembakan tidak menghabiskan HP sekaligus), bukan
+     jendela yang harus ditunggu. Bos SELALU bisa diinjak/ditembak.
 
-     Kecepatan naik tiap fase — persis pola retromario
-     (baseSpd + phase*0.5), diskalakan ke satuan px/detik. */
+     Damage ditampilkan lewat PENGHITUNG FRAME (hitFlash), bukan tween.
+     Inilah yang memperbaiki "bos hilang saat ditembak": penghitung
+     menghitung mundur sendiri tiap frame dan tidak mungkin tersangkut,
+     sedangkan tween tint/alpha bisa saling menimpa dan meninggalkan bos
+     separuh transparan. */
+
+  /* Penghitung kebal & kedip — turun tiap frame, satuan ms.
+     ---------------------------------------------------------------------
+     BUG YANG DIPERBAIKI (dilaporkan berkali-kali: "pas di tembak masih
+     ilang"). Riset Phaser: setTint() adalah fitur WEBGL-ONLY. Tema ini
+     memakai Phaser.AUTO yang JATUH ke renderer CANVAS di perangkat/host
+     tanpa WebGL (kasus umum di dalam ThemeWrapper). Di renderer Canvas,
+     setTint pada sprite bertekstur CanvasTexture berinteraksi buruk
+     (known issue #2453: frame beku / tinted-canvas nyangkut) dan bisa
+     membuat sprite tidak tergambar sama sekali.
+
+     Perbaikannya: BUANG setTint sepenuhnya. Umpan balik "kena" cukup
+     lewat KEDIP ALPHA (identik di canvas & webgl) — dan tiap cabang
+     WAJIB menyetel alpha eksplisit supaya tidak ada keadaan yang
+     meninggalkan alpha rendah. Nilai terendah 0.4, tak pernah 0, jadi
+     bos selalu terlihat. Percikan putih (partikel) memberi "pukulan"
+     yang lebih jelas daripada tint, dan itu jalur yang sudah terbukti
+     bekerja di tema ini (juiceStomp). */
+  if (b.invulnMs > 0) b.invulnMs -= delta;
+  if (b.flashMs > 0) {
+    b.flashMs -= delta;
+    /* kedip cepat saat baru kena (alpha, bukan tint) */
+    b.setAlpha(Math.floor(time / 40) % 2 ? 0.35 : 1);
+  } else if (b.invulnMs > 0) {
+    /* masih kebal: kedip lebih lambat */
+    b.setAlpha(Math.floor(time / 70) % 2 ? 0.55 : 1);
+  } else {
+    b.setAlpha(1);                 /* keadaan normal: selalu penuh */
+  }
+  /* JARING PENGAMAN TERAKHIR (dilaporkan berulang: bos "ilang" total saat
+     ditembak, meski kode alpha di atas tak pernah menulis 0). Apa pun yang
+     terjadi di frame ini — texture-swap yang meleset, efek yang menyetel
+     renderable=false, dsb. — paksa bos KEMBALI dapat digambar tiap frame.
+     Ini tidak mengubah gameplay; hanya menjamin bos tak pernah menghilang. */
+  b.setVisible(true);
+  if (!(b.alpha > 0)) b.setAlpha(1);            /* tangkap NaN/0 dari mana pun */
+  b.renderFlags |= 1;                            /* pastikan flag render menyala */
+  if (b.scaleX === 0 || b.scaleY === 0 || !isFinite(b.scaleX) || !isFinite(b.scaleY)) b.setScale(1);
+
+  /* ---- PATROLI + PANTUL di pita arena ---- */
   if (b.dirX === undefined) {
     b.dirX = -1;
     b.homeX = b.x;
     b.arenaL = b.homeX - BOSS_ARENA_W * 0.5;
     b.arenaR = b.homeX + BOSS_ARENA_W * 0.5;
+    b.jumpCdMs = 1400;
+    b.vy = 0;
   }
-  /* Selama telegraph/hentakan, bos berhenti mendatar supaya aba-abanya
-     terbaca jelas — gerak + serang sekaligus membuatnya tak terbaca. */
-  if (!b.lunging) {
-    var spd = 46 + this.bossPhase * 22;         /* fase 1..3 -> 68/90/112 px/s */
-    b.x += b.dirX * spd * (delta / 1000);
-    if (b.x < b.arenaL) { b.x = b.arenaL; b.dirX = 1; }
-    if (b.x > b.arenaR) { b.x = b.arenaR; b.dirX = -1; }
-    b.setFlipX(b.dirX > 0);
+  /* Makin rendah HP makin cepat (fase 1..3 -> 78/104/130 px/s). */
+  var spd = 52 + this.bossPhase * 26;
+  b.x += b.dirX * spd * (delta / 1000);
+  if (b.x < b.arenaL) { b.x = b.arenaL; b.dirX = 1; }
+  if (b.x > b.arenaR) { b.x = b.arenaR; b.dirX = -1; }
+  b.setFlipX(b.dirX > 0);
+
+  /* ---- LOMPAT ter-telegraph (dari retromario: adil & terbaca) ----
+     Bos memantul naik-turun dengan gravitasi sendiri, bukan bobbing sinus:
+     lompatan yang sungguhan lebih mudah dihindari daripada goyang. */
+  var GY = this.GY;
+  var floorY = b.baseY;                        /* ketinggian "berdiri" bos */
+  b.vy += 1600 * (delta / 1000);               /* gravitasi bos */
+  b.y += b.vy * (delta / 1000);
+  if (b.y >= floorY) { b.y = floorY; b.vy = 0; b.onFloor = true; }
+  else b.onFloor = false;
+
+  if (b.onFloor) {
+    b.jumpCdMs -= delta;
+    /* aba-aba 220ms sebelum lompat */
+    if (b.jumpCdMs <= 220 && !b._warned) { b._warned = true; sfx('bosshit'); }
+    if (b.jumpCdMs <= 0) {
+      b.vy = -540 - this.bossPhase * 40;        /* makin galak tiap fase */
+      b.jumpCdMs = 1600 - this.bossPhase * 260;  /* makin sering tiap fase */
+      b._warned = false;
+    }
   }
 
-  /* Bobbing */
-  b.y = b.baseY + Math.sin(time / 700) * 12;
-  /* Bar HP dihapus saat bos kalah, jadi keberadaannya harus diperiksa:
-     satu throw di update() mematikan step Phaser SELAMANYA. */
-  if (this.bossHpBg) this.bossHpBg.setPosition(b.x, b.y - 80);
+  /* ANTI-NaN posisi — dijalankan SESUDAH patroli & gravitasi (justru dua
+     tempat itu yang bisa menghasilkan NaN kalau salah satu inputnya rusak).
+     Sprite ber-posisi/vy NaN TIDAK digambar Phaser (vanish senyap). Pulihkan
+     ke titik "berdiri" yang pasti berhingga: homeX kalau ada, kalau tidak
+     posisi sekarang yang masih valid, kalau tidak pun bossHomeX. */
+  if (!isFinite(b.x)) { b.x = isFinite(b.homeX) ? b.homeX : (isFinite(this.bossHomeX) ? this.bossHomeX : 0); b.dirX = -1; }
+  if (!isFinite(b.y)) { b.y = isFinite(b.baseY) ? b.baseY : this.GY; b.vy = 0; }
+  if (!isFinite(b.vy)) b.vy = 0;
+
+  /* ---- GERBANG: tahan pemain di arena selama bos hidup ----
+     Permintaan user: "boss dulu, kl bossnya udh kalah baru bisa maju lagi
+     & ketemu bendera". Selama bossActive, pemain tidak boleh melewati
+     bossGateX; begitu bos kalah, defeatBoss menyetel bossActive=false dan
+     gerbang ini berhenti berlaku, jadi pemain bebas maju ke bendera. */
+  var p0 = this.player;
+  if (p0 && this.bossGateX != null && p0.x > this.bossGateX) {
+    p0.x = this.bossGateX;
+    if (p0.body && p0.body.velocity.x > 0) p0.body.velocity.x = 0;
+  }
+
+  /* Bar HP mengikuti KEPALA bos (origin bos = kaki, jadi kepala di
+     y - bossHeadH). Diperiksa keberadaannya: dihapus saat kalah, dan
+     satu throw di update() mematikan loop. */
+  var headY = b.y - (this.bossHeadH || 133);
+  if (this.bossHpBg) this.bossHpBg.setPosition(b.x, headY);
   if (this.bossHpFill) {
-    this.bossHpFill.setPosition(b.x - 45, b.y - 80);
+    this.bossHpFill.setPosition(b.x - 45, headY);
     this.bossHpFill.width = 90 * Math.max(0, this.bossHp / 12);
   }
 
-  /* Indikator ikut bergoyang bersama boss — kalau diam di tempat, hubungannya
-     dengan boss jadi tidak terbaca. */
-  if (this.bossLabel) this.bossLabel.setPosition(b.x, b.y - 104);
-  if (this.bossArrow) {
-    /* panah memantul kecil supaya menarik mata */
-    this.bossArrow.setPosition(b.x, b.y - 58 + Math.sin(time / 120) * 4);
+  /* ---- KONTAK: injak = damage (dari atas), samping = pemain terluka ----
+     Persis retromario: stomp hanya sah kalau pemain SEDANG JATUH dan
+     mendarat di kepala bos. Tidak ada aba-aba, tidak ada jendela — asal
+     dari atas, kena. */
+  var p = this.player;
+  /* Origin bos = KAKI, jadi tubuhnya menempati pita [b.y - headH .. b.y].
+     Titik "kepala" (yang harus diinjak) ada di atas pita itu. */
+  var headH = this.bossHeadH || 133;
+  var headTop = b.y - headH;
+  var overlapX = Math.abs(p.x - b.x) < 42;
+  var overlapY = (p.y > headTop - 24) && (p.y < b.y);   /* tubuh pemain menembus pita bos */
+  if (p && !p.dying && overlapX && overlapY) {
+    /* Injak sah kalau pemain SEDANG JATUH dan berada di paruh ATAS bos
+       (dekat kepala), bukan menabrak dari samping/bawah. */
+    var stomp = p.body.velocity.y > 0 && (p.y < headTop + headH * 0.45);
+    if (stomp) {
+      this.hitBoss();
+      p.body.velocity.y = -PHYS.JUMP_VELOCITY * 0.85;
+    } else {
+      this.hurtPlayer(b);
+    }
   }
-  if (this._bossRing) this._bossRing.setPosition(b.x, b.y);
 
-  /* Fase */
+  /* ---- FASE dari sisa HP ---- */
   var ph = this.bossHp > 8 ? 1 : this.bossHp > 4 ? 2 : 3;
   if (ph !== this.bossPhase) {
     this.bossPhase = ph;
-    b.setTexture('t_boss' + ph);
+    /* Ganti tekstur fase HANYA kalau key-nya ada. Riset Phaser 3.80.1:
+       setTexture ke key yang hilang / ber-frame __BASE 0x0 membuat sprite
+       tak tergambar sama sekali (bos "ilang"). Kalau key fase tak ada,
+       pertahankan tekstur sekarang daripada mengosongkan bos. */
+    var pkey = 't_boss' + ph;
+    if (this.textures.exists(pkey)) {
+      b.setTexture(pkey);
+      /* setTexture bisa menyetel ulang alpha/visible pada sebagian jalur —
+         kembalikan segera supaya bos tak berkedip hilang saat pindah fase. */
+      b.setVisible(true);
+      if (!(b.alpha > 0)) b.setAlpha(1);
+    }
     this.cameras.main.flash(200, 255, 255, 255);
     this.cameras.main.shake(300, 0.02);
-  }
-
-  /* Serangan + weakness window */
-  var interval = ph === 1 ? 2600 : ph === 2 ? 2100 : 1700;
-  if (time > this.bossNextAttack) {
-    this.bossAttack(time, ph);
-    this.bossNextAttack = time + interval;
+    toast('BOS FASE ' + ph + '!', 'warn', 1100);
   }
 };
 
-/* ---------------------------------------------------------------------
-   INDIKATOR BOSS RENTAN — keluhan: "ga ketauan sebenarnya bisa diserang/enggak"
-
-   Prinsip: satu isyarat saja tidak cukup. Pemain sedang sibuk menghindar, dan
-   isyarat halus (alpha/kilau tipis) hilang di tengah gerakan. Jadi kondisi
-   rentan ditandai EMPAT lapis yang berbeda jenisnya:
-     1. WARNA   — boss jadi terang keemasan + berdenyut (bahaya/kesempatan)
-     2. GERAK   — cincin melebar berulang di sekitar boss
-     3. TEKS    — label "SERANG!" di atas kepala boss
-     4. ARAH    — panah menunjuk ke bawah ke titik yang harus diinjak
-   Saat TIDAK rentan, boss redup kebiruan + label "TAHAN" — jadi keadaan
-   "tidak bisa diserang" pun punya bentuk yang jelas, bukan sekadar ketiadaan
-   isyarat. Itu bedanya "tidak tahu" dengan "tahu bahwa belum waktunya". */
-GameScene.prototype.setBossVulnerable = function (on, durMs) {
-  var b = this.boss, self = this;
-  if (!b) return;
-  /* Bos SUDAH kalah -> jangan sentuh apa pun, dan yang paling penting
-     jangan MEMBUAT ULANG label. Rantai serangan bos adalah empat tween
-     bersarang; saat bos mati di tengah jendela rentan (satu-satunya saat
-     dia BISA mati), callback penutup jendela masih terbang dan baru
-     mendarat ~1 detik kemudian. Tanpa penjaga ini callback itu menemukan
-     bossLabel == null, membuatnya lagi, lalu menulis "TAHAN" di layar
-     padahal bosnya sudah lenyap. Penjaga `if (!b)` saja tidak cukup:
-     sprite bos baru benar-benar dihapus setelah tween 900ms. */
-  if (!this.bossActive) return;
-  this.bossVulnerable = !!on;
-
-  /* Bersihkan efek jendela sebelumnya */
-  if (this._bossPulse) { this._bossPulse.stop(); this._bossPulse = null; }
-  if (this._bossRing) { this._bossRing.destroy(); this._bossRing = null; }
-  if (this._bossRingTw) { this._bossRingTw.stop(); this._bossRingTw = null; }
-  b.setScale(1);
-
-  if (!this.bossLabel) {
-    this.bossLabel = this.add.text(b.x, b.y - 104, '', {
-      fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold',
-      color: '#ffffff', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5).setDepth(52);
-  }
-  if (!this.bossArrow) {
-    this.bossArrow = this.add.text(b.x, b.y - 58, '▼', {
-      fontFamily: 'monospace', fontSize: '20px',
-      color: '#ffd34d', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5).setDepth(52).setVisible(false);
-  }
-
-  if (on) {
-    /* 1. WARNA — keemasan terang + denyut skala */
-    b.setTint(0xffe27a);
-    this._bossPulse = this.tweens.add({
-      targets: b, scaleX: 1.12, scaleY: 1.12,
-      duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
-    });
-
-    /* 2. GERAK — cincin melebar berulang (dibuat dari 12 kotak, bukan
-       fillCircle: primitif mulus dilarang di tema ini) */
-    var ring = this.add.container(b.x, b.y).setDepth(48);
-    for (var i = 0; i < 12; i++) {
-      var a = (i / 12) * Math.PI * 2;
-      var dot = this.add.rectangle(Math.cos(a) * 30, Math.sin(a) * 30, 6, 6, 0xf0c020);
-      ring.add(dot);
-    }
-    this._bossRing = ring;
-    this._bossRingTw = this.tweens.add({
-      targets: ring, scaleX: 2.2, scaleY: 2.2, alpha: 0,
-      duration: 620, repeat: -1, ease: 'Cubic.easeOut'
-    });
-
-    /* 3. TEKS + 4. ARAH */
-    this.bossLabel.setText('SERANG!').setColor('#ffe27a');
-    this.bossArrow.setVisible(true);
-    sfx('coin');   /* isyarat suara: jendela terbuka */
-  } else {
-    /* Keadaan "belum bisa diserang" juga diberi bentuk, bukan dibiarkan kosong */
-    b.setTint(0x8fa8d8);
-    this.bossLabel.setText('TAHAN').setColor('#a8c0e0');
-    this.bossArrow.setVisible(false);
-  }
-};
-
-GameScene.prototype.bossAttack = function (time, phase) {
-  var b = this.boss, self = this;
-  /* Telegraph >=500ms: boss naik + kilau */
-  this.bossVulnerable = false;
-  /* Berhenti berpatroli selama aba-aba + hentakan. Tanpa ini gerak
-     mendatar dan tween serangan berebut posisi, dan aba-abanya jadi
-     tidak terbaca. Dilepas lagi saat jendela rentan dibuka. */
-  b.lunging = true;
-  this.tweens.add({
-    targets: b, y: b.baseY - 26, duration: phase === 1 ? 700 : phase === 2 ? 600 : 500,
-    ease: 'Sine.easeOut',
-    onComplete: function () {
-      if (!self.bossActive) return;   /* bos kalah saat aba-aba masih terbang */
-      /* Active: hentak + shockwave */
-      self.tweens.add({
-        targets: b, y: self.GY - 100, duration: 220, ease: 'Power2',
-        onComplete: function () {
-          if (!self.bossActive) return;
-          self.cameras.main.shake(220, 0.018);
-          sfx('bump');
-          /* Shockwave: dorong player kalau di tanah dan dekat */
-          var p = self.player;
-          if (Math.abs(p.x - b.x) < 240 && (p.body.blocked.down || p.body.touching.down)) {
-            self.hurtPlayer(b);
-          }
-          /* RECOVERY = weakness window.
-             Sebelumnya di sini hanya ada setAlpha(1) — padahal di luar jendela
-             alpha boss JUGA 1, jadi praktis TIDAK ADA indikator sama sekali.
-             Toast menyuruh "injak saat bersinar", tapi tak ada kode yang
-             membuatnya bersinar. Sekarang kondisi rentan ditandai 4 lapis
-             sekaligus (warna, gerak, teks, tanda arah) supaya tak bisa terlewat. */
-          self.setBossVulnerable(true, phase === 3 ? 1000 : 1200);
-          /* Jendela rentan = bos kembali berpatroli. Jadi kesempatan
-             menyerang justru datang saat sasarannya BERGERAK — itulah
-             yang membuat pertarungannya terasa seperti duel, bukan
-             menunggu giliran. */
-          b.lunging = false;
-          self.tweens.add({
-            targets: b, y: b.baseY, duration: phase === 3 ? 1000 : 1200, ease: 'Sine.easeInOut',
-            onComplete: function () {
-              if (!self.bossActive) return;
-              self.setBossVulnerable(false);
-            }
-          });
-        }
-      });
-    }
-  });
-};
-
-/* Hit MANUAL tiap frame — jangan andalkan overlap fisika pada boss bobbing */
-GameScene.prototype.manualBossHit = function () {
-  var b = this.boss, p = this.player;
-  if (!b || !b.active || !this.bossActive || !this.bossVulnerable) return;
-  if (p.body.velocity.y > 0 &&
-      Math.abs(p.x - b.x) < 48 &&
-      Math.abs(p.y - (b.y + 46)) < 44) {
-    this.hitBoss();
-    p.body.velocity.y = -PHYS.JUMP_VELOCITY;
-  }
-};
+/* Satu kali damage ke bos. Dijaga oleh invulnMs (bukan jendela rentan):
+   selama masih kebal sesudah kena, hit berikutnya diabaikan — supaya satu
+   tembakan atau satu injakan tidak menghabiskan beberapa HP sekaligus.
+   Aturannya persis retromario (invuln ~0,67 dtk). */
+var BOSS_INVULN_MS = 650;
+var BOSS_FLASH_MS = 200;
 
 GameScene.prototype.hitBoss = function () {
-  if (this.bossHp <= 0) return;
-  this.bossHp--;
-  /* Lewat setBossVulnerable, BUKAN menyetel flag langsung: kalau flag disetel
-     mentah, cincin & label "SERANG!" tertinggal di layar padahal jendelanya
-     sudah tutup — persis kebingungan yang sedang kita perbaiki. */
-  this.setBossVulnerable(false);
-  sfx('bosshit');
-  this.cameras.main.shake(140, 0.012);
-  this.cameras.main.flash(40, 255, 255, 255);
-  this.addScore(100);
   var b = this.boss;
-  /* KEDIP KENA — satu tween saja pada satu waktu.
+  if (!b || this.bossHp <= 0 || (b.invulnMs && b.invulnMs > 0)) return;
+  this.bossHp--;
+  /* KEDIP KENA lewat PENGHITUNG FRAME, bukan tween.
      ---------------------------------------------------------------------
-     BUG YANG DIPERBAIKI (dilaporkan user: "ketika boss di tembak, bossnya
-     malah ilang ga muncul2 lagi").
+     BUG YANG DIPERBAIKI (dilaporkan berulang: "karakter boss masih hilang
+     ketika di tembak"). Versi tween menyetel alpha bolak-balik lalu
+     mengandalkan callback untuk memulihkannya; dua tween yang tumpang
+     tindih (mudah terjadi saat menembak cepat) saling menimpa dan
+     meninggalkan bos separuh transparan — praktis hilang.
 
-     Dulu tween ini dibuat tanpa disimpan dan tanpa menghentikan yang
-     sebelumnya. Selama satu-satunya cara melukai bos adalah MENGINJAK,
-     itu tidak pernah jadi masalah: jendela rentan hanya terbuka sesaat,
-     jadi dua pukulan mustahil berdekatan. MENEMBAK mengubah itu — jeda
-     tembak cuma 300ms sementara tween ini hidup 70ms x yoyo x repeat 2
-     = ~420ms. Jadi tembakan kedua membuat tween kedip BARU di atas tween
-     lama yang masih berjalan.
-
-     Saat dua tween menulis properti yang sama lalu salah satunya selesai,
-     nilai yang tertinggal bisa berupa nilai antara milik tween yang lain
-     (0.4) — dan karena tween lama tidak pernah dihentikan, ia terus
-     menimpa alpha sesudahnya. Bos jadi tersangkut nyaris transparan:
-     dari sisi pemain, bosnya HILANG dan tidak muncul lagi, padahal
-     objeknya masih ada dan masih bisa ditembak.
-
-     Perbaikannya bukan memperpendek tween, melainkan menegakkan satu
-     pemilik: hentikan yang lama, lalu pastikan alpha kembali ke 1. */
-  if (this._bossHitTw) { try { this._bossHitTw.stop(); } catch (e) {} }
-  b.setAlpha(1);
-  var selfH = this;
-  this._bossHitTw = this.tweens.add({
-    targets: b, alpha: 0.4, duration: 70, yoyo: true, repeat: 2,
-    /* onComplete DAN onStop: stop() tidak memanggil onComplete, jadi tanpa
-       keduanya alpha bisa tertinggal di 0.4 saat tween dipotong. */
-    onComplete: function () { b.setAlpha(1); selfH._bossHitTw = null; },
-    onStop:     function () { b.setAlpha(1); }
-  });
+     Sekarang tidak ada tween DAN tidak ada tint. invulnMs & flashMs
+     adalah penghitung yang DITURUNKAN di updateBoss tiap frame; ALPHA
+     dihitung ULANG dari penghitung itu tiap frame, dan saat keduanya nol,
+     updateBoss memaksa setAlpha(1). Tidak ada keadaan yang bisa
+     tersangkut karena tidak ada yang menjadwalkan nilai ke masa depan —
+     semuanya diturunkan dari penghitung yang pasti menuju nol. */
+  b.invulnMs = BOSS_INVULN_MS;
+  b.flashMs = BOSS_FLASH_MS;
+  b.setAlpha(1);                    /* mulai kedip dari keadaan terlihat penuh */
+  sfx('bosshit');
+  /* Percikan putih di titik kena — umpan balik "pukulan" yang jelas &
+     portabel (jalur yang sama dengan juiceStomp, terbukti bekerja di
+     canvas maupun webgl). Menggantikan kedip tint yang tidak jalan di
+     renderer canvas. */
+  /* Bungkus try/catch: kalau pembuatan/ledakan partikel melempar (mis. frame
+     __BASE t_spark bermasalah di renderer tertentu), lemparan itu MENGHENTIKAN
+     sisa tick — meninggalkan bos dengan state separuh & tak digambar lagi.
+     Efek kosmetik tak boleh sampai mematikan logika bos. */
+  try {
+    if (this.textures.exists('t_spark')) {
+      var em = this.add.particles(b.x, b.y - (this.bossHeadH || 133) * 0.5, 't_spark', {
+        speed: { min: 60, max: 180 }, lifespan: 380, quantity: 10,
+        scale: { start: 1, end: 0 }, blendMode: 'ADD', emitting: false
+      });
+      em.setDepth(52);
+      em.explode(10);
+      this.time.delayedCall(500, function () { try { em.destroy(); } catch (e) {} });
+    }
+  } catch (e) {}
+  try {
+    this.cameras.main.shake(140, 0.012);
+    this.cameras.main.flash(40, 255, 255, 255);
+  } catch (e) {}
+  this.addScore(100);
   if (this.bossHp <= 0) this.defeatBoss();
 };
 
 GameScene.prototype.defeatBoss = function () {
   var self = this, b = this.boss;
-  this.bossActive = false;   /* HARUS lebih dulu: semua callback tertunda
-                                membacanya sebagai tanda berhenti */
-  /* DIHAPUS, bukan disembunyikan. Menyembunyikan menyisakan objek yang
-     masih bisa di-setVisible(true) lagi oleh kode mana pun yang berjalan
-     belakangan; menghapusnya membuat kembalinya bar itu mustahil. */
+  this.bossActive = false;   /* HARUS lebih dulu: kontak & peluru membacanya
+                                sebagai tanda berhenti */
+  /* Bar HP DIHAPUS, bukan disembunyikan — yang disembunyikan masih bisa
+     dimunculkan lagi oleh kode yang berjalan belakangan; dihapus tidak. */
   if (this.bossHpBg) { this.bossHpBg.destroy(); this.bossHpBg = null; }
   if (this.bossHpFill) { this.bossHpFill.destroy(); this.bossHpFill = null; }
-  if (this._blockPuff) { try { this._blockPuff.destroy(); } catch (e) {} this._blockPuff = null; }
-  /* Buang seluruh indikator rentan supaya tidak tertinggal setelah boss kalah.
-     Hentikan tween/cincin dulu, baru hapus label — memanggil setBossVulnerable
-     di sini justru akan MEMBUAT ULANG label yang hendak kita hapus. */
-  this.bossVulnerable = false;
-  /* Tween kedip-kena harus mati DULU: tween lenyap di bawah juga menulis
-     alpha, dan dua penulis pada properti yang sama membuat bos bisa
-     tertinggal separuh terlihat alih-alih benar-benar menghilang. */
-  if (this._bossHitTw) { try { this._bossHitTw.stop(); } catch (e) {} this._bossHitTw = null; }
+  /* Model baru tidak punya lagi jendela rentan, tint, label, cincin, atau
+     tween kedip yang perlu dibersihkan. Cukup pastikan bos terlihat penuh
+     sebelum animasi lenyap. */
   b.setAlpha(1);
-  if (this._bossPulse) { this._bossPulse.stop(); this._bossPulse = null; }
-  if (this._bossRingTw) { this._bossRingTw.stop(); this._bossRingTw = null; }
-  if (this._bossRing) { this._bossRing.destroy(); this._bossRing = null; }
-  if (this.bossLabel) { this.bossLabel.destroy(); this.bossLabel = null; }
-  if (this.bossArrow) { this.bossArrow.destroy(); this.bossArrow = null; }
-  b.clearTint();
   b.setScale(1);
   this.cameras.main.shake(600, 0.03);
   this.cameras.main.flash(200, 255, 255, 255);
   sfx('fanfare');
+
+  /* GERBANG DIBUKA: pemain kini boleh maju ke bendera. Kamera dilepas ke
+     seluruh panjang level supaya bisa mengikuti pemain berjalan ke ujung.
+     (Model baru: bos dulu, baru bendera — mempelai TIDAK dipindah ke
+     pemain; pemain yang menghampiri mempelai di ujung.) */
+  this.bossGateX = null;
+  this.cameras.main.setBounds(0, 0, this.L.len, BH);
 
   this.tweens.add({
     targets: b, alpha: 0, scaleX: 1.4, scaleY: 1.4, angle: 180, duration: 900,
     onComplete: function () { try { b.destroy(); } catch (e) {} self.boss = null; }
   });
 
-  /* Mempelai wanita turun menghampiri */
-  if (this.bride) {
-    this.tweens.add({
-      targets: this.bride, x: this.player.x + 34, duration: 1200, ease: 'Sine.easeInOut'
-    });
-  }
   fireworks();
   if (this.stageIdx + 1 > STORE.maxStage) { STORE.maxStage = STAGES.length; saveStore(); }
   announceCompleted();

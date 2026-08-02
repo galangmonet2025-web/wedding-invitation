@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineExclamationCircle, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
-import { RetroAuthAside, RetroAuthStyle } from '../components/RetroAuthChrome';
+import { AuthShell } from '../components/AuthChrome';
 import { requestFullscreenAfterLogin, isMobileDevice } from '@/shared/hooks/useEnterFullscreenOnLogin';
 
 export function LoginPage() {
@@ -22,10 +22,8 @@ export function LoginPage() {
 
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [siteName, setSiteName] = useState<string>('');
-    const [siteDescription, setSiteDescription] = useState<string>('');
 
     const displaySiteName = siteName || t('auth.platform_title');
-    const displaySiteDesc = siteDescription || t('auth.platform_desc');
 
     // Fetch Global Website Config for Favicon & branding data
     useEffect(() => {
@@ -45,9 +43,6 @@ export function LoginPage() {
                 if (res.success) {
                     if (res.data.site_name) {
                         setSiteName(res.data.site_name);
-                    }
-                    if (res.data.site_description) {
-                        setSiteDescription(res.data.site_description);
                     }
                     if (res.data.site_logo) {
                         const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
@@ -143,59 +138,31 @@ export function LoginPage() {
     };
 
     return (
-        <div className="rm-lp min-h-screen flex" style={{ background: 'var(--lp-ink)' }}>
-            <RetroAuthStyle />
-
-            {/* Panel kiri — "world 1-1" langit + dekorasi retro (lg+) */}
-            <RetroAuthAside
-                logoUrl={logoUrl}
-                fallbackLogo={kosaIcon}
-                title={displaySiteName}
-                desc={displaySiteDesc}
-            >
-                <div className="mt-12 flex items-center gap-8">
-                    <div className="text-center">
-                        <p className="lp-stat-num" style={{ color: 'var(--lp-coin)' }}>100+</p>
-                        <p className="lp-pixel text-[7px] tracking-widest text-white/60 mt-2">{t('auth.active_weddings')}</p>
+        <AuthShell
+            logoUrl={logoUrl}
+            fallbackLogo={kosaIcon}
+            title={displaySiteName}
+            eyebrow={t('auth.login_button')}
+            heading={t('auth.welcome_back')}
+            subheading={t('auth.login_desc')}
+            topRight={<LanguageSwitcher />}
+            aside={
+                <div className="au-stats">
+                    <div>
+                        <p className="au-stat-num">100+</p>
+                        <p className="au-stat-label">{t('auth.active_weddings')}</p>
                     </div>
-                    <div className="lp-divider-v" />
-                    <div className="text-center">
-                        <p className="lp-stat-num" style={{ color: 'var(--lp-coin)' }}>10K+</p>
-                        <p className="lp-pixel text-[7px] tracking-widest text-white/60 mt-2">{t('auth.guests_managed')}</p>
+                    <div>
+                        <p className="au-stat-num">10K+</p>
+                        <p className="au-stat-label">{t('auth.guests_managed')}</p>
                     </div>
-                    <div className="lp-divider-v" />
-                    <div className="text-center">
-                        <p className="lp-stat-num" style={{ color: 'var(--lp-coin)' }}>99%</p>
-                        <p className="lp-pixel text-[7px] tracking-widest text-white/60 mt-2">{t('auth.uptime')}</p>
+                    <div>
+                        <p className="au-stat-num">99%</p>
+                        <p className="au-stat-label">{t('auth.uptime')}</p>
                     </div>
                 </div>
-            </RetroAuthAside>
-
-            {/* Panel kanan — form login */}
-            <div className="lp-form-panel w-full lg:w-[600px] lg:flex-shrink-0 flex items-center justify-center p-8 relative">
-                <div className="absolute top-8 right-8 z-10">
-                    <LanguageSwitcher />
-                </div>
-
-                <div className="w-full max-w-md">
-                    {/* Logo mobile */}
-                    <Link to="/landing-page" className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                        <div className="lp-logo-block overflow-hidden p-2">
-                            <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain" />
-                        </div>
-                        <h1 className="lp-pixel text-sm text-white leading-[1.6]">
-                            {siteName ? siteName : <>WEDDING<span style={{ color: 'var(--lp-coin)' }}>SAAS</span></>}
-                        </h1>
-                    </Link>
-
-                    <div className="mb-8">
-                        <span className="lp-eyebrow lp-blink">PRESS START</span>
-                        <h2 className="lp-pixel text-base sm:text-lg text-white leading-[1.6] mt-4 mb-3" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
-                            {t('auth.welcome_back')}
-                        </h2>
-                        <p className="text-white/60 font-medium text-sm">{t('auth.login_desc')}</p>
-                    </div>
-
+            }
+        >
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
                             <label htmlFor="username" className="lp-label">{t('auth.username')}</label>
@@ -247,7 +214,7 @@ export function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="lp-btn lp-btn-coin w-full text-[11px] py-4 mt-2 inline-flex items-center justify-center gap-3"
+                            className="lp-btn lp-btn-coin w-full mt-2"
                         >
                             {loading && (
                                 <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -256,16 +223,12 @@ export function LoginPage() {
                         </button>
                     </form>
 
-                    <div className="mt-7 text-center">
-                        <p className="lp-pixel text-[8px] leading-[1.8] text-white/50">
-                            {t('auth.no_account')}{' '}
-                            <Link to="/register" className="lp-link">
-                                {t('auth.register_link')}
-                            </Link>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <p className="au-foot-note">
+                        {t('auth.no_account')}{' '}
+                        <Link to="/register" className="lp-link">
+                            {t('auth.register_link')}
+                        </Link>
+                    </p>
+        </AuthShell>
     );
 }

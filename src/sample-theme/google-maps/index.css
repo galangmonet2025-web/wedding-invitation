@@ -24,6 +24,12 @@
     --body: 'Roboto', 'Poppins', sans-serif;
     --shadow-1: 0 1px 3px rgba(60,64,67,0.16), 0 2px 8px rgba(60,64,67,0.10);
     --shadow-2: 0 2px 6px rgba(60,64,67,0.18), 0 8px 24px rgba(60,64,67,0.14);
+    /* Ruang aman untuk navbar mengambang (fixed) di bawah:
+       14px jarak bawah + ~48px tinggi pil + 10px napas = 72px.
+       Dipakai semua section yang isinya bisa menyentuh tepi bawah layar. */
+    --navbar-h: 48px;
+    --navbar-gap: 14px;
+    --safe-bottom: calc(var(--navbar-h) + var(--navbar-gap) + 10px);
 }
 
 /* ---------- base ---------- */
@@ -327,7 +333,9 @@ select.custom-input { appearance: none; background-image: url("data:image/svg+xm
 .section-hero {
     position: relative; min-height: 100dvh; overflow: hidden;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 40px 22px; background: var(--map-land);
+    text-align: center; background: var(--map-land);
+    /* bawah diberi ruang navbar agar konten hero + indikator scroll tidak tertutup */
+    padding: 40px 22px calc(40px + var(--safe-bottom));
 }
 .hero-map { position: absolute; inset: 0; z-index: 1; }
 .hm-grid {
@@ -380,7 +388,9 @@ select.custom-input { appearance: none; background-image: url("data:image/svg+xm
 .hero-quote { color: var(--grey); font-size: 0.92rem; line-height: 1.7; font-style: italic; margin: 0; }
 .hero-verse-ref { display: block; margin-top: 10px; color: var(--blue); font-weight: 600; font-style: normal; font-size: 0.82rem; }
 
-.scroll-indicator { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 4; text-align: center; color: var(--grey); }
+/* absolute → padding hero tidak menggesernya, jadi offset bawahnya dinaikkan
+   sendiri di atas navbar mengambang. */
+.scroll-indicator { position: absolute; bottom: calc(14px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); z-index: 4; text-align: center; color: var(--grey); }
 .scroll-indicator .mouse { width: 24px; height: 38px; border: 2px solid var(--grey); border-radius: 14px; margin: 0 auto 6px; position: relative; }
 .scroll-indicator .wheel { width: 4px; height: 8px; background: var(--grey); border-radius: 2px; position: absolute; left: 50%; top: 6px; transform: translateX(-50%); animation: wheel 1.6s ease infinite; }
 .scroll-indicator span { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
@@ -583,7 +593,9 @@ select.custom-input { appearance: none; background-image: url("data:image/svg+xm
 .section-closing {
     position: relative; min-height: 100dvh; overflow: hidden;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 50px 24px 30px;
+    text-align: center;
+    /* footer penyedia + sosmed ada di paling bawah halaman → wajib diberi ruang navbar */
+    padding: 50px 24px calc(30px + var(--safe-bottom));
 }
 .closing-map { position: absolute; inset: 0; z-index: 1; background: #182029; }
 .cl-grid { position: absolute; inset: 0; opacity: 0.12; background-image: linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px); background-size: 54px 54px; }
@@ -626,46 +638,99 @@ select.custom-input { appearance: none; background-image: url("data:image/svg+xm
    FLOATING UI = Maps navigation bar
    ========================================================================= */
 .gm-navbar-wrap {
-    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
     z-index: 900; width: calc(100% - 28px); max-width: 440px;
 }
+/* Compact single-row bar: now-playing strip + controls sit side by side. */
 .gm-navbar {
-    background: #fff; border-radius: 18px; box-shadow: var(--shadow-2);
-    padding: 10px 12px; border: 1px solid var(--line);
+    background: #fff; border-radius: 999px; box-shadow: var(--shadow-2);
+    padding: 5px 8px 5px 10px; border: 1px solid var(--line);
+    display: flex; align-items: center; gap: 6px;
 }
-.gm-np { display: flex; align-items: center; gap: 10px; padding: 3px 6px 9px; border-bottom: 1px solid var(--line); }
+.gm-np { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 0; border-bottom: none; }
 .gm-np-ic { flex-shrink: 0; display: inline-flex; }
+.gm-np-ic svg { width: 13px; height: 13px; }
 .gm-np-text { flex: 1; min-width: 0; text-align: left; overflow: hidden; }
-.gm-np-channel { display: block; color: var(--grey); font-size: 0.72rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-np-channel { display: block; color: var(--grey); font-size: 0.62rem; font-weight: 500; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gm-np-title { display: block; position: relative; overflow: hidden; white-space: nowrap; }
-.np-marquee-inner { display: inline-block; color: var(--ink); font-weight: 600; font-size: 0.88rem; white-space: nowrap; }
-.np-marquee.is-marquee .np-marquee-inner { animation: npScroll var(--np-scroll-dur, 10s) linear infinite; }
-@keyframes npScroll {
-    0%, 12% { transform: translateX(0); }
-    88%, 100% { transform: translateX(var(--np-scroll, 0)); }
+.np-marquee-inner { display: inline-block; color: var(--ink); font-weight: 600; font-size: 0.75rem; line-height: 1.3; white-space: nowrap; }
+/* Judul berjalan BOLAK-BALIK tanpa putus: kanan→kiri, lalu begitu mentok
+   langsung berbalik kiri→kanan. Kuncinya `alternate` — satu siklus animasi
+   diputar maju lalu mundur, jadi tidak ada lompatan balik ke awal.
+   Versi lama pakai keyframe 0%,12% … 88%,100% yang artinya DIAM di kedua ujung
+   (jeda 12%) lalu MELOMPAT balik ke posisi awal — itu yang terasa patah-patah.
+   ease-in-out membuat pembalikan arah di ujung terasa melambat lembut, bukan
+   membentur; `linear` akan terasa menyentak saat berbalik. */
+.np-marquee.is-marquee .np-marquee-inner {
+    animation: npScroll var(--np-scroll-dur, 10s) ease-in-out infinite alternate;
 }
-.gm-np-eq { flex-shrink: 0; display: inline-flex; align-items: flex-end; gap: 2.5px; height: 16px; }
-.gm-np-eq span { width: 3px; height: 100%; background: var(--blue); border-radius: 2px; transform: scaleY(0.35); transform-origin: bottom; }
-#theme-fab-container.is-playing .gm-np-eq span { animation: eq 0.9s ease-in-out infinite; }
-#theme-fab-container.is-playing .gm-np-eq span:nth-child(2) { animation-delay: 0.2s; }
-#theme-fab-container.is-playing .gm-np-eq span:nth-child(3) { animation-delay: 0.4s; }
-#theme-fab-container.is-playing .gm-np-eq span:nth-child(4) { animation-delay: 0.15s; }
-@keyframes eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+@keyframes npScroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(var(--np-scroll, 0)); }
+}
+/* Indikator "now playing" — GERAKAN & PROPORSI mengikuti equalizer tema
+   spotify-wrapped (.spwr-side-eq): tinggi per-batang 50/100/65/90/40%,
+   animasi eqBar 0.9s ease-in-out di-stagger 0.15/0.3/0.45/0.6s, warna biru.
 
-.gm-controls { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 4px 3px; }
+   UKURAN diskalakan, tidak disalin mentah. Acuannya sidebar desktop setinggi
+   40px, sedangkan navbar ini cuma 18px, jadi faktornya ±0.45 dan SEMUA dimensi
+   ikut dikecilkan dengan faktor yang sama supaya proporsinya tetap:
+       lebar  7px → 3px      gap 5px → 2px      radius 3px → 1.5px
+   Nilai 7px/5px yang lama memakan 55px lebar (5x7 + 4x5) — kegemukan untuk
+   navbar dan mencuri ruang judul lagu; sekarang tinggal 23px (5x3 + 4x2). */
+.gm-np-eq { flex-shrink: 0; display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; }
+.gm-np-eq span {
+    width: 3px; background: var(--blue); border-radius: 1.5px;
+    transform: scaleY(0.4); transform-origin: bottom;
+    transition: transform 0.28s ease;
+}
+.gm-np-eq span:nth-child(1) { height: 50%; }
+.gm-np-eq span:nth-child(2) { height: 100%; }
+.gm-np-eq span:nth-child(3) { height: 65%; }
+.gm-np-eq span:nth-child(4) { height: 90%; }
+.gm-np-eq span:nth-child(5) { height: 40%; }
+#theme-fab-container.is-playing .gm-np-eq span { animation: eqBar 0.9s ease-in-out infinite; transition: none; }
+#theme-fab-container.is-playing .gm-np-eq span:nth-child(2) { animation-delay: 0.15s; }
+#theme-fab-container.is-playing .gm-np-eq span:nth-child(3) { animation-delay: 0.3s; }
+#theme-fab-container.is-playing .gm-np-eq span:nth-child(4) { animation-delay: 0.45s; }
+#theme-fab-container.is-playing .gm-np-eq span:nth-child(5) { animation-delay: 0.6s; }
+@keyframes eqBar { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+.gm-controls { flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 1px; padding: 0; border-left: 1px solid var(--line); padding-left: 5px; }
 .gm-navbtn {
-    flex: 1; height: 44px; border: none; background: transparent; color: var(--grey);
-    border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    flex: 0 0 30px; width: 30px; height: 30px; border: none; background: transparent; color: var(--grey);
+    border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease;
 }
+.gm-navbtn svg { width: 16px; height: 16px; }
 .gm-navbtn:hover { background: #f1f3f4; color: var(--blue); }
 .gm-navbtn:active { transform: scale(0.92); }
+/* Tombol play/pause punya DUA rupa yang jelas berbeda:
+   - JEDA (default)  : biru solid + bayangan tebal → "tekan aku"
+   - BERPUTAR        : putih, garis tepi biru, ikon biru, bayangan tipis → kalem,
+                       sekaligus memberi kontras pada ring biru yang berdenyut.
+   Ikon di dalamnya (play/pause) tetap ditukar oleh host lewat #play-icon /
+   #pause-icon; ini murni lapisan warna tombolnya. */
 .gm-navbtn-play {
-    flex: 0 0 56px; height: 56px; background: var(--blue); color: #fff; border-radius: 50%;
-    position: relative; margin: -6px 2px 0; box-shadow: 0 4px 12px rgba(26,115,232,0.45);
+    flex: 0 0 36px; width: 36px; height: 36px; background: var(--blue); color: #fff; border-radius: 50%;
+    position: relative; margin: 0 2px; box-shadow: 0 3px 9px rgba(26,115,232,0.5);
+    border: 2px solid transparent;
+    transition: background 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, transform 0.12s ease;
 }
+.gm-navbtn-play svg { width: 17px; height: 17px; }
 .gm-navbtn-play:hover { background: #1765cc; color: #fff; }
-.gm-play-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(26,115,232,0.35); opacity: 0; }
+
+/* --- keadaan BERPUTAR: tombol jadi putih-outline --- */
+#theme-fab-container.is-playing .gm-navbtn-play {
+    background: #fff;
+    border-color: var(--blue);
+    box-shadow: 0 1px 4px rgba(26,115,232,0.25);
+}
+#theme-fab-container.is-playing .gm-navbtn-play:hover { background: #eaf1fd; }
+/* Ikon pause ikut jadi biru saat tombol putih (SVG-nya fill="#fff" dari HTML,
+   jadi harus ditimpa dengan !important agar terbaca di atas dasar putih). */
+#theme-fab-container.is-playing .gm-navbtn-play svg { fill: var(--blue) !important; }
+.gm-play-ring { position: absolute; inset: -3px; border-radius: 50%; border: 2px solid rgba(26,115,232,0.35); opacity: 0; }
 #theme-fab-container.is-playing .gm-play-ring { opacity: 1; animation: playRing 1.8s ease-out infinite; }
 @keyframes playRing { 0% { transform: scale(0.9); opacity: 0.6; } 100% { transform: scale(1.35); opacity: 0; } }
 

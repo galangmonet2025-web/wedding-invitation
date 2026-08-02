@@ -176,5 +176,28 @@ w.toast('HALO DUNIA', 'ok', 1000);
 ok(el.querySelector('canvas.pwr-toast-bmp') !== null,
    'toast huruf besar dirender dgn font sprite (kanvas)');
 
+/* ---- 11. KETERBACAAN: pesan PANJANG jangan dipaksa bitmap 1-baris kecil ----
+   Dilaporkan user: "BUKET - TEMBAK SAMPAI STAGE SELESAI" tampil sangat kecil.
+   Pesan sepanjang itu tidak muat 2x -> harus jatuh ke TEKS BIASA (bisa
+   membungkus & sudah dibesarkan lewat CSS), bukan kanvas bitmap yang
+   diperkecil sampai tak terbaca. */
+w.toast('BUKET - TEMBAK SAMPAI STAGE SELESAI', 'ok', 1000);
+ok(el.querySelector('canvas.pwr-toast-bmp') === null,
+   'pesan panjang TIDAK dipaksa jadi kanvas bitmap kecil');
+ok(el.textContent.indexOf('TEMBAK SAMPAI STAGE SELESAI') >= 0,
+   'pesan panjang tampil sebagai teks biasa (bisa membungkus, terbaca)');
+
+/* ---- 12. CSS: font-size toast fallback dinaikkan dari 12px ---- */
+const css = require('fs').readFileSync('index.css', 'utf8');
+const toastBlock = css.slice(css.indexOf('.pwr-toast {'),
+                             css.indexOf('}', css.indexOf('.pwr-toast {')));
+ok(!/font-size:\s*12px/.test(toastBlock),
+   'toast tidak lagi 12px (nyaris tak terbaca di ponsel)');
+ok(/font-size:\s*clamp\(/.test(toastBlock),
+   'toast memakai font-size responsif clamp() supaya besar & ikut layar');
+const clampM = /clamp\((\d+)px/.exec(toastBlock);
+ok(clampM && +clampM[1] >= 14,
+   'ukuran minimum toast >= 14px (' + (clampM ? clampM[1] : '?') + 'px)');
+
 console.log(fail ? '\n' + fail + ' GAGAL' : '\nSEMUA LULUS');
 process.exit(fail ? 1 : 0);

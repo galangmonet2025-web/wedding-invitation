@@ -890,7 +890,11 @@ export function WebsiteConfigPage() {
                                     <div className="flex items-center gap-4">
                                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{previewDevice} VIEW</span>
                                          <a 
-                                            href={window.location.origin + window.location.pathname + '#/landing-page'} 
+                                            // Sengaja '#/' (akar), bukan rute tertentu: pratinjau ini
+                                            // harus selalu menampilkan halaman muka situs yang BERLAKU.
+                                            // Rute akar mengalihkan sendiri ke halaman muka saat ini,
+                                            // jadi tautan ini tidak basi lagi kalau halamannya diganti.
+                                            href={window.location.origin + window.location.pathname + '#/'}
                                             target="_blank" 
                                             rel="noreferrer"
                                             className="p-1.5 text-gray-400 hover:text-gold-500"
@@ -910,7 +914,7 @@ export function WebsiteConfigPage() {
                                     }`}>
                                         <iframe 
                                             ref={iframeRef}
-                                            src={window.location.origin + window.location.pathname + '#/landing-page'}
+                                            src={window.location.origin + window.location.pathname + '#/'}
                                             className="w-full h-full"
                                             title="Landing Page Preview"
                                             onLoad={() => {

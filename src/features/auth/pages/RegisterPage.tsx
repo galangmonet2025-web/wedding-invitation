@@ -7,10 +7,10 @@ import kosaIcon from '@/assets/img/kosa-icon.png';
 import { useAuthStore } from '../store/authStore';
 import { authApi, publicApi } from '@/core/api/endpoints';
 import toast from 'react-hot-toast';
-import { HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
+import { HiOutlineUser, HiOutlineLockClosed, HiOutlineCalendar, HiOutlineGlobe, HiOutlineEye, HiOutlineEyeOff, HiOutlineCheck } from 'react-icons/hi';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/shared/components/LanguageSwitcher';
-import { RetroAuthAside, RetroAuthStyle } from '../components/RetroAuthChrome';
+import { AuthShell } from '../components/AuthChrome';
 
 export function RegisterPage() {
     // Saat registrasi cukup minta NAMA PANGGILAN (nickname) mempelai; nama LENGKAP
@@ -43,10 +43,8 @@ export function RegisterPage() {
 
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [siteName, setSiteName] = useState<string>('');
-    const [siteDescription, setSiteDescription] = useState<string>('');
 
     const displaySiteName = siteName || t('auth.start_journey');
-    const displaySiteDesc = siteDescription || t('auth.start_desc');
 
     // Fetch Global Website Config for Favicon & branding data
     useEffect(() => {
@@ -66,9 +64,6 @@ export function RegisterPage() {
                 if (res.success) {
                     if (res.data.site_name) {
                         setSiteName(res.data.site_name);
-                    }
-                    if (res.data.site_description) {
-                        setSiteDescription(res.data.site_description);
                     }
                     if (res.data.site_logo) {
                         const resolvedLogo = await fetchProxyImageBase64(res.data.site_logo);
@@ -372,47 +367,26 @@ export function RegisterPage() {
     };
 
     return (
-        <div className="rm-lp min-h-screen flex" style={{ background: 'var(--lp-ink)' }}>
-            <RetroAuthStyle />
-
-            {/* Panel kiri — "world 1-1" langit + dekorasi retro (lg+) */}
-            <RetroAuthAside
-                logoUrl={logoUrl}
-                fallbackLogo={kosaIcon}
-                title={displaySiteName}
-                desc={displaySiteDesc}
-            >
-                <div className="mt-12 grid grid-cols-2 gap-x-8 gap-y-4">
-                    {[t('auth.feat_guests'), t('auth.feat_checkin'), t('auth.feat_gifts'), t('auth.feat_analytics')].map((feat, i) => (
-                        <div key={i} className="flex items-center gap-3 text-white/85">
-                            <span className="lp-coin" style={{ position: 'static', animation: 'lp-spin 1.6s steps(8) infinite' }} />
-                            <span className="lp-pixel text-[8px] leading-[1.6]">{feat}</span>
+        <AuthShell
+            wide
+            logoUrl={logoUrl}
+            fallbackLogo={kosaIcon}
+            title={displaySiteName}
+            eyebrow={t('auth.register_link')}
+            heading={t('auth.register_title')}
+            subheading={t('auth.register_desc')}
+            topRight={<LanguageSwitcher />}
+            aside={
+                <div className="au-feats">
+                    {[t('auth.feat_guests'), t('auth.feat_checkin'), t('auth.feat_whatsapp'), t('auth.feat_analytics')].map((feat, i) => (
+                        <div key={i} className="au-feat">
+                            <HiOutlineCheck aria-hidden="true" />
+                            <span>{feat}</span>
                         </div>
                     ))}
                 </div>
-            </RetroAuthAside>
-
-            {/* Panel kanan — form registrasi */}
-            <div className="lp-form-panel w-full lg:w-[600px] lg:flex-shrink-0 flex items-center justify-center p-8 overflow-y-auto relative">
-                <div className="absolute top-8 right-8 z-10">
-                    <LanguageSwitcher />
-                </div>
-
-                <div className="w-full max-w-md">
-                    <Link to="/landing-page" className="lg:hidden flex items-center justify-center gap-3 mb-6">
-                        <div className="lp-logo-block overflow-hidden p-2">
-                            <img src={logoUrl || kosaIcon} alt="Logo" className="w-full h-full object-contain" />
-                        </div>
-                    </Link>
-
-                    <div className="mb-6">
-                        <span className="lp-eyebrow lp-blink">NEW GAME</span>
-                        <h2 className="lp-pixel text-base sm:text-lg text-white leading-[1.6] mt-4 mb-3" style={{ textShadow: '3px 3px 0 rgba(0,0,0,.4)' }}>
-                            {t('auth.register_title')}
-                        </h2>
-                        <p className="text-white/60 font-medium text-sm">{t('auth.register_desc')}</p>
-                    </div>
-
+            }
+        >
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
 
@@ -505,9 +479,9 @@ export function RegisterPage() {
                                             setIsAutoSlug(e.target.checked);
                                             if (e.target.checked) setSlugStatus({ message: '', isConflict: false });
                                         }}
-                                        className="w-4 h-4 accent-[var(--lp-coin)] cursor-pointer"
+                                        className="au-check"
                                     />
-                                    <span className="lp-pixel text-[7px] text-white/50 group-hover:text-[var(--lp-coin)] transition-colors">{t('auth.auto_fill')}</span>
+                                    <span className="au-check-label">{t('auth.auto_fill')}</span>
                                 </label>
                             </div>
                             <div className="relative">
@@ -524,24 +498,23 @@ export function RegisterPage() {
                                 <HiOutlineGlobe className="lp-input-ico" />
                                 {isCheckingSlug && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                        <div className="w-4 h-4 border-2 border-[var(--lp-coin)]/25 border-t-[var(--lp-coin)] rounded-full animate-spin" />
+                                        <div className="au-mini-spinner" />
                                     </div>
                                 )}
                             </div>
                             {slugStatus.message && (
-                                <p className="text-[11px] text-amber-300 mt-2 font-semibold bg-amber-500/10 p-2 rounded border-2 border-amber-500/40">
+                                <p className="au-slug-warn">
                                     {slugStatus.message}
                                 </p>
                             )}
-                            <p className="text-xs text-white/40 mt-2 font-medium break-all">
-                                URL: {window.location.host}{window.location.pathname}#/<span className="font-semibold" style={{ color: 'var(--lp-coin)' }}>{form.domain_slug || 'your-slug'}</span>
+                            <p className="au-slug-url">
+                                URL: {window.location.host}{window.location.pathname}#/<span className="au-slug-value">{form.domain_slug || 'your-slug'}</span>
                             </p>
                         </div>
 
-                        <div className="pt-3 flex items-center gap-3">
-                            <span className="lp-pixel text-[8px]" style={{ color: 'var(--lp-coin)' }}>▶</span>
-                            <p className="lp-pixel text-[8px] tracking-wider text-white/70">{t('auth.admin_account')}</p>
-                            <span className="flex-1 h-[3px]" style={{ background: 'repeating-linear-gradient(90deg, rgba(255,255,255,.2) 0 6px, transparent 6px 12px)' }} />
+                        <div className="au-sep">
+                            <p className="au-sep-label">{t('auth.admin_account')}</p>
+                            <span className="au-sep-line" />
                         </div>
 
                         <div>
@@ -588,7 +561,7 @@ export function RegisterPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="lp-btn lp-btn-coin w-full text-[11px] py-4 mt-2 inline-flex items-center justify-center gap-3"
+                            className="lp-btn lp-btn-coin w-full mt-2"
                         >
                             {loading && (
                                 <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -597,16 +570,12 @@ export function RegisterPage() {
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center">
-                        <p className="lp-pixel text-[8px] leading-[1.8] text-white/50">
-                            {t('auth.already_have_account')}{' '}
-                            <Link to="/login" className="lp-link">
-                                {t('auth.login_link')}
-                            </Link>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <p className="au-foot-note">
+                        {t('auth.already_have_account')}{' '}
+                        <Link to="/login" className="lp-link">
+                            {t('auth.login_link')}
+                        </Link>
+                    </p>
+        </AuthShell>
     );
 }

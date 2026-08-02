@@ -330,13 +330,20 @@
   z-index: 30;
   transform: translate(-50%, -12px);
   opacity: 0; pointer-events: none;
-  max-width: 84%;
-  padding: 10px 16px;
+  max-width: 90%;
+  padding: 11px 18px;
   background: rgba(20,14,34,.94);
   border: 2px solid var(--pwr-cyan);
   border-radius: var(--pwr-radius);
   box-shadow: 0 4px 0 rgba(0,0,0,.5);
-  font-size: 12px; line-height: 1.45; text-align: center;
+  /* Teks toast fallback (pesan yang mengandung karakter di luar font bitmap,
+     mis. "—") dulu 12px -> nyaris tak terbaca di ponsel (dilaporkan user).
+     Dinaikkan & dibuat responsif: ikut lebar layar, dibatasi 15-20px, tebal.
+     Tinggi baris longgar supaya pesan 2 baris tetap lega. */
+  font-size: clamp(15px, 4.3vw, 20px);
+  font-weight: 700;
+  letter-spacing: .2px;
+  line-height: 1.5; text-align: center;
   transition: opacity .2s, transform .2s;
 }
 .pwr-toast.show { opacity: 1; transform: translate(-50%, 0); }

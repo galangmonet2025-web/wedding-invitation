@@ -637,42 +637,41 @@ check('T28g margin kepingan & musuh terbang di bawah H_REACH',
    Toast menyuruh "injak saat bersinar" tapi tak ada kode yang membuat
    bersinar. Sekarang wajib berlapis DAN keadaan "belum bisa" juga bertanda.
    ===================================================================== */
-check('T29 ada setBossVulnerable terpusat (bukan flag mentah)',
-  /GameScene\.prototype\.setBossVulnerable\s*=\s*function/.test(js));
+/* MODEL BOS SEKARANG (ala retromario, TANPA jendela rentan) — permintaan
+   user berulang: "ga usah ada timing kapan harus nyerang, buat supaya bisa
+   di serang terus" + "karakter boss masih hilang ketika di tembak". Seluruh
+   mesin "vulnerable window" (setBossVulnerable / SERANG!/TAHAN / bossArrow /
+   setTint) SUDAH DIBUANG. Detail perilakunya diuji tuntas di verify-boss.cjs;
+   di sini cukup jaga agar mesin lama tidak diam-diam kembali. */
+const bossCode = (() => {
+  let out = '';
+  ['updateBoss', 'hitBoss', 'defeatBoss', 'activateBoss', 'shotHitsBoss', 'buildBossArena'].forEach(n => {
+    const s = js.indexOf('GameScene.prototype.' + n + ' = function');
+    if (s < 0) return;
+    const e = js.indexOf('\n};', s);
+    out += js.slice(s, e < 0 ? s : e + 3) + '\n';
+  });
+  return out.replace(/\/\*[\s\S]*?\*\//g, '');   /* buang komentar (boleh sebut istilah lama) */
+})();
 
-check('T29b kondisi rentan ditandai warna + gerak + teks + arah',
-  /setBossVulnerable[\s\S]{0,2600}?setTint\(0xffe27a\)/.test(js) &&
-  /setBossVulnerable[\s\S]{0,2600}?scaleX: 1\.12/.test(js) &&
-  /setBossVulnerable[\s\S]{0,2600}?'SERANG!'/.test(js) &&
-  /bossArrow/.test(js));
+check('T29 mesin vulnerable-window lama dibuang (setBossVulnerable/SERANG/TAHAN)',
+  !/setBossVulnerable/.test(js) && !/bossArrow/.test(js) &&
+  !/'SERANG!'/.test(bossCode) && !/'TAHAN'/.test(bossCode));
 
-check('T29c keadaan TIDAK rentan juga punya penanda sendiri',
-  /setBossVulnerable[\s\S]{0,2600}?'TAHAN'/.test(js) &&
-  /setBossVulnerable[\s\S]{0,2600}?setTint\(0x8fa8d8\)/.test(js));
+check('T29b tidak ada setTint/clearTint di kode bos (WEBGL-only -> bikin ilang di canvas)',
+  !/\bsetTint\b/.test(bossCode) && !/\bsetTintFill\b/.test(bossCode) && !/\bclearTint\b/.test(bossCode));
 
-check('T29d hitBoss lewat setBossVulnerable (indikator ikut dibersihkan)',
-  /hitBoss\s*=\s*function[\s\S]{0,500}?this\.setBossVulnerable\(false\)/.test(js) &&
-  !/hitBoss\s*=\s*function[\s\S]{0,400}?this\.bossVulnerable\s*=\s*false;/.test(js));
+check('T29c hitBoss pakai penghitung frame (invulnMs/flashMs), bukan tween',
+  /invulnMs/.test(bossCode) && /flashMs/.test(bossCode) &&
+  !/hitBoss\s*=\s*function[\s\S]{0,500}?tweens\.add/.test(js));
 
-check('T29e indikator dibuang saat boss kalah',
-  /defeatBoss[\s\S]{0,900}?bossLabel\.destroy\(\)/.test(js) &&
-  /defeatBoss[\s\S]{0,900}?bossArrow\.destroy\(\)/.test(js) &&
-  /defeatBoss[\s\S]{0,900}?clearTint\(\)/.test(js));
+check('T29d jaring pengaman: updateBoss paksa bos tetap dapat digambar',
+  /setVisible\(true\)/.test(bossCode) &&
+  /isFinite\(b\.x\)/.test(bossCode) &&
+  /this\.textures\.exists\(pkey\)/.test(bossCode));
 
-/* T29f — dulu memakai jendela 1400 karakter sesudah "updateBoss", jadi
-   ia gagal begitu fungsi itu bertambah panjang (bos kini berpatroli)
-   walau indikatornya tetap mengikuti. Diperiksa pada BADAN fungsi. */
-check('T29f indikator mengikuti posisi boss yang bergoyang',
-  (() => {
-    const i = js.indexOf('GameScene.prototype.updateBoss');
-    if (i < 0) return false;
-    const nx = js.indexOf('\nGameScene.prototype.', i + 10);
-    const body = js.slice(i, nx < 0 ? js.length : nx);
-    return /bossLabel\.setPosition\(b\.x/.test(body);
-  })());
-
-check('T29g toast menyebut penanda yang benar-benar terlihat',
-  /SERANG!/.test(js) && !/Injak pendulumnya saat bersinar/.test(js));
+check('T29e partikel damage dibungkus try/catch (gagal partikel tak menstrand bos)',
+  /try\s*\{[\s\S]{0,300}?add\.particles/.test(bossCode));
 
 /* =====================================================================
    30. PEMANDANGAN RIMBUN (revisi 6)
@@ -858,7 +857,9 @@ check('T30h scenery baru tetap tanpa primitif mulus',
    berubah diam-diam. */
 (function () {
   const d = js.slice(js.indexOf('var TUNE_DEF = {'), js.indexOf('};', js.indexOf('var TUNE_DEF = {')));
-  const want = { pixel: 3, platH: 74, platH2: 54, groundY: 90, jumpVel: 540,
+  /* platH/platH2 = 92/86 (bukan 74/54): dinaikkan dari hasil penyetelan user
+     di panel ATUR GAME; tetap di-clamp <= H_REACH oleh recomputeDerived. */
+  const want = { pixel: 3, platH: 92, platH2: 86, groundY: 90, jumpVel: 540,
                  gravity: 1000, runSpeed: 300, reach: 90, bgDetail: 190 };
   let miss = [];
   Object.keys(want).forEach(k => {

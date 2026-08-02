@@ -1,0 +1,860 @@
+<!--
+  JAVA VINTAGE — replika tema "Java vintage 2026" (Invitingart).
+  Struktur mengikuti aslinya: cover fullscreen + panel kiri sticky (desktop)
+  + kolom konten kanan yang di-scroll.
+
+  Kontrak host (ThemeWrapper) yang WAJIB dipertahankan:
+   - ID host verbatim: btn-open-invitation, btn-show-menu, btn-show-qr,
+     btn-toggle-music/play-icon/pause-icon/bg-music, btn-submit-ucapan +
+     wish-name + wish-message, btn-submit-kehadiran + rsvp-code/rsvp-status/
+     rsvp-guests.
+   - Ikon musik HANYA ditulis host — tema tidak boleh mem-mirror-nya.
+   - Nilai rsvp-status harus lowercase 'hadir' / 'tidak-hadir'.
+-->
+<div class="jv-root">
+
+    <!-- ================= PANEL KIRI STICKY (desktop) =================
+         Di aslinya ini container Elementor sticky dengan mural sebagai
+         background + overlay hitam 50%. Di mobile disembunyikan total. -->
+    <aside class="jv-side" id="jv-side">
+        <!-- Panel kiri desktop memakai FOTO SAMPUL milik tenant, bukan video.
+
+             DUA lapisan, bukan satu: `.jv-side-bg` tetap memegang mural
+             bawaan tema lewat CSS, lalu `.jv-side-photo` menumpuk foto
+             tenant di atasnya. Kalau ditulis inline pada satu elemen yang
+             sama, `url("")` saat variabelnya kosong akan MENIMPA mural dan
+             panelnya jadi kosong melompong. Dengan dua lapisan, foto yang
+             gagal/kosong cuma membuat lapisan atas transparan — mural di
+             bawahnya tetap tampil. -->
+        <div class="jv-side-bg"></div>
+        {{#if photo_hero_cover}}
+        <div class="jv-side-photo" style="background-image: url(&quot;{{photo_hero_cover}}&quot;);"></div>
+        {{else}}
+        {{#if photo_background}}
+        <div class="jv-side-photo" style="background-image: url(&quot;{{photo_background}}&quot;);"></div>
+        {{/if}}
+        {{/if}}
+        <div class="jv-side-veil"></div>
+        <div class="jv-side-inner">
+            <div class="jv-side-top">
+                <p class="jv-eyebrow jv-body-font">The Wedding Of</p>
+                <h1 class="jv-side-names">
+                    <span class="jv-nick">{{groom_nickname}}</span>
+                    <span class="jv-amp">&amp;</span>
+                    <span class="jv-nick">{{bride_nickname}}</span>
+                </h1>
+                <p class="jv-side-date jv-body-font">{{wedding_date}}</p>
+            </div>
+            <div class="jv-side-bottom">
+                <p class="jv-eyebrow jv-body-font">Dear, Mr/Mrs/Ms</p>
+                <p class="jv-side-guest">{{nama_tamu}}</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= KOLOM KONTEN =================
+         Nama kelas `phone-container` + `mock-app-screen` BUKAN kosmetik —
+         host memakainya sebagai pegangan (ThemeWrapper):
+          - `.mock-app-screen` diberi kelas `.reveal-content` saat undangan
+            dibuka; itulah yang melepas kunci scroll & memudarkan sampul.
+          - `.phone-container` di-set `overflowY:auto` oleh host saat dibuka,
+            dan jadi target scroll tombol "ke atas".
+         Ini pola yang sama dengan tema timeless/netflix/lake-como.
+
+         JANGAN pakai `#main-content` di tema ber-`.mock-app-screen`: host
+         menyembunyikannya dengan `.is-closed #main-content{display:none
+         !important}` dan HANYA menampilkannya lagi lewat `.is-opened`.
+         Di Theme Editor `.is-opened` tidak pernah ada, jadi isinya tersembunyi
+         permanen — itu penyebab "cuma background yang muncul". -->
+    <div class="jv-main phone-container" id="jv-main">
+        <div class="jv-screen mock-app-screen" id="jv-screen">
+
+            <!-- ---------------- COVER / SAMPUL ----------------
+                 Aslinya #sampul-undangan: position fixed, mural + overlay
+                 hitam, isi tersusun space-evenly, tombol Open muncul paling
+                 akhir (delay 1000ms).
+
+                 id="theme-cover" WAJIB: host menyembunyikan elemen ini lewat
+                 aturan `.is-opened #theme-cover { display:none }`. -->
+            <!-- LATAR VIDEO MELEKAT (aslinya container 18e1f503).
+                 Di sumber, ini bukan hiasan panel desktop: ia lapisan
+                 `position:absolute; z-index:0; sticky-top` yang duduk di
+                 BELAKANG seluruh kolom undangan. Semua section di atasnya
+                 berlatar semi-transparan, jadi video ini mengintip di
+                 sepanjang undangan — itulah "setiap section punya video
+                 background" yang terlihat di sumber.
+
+                 `position: sticky` + `top: 0` membuatnya tetap diam saat
+                 kolom di-scroll, tanpa `fixed` (yang akan lolos dari kolom
+                 dan menutupi panel kiri desktop / seluruh iframe editor).
+                 Mural statis tetap jadi dasar kalau videonya gagal dimuat. -->
+            <div class="jv-stickyvid" id="jv-stickyvid" aria-hidden="true">
+                <div class="jv-stickyvid-bg"></div>
+                <video class="jv-video" id="jv-video-sticky" autoplay muted loop playsinline preload="none"
+                    src="https://invitingart.id/wp-content/uploads/2025/04/Java-d-1.mp4"></video>
+                <div class="jv-stickyvid-veil"></div>
+            </div>
+
+            <section class="jv-cover" id="theme-cover">
+                <!-- Sampul memakai mural statis saja. Di sumber, sampul
+                     memang TIDAK bervideo — video Comp-1dfg.mp4 milik
+                     section pertama DI DALAM undangan (lihat #jv-hero). -->
+                <div class="jv-cover-bg"></div>
+                <div class="jv-cover-veil"></div>
+
+                <div class="jv-cover-inner">
+                    <div class="jv-cover-top">
+                        <p class="jv-eyebrow jv-body-font jv-anim" data-anim="fadeInUp" data-delay="100">The Wedding Of</p>
+                        <h1 class="jv-cover-names">
+                            <span class="jv-nick jv-anim" data-anim="fadeInUp" data-delay="200">{{groom_nickname}}</span>
+                            <span class="jv-amp jv-anim" data-anim="fadeInUp" data-delay="300">&amp;</span>
+                            <span class="jv-nick jv-anim" data-anim="fadeInUp" data-delay="400">{{bride_nickname}}</span>
+                        </h1>
+                        <p class="jv-cover-date jv-body-font jv-anim" data-anim="fadeInDown" data-delay="500">{{wedding_date}}</p>
+                    </div>
+
+                    <div class="jv-cover-bottom">
+                        <p class="jv-eyebrow jv-body-font jv-anim" data-anim="fadeInUp" data-delay="600">Dear, Mr/Mrs/Ms</p>
+                        <p class="jv-cover-guest jv-anim" data-anim="fadeInUp" data-delay="700">{{nama_tamu}}</p>
+                        <p class="jv-cover-note jv-body-font jv-anim" data-anim="zoomIn" data-delay="850">
+                            You are invited to witness<br>and celebrate our special day
+                        </p>
+                        <button class="jv-btn jv-btn-open jv-anim" id="btn-open-invitation" data-anim="fadeInUp" data-delay="1000">
+                            Open
+                        </button>
+                        <button class="jv-btn jv-btn-ghost jv-anim" id="btn-show-qr" data-anim="fadeInUp" data-delay="1150">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect><rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path><path d="M3 12h.01"></path><path d="M12 3h.01"></path><path d="M16 12h1"></path><path d="M12 21v-1"></path></svg>
+                            QR Check-in
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ---------------- HERO VIDEO ----------------
+                 Salinan container `17bb4f5e` (id aslinya "video-undangan
+                 home"): section PERTAMA di dalam undangan, tinggi 93vh,
+                 berlatar video Comp-1dfg.mp4 dengan gambar Artboard sebagai
+                 cadangan. Isinya "The Wedding Of" + nama panggilan mempelai,
+                 beranimasi fadeInDown/fadeInUp seperti aslinya.
+
+                 Inilah "section video setelah buka sampul" yang diminta. -->
+            <section class="jv-section jv-hero" id="jv-hero">
+                <div class="jv-hero-bg"></div>
+                <video class="jv-video" id="jv-video-hero" autoplay muted loop playsinline preload="none"
+                    src="https://invitingart.id/wp-content/uploads/2026/05/Comp-1dfg.mp4"></video>
+                <div class="jv-hero-veil"></div>
+
+                <div class="jv-inner jv-hero-inner">
+                    <p class="jv-eyebrow jv-body-font jv-anim" data-anim="fadeInDown">The Wedding Of</p>
+                    <h2 class="jv-hero-names">
+                        <span class="jv-nick jv-anim" data-anim="fadeInUp" data-delay="100">{{groom_nickname}}</span>
+                        <span class="jv-amp jv-anim" data-anim="fadeInUp" data-delay="200">&amp;</span>
+                        <span class="jv-nick jv-anim" data-anim="fadeInUp" data-delay="300">{{bride_nickname}}</span>
+                    </h2>
+                    <p class="jv-hero-date jv-body-font jv-anim" data-anim="fadeInUp" data-delay="400">{{wedding_date}}</p>
+                </div>
+
+                <!-- Petunjuk gulir — bentuknya disamakan dengan tema
+                     black-gold (.scroll-indicator > .mouse > .wheel):
+                     tetikus DI ATAS label, roda jatuh lalu memudar.
+                     Di luar .jv-inner supaya bisa dipatok ke kaki section;
+                     `aria-hidden` karena murni hiasan. -->
+                <div class="jv-scrollcue" aria-hidden="true">
+                    <div class="jv-scrollcue-mouse">
+                        <div class="jv-scrollcue-wheel"></div>
+                    </div>
+                    <span class="jv-scrollcue-label">scroll kebawah</span>
+                </div>
+            </section>
+
+            <!-- ---------------- QUOTE / PEMBUKA ---------------- -->
+            <section class="jv-section jv-sec-cream jv-sec-quote" id="jv-home">
+                <div class="jv-damask jv-damask-top"></div>
+
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">The Wedding Of</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+
+                    <div class="jv-quote-frame jv-anim" data-anim="fadeInUp" data-delay="150">
+                        <p class="jv-quote-text">{{quote}}</p>
+                        <p class="jv-quote-by jv-body-font">{{quote_by}}</p>
+                    </div>
+                </div>
+
+                <div class="jv-damask jv-damask-bottom"></div>
+            </section>
+
+            <!-- ---------------- MEMPELAI ----------------
+                 Foto dibingkai ornamen ukir emas (orn_gold_oval), persis
+                 seperti aslinya yang memakai widget bg sdef.webp. -->
+            <section class="jv-section jv-sec-cream" id="couple">
+                <div class="jv-inner">
+                    <p class="jv-eyebrow jv-body-font jv-anim" data-anim="fadeInUp">Bride &amp; Groom</p>
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">Bride &amp; Groom</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+
+                    <p class="jv-lead jv-body-font jv-anim" data-anim="fadeInUp" data-delay="100">
+                        Together with their beloved parents request the honor of your presence at the wedding of
+                    </p>
+
+                    <div class="jv-couple">
+                        <div class="jv-person jv-anim" data-anim="fadeInLeft" data-delay="100">
+                            <div class="jv-portrait">
+                                <div class="jv-portrait-photo" style="background-image:url('{{photo_groom_photo}}')"></div>
+                                <div class="jv-portrait-frame"></div>
+                            </div>
+                            <h3 class="jv-person-name">{{groom_name}}</h3>
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <p class="jv-person-parent jv-body-font">
+                                Putra dari<br>
+                                Bapak {{nama_bapak_laki_laki}}<br>&amp; Ibu {{nama_ibu_laki_laki}}
+                            </p>
+                            {{/if}}
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="jv-ig jv-body-font" href="https://instagram.com/{{ig_laki_laki}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13"><rect width="20" height="20" x="2" y="2" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                                @{{ig_laki_laki}}
+                            </a>
+                            {{/if}}
+                        </div>
+
+                        <div class="jv-couple-amp jv-anim" data-anim="zoomIn" data-delay="150">&amp;</div>
+
+                        <div class="jv-person jv-anim" data-anim="fadeInRight" data-delay="100">
+                            <div class="jv-portrait">
+                                <div class="jv-portrait-photo" style="background-image:url('{{photo_bride_photo}}')"></div>
+                                <div class="jv-portrait-frame"></div>
+                            </div>
+                            <h3 class="jv-person-name">{{bride_name}}</h3>
+                            {{#if flag_tampilkan_nama_orang_tua}}
+                            <p class="jv-person-parent jv-body-font">
+                                Putri dari<br>
+                                Bapak {{nama_bapak_perempuan}}<br>&amp; Ibu {{nama_ibu_perempuan}}
+                            </p>
+                            {{/if}}
+                            {{#if flag_tampilkan_sosial_media_mempelai}}
+                            <a class="jv-ig jv-body-font" href="https://instagram.com/{{ig_perempuan}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13"><rect width="20" height="20" x="2" y="2" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                                @{{ig_perempuan}}
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ---------------- COUNTDOWN ----------------
+                 Aslinya: background Date-1.webp (gapura bunga) + 2 gambar
+                 daun absolut ber-class .daun-goyang yang bergoyang tertiup
+                 angin dengan fase acak. -->
+            <section class="jv-section jv-sec-countdown" id="countdown">
+                <div class="jv-arch-bg"></div>
+
+                <!-- Daun penghias: goyangan dirandomisasi oleh index.js supaya
+                     tidak pernah serempak (meniru script_14 aslinya). -->
+                <div class="jv-leaf jv-leaf-l daun-goyang" aria-hidden="true">
+                    <svg viewBox="0 0 130 210" width="100%" height="100%">
+                        <!-- Tangkai melengkung dari bawah, daun berpasangan di kiri-kanannya -->
+                        <path d="M64 210C64 150 56 96 34 44" stroke="#6d7d55" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <g fill="#5f7048">
+                            <ellipse cx="26" cy="52" rx="21" ry="9" transform="rotate(-38 26 52)"/>
+                            <ellipse cx="56" cy="66" rx="19" ry="8" transform="rotate(24 56 66)"/>
+                            <ellipse cx="34" cy="92" rx="23" ry="9.5" transform="rotate(-28 34 92)"/>
+                            <ellipse cx="66" cy="108" rx="20" ry="8.5" transform="rotate(20 66 108)"/>
+                            <ellipse cx="42" cy="136" rx="24" ry="10" transform="rotate(-20 42 136)"/>
+                            <ellipse cx="72" cy="152" rx="21" ry="9" transform="rotate(16 72 152)"/>
+                            <ellipse cx="50" cy="180" rx="25" ry="10" transform="rotate(-14 50 180)"/>
+                        </g>
+                        <g fill="#7d8f61" opacity=".75">
+                            <ellipse cx="30" cy="70" rx="14" ry="6" transform="rotate(-34 30 70)"/>
+                            <ellipse cx="38" cy="114" rx="15" ry="6.5" transform="rotate(-24 38 114)"/>
+                            <ellipse cx="46" cy="158" rx="16" ry="7" transform="rotate(-16 46 158)"/>
+                        </g>
+                    </svg>
+                </div>
+                <div class="jv-leaf jv-leaf-r daun-goyang" aria-hidden="true">
+                    <svg viewBox="0 0 130 210" width="100%" height="100%">
+                        <path d="M66 210C66 150 74 96 96 44" stroke="#6d7d55" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <g fill="#5f7048">
+                            <ellipse cx="104" cy="52" rx="21" ry="9" transform="rotate(38 104 52)"/>
+                            <ellipse cx="74" cy="66" rx="19" ry="8" transform="rotate(-24 74 66)"/>
+                            <ellipse cx="96" cy="92" rx="23" ry="9.5" transform="rotate(28 96 92)"/>
+                            <ellipse cx="64" cy="108" rx="20" ry="8.5" transform="rotate(-20 64 108)"/>
+                            <ellipse cx="88" cy="136" rx="24" ry="10" transform="rotate(20 88 136)"/>
+                            <ellipse cx="58" cy="152" rx="21" ry="9" transform="rotate(-16 58 152)"/>
+                            <ellipse cx="80" cy="180" rx="25" ry="10" transform="rotate(14 80 180)"/>
+                        </g>
+                        <g fill="#7d8f61" opacity=".75">
+                            <ellipse cx="100" cy="70" rx="14" ry="6" transform="rotate(34 100 70)"/>
+                            <ellipse cx="92" cy="114" rx="15" ry="6.5" transform="rotate(24 92 114)"/>
+                            <ellipse cx="84" cy="158" rx="16" ry="7" transform="rotate(16 84 158)"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">Almost Time For Our Celebration</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+
+                    <div class="jv-countdown jv-anim" id="jv-countdown" data-anim="fadeInUp" data-delay="100">
+                        <div class="jv-cd-item"><span class="jv-cd-num" id="days">{{countdown_hari}}</span><span class="jv-cd-lbl jv-body-font">D</span></div>
+                        <div class="jv-cd-item"><span class="jv-cd-num" id="hours">{{countdown_jam}}</span><span class="jv-cd-lbl jv-body-font">H</span></div>
+                        <div class="jv-cd-item"><span class="jv-cd-num" id="minutes">{{countdown_menit}}</span><span class="jv-cd-lbl jv-body-font">M</span></div>
+                        <div class="jv-cd-item"><span class="jv-cd-num" id="seconds">{{countdown_detik}}</span><span class="jv-cd-lbl jv-body-font">S</span></div>
+                    </div>
+                    <p class="jv-cd-status jv-body-font" id="jv-cd-status" style="display:none"></p>
+
+                    <!-- Sumber tanggal untuk countdown JS. Dibaca index.js;
+                         host tidak menyediakan tanggal ISO, jadi JS mem-parse
+                         teks tanggal akad/resepsi ini. -->
+                    <span id="jv-date-src" data-akad="{{tanggal_akad}}" data-resepsi="{{tanggal_resepsi}}" style="display:none"></span>
+                    <span id="jv-jam-resepsi" style="display:none">{{jam_resepsi}}</span>
+
+                    <button class="jv-btn jv-btn-solid jv-anim" id="jv-btn-save-date" data-anim="fadeInUp" data-delay="200">
+                        Save The Date
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ---------------- ACARA ----------------
+                 Aslinya #event: krem + ornamen damask, tanggal besar 20/SEP/2026
+                 lalu dua blok (holy matrimony & wedding reception). -->
+            <section class="jv-section jv-sec-cream jv-sec-event" id="event">
+                <div class="jv-damask jv-damask-top"></div>
+
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">The Beginning of Forever</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+
+                    <div class="jv-bigdate jv-anim" data-anim="zoomIn" data-delay="100">
+                        <span class="jv-bigdate-d" id="jv-big-day">--</span>
+                        <span class="jv-bigdate-m" id="jv-big-month">---</span>
+                        <span class="jv-bigdate-y" id="jv-big-year">----</span>
+                    </div>
+
+                    <div class="jv-events">
+                        <div class="jv-event-card jv-anim" data-anim="fadeInLeft" data-delay="100">
+                            <p class="jv-event-kind jv-body-font">holy matrimony</p>
+                            <p class="jv-event-time">{{jam_akad}}</p>
+                            <p class="jv-event-date jv-body-font">{{tanggal_akad}}</p>
+                            <h3 class="jv-event-venue">{{nama_lokasi_akad}}</h3>
+                            <p class="jv-event-addr jv-body-font">{{keterangan_lokasi_akad}}</p>
+                            <a class="jv-btn jv-btn-ghost" href="{{akad_map}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                Google Maps
+                            </a>
+                        </div>
+
+                        {{#if flag_lokasi_akad_dan_resepsi_berbeda}}
+                        <div class="jv-event-card jv-anim" data-anim="fadeInRight" data-delay="100">
+                            <p class="jv-event-kind jv-body-font">wedding reception</p>
+                            <p class="jv-event-time">{{jam_resepsi}}</p>
+                            <p class="jv-event-date jv-body-font">{{tanggal_resepsi}}</p>
+                            <h3 class="jv-event-venue">{{nama_lokasi_resepsi}}</h3>
+                            <p class="jv-event-addr jv-body-font">{{keterangan_lokasi_resepsi}}</p>
+                            <a class="jv-btn jv-btn-ghost" href="{{resepsi_map}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                Google Maps
+                            </a>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+
+                <div class="jv-damask jv-damask-bottom"></div>
+            </section>
+
+            <!-- ---------------- GALERI ----------------
+                 Aslinya: satu layar besar (Ken Burns zoom 12s) + rel thumbnail
+                 yang auto-slide tiap 4 detik. -->
+            {{#if is_fitur_gallery}}
+            {{#if has_gallery}}
+            <section class="jv-section jv-sec-dark" id="gallery">
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-heading-light jv-anim" data-anim="fadeInDown">Our Pre-wedding Celebration</h2>
+                    <div class="jv-rule jv-rule-light"><span></span><i></i><span></span></div>
+
+                    <a class="jv-stage jv-anim" id="jv-stage-link" data-anim="fadeInUp" data-delay="100">
+                        <img class="jv-stage-img lightbox-injection" id="jv-stage-img" alt="">
+                    </a>
+
+                    <div class="jv-thumbs" id="jv-thumbs">
+                        {{#each galleries}}
+                        <button class="jv-thumb" data-full="{{this.url}}" type="button">
+                            <img src="{{this.url}}" alt="" loading="lazy">
+                        </button>
+                        {{/each}}
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+            {{/if}}
+
+            <!-- ---------------- KISAH / LOVE STORY ----------------
+                 Slider horizontal dengan Ken Burns pada slide aktif dan dot
+                 indikator yang memanjang (meniru .ia-ls-* aslinya). -->
+            {{#if flag_pakai_timeline_kisah}}
+            <section class="jv-section jv-sec-cream" id="story">
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">The Journey of Two Souls in Love</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+
+                    <!-- LINIMASA TEGAK.
+                         Desain ini menggantikan slider lama. Alasannya: data
+                         `timeline_kisah` HANYA punya tanggal/judul/deskripsi
+                         (lihat TimelineItem di src/types/index.ts) — tak ada
+                         medan foto, sedangkan slider sumber bertumpu pada
+                         foto per bab. Slider tanpa foto memaksa tamu menebak
+                         isi di balik titik-titik; linimasa tegak menampilkan
+                         seluruh kisah sekaligus dan lebih cocok untuk teks.
+
+                         `jv-ls-line` = tulang punggung emas yang "tumbuh"
+                         mengikuti guliran (tingginya diatur index.js). -->
+                    <div class="jv-ls" id="jv-ls">
+                        <div class="jv-ls-spine" aria-hidden="true">
+                            <span class="jv-ls-line" id="jv-ls-line"></span>
+                        </div>
+
+                        <ol class="jv-ls-list">
+                            {{#each timeline_kisah}}
+                            <li class="jv-ls-item jv-anim" data-anim="fadeInUp">
+                                <!-- Simpul ukir di tulang punggung. -->
+                                <span class="jv-ls-node" aria-hidden="true"></span>
+
+                                <div class="jv-ls-card">
+                                    <p class="jv-ls-date jv-body-font">{{this.tanggal}}</p>
+                                    <h3 class="jv-ls-title">{{this.judul}}</h3>
+                                    <div class="jv-ls-flourish" aria-hidden="true">
+                                        <i></i><span></span><i></i>
+                                    </div>
+                                    <p class="jv-ls-text jv-body-font">{{this.deskripsi}}</p>
+                                </div>
+                            </li>
+                            {{/each}}
+                        </ol>
+
+                        <!-- Penutup linimasa: hati kecil menandai "bersambung". -->
+                        <div class="jv-ls-end" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                                <path d="M12 21s-7.5-4.9-9.6-9A5.4 5.4 0 0 1 12 6.6a5.4 5.4 0 0 1 9.6 5.4C19.5 16.1 12 21 12 21z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- ---------------- LIVE STREAMING ---------------- -->
+            {{#if is_fitur_live_streaming}}
+            <section class="jv-section jv-sec-cream" id="live">
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">Join live streaming</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+                    <p class="jv-lead jv-body-font jv-anim" data-anim="fadeInUp" data-delay="100">
+                        Bagi Bapak/Ibu/Saudara/i yang berhalangan hadir, kami mengundang Anda menyaksikan
+                        momen bahagia kami secara langsung.
+                    </p>
+                    <a class="jv-btn jv-btn-solid jv-anim" href="{{link_live_streaming}}" target="_blank" rel="noopener noreferrer" data-anim="fadeInUp" data-delay="150">
+                        Live Streaming
+                    </a>
+                </div>
+            </section>
+            {{/if}}
+
+            <!-- ---------------- RSVP + UCAPAN ---------------- -->
+            <!-- ---------------- KONFIRMASI KEHADIRAN ----------------
+                 Dipisah dari section ucapan atas permintaan. Nuansa Jawa
+                 diperkuat lewat: judul aksara-ish (Cormorant SC), ornamen
+                 gunungan wayang di belakang, dan pias tumpal (segitiga
+                 batik) sebagai pembatas atas. -->
+            <!-- Ornamen memakai ASET GAMBAR asli (batik kawung, gunungan,
+                 untaian bunga) yang dipinjam dari tema jawa-heritage,
+                 menggantikan ornamen gambar-CSS sebelumnya.
+
+                 Aset TIDAK boleh ditanam di index.css — berkas itu sudah
+                 memuat 7 data-URI dan batas simpan per kolom 550.000 huruf.
+                 Karena itu dipakai variabel {{asset_image_N}}: gambarnya
+                 diunggah ke slot Media Aset milik tema, lalu host yang
+                 menyisipkan URL-nya. Lihat asset/ASSET.md untuk peta slot.
+
+                 Kalau slot dikosongkan, {{var}} jadi string kosong →
+                 ornamennya sekadar tak tampil, tema tetap jalan. -->
+            <section class="jv-section jv-sec-cream jv-sec-jawa" id="rsvp">
+                <div class="jv-motif jv-motif-top" aria-hidden="true"
+                    style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
+                <div class="jv-motif jv-motif-bottom" aria-hidden="true"
+                    style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
+                <div class="jv-spray jv-spray-l" aria-hidden="true"
+                    style="background-image: url(&quot;{{asset_image_4}}&quot;);"></div>
+                <div class="jv-spray jv-spray-r" aria-hidden="true"
+                    style="background-image: url(&quot;{{asset_image_5}}&quot;);"></div>
+
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">Kindly Confirm Your Presence</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+                    <p class="jv-lead jv-body-font jv-anim" data-anim="fadeInUp" data-delay="100">
+                        Mohon konfirmasi kehadiran Anda pada hari bahagia kami.
+                    </p>
+
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <div class="jv-paper jv-card jv-anim" id="rsvp-container" data-anim="fadeInUp" data-delay="150">
+                        {{#hidden is_sudah_isi_konfirmasi_kehadiran}}
+                        <div id="rsvp-form">
+                            <!-- Sapaan tamu tampil sebagai TEKS, bukan kolom isian
+                                 mati. Kolom `readonly` yang tak bisa diapa-apakan
+                                 hanya menambah kebisingan; namanya toh sudah
+                                 pasti. Nilai aslinya tetap disimpan di input
+                                 tersembunyi supaya kontrak host tak berubah. -->
+                            <p class="jv-card-eyebrow jv-body-font">Kepada</p>
+                            <p class="jv-card-guest">{{nama_tamu}}</p>
+
+                            <input type="hidden" id="rsvp-code" value="{{kode_undangan}}">
+
+                            <div class="jv-card-sep" aria-hidden="true"><i></i><span></span><i></i></div>
+
+                            <label class="jv-field">
+                                <span class="jv-field-lbl jv-body-font">Jumlah Tamu</span>
+                                <select class="jv-input" id="rsvp-guests">
+                                    <option value="1">1 Orang</option>
+                                    <option value="2">2 Orang</option>
+                                    <option value="3">3 Orang</option>
+                                    <option value="4">4 Orang</option>
+                                    <option value="5">5 Orang</option>
+                                </select>
+                            </label>
+
+                            <!-- Konfirmasi diubah dari dropdown jadi DUA TOMBOL
+                                 pilihan: pilihannya cuma dua dan ini keputusan
+                                 utama section ini, jadi tak pantas disembunyikan
+                                 di balik dropdown.
+
+                                 `#rsvp-status` TETAP ADA sebagai <select>
+                                 tersembunyi — host membacanya lewat ID itu
+                                 (nilai HARUS lowercase `hadir`/`tidak-hadir`,
+                                 kalau tidak host mencatatnya sebagai menolak).
+                                 Tombol di bawah hanya menyetel nilainya. -->
+                            <span class="jv-field-lbl jv-body-font jv-choice-lbl">Konfirmasi Kehadiran</span>
+                            <div class="jv-choice" id="jv-choice">
+                                <button type="button" class="jv-choice-btn" data-rsvp="hadir">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 6L9 17l-5-5"></path>
+                                    </svg>
+                                    Hadir
+                                </button>
+                                <button type="button" class="jv-choice-btn" data-rsvp="tidak-hadir">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18 6L6 18M6 6l12 12"></path>
+                                    </svg>
+                                    Tidak Hadir
+                                </button>
+                            </div>
+                            <select class="jv-input jv-sr" id="rsvp-status" tabindex="-1" aria-hidden="true">
+                                <option value="" disabled selected>Pilih konfirmasi</option>
+                                <option value="hadir">Hadir</option>
+                                <option value="tidak-hadir">Tidak Hadir</option>
+                            </select>
+
+                            <button class="jv-btn jv-btn-solid jv-btn-full" id="btn-submit-kehadiran">Konfirmasi</button>
+                        </div>
+                        {{/hidden}}
+
+                        {{^hidden is_sudah_isi_konfirmasi_kehadiran}}
+                        <div id="alert-submit-kehadiran" class="jv-thanks">
+                            {{^hidden is_hadir}}
+                            <div data-rsvp-branch="hadir">
+                                <div class="jv-thanks-mark">&#10047;</div>
+                                Terima kasih <strong>{{guest_name}}</strong>!<br>
+                                Kami menanti kehadiran Anda di hari bahagia kami.
+                            </div>
+                            {{/hidden}}
+                            {{#hidden is_hadir}}
+                            <div data-rsvp-branch="tidak">
+                                <div class="jv-thanks-mark">&#10047;</div>
+                                Terima kasih <strong>{{guest_name}}</strong>.<br>
+                                Kami mengerti Anda berhalangan hadir. Terima kasih atas doa restunya.
+                            </div>
+                            {{/hidden}}
+                        </div>
+                        {{/hidden}}
+                    </div>
+                    {{/unless}}
+                </div>
+
+            </section>
+
+            <!-- ---------------- UCAPAN & DOA ----------------
+                 Section terpisah dari konfirmasi kehadiran. Latarnya sengaja
+                 dibedakan (kain lurik samar) supaya kedua section tak
+                 terbaca sebagai satu blok panjang. -->
+            <section class="jv-section jv-sec-cream jv-sec-jawa jv-sec-ucapan" id="wishes">
+                <div class="jv-motif jv-motif-top" aria-hidden="true"
+                    style="background-image: url(&quot;{{asset_image_2}}&quot;);"></div>
+                <div class="jv-motif jv-motif-bottom" aria-hidden="true"
+                    style="background-image: url(&quot;{{asset_image_3}}&quot;);"></div>
+
+                <div class="jv-inner">
+                    <!-- Gunungan wayang sebagai mahkota judul. -->
+                    <div class="jv-gunungan-img jv-anim" data-anim="zoomIn" aria-hidden="true"
+                        style="background-image: url(&quot;{{asset_image_7}}&quot;);"></div>
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">Wishes &amp; Prayers</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+                    <p class="jv-lead jv-body-font jv-anim" data-anim="fadeInUp" data-delay="100">
+                        Sampaikan ucapan dan doa restu untuk kami berdua.
+                    </p>
+
+                    {{#unless is_link_umum_and_not_for_spesific_guest}}
+                    <div class="jv-paper jv-card jv-anim" id="wish-container" data-anim="fadeInUp" data-delay="200">
+                        {{#hidden is_sudah_isi_ucapan}}
+                        <div id="wish-form">
+                            <!-- Sama seperti section kehadiran: nama tampil
+                                 sebagai teks. `#wish-name` TETAP <input>
+                                 (tersembunyi) karena host membaca nilainya
+                                 dari ID itu saat mengirim ucapan. -->
+                            <p class="jv-card-eyebrow jv-body-font">Dari</p>
+                            <p class="jv-card-guest">{{nama_tamu}}</p>
+                            <input class="jv-sr" type="text" id="wish-name" value="{{nama_tamu}}" readonly tabindex="-1" aria-hidden="true">
+
+                            <div class="jv-card-sep" aria-hidden="true"><i></i><span></span><i></i></div>
+
+                            <label class="jv-field">
+                                <span class="jv-field-lbl jv-body-font">Ucapan &amp; Doa</span>
+                                <textarea class="jv-input jv-textarea" id="wish-message" rows="4" placeholder="Tulis ucapan &amp; doa untuk kedua mempelai..."></textarea>
+                            </label>
+                            <button class="jv-btn jv-btn-solid jv-btn-full" id="btn-submit-ucapan">Kirim Ucapan</button>
+                        </div>
+                        {{/hidden}}
+
+                        {{^hidden is_sudah_isi_ucapan}}
+                        <div id="alert-submit-ucapan" class="jv-thanks">
+                            <div class="jv-thanks-mark">&#10047;</div>
+                            Terima kasih atas ucapan &amp; doanya!
+                        </div>
+                        {{/hidden}}
+                    </div>
+                    {{/unless}}
+
+                    <!-- Judul kecil daftar ucapan; jumlahnya diisi index.js
+                         supaya ikut bertambah setelah tamu mengirim. -->
+                    <div class="jv-wishes-head jv-anim" data-anim="fadeInUp">
+                        <span class="jv-wishes-title jv-body-font">Ucapan dari Tamu</span>
+                        <span class="jv-wishes-count jv-body-font" id="jv-wishes-count"></span>
+                    </div>
+
+                    <div class="jv-wishes" data-loop="wishes">
+                        {{#each wishes}}
+                        <div class="jv-wish jv-anim" data-anim="fadeInUp" data-wish-item>
+                            <div class="jv-wish-head">
+                                <!-- Huruf awal nama sebagai "foto" tamu.
+                                     Diisi index.js dari teks nama, jadi tetap
+                                     benar setelah host menyuntik ucapan baru. -->
+                                <span class="jv-wish-ava" aria-hidden="true"></span>
+                                <span class="jv-wish-meta">
+                                    <span class="jv-wish-name" data-wish-field="name">{{this.guest_name}}</span>
+                                    <span class="jv-wish-time jv-body-font" data-wish-field="time">{{this.guest_comment_time}}</span>
+                                </span>
+                            </div>
+                            <p class="jv-wish-msg jv-body-font" data-wish-field="message">{{this.guest_message}}</p>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ---------------- WEDDING GIFT ---------------- -->
+            {{#if tampilkan_amplop_online}}
+            <section class="jv-section jv-sec-cream" id="gift">
+                <div class="jv-damask jv-damask-top"></div>
+
+                <div class="jv-inner">
+                    <h2 class="jv-heading jv-anim" data-anim="fadeInDown">Wedding Gift</h2>
+                    <div class="jv-rule"><span></span><i></i><span></span></div>
+                    <p class="jv-lead jv-body-font jv-anim" data-anim="fadeInUp" data-delay="100">
+                        For family and friends who would like to send a gift, we would be glad to receive it.
+                        Tap the following buttons to send them to us.
+                    </p>
+
+                    <div class="jv-gifts">
+                        <div class="jv-gift-card jv-anim" data-anim="fadeInUp" data-delay="120">
+                            <p class="jv-gift-bank jv-body-font">{{bank_1}}</p>
+                            {{#if flag_pakai_qris_rekening_1}}
+                            <div class="jv-gift-qris"><img src="{{gambar_qris_rekening_1}}" alt="QRIS"></div>
+                            {{/if}}
+                            <p class="jv-gift-num" id="jv-acc-1">{{rek_1}}</p>
+                            <p class="jv-gift-name jv-body-font">a.n. {{nama_rek_1}}</p>
+                            <button class="jv-btn jv-btn-ghost jv-copy" data-copy="jv-acc-1" type="button">Salin Nomor</button>
+                        </div>
+
+                        {{#if flag_pakai_2_rekening}}
+                        <div class="jv-gift-card jv-anim" data-anim="fadeInUp" data-delay="200">
+                            <p class="jv-gift-bank jv-body-font">{{bank_2}}</p>
+                            {{#if flag_pakai_qris_rekening_2}}
+                            <div class="jv-gift-qris"><img src="{{gambar_qris_rekening_2}}" alt="QRIS"></div>
+                            {{/if}}
+                            <p class="jv-gift-num" id="jv-acc-2">{{rek_2}}</p>
+                            <p class="jv-gift-name jv-body-font">a.n. {{nama_rek_2}}</p>
+                            <button class="jv-btn jv-btn-ghost jv-copy" data-copy="jv-acc-2" type="button">Salin Nomor</button>
+                        </div>
+                        {{/if}}
+
+                        {{#if flag_kirim_hadiah_offline}}
+                        <div class="jv-gift-card jv-anim" data-anim="fadeInUp" data-delay="280">
+                            <p class="jv-gift-bank jv-body-font">Kirim Hadiah</p>
+                            <p class="jv-gift-num jv-gift-place">{{nama_lokasi_kirim_hadiah_offline}}</p>
+                            <p class="jv-gift-name jv-body-font" id="jv-acc-addr">{{alamat_lokasi_kirim_hadiah_offline}}</p>
+                            <button class="jv-btn jv-btn-ghost jv-copy" data-copy="jv-acc-addr" type="button">Salin Alamat</button>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+
+                <div class="jv-damask jv-damask-bottom"></div>
+            </section>
+            {{/if}}
+
+            <!-- ---------------- PENUTUP ---------------- -->
+            <section class="jv-section jv-sec-closing" id="jv-closing">
+                <div class="jv-closing-bg"></div>
+                <div class="jv-closing-veil"></div>
+
+                <div class="jv-inner jv-closing-inner">
+                    <!-- Ikon salam (sungkem) — dua telapak dirapatkan.
+                         Digambar sebagai SVG, bukan emoji: emoji tampil
+                         berbeda-beda di tiap peranti dan berwarna, sehingga
+                         merusak nuansa emas-maroon section ini. -->
+                    <div class="jv-closing-salam jv-anim" data-anim="zoomIn" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" width="46" height="46" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Sikap salam/sungkem: DUA telapak dirapatkan.
+                                 Digambar sebagai dua bentuk cermin yang
+                                 masing-masing punya garis tepi sendiri dan
+                                 bertemu di sumbu tengah (x=24), lalu garis
+                                 tengah dipertegas supaya pada ukuran kecil
+                                 tetap terbaca "dua tangan", bukan satu. -->
+                            <path d="M23 41.5c-3.8-.4-6.9-2.6-8.6-5.9l-3.7-7c-.7-1.4-.2-3 1.1-3.7 1.3-.7 2.9-.2 3.6.9l1.6 2.6V15.8c0-1.4 1.1-2.5 2.5-2.5s2.5 1.1 2.5 2.5v-4.3c0-1.4.5-2.2 1-2.6" />
+                            <path d="M25 41.5c3.8-.4 6.9-2.6 8.6-5.9l3.7-7c.7-1.4.2-3-1.1-3.7-1.3-.7-2.9-.2-3.6.9l-1.6 2.6V15.8c0-1.4-1.1-2.5-2.5-2.5s-2.5 1.1-2.5 2.5v-4.3c0-1.4-.5-2.2-1-2.6" />
+                            <!-- Sumbu tengah: tempat kedua telapak bertemu. -->
+                            <path d="M24 9.2v32.4" />
+                        </svg>
+                    </div>
+
+                    <h2 class="jv-closing-thanks jv-anim" data-anim="fadeInUp" data-delay="80">
+                        Terima kasih<br>atas kehadirannya
+                    </h2>
+                    <div class="jv-rule jv-closing-rule jv-anim" data-anim="fadeInUp" data-delay="140">
+                        <span></span><i></i><span></span>
+                    </div>
+
+                    <p class="jv-closing-text jv-body-font jv-anim" data-anim="fadeInUp" data-delay="200">
+                        Merupakan suatu kebahagiaan dan kehormatan bagi kami, apabila
+                        Bapak/Ibu/Saudara/i <span class="jv-closing-guest">{{nama_tamu}}</span>
+                        berkenan hadir di hari bahagia kami.
+                    </p>
+
+                    <!-- Kalimat penutup milik tenant. Sengaja DIPERTAHANKAN di
+                         bawah teks tetap di atas: isinya bisa diubah lewat
+                         Kelola Undangan, jadi tak boleh ditimpa mati. -->
+                    <p class="jv-closing-text jv-closing-tenant jv-body-font jv-anim" data-anim="fadeInUp" data-delay="260">{{kalimat_penutup}}</p>
+
+                    <h2 class="jv-closing-names jv-anim" data-anim="zoomIn" data-delay="320">
+                        <span class="jv-nick">{{groom_nickname}}</span>
+                        <span class="jv-amp">&amp;</span>
+                        <span class="jv-nick">{{bride_nickname}}</span>
+                    </h2>
+
+                    <footer class="jv-footer">
+                        <p class="jv-footer-name jv-body-font">{{site_name}}</p>
+                        <p class="jv-footer-info jv-body-font">
+                            <a href="{{site_url}}" target="_blank" rel="noopener noreferrer">{{site_url}}</a><br>
+                            Digital Wedding Invitation
+                        </p>
+                        <div class="jv-footer-social">
+                            {{#if flag_use_instagram_webconfig}}
+                            <a aria-label="Instagram" href="{{url_instagram_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><rect width="20" height="20" x="2" y="2" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                            </a>
+                            {{/if}}
+                            {{#if flag_use_tiktok_webconfig}}
+                            <a aria-label="TikTok" href="{{url_tiktok_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+                            </a>
+                            {{/if}}
+                            {{#if flag_use_youtube_webconfig}}
+                            <a aria-label="YouTube" href="{{url_youtube_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="16" height="16"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48"></polygon></svg>
+                            </a>
+                            {{/if}}
+                            {{#if flag_use_whatsapp_webconfig}}
+                            <a aria-label="WhatsApp" href="{{url_whatsapp_webconfig}}" target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="16" height="16"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </footer>
+                </div>
+            </section>
+
+            <!-- ---------------- FLOATING UI ----------------
+                 display:none awal — host memaksa display:block saat undangan
+                 dibuka, jadi CSS harus tetap membuat isinya tersusun rapi
+                 (lihat catatan .jv-fab di index.css). -->
+            <div id="theme-fab-container" class="jv-fab" style="display:none">
+                <button class="jv-fab-btn" id="btn-show-menu" aria-label="Menu">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+                </button>
+                <button class="jv-fab-btn" id="jv-btn-top" aria-label="Ke atas" style="display:none">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+                <!-- QR check-in. ID-nya SAMA dengan tombol di sampul; itu
+                     memang pola yang dipakai tema lain (timeless, netflix,
+                     lake-como) — host menangkapnya lewat closest('#btn-show-qr')
+                     sehingga kedua tombol sama-sama berfungsi. Tanpa tombol
+                     ini, QR tak bisa diakses lagi setelah sampul hilang. -->
+                <button class="jv-fab-btn" id="btn-show-qr" aria-label="QR Check-in">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect width="5" height="5" x="3" y="3" rx="1"></rect><rect width="5" height="5" x="16" y="3" rx="1"></rect><rect width="5" height="5" x="3" y="16" rx="1"></rect><path d="M21 16h-3a2 2 0 0 0-2 2v3"></path><path d="M12 7v3a2 2 0 0 1-2 2H7"></path><path d="M3 12h.01"></path><path d="M12 3h.01"></path><path d="M16 12h1"></path><path d="M12 21v-1"></path></svg>
+                </button>
+                <!-- Piringan vinyl: berputar hanya saat host menandai .music-playing -->
+                <button class="jv-fab-btn jv-vinyl-btn" id="btn-toggle-music" aria-label="Musik">
+                    <span class="jv-vinyl" aria-hidden="true"></span>
+                    <span class="jv-vinyl-icons">
+                        <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="display:block"><path d="M8 5v14l11-7z"></path></svg>
+                        <svg id="pause-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                    </span>
+                </button>
+            </div>
+
+            <!-- ---------------- MENU NAV (slide dari kanan) ---------------- -->
+            <nav class="jv-menu" id="jv-menu">
+                <div class="jv-menu-bg"></div>
+                <button class="jv-menu-close" id="jv-menu-close" aria-label="Tutup">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div class="jv-menu-inner">
+                    <p class="jv-eyebrow jv-body-font">The Wedding Of</p>
+                    <p class="jv-menu-names">{{groom_nickname}} &amp; {{bride_nickname}}</p>
+                    <ul class="jv-menu-list">
+                        <li><a data-scroll="jv-home">Home</a></li>
+                        <li><a data-scroll="couple">Couple</a></li>
+                        <li><a data-scroll="event">Event</a></li>
+                        {{#if is_fitur_gallery}}<li><a data-scroll="gallery">Gallery</a></li>{{/if}}
+                        {{#if flag_pakai_timeline_kisah}}<li><a data-scroll="story">Love Story</a></li>{{/if}}
+                        {{#if is_fitur_live_streaming}}<li><a data-scroll="live">Live Streaming</a></li>{{/if}}
+                        {{#unless is_link_umum_and_not_for_spesific_guest}}<li><a data-scroll="rsvp">RSVP</a></li>{{/unless}}
+                        <li><a data-scroll="wishes">Wishes</a></li>
+                        {{#if tampilkan_amplop_online}}<li><a data-scroll="gift">Wedding Gift</a></li>{{/if}}
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Toast ala push-notification (meniru .ia-toast-bubble aslinya) -->
+            <div class="jv-toast" id="jv-toast"><span id="jv-toast-msg"></span></div>
+
+            <audio id="bg-music" loop>
+                <source src="{{link_backsound_music}}" type="audio/mpeg">
+            </audio>
+        </div>
+    </div>
+</div>

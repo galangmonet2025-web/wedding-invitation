@@ -8,6 +8,10 @@ import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { NewLandingPage } from '@/features/landing/pages/NewLandingPage';
+// Eager (bukan lazy): kembali dari /#/tema/:kode memasang ulang Suspense
+// boundary, sehingga spinner RouteFallback sempat berkedip walau chunk-nya
+// sudah ada di memori — terasa seperti "loading lagi" padahal datanya cached.
+import { HomePage } from '@/features/landing/pages/HomePage';
 
 // --- Lazy: the admin/tenant dashboard. These pull in heavy deps (Monaco,
 // exceljs, jspdf, recharts, html2canvas, dnd-kit). A guest opening an
@@ -34,6 +38,8 @@ const ThemeEditorPage = lazy(() => import('@/features/admin/pages/ThemeEditorPag
 const WebsiteConfigPage = lazy(() => import('@/features/admin/pages/WebsiteConfigPage').then(m => ({ default: m.WebsiteConfigPage })));
 const PlanConfigPage = lazy(() => import('@/features/admin/pages/PlanConfigPage').then(m => ({ default: m.PlanConfigPage })));
 const LandingPage = lazy(() => import('@/features/landing/pages/LandingPage').then(m => ({ default: m.LandingPage })));
+// Halaman detail pratinjau SATU tema (dibuka dari kartu tema di /home-page).
+const ThemePreviewPage = lazy(() => import('@/features/landing/pages/ThemePreviewPage').then(m => ({ default: m.ThemePreviewPage })));
 const AdditionalFeaturePage = lazy(() => import('@/features/admin/pages/AdditionalFeaturePage').then(m => ({ default: m.AdditionalFeaturePage })));
 const TenantAdditionalFeaturePage = lazy(() => import('@/features/tenant/pages/TenantAdditionalFeaturePage').then(m => ({ default: m.TenantAdditionalFeaturePage })));
 const ReviewPage = lazy(() => import('@/features/admin/pages/ReviewPage').then(m => ({ default: m.ReviewPage })));
@@ -102,8 +108,12 @@ export const router = createHashRouter([
         path: '/',
         children: [
             {
+                // Halaman muka situs. Membuka URL tanpa path (mis. domain.com
+                // atau domain.com/#/) mendarat di sini.
+                // Catatan: /landing-page (NewLandingPage) TIDAK dihapus — masih
+                // hidup di rutenya sendiri, hanya tidak lagi jadi halaman awal.
                 index: true,
-                element: <Navigate to="/landing-page" replace />,
+                element: <Navigate to="/home-page" replace />,
             },
             {
                 path: 'home',
@@ -112,6 +122,10 @@ export const router = createHashRouter([
             {
                 path: 'landing-page',
                 element: <NewLandingPage />,
+            },
+            {
+                path: 'home-page',
+                element: <HomePage />,
             },
             {
                 path: 'login',
@@ -529,6 +543,13 @@ export const router = createHashRouter([
                 // tenant's invitation, e.g. /#/preview/kode-tema/dini-galang?guestid=XXX
                 path: 'preview/:themeCode/:slug',
                 element: <InvitationPage />,
+            },
+            {
+                // Halaman detail pratinjau tema. WAJIB dideklarasikan SEBELUM ':slug'
+                // di bawah — ':slug' adalah catch-all yang akan menelan '/tema/xxx'
+                // dan malah mencoba merender undangan milik tenant bernama "tema".
+                path: 'tema/:themeCode',
+                element: L(<ThemePreviewPage />),
             },
             {
                 path: ':slug',
